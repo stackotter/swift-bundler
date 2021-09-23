@@ -7,12 +7,15 @@ let package = Package(
     name: "SPMBundler",
     platforms: [.macOS(.v10_13)],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(name: "DeltaLogger", url: "https://github.com/stackotter/delta-logger", .branch("main")),
     ],
     targets: [
         .target(
             name: "SPMBundler",
-            dependencies: [.product(name: "ArgumentParser", package: "swift-argument-parser")]),
+            dependencies: [
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                "DeltaLogger"]),
         .testTarget(
             name: "SPMBundlerTests",
             dependencies: ["SPMBundler"]),
