@@ -16,7 +16,7 @@ enum Shell {
     
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     guard let output = String(data: data, encoding: .utf8) else {
-      log.critical("Failed to get output of shell command `\(command)`")
+      log.error("Failed to get output of shell command `\(command)`")
       Foundation.exit(1)
     }
     return output

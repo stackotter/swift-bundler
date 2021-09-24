@@ -13,7 +13,7 @@ struct GenerateXcodeproj: ParsableCommand {
       let data = try Data(contentsOf: packageDir.appendingPathComponent("Bundle.json"))
       config = try JSONDecoder().decode(Configuration.self, from: data)
     } catch {
-      log.critical("Failed to load Bundle.json; \(error)")
+      log.error("Failed to load Bundle.json; \(error)")
       Foundation.exit(1)
     }
 
@@ -22,14 +22,16 @@ struct GenerateXcodeproj: ParsableCommand {
     let packageName = getPackageName(from: packageDir)
     let xcodeprojDir = packageDir.appendingPathComponent("\(packageName).xcodeproj")
     do {
-      try FileManager.default.removeItem(at: xcodeprojDir)
+      if FileManager.default.itemExists(at: xcodeprojDir, withType: .directory) {
+        try FileManager.default.removeItem(at: xcodeprojDir)
+      }
     } catch {
-      log.critical("Failed to remove existing xcodeproj; \(error)")
+      log.error("Failed to remove existing xcodeproj; \(error)")
       Foundation.exit(1)
     }
 
-    if Shell.getExitStatus("rm -rf \(packageName).xcodeproj; swift package generate-xcodeproj", packageDir) != 0 {
-      log.critical("Failed to generate default swiftpm xcodeproj")
+    if Shell.getExitStatus("swift package generate-xcodeproj", packageDir) != 0 {
+      log.error("Failed to generate default swiftpm xcodeproj")
       Foundation.exit(1)
     }
 
@@ -38,7 +40,7 @@ struct GenerateXcodeproj: ParsableCommand {
     do {
       contents = try String(contentsOf: pbxproj)
     } catch {
-      log.critical("Failed to read contents of project.pbxproj; \(error)")
+      log.error("Failed to read contents of project.pbxproj; \(error)")
       Foundation.exit(1)
     }
 
@@ -69,7 +71,7 @@ struct GenerateXcodeproj: ParsableCommand {
     // Insert the new target and build phases
     log.info("Inserting new targets and build phases")
     guard let objectsIndex = lines.firstIndex(of: "   objects = {") else {
-      log.critical("Failed to get line number of objects declaration in project.pbxproj")
+      log.error("Failed to get line number of objects declaration in project.pbxproj")
       Foundation.exit(1)
     }
     let objectsStartIndex = objectsIndex + 1
@@ -122,7 +124,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     
     // Insert new target
     guard let targetsIndex = lines.firstIndex(of: "         targets = (") else {
-      log.critical("Failed to get index of targets declaration in project.pbxproj")
+      log.error("Failed to get index of targets declaration in project.pbxproj")
       Foundation.exit(1)
     }
     let targetsStartIndex = targetsIndex + 1
@@ -132,7 +134,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     do {
       try lines.joined(separator: "\n").write(to: pbxproj, atomically: false, encoding: .utf8)
     } catch {
-      log.critical("Failed to write to project.pbxproj; \(error)")
+      log.error("Failed to write to project.pbxproj; \(error)")
       Foundation.exit(1)
     }
 
@@ -144,7 +146,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     do {
       schemeContents = try String(contentsOf: originalScheme)
     } catch {
-      log.critical("Failed to read \(packageName).xcscheme; \(error)")
+      log.error("Failed to read \(packageName).xcscheme; \(error)")
       Foundation.exit(1)
     }
 
@@ -155,7 +157,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
       try editedSchemeContents.write(to: schemesDir.appendingPathComponent("\(packageName) (~xcode).xcscheme"), atomically: false, encoding: .utf8)
       try FileManager.default.removeItem(at: originalScheme)
     } catch {
-      log.critical("Failed to edit default scheme; \(error)")
+      log.error("Failed to edit default scheme; \(error)")
       Foundation.exit(1)
     }
 
@@ -180,7 +182,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     do {
       try newSchemeContents.write(to: newScheme, atomically: false, encoding: .utf8)
     } catch {
-      log.critical("Failed to create new scheme; \(error)")
+      log.error("Failed to create new scheme; \(error)")
       Foundation.exit(1)
     }
 
@@ -197,7 +199,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     do {
       try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
     } catch {
-      log.critical("Failed to create Info.plist; \(error)")
+      log.error("Failed to create Info.plist; \(error)")
       Foundation.exit(1)
     }
   }

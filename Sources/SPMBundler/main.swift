@@ -18,3 +18,7 @@ Bundler.main()
 // TODO: graceful shutdown
 // TODO: documentation
 // TODO: make the default main.swift more useful (just a SwiftUI hello world or something)
+// TODO: respect build configuration from xcode (debug|release)
+
+// Must contain a main.swift otherwise it won't compile as an executable
+// 

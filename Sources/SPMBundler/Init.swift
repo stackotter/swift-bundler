@@ -44,7 +44,7 @@ struct Init: ParsableCommand {
         command.append(" --name=\"\(name)\"")
       }
       if Shell.getExitStatus(command, directory, silent: false) != 0 {
-        log.critical("Failed to initialise default swift package")
+        log.error("Failed to initialise default swift package")
         Foundation.exit(1)
       }
     }
@@ -65,7 +65,7 @@ struct Init: ParsableCommand {
       let data = try encoder.encode(config)
       try data.write(to: directory.appendingPathComponent("Bundle.json"))
     } catch {
-      log.critical("Failed to create Bundle.json; \(error)")
+      log.error("Failed to create Bundle.json; \(error)")
       Foundation.exit(1)
     }
   }

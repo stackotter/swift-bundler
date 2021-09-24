@@ -26,7 +26,7 @@ sips -z 512 512   \(iconPath) --out \(iconSetPath)/icon_512x512.png
 cp \(iconPath) \(iconSetPath)/icon_512x512@2x.png
 iconutil -c icns \(iconSetPath)
 rm -R \(iconSetPath)
-""")
+""", silent: true)
   if exitStatus != 0 {
 		throw BundlerError.icnsCreationFailed(exitStatus: exitStatus)
 	}
