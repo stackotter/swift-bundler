@@ -5,7 +5,7 @@ struct Build: ParsableCommand {
   @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory containing the package to be bundled", transform: URL.init(fileURLWithPath:))
   var packageDir: URL
 
-  @Option(name: .shortAndLong, help: "The build configuration to use (debug|release)", transform: BuildConfiguration.init(rawValue:))
+  @Option(name: .shortAndLong, help: "The build configuration to use (debug|release)", transform: { BuildConfiguration.init(rawValue: $0.lowercased()) })
   var configuration: BuildConfiguration?
 
   @Option(name: .shortAndLong, help: "The directory to output the bundled .app to", transform: URL.init(fileURLWithPath:))

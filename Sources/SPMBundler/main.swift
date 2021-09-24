@@ -12,13 +12,14 @@ struct Bundler: ParsableCommand {
 
 Bundler.main()
 
-// TODO: fix release build metallibs
+// TODO: fix metal shader compilation
 // TODO: option to show build progress in a window
 // TODO: codesigning
 // TODO: graceful shutdown
 // TODO: documentation
 // TODO: make the default main.swift more useful (just a SwiftUI hello world or something)
-// TODO: respect build configuration from xcode (debug|release)
+// TODO: support sandbox
+// TODO: get rid of 'Dummy' folder in xcode
 
 // Must contain a main.swift otherwise it won't compile as an executable
-// 
+// The (macOS) target is the actual one

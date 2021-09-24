@@ -44,8 +44,12 @@ struct GenerateXcodeproj: ParsableCommand {
       Foundation.exit(1)
     }
 
+    // Get build configuration list object id
+    var lines = contents.split(separator: "\n")
+    let buildConfigurationListId = lines[lines.firstIndex(of: "      \"\(packageName)::\(packageName)\" = {")! + 2].split(separator: "\"")[1]
+
     // Rename existing target
-    contents = contents.replacingOccurrences(of: "BundlerHelloWorld::BundlerHelloWorld", with: "BundlerHelloWorld::BundlerHelloWorldDummy")
+    contents = contents.replacingOccurrences(of: "\(packageName)::\(packageName)", with: "\(packageName)::\(packageName)Dummy")
     contents = contents.replacingOccurrences(of: """
          dependencies = (
          );
@@ -53,10 +57,10 @@ struct GenerateXcodeproj: ParsableCommand {
 """, with: """
          dependencies = (
          );
-         name = "\(packageName) (~xcode)";
+         name = "\(packageName) (dummy)";
 """)
-    contents = contents.replacingOccurrences(of: "productName = \"\(packageName)\"", with: "productName = \"\(packageName) (~xcode)\"")
-    contents = contents.replacingOccurrences(of: "path = \"\(packageName)\"", with: "path = \"\(packageName) (~xcode)\"")
+    contents = contents.replacingOccurrences(of: "productName = \"\(packageName)\"", with: "productName = \"\(packageName) (dummy)\"")
+    contents = contents.replacingOccurrences(of: "path = \"\(packageName)\"", with: "path = \"\(packageName) (dummy)\"")
 
     // Insert bundle identifier
     contents = contents.replacingOccurrences(of: """
@@ -66,10 +70,9 @@ struct GenerateXcodeproj: ParsableCommand {
             PRODUCT_BUNDLE_IDENTIFIER = "\(config.bundleIdentifier)";
 """)
 
-    var lines = contents.split(separator: "\n")
-
     // Insert the new target and build phases
     log.info("Inserting new targets and build phases")
+    lines = contents.split(separator: "\n")
     guard let objectsIndex = lines.firstIndex(of: "   objects = {") else {
       log.error("Failed to get line number of objects declaration in project.pbxproj")
       Foundation.exit(1)
@@ -78,14 +81,14 @@ struct GenerateXcodeproj: ParsableCommand {
 
     let shellScript = """
 cd ~/Desktop/Projects/DeltaClient/SPMBundler
-swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c release
+swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c ${CONFIGURATION}
 """
     let escapedShellScript = shellScript.replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\"", with: "\\\"")
 
     lines.insert("""
       "\(packageName)::\(packageName)" = {
          isa = "PBXNativeTarget";
-         buildConfigurationList = "OBJ_16";
+         buildConfigurationList = "\(buildConfigurationListId)";
          buildPhases = (
             "BuildPhase::ShellScript"
          );
@@ -142,6 +145,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
     log.info("Editing schemes")
     let schemesDir = xcodeprojDir.appendingPathComponent("xcshareddata/xcschemes")
     let originalScheme = schemesDir.appendingPathComponent("\(packageName).xcscheme")
+    let packageScheme = schemesDir.appendingPathComponent("\(packageName)-Package.xcscheme")
     let schemeContents: String
     do {
       schemeContents = try String(contentsOf: originalScheme)
@@ -150,14 +154,12 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
       Foundation.exit(1)
     }
 
-    // Edit and rename the original scheme
-    var editedSchemeContents = schemeContents.replacingOccurrences(of: "BlueprintName = \"\(packageName)\"", with: "BlueprintName = \"\(packageName) (~xcode)\"")
-    editedSchemeContents = editedSchemeContents.replacingOccurrences(of: "'$(TARGET_NAME)'", with: "\(packageName)Dummy")
+    // Remove the default schemes
     do {
-      try editedSchemeContents.write(to: schemesDir.appendingPathComponent("\(packageName) (~xcode).xcscheme"), atomically: false, encoding: .utf8)
       try FileManager.default.removeItem(at: originalScheme)
+      try FileManager.default.removeItem(at: packageScheme)
     } catch {
-      log.error("Failed to edit default scheme; \(error)")
+      log.error("Failed to remove default schemes; \(error)")
       Foundation.exit(1)
     }
 
@@ -173,7 +175,7 @@ swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c rel
           BuildableIdentifier = "primary"
           BlueprintIdentifier = "\(packageName)::\(packageName)Dummy"
           BuildableName = "\(packageName)"
-          BlueprintName = "\(packageName) (~xcode)"
+          BlueprintName = "\(packageName) (dummy)"
           ReferencedContainer = "container:\(packageName).xcodeproj">
         </BuildableReference>
       </BuildActionEntry>
