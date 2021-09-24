@@ -11,7 +11,7 @@ struct Handler: LogHandler {
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-    print("[\(level.shortString.padding(toLength: 5, withPad: " ", startingAt: 0))] \(message)")
+    print("\(level): \(message)")
   }
 }
 

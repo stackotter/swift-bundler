@@ -16,5 +16,5 @@ Bundler.main()
 // TODO: option to show build progress in a window
 // TODO: codesigning
 // TODO: graceful shutdown
-// TODO: xcode support
 // TODO: documentation
+// TODO: make the default main.swift more useful (just a SwiftUI hello world or something)

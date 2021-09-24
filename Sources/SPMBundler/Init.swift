@@ -43,7 +43,10 @@ struct Init: ParsableCommand {
       if let name = self.packageName {
         command.append(" --name=\"\(name)\"")
       }
-      shell(command, directory, shouldPipe: false)
+      if Shell.getExitStatus(command, directory, silent: false) != 0 {
+        log.critical("Failed to initialise default swift package")
+        Foundation.exit(1)
+      }
     }
 
     let packageName = getPackageName(from: directory)
@@ -58,7 +61,12 @@ struct Init: ParsableCommand {
       minOSVersion: minOSVersion ?? "11.0")
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    let data = try! encoder.encode(config)
-    try! data.write(to: directory.appendingPathComponent("Bundle.json"))
+    do {
+      let data = try encoder.encode(config)
+      try data.write(to: directory.appendingPathComponent("Bundle.json"))
+    } catch {
+      log.critical("Failed to create Bundle.json; \(error)")
+      Foundation.exit(1)
+    }
   }
 }
