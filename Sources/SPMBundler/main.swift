@@ -1,14 +1,17 @@
 import Foundation
 import ArgumentParser
 
-enum BuildConfiguration: String {
-  case debug
-  case release
-}
-
 struct Bundler: ParsableCommand {
   static let configuration = CommandConfiguration(subcommands: [Init.self, GenerateXcodeproj.self, Build.self])
 }
+
+// runProgressJob({ setMessage, setProgress in 
+//   setMessage("[4/5] Linking DeltaClientSPM")
+//   setProgress(1)
+//   sleep(5)
+// },
+// title: "Build",
+// maxProgress: 2)
 
 Bundler.main()
 

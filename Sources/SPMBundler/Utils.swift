@@ -93,3 +93,9 @@ func createBundleInfoPlist(bundleIdentifier: String, bundleName: String, minOSVe
 </plist>
 """
 }
+
+func terminate(_ message: String) -> Never {
+	log.error(message)
+	Shell.terminateTasks()
+	Foundation.exit(1)
+}

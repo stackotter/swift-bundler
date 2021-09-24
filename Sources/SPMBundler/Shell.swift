@@ -1,6 +1,14 @@
 import Foundation
 
 enum Shell {
+  static var tasks: [Process] = []
+
+  static func terminateTasks() {
+    for task in tasks {
+      task.terminate()
+    }
+  }
+
   static func runSilently(_ command: String, _ dir: URL? = nil) {
     let pipe = Pipe()
     let task = createProcess(command, dir, pipe)
@@ -16,8 +24,7 @@ enum Shell {
     
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     guard let output = String(data: data, encoding: .utf8) else {
-      log.error("Failed to get output of shell command `\(command)`")
-      Foundation.exit(1)
+      terminate("Failed to get output of shell command `\(command)`")
     }
     return output
   }
@@ -43,6 +50,7 @@ enum Shell {
       task.arguments = ["-c", "\(command)"]
     }
     task.launchPath = "/bin/zsh"
+    tasks.append(task)
 
     return task
   }

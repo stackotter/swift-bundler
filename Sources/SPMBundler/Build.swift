@@ -18,8 +18,7 @@ struct Build: ParsableCommand {
       let data = try Data(contentsOf: packageDir.appendingPathComponent("Bundle.json"))
       config = try JSONDecoder().decode(Configuration.self, from: data)
     } catch {
-      log.error("Failed to load config from Bundle.json; \(error)")
-      Foundation.exit(1)
+      terminate("Failed to load config from Bundle.json; \(error)")
     }
 
     let outputDir = self.outputDir ?? packageDir.appendingPathComponent(".build/bundler")
@@ -29,8 +28,7 @@ struct Build: ParsableCommand {
     let configuration = self.configuration ?? .debug
     log.info("Building package with \(configuration.rawValue) configuration")
     if Shell.getExitStatus("swift build -c \(configuration.rawValue)", packageDir, silent: false) != 0 {
-      log.error("Build failed")
-      Foundation.exit(1)
+      terminate("Build failed")
     }
 
     let buildDirSymlink = packageDir.appendingPathComponent(".build/\(configuration.rawValue)")
@@ -50,8 +48,7 @@ struct Build: ParsableCommand {
       try FileManager.default.createDirectory(at: appResources)
       try FileManager.default.createDirectory(at: appMacOS)
     } catch {
-      log.error("Failed to create .app folder structure; \(error)")
-      Foundation.exit(1)
+      terminate("Failed to create .app folder structure; \(error)")
     }
 
     // Copy executable
@@ -60,8 +57,7 @@ struct Build: ParsableCommand {
     do {
       try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(packageName))
     } catch {
-      log.error("Failed to copy built executable to \(appMacOS.appendingPathComponent(packageName).path); \(error)")
-      Foundation.exit(1)
+      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(packageName).path); \(error)")
     }
 
     // Create app icon
@@ -81,8 +77,7 @@ struct Build: ParsableCommand {
         }
       }
     } catch {
-      log.error("Failed to create app icon; \(error)")
-      Foundation.exit(1)
+      terminate("Failed to create app icon; \(error)")
     }
     
     // Create PkgInfo
@@ -92,8 +87,7 @@ struct Build: ParsableCommand {
     do {
       try Data(bytes: &pkgInfo, count: pkgInfo.count).write(to: pkgInfoFile)
     } catch {
-      log.error("Failed to create PkgInfo; \(error)")
-      Foundation.exit(1)
+      terminate("Failed to create PkgInfo; \(error)")
     }
 
     // Create Info.plist
@@ -109,8 +103,7 @@ struct Build: ParsableCommand {
     do {
       try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
     } catch {
-      log.error("Failed to create Info.plist at \(infoPlistFile.path); \(error)")
-      Foundation.exit(1)
+      terminate("Failed to create Info.plist at \(infoPlistFile.path); \(error)")
     }
 
     // Update Info.plist in xcodeproj if present
@@ -119,8 +112,7 @@ struct Build: ParsableCommand {
       do {
         try infoPlist.write(to: xcodeprojDir.appendingPathComponent("\(packageName)_Info.plist"), atomically: false, encoding: .utf8)
       } catch {
-        log.error("Failed to update Info.plist in xcodeproj; \(error)")
-        Foundation.exit(1)
+        terminate("Failed to update Info.plist in xcodeproj; \(error)")
       }
     }
 
@@ -130,8 +122,7 @@ struct Build: ParsableCommand {
     do {
       contents = try FileManager.default.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil, options: [])
     } catch {
-      log.error("Failed to enumerate contents of build directory (\(buildDir)); \(error)")
-      Foundation.exit(1)
+      terminate("Failed to enumerate contents of build directory (\(buildDir)); \(error)")
     }
 
     let bundles = contents.filter { $0.pathExtension == "bundle" }
@@ -141,8 +132,7 @@ struct Build: ParsableCommand {
       do {
         contents = try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil, options: [])
       } catch {
-        log.error("Failed to enumerate contents of '\(bundle.lastPathComponent)'; \(error)")
-        Foundation.exit(1)
+        terminate("Failed to enumerate contents of '\(bundle.lastPathComponent)'; \(error)")
       }
 
       let outputBundle = appResources.appendingPathComponent(bundle.lastPathComponent)
@@ -155,8 +145,7 @@ struct Build: ParsableCommand {
           try FileManager.default.copyItem(at: file, to: bundleResources.appendingPathComponent(file.lastPathComponent))
         }
       } catch {
-        log.error("Failed to create copy of '\(bundle.lastPathComponent)'; \(error)")
-        Foundation.exit(1)
+        terminate("Failed to create copy of '\(bundle.lastPathComponent)'; \(error)")
       }
 
       // Create Info.plist if missing
@@ -169,8 +158,7 @@ struct Build: ParsableCommand {
         do {
           try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
         } catch {
-          log.error("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
-          Foundation.exit(1)
+          terminate("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
         }
       }
 
@@ -185,19 +173,16 @@ struct Build: ParsableCommand {
       for metalFile in metalFiles {
         let path = metalFile.deletingPathExtension().path
         if Shell.getExitStatus("xcrun -sdk macosx metal -c \(path).metal -o \(path).air", silent: false) != 0 {
-          log.error("Failed to compile '\(metalFile.lastPathComponent)")
-          Foundation.exit(1)
+          terminate("Failed to compile '\(metalFile.lastPathComponent)")
         }
       }
       
       let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").path }
       if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.path)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
-        log.error("Failed to combine compiled metal shaders into a metal archive")
-        Foundation.exit(1)
+        terminate("Failed to combine compiled metal shaders into a metal archive")
       }
       if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.path)/default.metal-ar -o \(bundleResources.path)/default.metallib", silent: false) != 0 {
-        log.error("Failed to convert metal archive to metal library")
-        Foundation.exit(1)
+        terminate("Failed to convert metal archive to metal library")
       }
       Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
     }
