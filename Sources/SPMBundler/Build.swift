@@ -107,7 +107,7 @@ struct Build: ParsableCommand {
           log.info("Compiling Icon1024x1024.png into AppIcon.icns")
           try createIcns(from: iconFile, outDir: appResources)
         } else {
-          log.warning("No app icon found, skipping")
+          log.warning("No app icon found. Create an Icon1024x1024.png or AppIcon.icns in the root directory to add an app icon.")
         }
       }
     } catch {
