@@ -16,7 +16,7 @@ class WindowDelegate: NSObject, NSWindowDelegate {
 class ProgressDelegate: NSObject, NSApplicationDelegate {
   private static let width: CGFloat = 600
   private static let progressPadding: CGFloat = 12
-  private static let marginTop: CGFloat = 16
+  private static let margin: CGFloat = 16
 
   private var window: NSWindow
 
@@ -46,8 +46,8 @@ class ProgressDelegate: NSObject, NSApplicationDelegate {
     window.makeKeyAndOrderFront(nil)
     window.level = .statusBar
     window.setFrameTopLeftPoint(NSPoint(
-      x: screenWithMouse.frame.minX + screenWithMouse.frame.width - Self.width - Self.progressPadding,
-      y: screenWithMouse.frame.minY + screenWithMouse.frame.height - Self.marginTop))
+      x: screenWithMouse.frame.minX + screenWithMouse.frame.width - Self.width - Self.margin,
+      y: screenWithMouse.frame.minY + screenWithMouse.frame.height - Self.margin))
     
     let progressBar = NSProgressIndicator(frame: NSMakeRect(
       Self.progressPadding,
