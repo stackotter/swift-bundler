@@ -15,11 +15,12 @@ It is also possible to run the command in an existing swift package, but there a
 
 ### Generate xcodeproj
 
+If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration or add a build script you'll want to rerun this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.
+
 ```sh
+# Creates an xcodeproj file for using xcode as the ide
 swift bundler generate-xcodeproj
 ```
-
-If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration or add a build script you'll want to rerun this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.
 
 ### Build
 
@@ -32,6 +33,7 @@ swift bundler build -o [dir]
 ### Build and run
 
 ```sh
+# Builds and runs the app
 swift bundler run
 ```
 
