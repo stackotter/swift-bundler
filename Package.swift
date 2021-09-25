@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "SPMBundler",
+    name: "swift-bundler",
     platforms: [SupportedPlatform.macOS(SupportedPlatform.MacOSVersion.v11)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
@@ -12,12 +12,9 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SPMBundler",
+            name: "swift-bundler",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 "DeltaLogger"]),
-        .testTarget(
-            name: "SPMBundlerTests",
-            dependencies: ["SPMBundler"]),
     ]
 )

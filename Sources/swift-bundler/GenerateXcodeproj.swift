@@ -3,9 +3,11 @@ import ArgumentParser
 
 struct GenerateXcodeproj: ParsableCommand {
   @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory containing the package to create a .xcodeproj for", transform: URL.init(fileURLWithPath:))
-  var packageDir: URL
+  var packageDir: URL?
 
   func run() throws {
+    let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    
     // Load configuration
     log.info("Loading configuration")
     let config: Configuration
@@ -75,8 +77,8 @@ struct GenerateXcodeproj: ParsableCommand {
     let objectsStartIndex = objectsIndex + 1
 
     let shellScript = """
-cd ~/Desktop/Projects/DeltaClient/SPMBundler
-swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c ${CONFIGURATION} --progress
+cd ${PROJECT_DIR}
+swift bundler build -o ${BUILT_PRODUCTS_DIR} -c ${CONFIGURATION} --progress
 """
     let escapedShellScript = shellScript.replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\"", with: "\\\"")
 

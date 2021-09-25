@@ -3,7 +3,7 @@ import Foundation
 
 struct Build: ParsableCommand {
   @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory containing the package to be bundled", transform: URL.init(fileURLWithPath:))
-  var packageDir: URL
+  var packageDir: URL?
 
   @Option(name: .shortAndLong, help: "The build configuration to use (debug|release)", transform: { BuildConfiguration.init(rawValue: $0.lowercased()) })
   var configuration: BuildConfiguration?
@@ -27,6 +27,7 @@ struct Build: ParsableCommand {
   }
 
   func job(_ setMessage: @escaping (_ message: String) -> Void, _ setProgress: @escaping (_ progress: Double) -> Void) {
+    // A helper function to update the progress window (if present)
     func updateProgress(_ message: String, _ progress: Double, shouldLog: Bool = true) {
       if shouldLog {
         log.info(message)
@@ -34,6 +35,8 @@ struct Build: ParsableCommand {
       setMessage(message)
       setProgress(progress)
     }
+
+    let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
     updateProgress("Loading configuration", 0.05)
     let config: Configuration

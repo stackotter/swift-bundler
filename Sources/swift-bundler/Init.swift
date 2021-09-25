@@ -13,7 +13,7 @@ struct Init: ParsableCommand {
   static let configuration = CommandConfiguration(abstract: "Initialise a new Swift executable package and set it up for the bundler.", discussion: "If there is already a package in the directory it just sets up the bundler.")
 
   @Option(name: .shortAndLong, help: "The directory to initialise the bundler in.", transform: URL.init(fileURLWithPath:))
-  var directory: URL
+  var directory: URL?
 
   @Option(name: .customLong("name"), help: "The name for the package. Defaults to the name of the directory. If a swift package already exists in the directory, this is ignored.")
   var packageName: String?
@@ -34,6 +34,7 @@ struct Init: ParsableCommand {
   var minOSVersion: String?
 
   func run() throws {
+    let directory = self.directory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let packageSwift = directory.appendingPathComponent("Package.swift")
     
     // Initialise the swift package
@@ -114,7 +115,7 @@ import SwiftUI
 struct ContentView: View {
   var body: some View {
     Text("Hello, World!")
-      .padding(64)
+      .padding()
   }
 }
 """
