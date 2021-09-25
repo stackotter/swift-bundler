@@ -33,29 +33,31 @@ enum Shell {
     _ command: String, 
     _ dir: URL? = nil, 
     silent: Bool = false, 
-    lineHandler: @escaping (
+    lineHandler: ((
       _ line: String
-    ) -> Void = { _ in }
+    ) -> Void)? = nil
   ) -> Int {
-    let pipe = Pipe()
+    let pipe = !silent && lineHandler == nil ? nil : Pipe()
     let task = createProcess(command, dir, pipe)
 
-    let stdOutHandle = pipe.fileHandleForReading
-    DispatchQueue(label: "shell-output-reader").async {
-      while true {
-        let data = stdOutHandle.availableData
-        if !data.isEmpty {
-          if let str = String(data: data, encoding: .utf8) {
-            let lines = str.split(separator: "\n")
-            for line in lines {
-              lineHandler(String(line))
+    if let pipe = pipe {
+      let stdOutHandle = pipe.fileHandleForReading
+      DispatchQueue(label: "shell-output-reader").async {
+        while true {
+          let data = stdOutHandle.availableData
+          if !data.isEmpty {
+            if let str = String(data: data, encoding: .utf8) {
+              let lines = str.split(separator: "\n")
+              for line in lines {
+                lineHandler?(String(line))
+              }
+              if !silent {
+                print(str, terminator: "")
+              }
             }
-            if !silent {
-              print(str, terminator: "")
-            }
+          } else {
+            break
           }
-        } else {
-          break
         }
       }
     }

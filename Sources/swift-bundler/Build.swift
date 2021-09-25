@@ -241,6 +241,6 @@ struct Build: ParsableCommand {
       }
     }
 
-    updateProgress("Done", 1)
+    updateProgress("Build completed", 1)
   }
 }

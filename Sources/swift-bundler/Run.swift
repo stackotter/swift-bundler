@@ -29,12 +29,11 @@ struct Run: ParsableCommand {
     }
 
     let packageName = getPackageName(from: packageDir)
-    if Shell.getExitStatus("open \(packageDir.path)/.build/bundler/\(packageName).app") != 0 {
-      // Sometimes running it a second time fixes a weird glitch that stops it opening
-      log.warning("Failed to run bundled app, retrying...")
-      if Shell.getExitStatus("open \(packageDir.path)/.build/bundler/\(packageName).app") != 0 {
-        terminate("Failed to run bundled app at \(packageDir.path)/.build/bundler/\(packageName).app")
-      } 
+    let outputDir = self.outputDir ?? packageDir.appendingPathComponent(".build/bundler")
+    let executable = outputDir.appendingPathComponent("\(packageName).app/Contents/MacOS/\(packageName)")
+
+    if Shell.getExitStatus(executable.path, silent: false) != 0 {
+      terminate("Failed to run bundled app at \(outputDir.appendingPathComponent("\(packageName).app").path)")
     }
   }
 }
