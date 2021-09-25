@@ -11,8 +11,31 @@ struct Build: ParsableCommand {
   @Option(name: .shortAndLong, help: "The directory to output the bundled .app to", transform: URL.init(fileURLWithPath:))
   var outputDir: URL?
 
-  mutating func run() throws {
-    log.info("Loading configuration")
+  @Flag(name: [.customShort("p"), .customLong("progress")], help: "Display progress in a window")
+  var displayProgress = false
+
+  func run() throws {
+    if displayProgress {
+      runProgressJob({ setMessage, setProgress in 
+        job(setMessage, setProgress)
+      },
+      title: "Build",
+      maxProgress: 1)
+    } else {
+      job({ _ in }, { _ in })
+    }
+  }
+
+  func job(_ setMessage: @escaping (_ message: String) -> Void, _ setProgress: @escaping (_ progress: Double) -> Void) {
+    func updateProgress(_ message: String, _ progress: Double, shouldLog: Bool = true) {
+      if shouldLog {
+        log.info(message)
+      }
+      setMessage(message)
+      setProgress(progress)
+    }
+
+    updateProgress("Loading configuration", 0.05)
     let config: Configuration
     do {
       let data = try Data(contentsOf: packageDir.appendingPathComponent("Bundle.json"))
@@ -26,8 +49,19 @@ struct Build: ParsableCommand {
 
     // Build package
     let configuration = self.configuration ?? .debug
-    log.info("Building package with \(configuration.rawValue) configuration")
-    if Shell.getExitStatus("swift build -c \(configuration.rawValue)", packageDir, silent: false) != 0 {
+    updateProgress("Starting build with \(configuration.rawValue) configuration...", 0.1)
+    let exitStatus = Shell.getExitStatus("swift build -c \(configuration.rawValue)", packageDir, silent: false, lineHandler: { line in
+      if line.starts(with: "[") {
+        let parts = line.split(separator: "]")
+        // let message = String(parts[1].dropFirst())
+        let progressParts = parts[0].dropFirst().split(separator: "/")
+        let progress = Double(progressParts[0])!
+        let total = Double(progressParts[1])!
+        let percentage = progress / total
+        updateProgress(line, 0.8 * percentage + 0.1, shouldLog: false)
+      }
+    })
+    if exitStatus != 0 {
       terminate("Build failed")
     }
 
@@ -35,7 +69,7 @@ struct Build: ParsableCommand {
     let buildDir = buildDirSymlink.resolvingSymlinksInPath()
 
     // Create app folder structure
-    log.info("Creating .app skeleton")
+    updateProgress("Creating .app skeleton", 0.9)
     let app = outputDir.appendingPathComponent("\(packageName).app")
     let appContents = app.appendingPathComponent("Contents")
     let appResources = appContents.appendingPathComponent("Resources")
@@ -52,7 +86,7 @@ struct Build: ParsableCommand {
     }
 
     // Copy executable
-    log.info("Copying executable")
+    updateProgress("Copying executable", 0.91)
     let executable = buildDir.appendingPathComponent(packageName)
     do {
       try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(packageName))
@@ -61,7 +95,7 @@ struct Build: ParsableCommand {
     }
 
     // Create app icon
-    log.info("Creating app icon")
+    updateProgress("Creating app icon", 0.92)
     let appIcns = packageDir.appendingPathComponent("AppIcon.icns")
     do {
       if FileManager.default.itemExists(at: appIcns, withType: .file) {
@@ -81,7 +115,7 @@ struct Build: ParsableCommand {
     }
     
     // Create PkgInfo
-    log.info("Creating PkgInfo")
+    updateProgress("Creating PkgInfo", 0.94)
     var pkgInfo: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
     let pkgInfoFile = appContents.appendingPathComponent("PkgInfo")
     do {
@@ -91,7 +125,7 @@ struct Build: ParsableCommand {
     }
 
     // Create Info.plist
-    log.info("Creating Info.plist")
+    updateProgress("Creating Info.plist", 0.94)
     let infoPlistFile = appContents.appendingPathComponent("Info.plist")
     let infoPlist = createAppInfoPlist(
       packageName: packageName, 
@@ -117,7 +151,7 @@ struct Build: ParsableCommand {
     }
 
     // Copy bundles
-    log.info("Copying bundles")
+    updateProgress("Copying bundles", 0.94)
     let contents: [URL]
     do {
       contents = try FileManager.default.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil, options: [])
@@ -127,7 +161,7 @@ struct Build: ParsableCommand {
 
     let bundles = contents.filter { $0.pathExtension == "bundle" }
     for bundle in bundles {
-      log.info("Copying \(bundle.lastPathComponent)")
+      updateProgress("Copying \(bundle.lastPathComponent)", 0.94)
       let contents: [URL]
       do {
         contents = try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil, options: [])
@@ -168,7 +202,7 @@ struct Build: ParsableCommand {
         continue
       }
 
-      log.info("Compiling metal shaders in \(bundle.lastPathComponent)")
+      updateProgress("Compiling metal shaders in \(bundle.lastPathComponent)", 0.95)
 
       for metalFile in metalFiles {
         let path = metalFile.deletingPathExtension().path
@@ -186,5 +220,6 @@ struct Build: ParsableCommand {
       }
       Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
     }
+    updateProgress("Done", 1)
   }
 }

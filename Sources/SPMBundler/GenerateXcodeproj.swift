@@ -76,7 +76,7 @@ struct GenerateXcodeproj: ParsableCommand {
 
     let shellScript = """
 cd ~/Desktop/Projects/DeltaClient/SPMBundler
-swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c ${CONFIGURATION}
+swift run SPMBundler build -d \(packageDir.path) -o ${BUILT_PRODUCTS_DIR} -c ${CONFIGURATION} --progress
 """
     let escapedShellScript = shellScript.replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\"", with: "\\\"")
 

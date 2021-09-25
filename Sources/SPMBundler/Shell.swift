@@ -29,9 +29,37 @@ enum Shell {
     return output
   }
 
-  static func getExitStatus(_ command: String, _ dir: URL? = nil, silent: Bool = false) -> Int {
-    let pipe = silent ? Pipe() : nil
+  static func getExitStatus(
+    _ command: String, 
+    _ dir: URL? = nil, 
+    silent: Bool = false, 
+    lineHandler: @escaping (
+      _ line: String
+    ) -> Void = { _ in }
+  ) -> Int {
+    let pipe = Pipe()
     let task = createProcess(command, dir, pipe)
+
+    let stdOutHandle = pipe.fileHandleForReading
+    DispatchQueue(label: "shell-output-reader").async {
+      while true {
+        let data = stdOutHandle.availableData
+        if !data.isEmpty {
+          if let str = String(data: data, encoding: .utf8) {
+            let lines = str.split(separator: "\n")
+            for line in lines {
+              lineHandler(String(line))
+            }
+            if !silent {
+              print(str, terminator: "")
+            }
+          }
+        } else {
+          break
+        }
+      }
+    }
+
     task.launch()
     task.waitUntilExit()
     return Int(task.terminationStatus)
