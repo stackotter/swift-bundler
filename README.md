@@ -13,6 +13,22 @@ swift bundler init
 
 It is also possible to run the command in an existing swift package, but there are some things to look out for. Make sure your package contains a `main.swift` file. Make sure to use the `--name` flag if the name of your executable product differs from the name of your package. The macOS platform version should in `Package.swift` should be at least 11.0, earlier versions will likely work as well, but they are not tested.
 
+### Configuration
+
+Running `swift bundler init` creates a `Bundle.json` file which contains all the configuration for the app. Below is an example configuration;
+
+```json
+{
+  "buildNumber" : 1,
+  "bundleIdentifier" : "com.example.bundler-hello-world",
+  "category" : "public.app-category.games",
+  "minOSVersion" : "11.0",
+  "versionString" : "0.1.0"
+}
+```
+
+Remember to change this configuration to match your project.
+
 ### Generate xcodeproj
 
 If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration you'll want to re-run this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.

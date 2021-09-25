@@ -5,6 +5,9 @@ struct GenerateXcodeproj: ParsableCommand {
   @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory containing the package to create a .xcodeproj for", transform: URL.init(fileURLWithPath:))
   var packageDir: URL?
 
+  // @Flag(name: [.customLong("remove-dependencies-group")], help: "Removes the dependencies group from the file navigator. For some project structures dependencies show up twice and it's annoying")
+  // var shouldRemoveDependenciesGroup = false
+
   func run() throws {
     let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     
@@ -45,6 +48,26 @@ struct GenerateXcodeproj: ParsableCommand {
     // Get build configuration list object id
     var lines = contents.split(separator: "\n")
     let buildConfigurationListId = lines[lines.firstIndex(of: "      \"\(packageName)::\(packageName)\" = {")! + 2].split(separator: "\"")[1]
+
+    // Remove dependencies group if asked to
+    // if shouldRemoveDependenciesGroup {
+    //   log.info("Removing dependencies group")
+    //   var lines = lines
+    //   guard let index1 = lines.firstIndex(of: "         name = \"Dependencies\";") else {
+    //     terminate("Failed to get dependencies group id (step 1)")
+    //   }
+    //   lines = lines.dropLast(lines.count - index1)
+    //   guard let index2 = lines.lastIndex(of: "         isa = \"PBXGroup\";"), index2 - 1 < lines.count else {
+    //     terminate("Failed to get dependencies group id (step 2)")
+    //   }
+    //   let line = lines[index2 - 1]
+    //   let parts = line.split(separator: "\"")
+    //   guard parts.count == 3 else {
+    //     terminate("Failed to get dependencies group id (step 3)")
+    //   }
+    //   let groupObjectId = String(parts[1])
+    //   contents = contents.replacingOccurrences(of: "            \"\(groupObjectId)\",\n", with: "")
+    // }
 
     // Rename existing target
     contents = contents.replacingOccurrences(of: "\(packageName)::\(packageName)", with: "\(packageName)::\(packageName)Dummy")
