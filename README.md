@@ -15,7 +15,7 @@ It is also possible to run the command in an existing swift package, but there a
 
 ### Generate xcodeproj
 
-If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration or add a build script you'll want to rerun this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.
+If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration you'll want to re-run this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.
 
 ```sh
 # Creates an xcodeproj file for using xcode as the ide
@@ -36,6 +36,17 @@ swift bundler build -o [dir]
 # Builds and runs the app
 swift bundler run
 ```
+
+### Custom build scripts
+
+Both prebuild and postbuild scripts are supported. Just create the `prebuild.sh` and/or `postbuild.sh` files in the root directory of your project and they will automatically be run with the next build. No extra configuration required.
+
+### App Icons
+
+There are two ways to add custom app icons to a bundle project.
+
+1. The simplest way is to add an Icon1024x1024.png file in the root directory of your project and the bundler will automatically convert it to all the required sizes and create the AppIcon.icns in the app's resources. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
+2. If you want to have different versions of your icon for different file sizes you can create a custom AppIcon.icns and add it to the root directory. You can even generate it from an IconSet in a custom prebuild script! (just see createIcns in Utils.swift for how this is done).
 
 ### Help
 
