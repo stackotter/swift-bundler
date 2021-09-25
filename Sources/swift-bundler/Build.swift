@@ -41,7 +41,7 @@ struct Build: ParsableCommand {
     let prebuildScript = packageDir.appendingPathComponent("prebuild.sh")
     let postbuildScript = packageDir.appendingPathComponent("postbuild.sh")
     
-    if FileManager.default.itemExists(at: prebuildScript, type: .file) {
+    if FileManager.default.itemExists(at: prebuildScript, withType: .file) {
       updateProgress("Running prebuild script", 0.02)
       if Shell.getExitStatus("sh \(prebuildScript.path)") != 0 {
         terminate("Failed to run prebuild script")
@@ -234,7 +234,7 @@ struct Build: ParsableCommand {
       Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
     }
 
-    if FileManager.default.itemExists(at: postbuildScript, type: .file) {
+    if FileManager.default.itemExists(at: postbuildScript, withType: .file) {
       updateProgress("Running postbuild script", 0.97)
       if Shell.getExitStatus("sh \(postbuildScript.path)") != 0 {
         terminate("Failed to run postbuild script")
