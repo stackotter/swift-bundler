@@ -30,7 +30,7 @@ struct Init: ParsableCommand {
   @Option(name: .long, help: "The app's category (defaults to public.app-category.games).")
   var category: String?
 
-  @Option(name: .long, help: "The minimum macOS version for the app (defaults to 11.0).")
+  @Option(name: .long, help: "The minimum macOS version for the app (defaults to 11.0, which is Big Sur).")
   var minOSVersion: String?
 
   func run() throws {
@@ -46,6 +46,9 @@ struct Init: ParsableCommand {
       if Shell.getExitStatus(command, directory, silent: false) != 0 {
         terminate("Failed to initialise default swift package")
       }
+      let packageName = getPackageName(from: directory)
+      setMinMacOSVersion(directory, packageName)
+      replaceHelloWorld(directory, packageName)
     }
 
     let packageName = getPackageName(from: directory)
@@ -54,9 +57,9 @@ struct Init: ParsableCommand {
     log.info("Creating configuration")
     let config = Configuration(
       bundleIdentifier: bundleIdentifier ?? "com.example.\(packageName)",
-      versionString: versionString ?? "0.1.0", 
-      buildNumber: buildNumber ?? 1, 
-      category: category ?? "public.app-category.games", 
+      versionString: versionString ?? "0.1.0",
+      buildNumber: buildNumber ?? 1,
+      category: category ?? "public.app-category.games",
       minOSVersion: minOSVersion ?? "11.0")
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -65,6 +68,68 @@ struct Init: ParsableCommand {
       try data.write(to: directory.appendingPathComponent("Bundle.json"))
     } catch {
       terminate("Failed to create Bundle.json; \(error)")
+    }
+  }
+
+  /// Sets the minimum macOS version for the project to 11.0 (the earliest the bundler officially supports).
+  func setMinMacOSVersion(_ directory: URL, _ packageName: String) {
+    let packageSwiftFile = directory.appendingPathComponent("Package.swift")
+    do {
+      var contents = try String(contentsOf: packageSwiftFile)
+      contents = contents.replacingOccurrences(of: """
+let package = Package(
+    name: "\(packageName)",
+""", with: """
+let package = Package(
+    name: "\(packageName)",
+    platforms: [.macOS(.v11)],
+""")
+      try contents.write(to: packageSwiftFile, atomically: false, encoding: .utf8)
+    } catch {
+      terminate("Failed to add minimum macOS version (11.0) to Package.swift")
+    }
+  }
+
+  /// Replaces default print hello world with a SwiftUI hello world.
+  func replaceHelloWorld(_ directory: URL, _ packageName: String) {
+    let mainSwift = """
+\(packageName)App.main()
+"""
+
+    let appSwift = """
+import SwiftUI
+
+struct \(packageName)App: App {
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+    }
+  }
+}
+"""
+
+    let contentViewSwift = """
+import SwiftUI
+
+struct ContentView: View {
+  var body: some View {
+    Text("Hello, World!")
+      .padding(64)
+  }
+}
+"""
+
+    let sourcesDir = directory.appendingPathComponent("Sources/\(packageName)")
+    let mainSwiftFile = sourcesDir.appendingPathComponent("main.swift")
+    let appSwiftFile = sourcesDir.appendingPathComponent("\(packageName)App.swift")
+    let contentViewSwiftFile = sourcesDir.appendingPathComponent("ContentView.swift")
+
+    do {
+      try mainSwift.write(to: mainSwiftFile, atomically: false, encoding: .utf8)
+      try appSwift.write(to: appSwiftFile, atomically: false, encoding: .utf8)
+      try contentViewSwift.write(to: contentViewSwiftFile, atomically: false, encoding: .utf8)
+    } catch {
+      terminate("Failed to replace default hello world with a SwiftUI hello world; \(error)")
     }
   }
 }

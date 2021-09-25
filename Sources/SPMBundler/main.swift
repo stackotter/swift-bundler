@@ -11,9 +11,9 @@ Bundler.main()
 // TODO: codesigning
 // TODO: graceful shutdown
 // TODO: documentation
-// TODO: make the default main.swift more useful (just a SwiftUI hello world or something)
 // TODO: support sandbox
 // TODO: check local dependency editing
 
 // Must contain a main.swift otherwise it won't compile as an executable
 // The (macOS) target is the actual one
+// macos platform version in Package.swift must be at least 11.0
