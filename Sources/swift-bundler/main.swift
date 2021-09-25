@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 struct Bundler: ParsableCommand {
-  static let configuration = CommandConfiguration(subcommands: [Init.self, GenerateXcodeproj.self, Build.self])
+  static let configuration = CommandConfiguration(subcommands: [Init.self, GenerateXcodeproj.self, Build.self, Run.self])
 }
 
 Bundler.main()
@@ -12,8 +12,6 @@ Bundler.main()
 // TODO: graceful shutdown
 // TODO: documentation
 // TODO: support sandbox
-// TODO: check local dependency editing
-// TODO: rename to swift-bundler
 // TODO: add an option to generate-xcodeproj to hide dependencies group
 // TODO: add proper help messages to subcommands, options and flags
 

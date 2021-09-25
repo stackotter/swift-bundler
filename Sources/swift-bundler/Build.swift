@@ -52,7 +52,7 @@ struct Build: ParsableCommand {
 
     // Build package
     let configuration = self.configuration ?? .debug
-    updateProgress("Starting build with \(configuration.rawValue) configuration...", 0.1)
+    updateProgress("Starting \(configuration.rawValue) build...", 0.1)
     let exitStatus = Shell.getExitStatus("swift build -c \(configuration.rawValue)", packageDir, silent: false, lineHandler: { line in
       if line.starts(with: "[") {
         let parts = line.split(separator: "]")
