@@ -14,6 +14,9 @@ struct Build: ParsableCommand {
   @Flag(name: [.customShort("p"), .customLong("progress")], help: "Display progress in a window")
   var displayProgress = false
 
+  @Flag(name: [.customShort("u"), .customLong("universal")], help: "Build a universal application (arm and intel)")
+  var shouldBuildUniversal = false
+
   func run() throws {
     if displayProgress {
       runProgressJob({ setMessage, setProgress in 
@@ -63,7 +66,11 @@ struct Build: ParsableCommand {
     // Build package
     let configuration = self.configuration ?? .debug
     updateProgress("Starting \(configuration.rawValue) build...", 0.1)
-    let exitStatus = Shell.getExitStatus("swift build -c \(configuration.rawValue)", packageDir, silent: false, lineHandler: { line in
+    var command = "swift build -c \(configuration.rawValue)"
+    if shouldBuildUniversal {
+      command += " --arch arm64 --arch x86_64"
+    }
+    let exitStatus = Shell.getExitStatus(command, packageDir, silent: false, lineHandler: { line in
       if line.starts(with: "[") {
         let parts = line.split(separator: "]")
         // let message = String(parts[1].dropFirst())
@@ -78,7 +85,12 @@ struct Build: ParsableCommand {
       terminate("Build failed")
     }
 
-    let buildDirSymlink = packageDir.appendingPathComponent(".build/\(configuration.rawValue)")
+    let buildDirSymlink: URL
+    if shouldBuildUniversal {
+      buildDirSymlink = packageDir.appendingPathComponent(".build/apple/Products/\(configuration.rawValue.capitalized)")
+    } else {
+      buildDirSymlink = packageDir.appendingPathComponent(".build/\(configuration.rawValue)")
+    }
     let buildDir = buildDirSymlink.resolvingSymlinksInPath()
 
     // Create app folder structure
