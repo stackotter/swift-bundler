@@ -44,6 +44,7 @@ struct Build: ParsableCommand {
     let prebuildScript = packageDir.appendingPathComponent("prebuild.sh")
     let postbuildScript = packageDir.appendingPathComponent("postbuild.sh")
     
+    // Run prebuild script if it exists
     if FileManager.default.itemExists(at: prebuildScript, withType: .file) {
       updateProgress("Running prebuild script", 0.02)
       if Shell.getExitStatus("sh \(prebuildScript.path)") != 0 {
@@ -71,14 +72,18 @@ struct Build: ParsableCommand {
       command += " --arch arm64 --arch x86_64"
     }
     let exitStatus = Shell.getExitStatus(command, packageDir, silent: false, lineHandler: { line in
-      if line.starts(with: "[") {
+      if shouldBuildUniversal && line.split(separator: ":")[0].last == "%" {
+        // The output style changes completely in universal builds for whatever reason :)
+        if let percentage = Double(line.split(separator: ":")[0].dropLast()) {
+          updateProgress(line, 0.8 * (percentage / 100) + 0.1, shouldLog: false)
+        }
+      } else if line.starts(with: "[") {
         let parts = line.split(separator: "]")
-        // let message = String(parts[1].dropFirst())
         let progressParts = parts[0].dropFirst().split(separator: "/")
         let progress = Double(progressParts[0])!
         let total = Double(progressParts[1])!
-        let percentage = progress / total
-        updateProgress(line, 0.8 * percentage + 0.1, shouldLog: false)
+        let decimalProgress = progress / total
+        updateProgress(line, 0.8 * decimalProgress + 0.1, shouldLog: false)
       } else if line.starts(with: "Fetching") || line.starts(with: "Resolving") || line.starts(with: "Cloning") {
         setMessage(line)
       }
@@ -189,65 +194,75 @@ struct Build: ParsableCommand {
     let bundles = contents.filter { $0.pathExtension == "bundle" }
     for bundle in bundles {
       updateProgress("Copying \(bundle.lastPathComponent)", 0.94)
-      let contents: [URL]
-      do {
-        contents = try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil, options: [])
-      } catch {
-        terminate("Failed to enumerate contents of '\(bundle.lastPathComponent)'; \(error)")
-      }
-
       let outputBundle = appResources.appendingPathComponent(bundle.lastPathComponent)
-      let bundleContents = outputBundle.appendingPathComponent("Contents")
-      let bundleResources = bundleContents.appendingPathComponent("Resources")
-      do {
-        try FileManager.default.createDirectory(at: bundleResources, withIntermediateDirectories: true, attributes: nil)
-
-        for file in contents {
-          try FileManager.default.copyItem(at: file, to: bundleResources.appendingPathComponent(file.lastPathComponent))
-        }
-      } catch {
-        terminate("Failed to create copy of '\(bundle.lastPathComponent)'; \(error)")
-      }
-
-      // Create Info.plist if missing
-      let bundleName = bundle.deletingPathExtension().lastPathComponent
-      let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-").appending("-resources")
-      let infoPlistFile = bundleContents.appendingPathComponent("Info.plist")
-      if !FileManager.default.itemExists(at: infoPlistFile, withType: .file) {
-        log.info("Creating Info.plist for \(bundle.lastPathComponent)")
-        let infoPlist = createBundleInfoPlist(bundleIdentifier: bundleIdentifier, bundleName: bundleName, minOSVersion: config.minOSVersion)
+      if shouldBuildUniversal {
+        // Universal builds actually produce correct bundles and automatically compile metal shaders! woohoo
         do {
-          try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
+          try FileManager.default.copyItem(at: bundle, to: outputBundle)
         } catch {
-          terminate("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
+          terminate("Failed to copy '\(bundle.lastPathComponent)'; \(error)")
         }
-      }
-
-      // Metal shader compilation
-      let metalFiles = contents.filter { $0.pathExtension == "metal" }
-      if metalFiles.isEmpty {
-        continue
-      }
-
-      updateProgress("Compiling metal shaders in \(bundle.lastPathComponent)", 0.95)
-
-      for metalFile in metalFiles {
-        let path = metalFile.deletingPathExtension().path
-        if Shell.getExitStatus("xcrun -sdk macosx metal -c \(path).metal -o \(path).air", silent: false) != 0 {
-          terminate("Failed to compile '\(metalFile.lastPathComponent)")
+      } else {
+        let contents: [URL]
+        do {
+          contents = try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil, options: [])
+        } catch {
+          terminate("Failed to enumerate contents of '\(bundle.lastPathComponent)'; \(error)")
         }
+        
+        let bundleContents = outputBundle.appendingPathComponent("Contents")
+        let bundleResources = bundleContents.appendingPathComponent("Resources")
+        do {
+          try FileManager.default.createDirectory(at: bundleResources, withIntermediateDirectories: true, attributes: nil)
+
+          for file in contents {
+            try FileManager.default.copyItem(at: file, to: bundleResources.appendingPathComponent(file.lastPathComponent))
+          }
+        } catch {
+          terminate("Failed to create copy of '\(bundle.lastPathComponent)'; \(error)")
+        }
+
+        // Create Info.plist if missing
+        let bundleName = bundle.deletingPathExtension().lastPathComponent
+        let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-").appending("-resources")
+        let infoPlistFile = bundleContents.appendingPathComponent("Info.plist")
+        if !FileManager.default.itemExists(at: infoPlistFile, withType: .file) {
+          log.info("Creating Info.plist for \(bundle.lastPathComponent)")
+          let infoPlist = createBundleInfoPlist(bundleIdentifier: bundleIdentifier, bundleName: bundleName, minOSVersion: config.minOSVersion)
+          do {
+            try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
+          } catch {
+            terminate("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
+          }
+        }
+
+        // Metal shader compilation
+        let metalFiles = contents.filter { $0.pathExtension == "metal" }
+        if metalFiles.isEmpty {
+          continue
+        }
+
+        updateProgress("Compiling metal shaders in \(bundle.lastPathComponent)", 0.95)
+
+        for metalFile in metalFiles {
+          let path = metalFile.deletingPathExtension().path
+          if Shell.getExitStatus("xcrun -sdk macosx metal -c \(path).metal -o \(path).air", silent: false) != 0 {
+            terminate("Failed to compile '\(metalFile.lastPathComponent)")
+          }
+        }
+        
+        let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").path }
+        if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.path)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
+          terminate("Failed to combine compiled metal shaders into a metal archive")
+        }
+        if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.path)/default.metal-ar -o \(bundleResources.path)/default.metallib", silent: false) != 0 {
+          terminate("Failed to convert metal archive to metal library")
+        }
+        Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
       }
-      
-      let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").path }
-      if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.path)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
-        terminate("Failed to combine compiled metal shaders into a metal archive")
-      }
-      if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.path)/default.metal-ar -o \(bundleResources.path)/default.metallib", silent: false) != 0 {
-        terminate("Failed to convert metal archive to metal library")
-      }
-      Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
     }
 
+    // Run postbuild script if it exists
     if FileManager.default.itemExists(at: postbuildScript, withType: .file) {
       updateProgress("Running postbuild script", 0.97)
       if Shell.getExitStatus("sh \(postbuildScript.path)") != 0 {

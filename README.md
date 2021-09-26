@@ -77,3 +77,7 @@ If both are present, `AppIcon.icns` is used.
 ### Help
 
 If you want to see all available options just add `--help` to the end, (e.g. `swift bundler run --help`).
+
+## Troubleshooting
+
+If you are having an issue to do with bundle resources, try doing a universal build. Universal builds output correct bundles whereas for regular single architecture builds the bundler has to compile metal shaders and structure the bundles correctly. I don't know why only universal builds output correct bundles.
