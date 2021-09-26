@@ -90,7 +90,11 @@ class ProgressDelegate: NSObject, NSApplicationDelegate {
         }
       })
       
-      app.terminate(self)
+      DispatchQueue.main.async {
+        app.stop(nil)
+        self.window.setFrame(self.window.frame.insetBy(dx: 1, dy: 1), display: true)
+        self.window.close()
+      }
     }
   }
 }

@@ -28,6 +28,8 @@ struct Run: ParsableCommand {
       builder.job({ _ in }, { _ in })
     }
 
+    print() // New line to separate app output from bundler output
+
     let packageName = getPackageName(from: packageDir)
     let outputDir = self.outputDir ?? packageDir.appendingPathComponent(".build/bundler")
     let executable = outputDir.appendingPathComponent("\(packageName).app/Contents/MacOS/\(packageName)")

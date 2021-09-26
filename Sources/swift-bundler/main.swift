@@ -10,7 +10,7 @@ Bundler.main()
 // TODO: fix metal shader compilation
 // TODO: codesigning
 // TODO: graceful shutdown
-// TODO: documentation
+// TODO: universal builds
 // TODO: support sandbox
 // TODO: add an option to generate-xcodeproj to hide dependencies group
 // TODO: add proper help messages to subcommands, options and flags
