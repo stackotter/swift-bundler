@@ -79,6 +79,8 @@ struct Build: ParsableCommand {
         let total = Double(progressParts[1])!
         let percentage = progress / total
         updateProgress(line, 0.8 * percentage + 0.1, shouldLog: false)
+      } else if line.starts(with: "Fetching") || line.starts(with: "Resolving") || line.starts(with: "Cloning") {
+        setMessage(line)
       }
     })
     if exitStatus != 0 {
@@ -254,5 +256,15 @@ struct Build: ParsableCommand {
     }
 
     updateProgress("Build completed", 1)
+  }
+}
+
+extension Build {
+  init(packageDir: URL?, configuration: BuildConfiguration?, outputDir: URL?, displayProgress: Bool, shouldBuildUniversal: Bool) {
+    self.packageDir = packageDir
+    self.configuration = configuration
+    self.outputDir = outputDir
+    self.displayProgress = displayProgress
+    self.shouldBuildUniversal = shouldBuildUniversal
   }
 }

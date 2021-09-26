@@ -72,6 +72,8 @@ There are two ways to add custom app icons to a bundle project.
 1. The simplest way is to add an Icon1024x1024.png file in the root directory of your project and the bundler will automatically convert it to all the required sizes and create the AppIcon.icns in the app's resources. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
 2. If you want to have different versions of your icon for different file sizes you can create a custom AppIcon.icns and add it to the root directory. You can even generate it from an IconSet in a custom prebuild script! (just see createIcns in Utils.swift for how this is done).
 
+If both are present, `AppIcon.icns` is used.
+
 ### Help
 
 If you want to see all available options just add `--help` to the end, (e.g. `swift bundler run --help`).

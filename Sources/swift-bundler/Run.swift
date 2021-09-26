@@ -15,9 +15,7 @@ struct Run: ParsableCommand {
   var displayProgress = false
 
   func run() throws {
-    let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-
-    let builder = Build(packageDir: _packageDir, configuration: _configuration, outputDir: _outputDir, displayProgress: displayProgress)
+    let builder = Build(packageDir: packageDir, configuration: configuration, outputDir: outputDir, displayProgress: displayProgress, shouldBuildUniversal: false)
     if displayProgress {
       runProgressJob({ setMessage, setProgress in
         builder.job(setMessage, setProgress)
@@ -30,6 +28,7 @@ struct Run: ParsableCommand {
 
     print() // New line to separate app output from bundler output
 
+    let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let packageName = getPackageName(from: packageDir)
     let outputDir = self.outputDir ?? packageDir.appendingPathComponent(".build/bundler")
     let executable = outputDir.appendingPathComponent("\(packageName).app/Contents/MacOS/\(packageName)")
