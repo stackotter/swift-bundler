@@ -37,13 +37,13 @@ Running `swift bundler init` creates a `Bundle.json` file which contains all the
 
 Remember to change this configuration to match your project.
 
-### Generate xcodeproj
+### Xcode support
 
-If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. Each time you update some configuration you'll want to re-run this command. The generated xcodeproj has some limitations so build progress has to be displayed in a separate window created by the bundler and isn't shown in the normal xcode progress bar. But the progress bar window automatically appears at the top right of the screen that currently contains your mouse so it should feel pretty natural to use.
+If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. This command only needs to be run once (or each time you clone if you gitignore the .swiftpm directory).
 
 ```sh
-# Creates an xcodeproj file for using xcode as the ide
-swift bundler generate-xcodeproj
+# Creates the files necessary to get xcode to run the package as an app
+swift bundler generate-xcode-support
 ```
 
 ### Build
@@ -59,6 +59,18 @@ swift bundler build -o [dir]
 ```sh
 # Builds and runs the app
 swift bundler run
+```
+
+### Bundle
+
+```sh
+# Bundles an executable into a .app using config from the given package dir
+swift bundler bundle -d [package dir] -e [executable file] -o [output dir]
+
+# OR
+# Converts the executable and bundles in a products dir into a .app
+# If doing it this way and your app contains bundles, you may need to add the --dont-fix-bundles flag if the build was performed as a universal build or using xcode because both of those produce correct bundles
+swift bundler bundle -d [package dir] -P [products dir] -o [output dir]
 ```
 
 ### Custom build scripts

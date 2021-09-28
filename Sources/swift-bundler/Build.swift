@@ -1,9 +1,9 @@
-import ArgumentParser
 import Foundation
+import ArgumentParser
 
 struct Build: ParsableCommand {
   @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory containing the package to be bundled", transform: URL.init(fileURLWithPath:))
-  var packageDir: URL?
+  var packageDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
   @Option(name: .shortAndLong, help: "The build configuration to use (debug|release)", transform: { BuildConfiguration.init(rawValue: $0.lowercased()) })
   var configuration: BuildConfiguration?
@@ -19,38 +19,53 @@ struct Build: ParsableCommand {
 
   func run() throws {
     if displayProgress {
-      runProgressJob({ setMessage, setProgress in 
-        job(setMessage, setProgress)
+      runProgressJob({ setMessage, setProgress in
+        Bundler.build(
+          packageDir: packageDir,
+          configuration: configuration,
+          outputDir: outputDir,
+          shouldBuildUniversal: shouldBuildUniversal,
+          updateProgress: { message, progress, shouldLog in
+            if shouldLog {
+              log.info(message)
+            }
+            setMessage(message)
+            setProgress(progress)
+          })
       },
       title: "Build",
       maxProgress: 1)
     } else {
-      job({ _ in }, { _ in })
+      Bundler.build(
+        packageDir: packageDir,
+        configuration: configuration,
+        outputDir: outputDir,
+        shouldBuildUniversal: shouldBuildUniversal)
     }
   }
+}
 
-  func job(_ setMessage: @escaping (_ message: String) -> Void, _ setProgress: @escaping (_ progress: Double) -> Void) {
-    // A helper function to update the progress window (if present)
+extension Bundler {
+  static func build(
+    packageDir: URL,
+    configuration: BuildConfiguration?,
+    outputDir: URL?,
+    shouldBuildUniversal: Bool,
+    updateProgress updateProgressClosure: (@escaping (_ message: String, _ progress: Double, _ shouldLog: Bool) -> Void) = { _, _, _ in }
+  ) {
+    var progressFraction: Double = 0
     func updateProgress(_ message: String, _ progress: Double, shouldLog: Bool = true) {
-      if shouldLog {
-        log.info(message)
-      }
-      setMessage(message)
-      setProgress(progress)
+      progressFraction = progress
+      updateProgressClosure(message, progress, shouldLog)  
     }
 
-    let packageDir = self.packageDir ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-    updateProgress("Locating build scripts", 0.01)
-    let prebuildScript = packageDir.appendingPathComponent("prebuild.sh")
-    let postbuildScript = packageDir.appendingPathComponent("postbuild.sh")
+    let configuration = configuration ?? .debug
+    let outputDir = outputDir ?? packageDir.appendingPathComponent(".build/bundler")
+    let packageName = getPackageName(from: packageDir)
     
     // Run prebuild script if it exists
-    if FileManager.default.itemExists(at: prebuildScript, withType: .file) {
-      updateProgress("Running prebuild script", 0.02)
-      if Shell.getExitStatus("sh \(prebuildScript.path)") != 0 {
-        terminate("Failed to run prebuild script")
-      }
-    }
+    updateProgress("Running prebuild script", 0.02)
+    runPrebuild(packageDir)
 
     updateProgress("Loading configuration", 0.05)
     let config: Configuration
@@ -61,11 +76,7 @@ struct Build: ParsableCommand {
       terminate("Failed to load config from Bundle.json; \(error)")
     }
 
-    let outputDir = self.outputDir ?? packageDir.appendingPathComponent(".build/bundler")
-    let packageName = getPackageName(from: packageDir)
-
     // Build package
-    let configuration = self.configuration ?? .debug
     updateProgress("Starting \(configuration.rawValue) build...", 0.1)
     var command = "swift build -c \(configuration.rawValue)"
     if shouldBuildUniversal {
@@ -85,13 +96,15 @@ struct Build: ParsableCommand {
         let decimalProgress = progress / total
         updateProgress(line, 0.8 * decimalProgress + 0.1, shouldLog: false)
       } else if line.starts(with: "Fetching") || line.starts(with: "Resolving") || line.starts(with: "Cloning") {
-        setMessage(line)
+        updateProgress(line, progressFraction, shouldLog: false)
       }
     })
     if exitStatus != 0 {
       terminate("Build failed")
     }
 
+    // Turn the built executable into a .app
+    updateProgress("Bundling", 0.9)
     let buildDirSymlink: URL
     if shouldBuildUniversal {
       buildDirSymlink = packageDir.appendingPathComponent(".build/apple/Products/\(configuration.rawValue.capitalized)")
@@ -99,187 +112,22 @@ struct Build: ParsableCommand {
       buildDirSymlink = packageDir.appendingPathComponent(".build/\(configuration.rawValue)")
     }
     let buildDir = buildDirSymlink.resolvingSymlinksInPath()
-
-    // Create app folder structure
-    updateProgress("Creating .app skeleton", 0.9)
-    let app = outputDir.appendingPathComponent("\(packageName).app")
-    let appContents = app.appendingPathComponent("Contents")
-    let appResources = appContents.appendingPathComponent("Resources")
-    let appMacOS = appContents.appendingPathComponent("MacOS")
-
-    do {
-      if FileManager.default.itemExists(at: app, withType: .directory) {
-        try FileManager.default.removeItem(at: app)
-      }
-      try FileManager.default.createDirectory(at: appResources)
-      try FileManager.default.createDirectory(at: appMacOS)
-    } catch {
-      terminate("Failed to create .app folder structure; \(error)")
-    }
-
-    // Copy executable
-    updateProgress("Copying executable", 0.91)
-    let executable = buildDir.appendingPathComponent(packageName)
-    do {
-      try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(packageName))
-    } catch {
-      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(packageName).path); \(error)")
-    }
-
-    // Create app icon
-    updateProgress("Creating app icon", 0.92)
-    let appIcns = packageDir.appendingPathComponent("AppIcon.icns")
-    do {
-      if FileManager.default.itemExists(at: appIcns, withType: .file) {
-        log.info("Using precompiled AppIcon.icns")
-        try FileManager.default.copyItem(at: appIcns, to: appResources.appendingPathComponent("AppIcon.icns"))
-      } else {
-        let iconFile = packageDir.appendingPathComponent("Icon1024x1024.png")
-        if FileManager.default.itemExists(at: iconFile, withType: .file) {
-          log.info("Compiling Icon1024x1024.png into AppIcon.icns")
-          try createIcns(from: iconFile, outDir: appResources)
-        } else {
-          log.warning("No app icon found. Create an Icon1024x1024.png or AppIcon.icns in the root directory to add an app icon.")
-        }
-      }
-    } catch {
-      terminate("Failed to create app icon; \(error)")
-    }
-    
-    // Create PkgInfo
-    updateProgress("Creating PkgInfo", 0.94)
-    var pkgInfo: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
-    let pkgInfoFile = appContents.appendingPathComponent("PkgInfo")
-    do {
-      try Data(bytes: &pkgInfo, count: pkgInfo.count).write(to: pkgInfoFile)
-    } catch {
-      terminate("Failed to create PkgInfo; \(error)")
-    }
-
-    // Create Info.plist
-    updateProgress("Creating Info.plist", 0.94)
-    let infoPlistFile = appContents.appendingPathComponent("Info.plist")
-    let infoPlist = createAppInfoPlist(
-      packageName: packageName, 
-      bundleIdentifier: config.bundleIdentifier, 
-      versionString: config.versionString, 
-      buildNumber: config.buildNumber, 
-      category: config.category,
-      minOSVersion: config.minOSVersion)
-    do {
-      try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
-    } catch {
-      terminate("Failed to create Info.plist at \(infoPlistFile.path); \(error)")
-    }
-
-    // Update Info.plist in xcodeproj if present
-    let xcodeprojDir = packageDir.appendingPathComponent("\(packageName).xcodeproj")
-    if FileManager.default.itemExists(at: xcodeprojDir, withType: .directory) {
-      do {
-        try infoPlist.write(to: xcodeprojDir.appendingPathComponent("\(packageName)_Info.plist"), atomically: false, encoding: .utf8)
-      } catch {
-        terminate("Failed to update Info.plist in xcodeproj; \(error)")
-      }
-    }
-
-    // Copy bundles
-    updateProgress("Copying bundles", 0.94)
-    let contents: [URL]
-    do {
-      contents = try FileManager.default.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil, options: [])
-    } catch {
-      terminate("Failed to enumerate contents of build directory (\(buildDir)); \(error)")
-    }
-
-    let bundles = contents.filter { $0.pathExtension == "bundle" }
-    for bundle in bundles {
-      updateProgress("Copying \(bundle.lastPathComponent)", 0.94)
-      let outputBundle = appResources.appendingPathComponent(bundle.lastPathComponent)
-      if shouldBuildUniversal {
-        // Universal builds actually produce correct bundles and automatically compile metal shaders! woohoo
-        do {
-          try FileManager.default.copyItem(at: bundle, to: outputBundle)
-        } catch {
-          terminate("Failed to copy '\(bundle.lastPathComponent)'; \(error)")
-        }
-      } else {
-        let contents: [URL]
-        do {
-          contents = try FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: nil, options: [])
-        } catch {
-          terminate("Failed to enumerate contents of '\(bundle.lastPathComponent)'; \(error)")
-        }
-        
-        let bundleContents = outputBundle.appendingPathComponent("Contents")
-        let bundleResources = bundleContents.appendingPathComponent("Resources")
-        do {
-          try FileManager.default.createDirectory(at: bundleResources, withIntermediateDirectories: true, attributes: nil)
-
-          for file in contents {
-            try FileManager.default.copyItem(at: file, to: bundleResources.appendingPathComponent(file.lastPathComponent))
-          }
-        } catch {
-          terminate("Failed to create copy of '\(bundle.lastPathComponent)'; \(error)")
-        }
-
-        // Create Info.plist if missing
-        let bundleName = bundle.deletingPathExtension().lastPathComponent
-        let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-").appending("-resources")
-        let infoPlistFile = bundleContents.appendingPathComponent("Info.plist")
-        if !FileManager.default.itemExists(at: infoPlistFile, withType: .file) {
-          log.info("Creating Info.plist for \(bundle.lastPathComponent)")
-          let infoPlist = createBundleInfoPlist(bundleIdentifier: bundleIdentifier, bundleName: bundleName, minOSVersion: config.minOSVersion)
-          do {
-            try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
-          } catch {
-            terminate("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
-          }
-        }
-
-        // Metal shader compilation
-        let metalFiles = contents.filter { $0.pathExtension == "metal" }
-        if metalFiles.isEmpty {
-          continue
-        }
-
-        updateProgress("Compiling metal shaders in \(bundle.lastPathComponent)", 0.95)
-
-        for metalFile in metalFiles {
-          let path = metalFile.deletingPathExtension().path
-          if Shell.getExitStatus("xcrun -sdk macosx metal -c \(path).metal -o \(path).air", silent: false) != 0 {
-            terminate("Failed to compile '\(metalFile.lastPathComponent)")
-          }
-        }
-        
-        let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").path }
-        if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.path)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
-          terminate("Failed to combine compiled metal shaders into a metal archive")
-        }
-        if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.path)/default.metal-ar -o \(bundleResources.path)/default.metallib", silent: false) != 0 {
-          terminate("Failed to convert metal archive to metal library")
-        }
-        Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
-      }
-    }
+    Bundler.bundle(
+      packageDir: packageDir,
+      packageName: packageName,
+      productsDir: buildDir,
+      outputDir: outputDir,
+      config: config,
+      fixBundles: !shouldBuildUniversal,
+      updateProgress: { message, progress, shouldLog in
+        let adjustedProgress = 0.9 + progress * 0.07
+        updateProgressClosure(message, adjustedProgress, shouldLog)
+      })
 
     // Run postbuild script if it exists
-    if FileManager.default.itemExists(at: postbuildScript, withType: .file) {
-      updateProgress("Running postbuild script", 0.97)
-      if Shell.getExitStatus("sh \(postbuildScript.path)") != 0 {
-        terminate("Failed to run postbuild script")
-      }
-    }
+    updateProgress("Running postbuild script", 0.97)
+    Bundler.runPostbuild(packageDir)
 
     updateProgress("Build completed", 1)
-  }
-}
-
-extension Build {
-  init(packageDir: URL?, configuration: BuildConfiguration?, outputDir: URL?, displayProgress: Bool, shouldBuildUniversal: Bool) {
-    self.packageDir = packageDir
-    self.configuration = configuration
-    self.outputDir = outputDir
-    self.displayProgress = displayProgress
-    self.shouldBuildUniversal = shouldBuildUniversal
   }
 }
