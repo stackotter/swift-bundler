@@ -40,7 +40,12 @@ struct Build: ParsableCommand {
         packageDir: packageDir,
         configuration: configuration,
         outputDir: outputDir,
-        shouldBuildUniversal: shouldBuildUniversal)
+        shouldBuildUniversal: shouldBuildUniversal,
+        updateProgress: { message, _, shouldLog in
+          if shouldLog {
+            log.info(message)
+          }
+        })
     }
   }
 }
@@ -56,7 +61,7 @@ extension Bundler {
     var progressFraction: Double = 0
     func updateProgress(_ message: String, _ progress: Double, shouldLog: Bool = true) {
       progressFraction = progress
-      updateProgressClosure(message, progress, shouldLog)  
+      updateProgressClosure(message, progress, shouldLog)
     }
 
     let configuration = configuration ?? .debug
