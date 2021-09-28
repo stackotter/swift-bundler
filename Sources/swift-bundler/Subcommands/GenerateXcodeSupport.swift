@@ -29,9 +29,9 @@ extension Bundler {
   }
 
   fileprivate static func createScheme(for packageName: String) -> String {
-    let runPrebuild = "swift bundler prebuild -d ${PROJECT_DIR}"
+    let runPrebuild = "swift bundler prebuild -d ${WORKSPACE_PATH}/../../../"
     let createBundle = "swift bundler bundle -d ${WORKSPACE_PATH}/../../../ --products-dir ${BUILT_PRODUCTS_DIR} -o /private/tmp/swift-bundler/ --dont-fix-bundles"
-    let runPostbuild = "swift bundler postbuild -d ${PROJECT_DIR}"
+    let runPostbuild = "swift bundler postbuild -d ${WORKSPACE_PATH}/../../../"
     return """
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
