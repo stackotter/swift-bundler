@@ -88,7 +88,7 @@ extension Bundler {
     }
 
     guard let executable = executable ?? productsDir?.appendingPathComponent("\(packageName)") else {
-      terminate("Please provide the `directory` option and/or the `executable` option")
+      terminate("Please provide the `products-dir` option and/or the `executable` option")
     }
     
     let outputDir = outputDir ?? packageDir.appendingPathComponent(".build/bundler")

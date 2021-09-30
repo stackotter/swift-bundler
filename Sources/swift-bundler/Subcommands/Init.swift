@@ -10,13 +10,13 @@ struct Configuration: Codable {
 }
 
 struct Init: ParsableCommand {
-  static let configuration = CommandConfiguration(abstract: "Initialise a new Swift executable package and set it up for the bundler.", discussion: "If there is already a package in the directory it just sets up the bundler.")
+  static let configuration = CommandConfiguration(abstract: "Initialise a new Swift executable package and set it up for the bundler.", discussion: "To add bundler to an existing swift package you currently need to do so manually.")
 
-  @Option(name: .shortAndLong, help: "The directory to initialise the bundler in.", transform: URL.init(fileURLWithPath:))
+  @Argument(help: "The name for the package.")
+  var packageName: String
+
+  @Option(name: .shortAndLong, help: "The directory to create the package in. Defaults to a new directory with the name provided as package name.", transform: URL.init(fileURLWithPath:))
   var directory: URL?
-
-  @Option(name: .customLong("name"), help: "The name for the package. Defaults to the name of the directory. If a swift package already exists in the directory, this is ignored.")
-  var packageName: String?
 
   @Option(name: .long, help: "The bundle identifier for the package (defaults to com.example.[package_name]).")
   var bundleIdentifier: String?
@@ -34,25 +34,30 @@ struct Init: ParsableCommand {
   var minOSVersion: String?
 
   func run() throws {
-    let directory = self.directory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-    let packageSwift = directory.appendingPathComponent("Package.swift")
-    
-    // Initialise the swift package
-    if !FileManager.default.itemExists(at: packageSwift, withType: .file) {
-      log.info("Initialising swift package (no Package.swift found)")
-      var command = "swift package init --type=executable"
-      if let name = self.packageName {
-        command.append(" --name=\"\(name)\"")
+    // Initialise the swift package    
+    var name = packageName.replacingOccurrences(of: "-", with: "_")
+    name = name.replacingOccurrences(of: " ", with: "_")
+
+    let directory = self.directory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(name)
+    if !FileManager.default.itemExists(at: directory, withType: .directory) {
+      do {
+        try FileManager.default.createDirectory(at: directory)
+      } catch {
+        terminate("Failed to create directory; \(error)")
       }
-      if Shell.getExitStatus(command, directory, silent: false) != 0 {
-        terminate("Failed to initialise default swift package")
-      }
-      let packageName = getPackageName(from: directory)
-      setMinMacOSVersion(directory, packageName)
-      replaceHelloWorld(directory, packageName)
     }
 
+    log.info("Initialising swift package")
+    let command = "swift package init --type=executable --name=\"\(name)\""
+    if Shell.getExitStatus(command, directory, silent: false) != 0 {
+      terminate("Failed to initialise default swift package")
+    }
+
+    // Just in-case swiftpm init changed the name provided
     let packageName = getPackageName(from: directory)
+
+    setMinMacOSVersion(directory, packageName)
+    replaceHelloWorld(directory, packageName)
 
     // Create default configuration
     log.info("Creating configuration")

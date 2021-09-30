@@ -15,11 +15,11 @@ sh ./build_and_install.sh
 ### Init
 
 ```sh
-# Create a new swift package and set it up for bundling
-swift bundler init
+# Create a new swift package and set it up for bundling, by default the packge is created in a new directory with a name matching the package.
+swift bundler init [name]
 ```
 
-It is also possible to run the command in an existing swift package, but there are some things to look out for. Make sure your package contains a `main.swift` file. Make sure to use the `--name` flag if the name of your executable product differs from the name of your package. The macOS platform version should in `Package.swift` should be at least 11.0, earlier versions will likely work as well, but they are not tested.
+Currently it is not possible to automatically setup swift bundler for an existing package. However it is not too difficult to do manually. First make sure your package contains a `main.swift` file and make sure macOS platform version in `Package.swift` is at least 11.0 (earlier versions will likely work as well, but they are not tested). Then create a file called `Bundle.json` containing configuration in the format specified in the following section. You should now be good to go.
 
 ### Configuration
 
