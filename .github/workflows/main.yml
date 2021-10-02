@@ -17,7 +17,7 @@ jobs:
         run: sudo xcode-select -switch /Applications/Xcode_13.0.app
 
       - name: Build
-        run: swift build -c release --arch arm64--arch x86_64
+        run: swift build -c release --arch arm64 --arch x86_64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
