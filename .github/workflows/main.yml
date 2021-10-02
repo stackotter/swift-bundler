@@ -23,4 +23,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: swift-bundler
-          path: ./.build/release/swift-bundler
+          path: ./.build/apple/Products/Release/swift-bundler
