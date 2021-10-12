@@ -56,8 +56,12 @@ struct Init: ParsableCommand {
     // Just in-case swiftpm init changed the name provided
     let packageName = getPackageName(from: directory)
 
+    log.info("Setting minimum macOS version")
     setMinMacOSVersion(directory, packageName)
+    log.info("Replacing hello world example")
     replaceHelloWorld(directory, packageName)
+    log.info("Replacing .gitignore")
+    replaceGitignore(directory)
 
     // Create default configuration
     log.info("Creating configuration")
@@ -74,6 +78,22 @@ struct Init: ParsableCommand {
       try data.write(to: directory.appendingPathComponent("Bundle.json"))
     } catch {
       terminate("Failed to create Bundle.json; \(error)")
+    }
+  }
+
+  func replaceGitignore(_ directory: URL) {
+    let gitignoreFile = directory.appendingPathComponent(".gitignore")
+    do {
+      try """
+.DS_Store
+/.build
+/Packages
+/*.xcodeproj
+xcuserdata/
+/.swiftpm
+""".write(to: gitignoreFile, atomically: false, encoding: .utf8)
+    } catch {
+      terminate("Failed to replace contents of '.gitignore'")
     }
   }
 
