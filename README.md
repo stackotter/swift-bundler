@@ -19,7 +19,7 @@ sh ./build_and_install.sh
 swift bundler init [name]
 ```
 
-Currently it is not possible to automatically setup swift bundler for an existing package. However it is not too difficult to do manually. First make sure your package contains a `main.swift` file and make sure macOS platform version in `Package.swift` is at least 11.0 (earlier versions will likely work as well, but they are not tested). Then create a file called `Bundle.json` containing configuration in the format specified in the following section. You should now be good to go.
+Currently it is not possible to automatically setup swift bundler for an existing package. However it is not too difficult to do manually. First make sure your package contains a `main.swift` file and make sure macOS platform version in `Package.swift` is at least 11.0 (earlier versions will likely work as well, but they are not tested). Then create a file called `Bundle.json` containing configuration in the format specified in the following section. You should now be good to go. If your `Package.swift` explicitly specifies an executable product, the name of the product must match the name of the package.
 
 ### Configuration
 
