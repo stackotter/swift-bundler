@@ -27,6 +27,7 @@ Running `swift bundler init` creates a `Bundle.json` file which contains all the
 
 ```json
 {
+  "target": "AppTargetName",
   "buildNumber" : 1,
   "bundleIdentifier" : "com.example.bundler-hello-world",
   "category" : "public.app-category.games",
