@@ -4,10 +4,6 @@ enum BundlerError: LocalizedError {
 	case icnsCreationFailed(exitStatus: Int)
 }
 
-func getPackageName(from dir: URL) -> String {
-  return String(Shell.getOutput(#"grep '\w*name: ".*",' Package.swift"#, dir).split(separator: "\n")[0].split(separator: "\"")[1])
-}
-
 /// Creates an AppIcon.icns in the given directory from the given 1024x1024 input png.
 func createIcns(from icon1024: URL, outDir: URL) throws {
   let iconPath = icon1024.path
@@ -32,14 +28,14 @@ rm -R \(iconSetPath)
 	}
 }
 
-func createAppInfoPlist(packageName: String, bundleIdentifier: String, versionString: String, buildNumber: Int, category: String, minOSVersion: String) -> String {
+func createAppInfoPlist(appName: String, bundleIdentifier: String, versionString: String, buildNumber: Int, category: String, minOSVersion: String) -> String {
   return """
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>\(packageName)</string>
+	<string>\(appName)</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIconName</key>
@@ -49,7 +45,7 @@ func createAppInfoPlist(packageName: String, bundleIdentifier: String, versionSt
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>\(packageName)</string>
+	<string>\(appName)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -79,7 +79,7 @@ enum Shell {
     } else {
       task.arguments = ["-c", "\(command)"]
     }
-    task.launchPath = "/bin/zsh"
+    task.launchPath = "/bin/sh"
     tasks.append(task)
 
     return task

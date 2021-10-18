@@ -18,9 +18,11 @@ struct Run: ParsableCommand {
   var shouldBuildUniversal = false
 
   func run() throws {
-    let packageName = getPackageName(from: packageDir)
+    // Load configuration
+    let config = Configuration.load(packageDir)
+    let target = config.target
     let outputDir = outputDir ?? packageDir.appendingPathComponent(".build/bundler")
-    let executable = outputDir.appendingPathComponent("\(packageName).app/Contents/MacOS/\(packageName)")
+    let executable = outputDir.appendingPathComponent("\(target).app/Contents/MacOS/\(target)")
     
     if displayProgress {
       runProgressJob({ setMessage, setProgress in
@@ -44,13 +46,18 @@ struct Run: ParsableCommand {
         packageDir: packageDir,
         configuration: configuration,
         outputDir: outputDir,
-        shouldBuildUniversal: shouldBuildUniversal)
+        shouldBuildUniversal: shouldBuildUniversal,
+        updateProgress: { message, _, shouldLog in
+          if shouldLog {
+            log.info(message)
+          }
+        })
     }
 
     print() // New line to separate app output from bundler output
 
     if Shell.getExitStatus(executable.path, silent: false) != 0 {
-      terminate("Failed to run bundled app at \(outputDir.appendingPathComponent("\(packageName).app").path)")
+      terminate("Failed to run bundled app at \(outputDir.appendingPathComponent("\(target).app").path)")
     }
   }
 }

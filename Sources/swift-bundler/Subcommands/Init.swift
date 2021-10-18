@@ -1,14 +1,6 @@
 import Foundation
 import ArgumentParser
 
-struct Configuration: Codable {
-  var bundleIdentifier: String
-  var versionString: String
-  var buildNumber: Int
-  var category: String
-  var minOSVersion: String
-}
-
 struct Init: ParsableCommand {
   static let configuration = CommandConfiguration(abstract: "Initialise a new Swift executable package and set it up for the bundler.", discussion: "To add bundler to an existing swift package you currently need to do so manually.")
 
@@ -35,10 +27,12 @@ struct Init: ParsableCommand {
 
   func run() throws {
     // Initialise the swift package    
-    var name = packageName.replacingOccurrences(of: "-", with: "_")
-    name = name.replacingOccurrences(of: " ", with: "_")
+    var packageName = packageName.replacingOccurrences(of: "-", with: "_")
+    packageName = packageName.replacingOccurrences(of: " ", with: "_")
 
-    let directory = self.directory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(name)
+    log.info("Using package name '\(packageName)' (spaces and hyphens are not allowed and may have been replaced)")
+
+    let directory = self.directory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(packageName)
     if !FileManager.default.itemExists(at: directory, withType: .directory) {
       do {
         try FileManager.default.createDirectory(at: directory)
@@ -48,13 +42,10 @@ struct Init: ParsableCommand {
     }
 
     log.info("Initialising swift package")
-    let command = "swift package init --type=executable --name=\"\(name)\""
+    let command = "swift package init --type=executable --name=\"\(packageName)\""
     if Shell.getExitStatus(command, directory, silent: false) != 0 {
       terminate("Failed to initialise default swift package")
     }
-
-    // Just in-case swiftpm init changed the name provided
-    let packageName = getPackageName(from: directory)
 
     log.info("Setting minimum macOS version")
     setMinMacOSVersion(directory, packageName)
@@ -66,6 +57,7 @@ struct Init: ParsableCommand {
     // Create default configuration
     log.info("Creating configuration")
     let config = Configuration(
+      target: packageName,
       bundleIdentifier: bundleIdentifier ?? "com.example.\(packageName)",
       versionString: versionString ?? "0.1.0",
       buildNumber: buildNumber ?? 1,

@@ -13,13 +13,16 @@ struct GenerateXcodeSupport: ParsableCommand {
 
 extension Bundler {
   static func generateXcodeSupport(_ packageDir: URL) {
+    // Load configuration
+    let config = Configuration.load(packageDir)
+
     // We used to create an xcodeproj but that had issues with autocomplete and certain types of dependencies showing up in multiple places, so now we just prepopulate the .swiftpm directory which xcode reads from when opening a swift package
     // And now `swift package generate-xcodeproj` is getting phased out too. This solution just works much nicer in general
     log.info("Creating schemes")
-    let packageName = getPackageName(from: packageDir)
-    let schemeString = createScheme(for: packageName)
+    let target = config.target
+    let schemeString = createScheme(for: target)
     let schemesDir = packageDir.appendingPathComponent(".swiftpm/xcode/xcshareddata/xcschemes")
-    let schemeFile = schemesDir.appendingPathComponent("\(packageName).xcscheme")
+    let schemeFile = schemesDir.appendingPathComponent("\(target).xcscheme")
     do {
       try FileManager.default.createDirectory(at: schemesDir)
       try schemeString.write(to: schemeFile, atomically: false, encoding: .utf8)
@@ -28,12 +31,12 @@ extension Bundler {
     }
   }
 
-  fileprivate static func createScheme(for packageName: String) -> String {
+  fileprivate static func createScheme(for target: String) -> String {
     let buildOutputDir: URL
     let builtApp: URL
     do {
       buildOutputDir = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("dev.stackotter.swift-bundler")
-      builtApp = buildOutputDir.appendingPathComponent("\(packageName).app")
+      builtApp = buildOutputDir.appendingPathComponent("\(target).app")
       try FileManager.default.createDirectory(at: builtApp)
     } catch {
       terminate("Failed to locate and create built app directory; \(error)")
@@ -59,9 +62,9 @@ extension Bundler {
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "\(packageName)"
-                     BuildableName = "\(packageName)"
-                     BlueprintName = "\(packageName)"
+                     BlueprintIdentifier = "\(target)"
+                     BuildableName = "\(target)"
+                     BlueprintName = "\(target)"
                      ReferencedContainer = "container:">
                   </BuildableReference>
                </EnvironmentBuildable>
@@ -77,9 +80,9 @@ extension Bundler {
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "\(packageName)"
-                     BuildableName = "\(packageName)"
-                     BlueprintName = "\(packageName)"
+                     BlueprintIdentifier = "\(target)"
+                     BuildableName = "\(target)"
+                     BlueprintName = "\(target)"
                      ReferencedContainer = "container:">
                   </BuildableReference>
                </EnvironmentBuildable>
@@ -93,9 +96,9 @@ extension Bundler {
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "\(packageName)"
-                     BuildableName = "\(packageName)"
-                     BlueprintName = "\(packageName)"
+                     BlueprintIdentifier = "\(target)"
+                     BuildableName = "\(target)"
+                     BlueprintName = "\(target)"
                      ReferencedContainer = "container:">
                   </BuildableReference>
                </EnvironmentBuildable>
@@ -111,9 +114,9 @@ extension Bundler {
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "\(packageName)"
-               BuildableName = "\(packageName)"
-               BlueprintName = "\(packageName)"
+               BlueprintIdentifier = "\(target)"
+               BuildableName = "\(target)"
+               BlueprintName = "\(target)"
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
@@ -144,9 +147,9 @@ extension Bundler {
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "\(packageName)"
-            BuildableName = "\(packageName)"
-            BlueprintName = "\(packageName)"
+            BlueprintIdentifier = "\(target)"
+            BuildableName = "\(target)"
+            BlueprintName = "\(target)"
             ReferencedContainer = "container:">
          </BuildableReference>
       </MacroExpansion>
@@ -161,9 +164,9 @@ extension Bundler {
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "\(packageName)"
-            BuildableName = "\(packageName)"
-            BlueprintName = "\(packageName)"
+            BlueprintIdentifier = "\(target)"
+            BuildableName = "\(target)"
+            BlueprintName = "\(target)"
             ReferencedContainer = "container:">
          </BuildableReference>
       </BuildableProductRunnable>

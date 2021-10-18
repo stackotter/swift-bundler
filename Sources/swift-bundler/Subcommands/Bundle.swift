@@ -24,23 +24,15 @@ struct Bundle: ParsableCommand {
   var createSymlink = false
 
   func run() throws {
-    let packageName = getPackageName(from: packageDir)
-    
     // Load configuration
-    let config: Configuration
-    do {
-      let data = try Data(contentsOf: packageDir.appendingPathComponent("Bundle.json"))
-      config = try JSONDecoder().decode(Configuration.self, from: data)
-    } catch {
-      terminate("Failed to load config from Bundle.json; \(error)")
-    }
+    let config = Configuration.load(packageDir)
     
     if displayProgress {
       runProgressJob({ setMessage, setProgress in 
         // A helper function to update the progress window (if present)
         Bundler.bundle(
           packageDir: packageDir,
-          packageName: packageName, 
+          target: config.target, 
           productsDir: productsDir, 
           executable: executable,
           outputDir: outputDir,
@@ -60,7 +52,7 @@ struct Bundle: ParsableCommand {
     } else {
       Bundler.bundle(
         packageDir: packageDir,
-        packageName: packageName,
+        target: config.target,
         productsDir: productsDir,
         executable: executable,
         outputDir: outputDir,
@@ -74,7 +66,7 @@ struct Bundle: ParsableCommand {
 extension Bundler {
   static func bundle(
     packageDir: URL,
-    packageName: String,
+    target: String,
     productsDir: URL? = nil,
     executable: URL? = nil,
     outputDir: URL? = nil,
@@ -87,7 +79,7 @@ extension Bundler {
       updateProgressClosure(message, progress, shouldLog)  
     }
 
-    guard let executable = executable ?? productsDir?.appendingPathComponent("\(packageName)") else {
+    guard let executable = executable ?? productsDir?.appendingPathComponent("\(target)") else {
       terminate("Please provide the `products-dir` option and/or the `executable` option")
     }
     
@@ -95,7 +87,7 @@ extension Bundler {
 
     // Create app folder structure
     updateProgress("Creating .app skeleton", 0)
-    let app = outputDir.appendingPathComponent("\(packageName).app")
+    let app = outputDir.appendingPathComponent("\(target).app")
     let appContents = app.appendingPathComponent("Contents")
     let appResources = appContents.appendingPathComponent("Resources")
     let appMacOS = appContents.appendingPathComponent("MacOS")
@@ -113,9 +105,9 @@ extension Bundler {
     // Copy executable
     updateProgress("Copying executable", 0.2)
     do {
-      try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(packageName))
+      try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(target))
     } catch {
-      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(packageName).path); \(error)")
+      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(target).path); \(error)")
     }
 
     // Create app icon
@@ -152,7 +144,7 @@ extension Bundler {
     updateProgress("Creating Info.plist", 0.7)
     let infoPlistFile = appContents.appendingPathComponent("Info.plist")
     let infoPlist = createAppInfoPlist(
-      packageName: packageName, 
+      appName: target, 
       bundleIdentifier: config.bundleIdentifier, 
       versionString: config.versionString, 
       buildNumber: config.buildNumber, 

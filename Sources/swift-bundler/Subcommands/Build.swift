@@ -66,20 +66,13 @@ extension Bundler {
 
     let configuration = configuration ?? .debug
     let outputDir = outputDir ?? packageDir.appendingPathComponent(".build/bundler")
-    let packageName = getPackageName(from: packageDir)
     
     // Run prebuild script if it exists
     updateProgress("Running prebuild script", 0.02)
     runPrebuild(packageDir)
 
     updateProgress("Loading configuration", 0.05)
-    let config: Configuration
-    do {
-      let data = try Data(contentsOf: packageDir.appendingPathComponent("Bundle.json"))
-      config = try JSONDecoder().decode(Configuration.self, from: data)
-    } catch {
-      terminate("Failed to load config from Bundle.json; \(error)")
-    }
+    let config = Configuration.load(packageDir)
 
     // Build package
     updateProgress("Starting \(configuration.rawValue) build...", 0.1)
@@ -119,7 +112,7 @@ extension Bundler {
     let buildDir = buildDirSymlink.resolvingSymlinksInPath()
     Bundler.bundle(
       packageDir: packageDir,
-      packageName: packageName,
+      target: config.target,
       productsDir: buildDir,
       outputDir: outputDir,
       config: config,
