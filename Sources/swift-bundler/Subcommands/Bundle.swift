@@ -101,9 +101,50 @@ extension Bundler {
     } catch {
       terminate("Failed to create .app folder structure; \(error)")
     }
-
+    
+    // Copy dynamic libraries
+    updateProgress("Copying dynamic libraries (frameworks)", 0.2)
+    if let productsDir = productsDir {
+      do {
+        let packageFrameworksDir = productsDir.appendingPathComponent("PackageFrameworks")
+        let libDir = appContents.appendingPathComponent("DynamicLibraries")
+        try FileManager.default.createDirectory(at: libDir)
+        if FileManager.default.itemExists(at: packageFrameworksDir, withType: .directory) { // The app was built with Xcode
+          let contents = try FileManager.default.contentsOfDirectory(at: packageFrameworksDir, includingPropertiesForKeys: nil, options: [])
+          for framework in contents where framework.pathExtension == "framework" {
+            log.info("Converting '\(framework.lastPathComponent)' to dylib and copying to app bundle")
+            let libName = framework.deletingPathExtension().lastPathComponent
+            let dylib = framework.appendingPathComponent("Versions/A/\(libName)")
+            try FileManager.default.copyItem(at: dylib, to: libDir.appendingPathComponent("lib\(libName).dylib"))
+            
+            let resources = dylib.deletingLastPathComponent().appendingPathComponent("Resources")
+            let contents = try FileManager.default.contentsOfDirectory(at: resources, includingPropertiesForKeys: nil, options: [])
+            for file in contents {
+              if file.lastPathComponent != "Info.plist" {
+                terminate("Swift Bundler currently doesn't support frameworks with resources; '\(framework.lastPathComponent)' contains resources")
+              }
+            }
+            
+            // Update the executable's library path for this framework
+            Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../DynamicLibraries/lib\(libName).dylib \(executable.path)")
+          }
+        } else { // The app was built with SwiftPM
+          let contents = try FileManager.default.contentsOfDirectory(at: productsDir, includingPropertiesForKeys: nil, options: [])
+          for file in contents where file.pathExtension == "dylib" {
+            log.info("Copying '\(file.lastPathComponent)' to app bundle")
+            try FileManager.default.copyItem(at: file, to: libDir.appendingPathComponent(file.lastPathComponent))
+            
+            // Update the executable's library path for this dylib
+            Shell.runSilently("install_name_tool -change @rpath/\(file.lastPathComponent) @rpath/../DynamicLibraries/\(file.lastPathComponent) \(executable.path)")
+          }
+        }
+      } catch {
+        terminate("Failed to copy dynamic libraries to app bundle; \(error)")
+      }
+    }
+    
     // Copy executable
-    updateProgress("Copying executable", 0.2)
+    updateProgress("Copying executable", 0.3)
     do {
       try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(target))
     } catch {
