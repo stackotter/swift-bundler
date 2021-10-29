@@ -107,7 +107,7 @@ extension Bundler {
     if let productsDir = productsDir {
       do {
         let packageFrameworksDir = productsDir.appendingPathComponent("PackageFrameworks")
-        let libDir = appContents.appendingPathComponent("DynamicLibraries")
+        let libDir = appContents.appendingPathComponent("lib")
         try FileManager.default.createDirectory(at: libDir)
         if FileManager.default.itemExists(at: packageFrameworksDir, withType: .directory) { // The app was built with Xcode
           let contents = try FileManager.default.contentsOfDirectory(at: packageFrameworksDir, includingPropertiesForKeys: nil, options: [])
@@ -126,7 +126,7 @@ extension Bundler {
             }
             
             // Update the executable's library path for this framework
-            Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../DynamicLibraries/lib\(libName).dylib \(executable.path)")
+            Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../lib/lib\(libName).dylib \(executable.path)")
           }
         } else { // The app was built with SwiftPM
           let contents = try FileManager.default.contentsOfDirectory(at: productsDir, includingPropertiesForKeys: nil, options: [])
@@ -135,7 +135,7 @@ extension Bundler {
             try FileManager.default.copyItem(at: file, to: libDir.appendingPathComponent(file.lastPathComponent))
             
             // Update the executable's library path for this dylib
-            Shell.runSilently("install_name_tool -change @rpath/\(file.lastPathComponent) @rpath/../DynamicLibraries/\(file.lastPathComponent) \(executable.path)")
+            Shell.runSilently("install_name_tool -change @rpath/\(file.lastPathComponent) @rpath/../lib/\(file.lastPathComponent) \(executable.path)")
           }
         }
       } catch {
@@ -146,6 +146,7 @@ extension Bundler {
     // Copy executable
     updateProgress("Copying executable", 0.3)
     do {
+      Shell.runSilently("install_name_tool -add_rpath @executable_path \(executable.path)")
       try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(target))
     } catch {
       terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(target).path); \(error)")
