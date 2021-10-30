@@ -27,7 +27,7 @@ extension Bundler {
       try FileManager.default.createDirectory(at: schemesDir)
       try schemeString.write(to: schemeFile, atomically: false, encoding: .utf8)
     } catch {
-      terminate("Failed to create scheme at \(schemeFile.path); \(error)")
+      terminate("Failed to create scheme at \(schemeFile.escapedPath); \(error)")
     }
   }
 
@@ -43,7 +43,7 @@ extension Bundler {
     }
 
     let runPrebuild = "swift bundler prebuild -d ${WORKSPACE_PATH}/../../../"
-    let createBundle = "swift bundler bundle -d ${WORKSPACE_PATH}/../../../ --products-dir ${BUILT_PRODUCTS_DIR} -o \(buildOutputDir.path.replacingOccurrences(of: " ", with: "\\ ")) --dont-fix-bundles"
+    let createBundle = "swift bundler bundle -d ${WORKSPACE_PATH}/../../../ --products-dir ${BUILT_PRODUCTS_DIR} -o \(buildOutputDir.escapedPath.replacingOccurrences(of: " ", with: "\\ ")) --dont-fix-bundles"
     let runPostbuild = "swift bundler postbuild -d ${WORKSPACE_PATH}/../../../"
     return """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -142,7 +142,7 @@ extension Bundler {
       allowLocationSimulation = "YES">
       <PathRunnable
          runnableDebuggingMode = "0"
-         FilePath = "\(builtApp.path)">
+         FilePath = "\(builtApp.escapedPath)">
       </PathRunnable>
       <MacroExpansion>
          <BuildableReference

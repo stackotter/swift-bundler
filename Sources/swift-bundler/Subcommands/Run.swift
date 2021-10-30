@@ -56,8 +56,8 @@ struct Run: ParsableCommand {
 
     print() // New line to separate app output from bundler output
 
-    if Shell.getExitStatus(executable.path, silent: false) != 0 {
-      terminate("Failed to run bundled app at \(outputDir.appendingPathComponent("\(target).app").path)")
+    if Shell.getExitStatus(executable.escapedPath, silent: false) != 0 {
+      terminate("Failed to run bundled app at \(outputDir.appendingPathComponent("\(target).app").escapedPath)")
     }
   }
 }

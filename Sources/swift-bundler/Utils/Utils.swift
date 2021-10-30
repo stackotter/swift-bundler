@@ -6,8 +6,8 @@ enum BundlerError: LocalizedError {
 
 /// Creates an AppIcon.icns in the given directory from the given 1024x1024 input png.
 func createIcns(from icon1024: URL, outDir: URL) throws {
-  let iconPath = icon1024.path
-  let iconSetPath = outDir.appendingPathComponent("AppIcon.iconset").path
+  let iconPath = icon1024.escapedPath
+  let iconSetPath = outDir.appendingPathComponent("AppIcon.iconset").escapedPath
 	let exitStatus = Shell.getExitStatus("""
 mkdir \(iconSetPath)
 sips -z 16 16     \(iconPath) --out \(iconSetPath)/icon_16x16.png

@@ -14,7 +14,7 @@ extension Bundler {
   static func runPrebuild(_ packageDir: URL) {
     let prebuildScript = packageDir.appendingPathComponent("prebuild.sh")
     if FileManager.default.itemExists(at: prebuildScript, withType: .file) {
-      if Shell.getExitStatus("sh \(prebuildScript.path)", packageDir, silent: false) != 0 {
+      if Shell.getExitStatus("sh \(prebuildScript.escapedPath)", packageDir, silent: false) != 0 {
         terminate("Failed to run prebuild script")
       }
     }

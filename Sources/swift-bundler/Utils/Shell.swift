@@ -75,7 +75,7 @@ enum Shell {
     }
 
     if let dir = dir {
-      task.arguments = ["-c", "cd \(dir.path); \(command)"]
+      task.arguments = ["-c", "cd \(dir.escapedPath); \(command)"]
     } else {
       task.arguments = ["-c", "\(command)"]
     }

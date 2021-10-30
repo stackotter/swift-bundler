@@ -14,7 +14,7 @@ extension Bundler {
   static func runPostbuild(_ packageDir: URL) {
     let postbuildScript = packageDir.appendingPathComponent("postbuild.sh")
     if FileManager.default.itemExists(at: postbuildScript, withType: .file) {
-      if Shell.getExitStatus("sh \(postbuildScript.path)", packageDir, silent: false) != 0 {
+      if Shell.getExitStatus("sh \(postbuildScript.escapedPath)", packageDir, silent: false) != 0 {
         terminate("Failed to run postbuild script")
       }
     }

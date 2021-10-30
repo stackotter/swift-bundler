@@ -20,9 +20,6 @@ struct Bundle: ParsableCommand {
   @Flag(name: [.customShort("p"), .customLong("progress")], help: "Display progress in a window")
   var displayProgress = false
 
-  @Flag(name: .long, help: "Replace the original executable to the one contained within the .app")
-  var createSymlink = false
-
   func run() throws {
     // Load configuration
     let config = Configuration.load(packageDir)
@@ -38,7 +35,6 @@ struct Bundle: ParsableCommand {
           outputDir: outputDir,
           config: config, 
           fixBundles: !dontFixBundles,
-          createSymlink: createSymlink,
           updateProgress: { message, progress, shouldLog in
             if shouldLog {
               log.info(message)
@@ -57,8 +53,7 @@ struct Bundle: ParsableCommand {
         executable: executable,
         outputDir: outputDir,
         config: config,
-        fixBundles: !dontFixBundles,
-        createSymlink: createSymlink)
+        fixBundles: !dontFixBundles)
     }
   }
 }
@@ -72,7 +67,6 @@ extension Bundler {
     outputDir: URL? = nil,
     config: Configuration,
     fixBundles: Bool,
-    createSymlink: Bool = false,
     updateProgress updateProgressClosure: (@escaping (_ message: String, _ progress: Double, _ shouldLog: Bool) -> Void) = { _, _, _ in }
   ) {
     func updateProgress(_ message: String, _ progress: Double, shouldLog: Bool = true) {
@@ -126,7 +120,7 @@ extension Bundler {
             }
             
             // Update the executable's library path for this framework
-            Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../lib/lib\(libName).dylib \(executable.path)")
+            Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../lib/lib\(libName).dylib \(executable.escapedPath)")
           }
         } else { // The app was built with SwiftPM
           let contents = try FileManager.default.contentsOfDirectory(at: productsDir, includingPropertiesForKeys: nil, options: [])
@@ -146,10 +140,10 @@ extension Bundler {
     // Copy executable
     updateProgress("Copying executable", 0.3)
     do {
-      Shell.runSilently("install_name_tool -add_rpath @executable_path \(executable.path)")
+      Shell.runSilently("install_name_tool -add_rpath @executable_path \(executable.escapedPath)")
       try FileManager.default.copyItem(at: executable, to: appMacOS.appendingPathComponent(target))
     } catch {
-      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(target).path); \(error)")
+      terminate("Failed to copy built executable to \(appMacOS.appendingPathComponent(target).escapedPath); \(error)")
     }
 
     // Create app icon
@@ -195,7 +189,7 @@ extension Bundler {
     do {
       try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
     } catch {
-      terminate("Failed to create Info.plist at \(infoPlistFile.path); \(error)")
+      terminate("Failed to create Info.plist at '\(infoPlistFile.path)'; \(error)")
     }
 
     // Copy bundles
@@ -262,35 +256,21 @@ extension Bundler {
           updateProgress("Compiling metal shaders in \(bundle.lastPathComponent)", 0.85)
 
           for metalFile in metalFiles {
-            let path = metalFile.deletingPathExtension().path
+            let path = metalFile.deletingPathExtension().escapedPath
             if Shell.getExitStatus("xcrun -sdk macosx metal -c \(path).metal -o \(path).air", silent: false) != 0 {
               terminate("Failed to compile '\(metalFile.lastPathComponent)")
             }
           }
           
-          let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").path }
-          if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.path)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
+          let airFilePaths = metalFiles.map { $0.deletingPathExtension().appendingPathExtension("air").escapedPath }
+          if Shell.getExitStatus("xcrun -sdk macosx metal-ar rcs \(outputBundle.escapedPath)/default.metal-ar \(airFilePaths.joined(separator: " "))", silent: false) != 0 {
             terminate("Failed to combine compiled metal shaders into a metal archive")
           }
-          if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.path)/default.metal-ar -o \(bundleResources.path)/default.metallib", silent: false) != 0 {
+          if Shell.getExitStatus("xcrun -sdk macosx metallib \(outputBundle.escapedPath)/default.metal-ar -o \(bundleResources.escapedPath)/default.metallib", silent: false) != 0 {
             terminate("Failed to convert metal archive to metal library")
           }
-          Shell.runSilently("rm \(outputBundle.path)/default.metal-ar")
+          Shell.runSilently("rm \(outputBundle.escapedPath)/default.metal-ar")
         }
-      }
-    }
-
-    if createSymlink {
-      updateProgress("Creating symlink", 0.95)
-      do {
-        let script = "#!/bin/sh\nopen \(app.path)"
-        try FileManager.default.removeItem(at: executable)
-        try script.write(to: executable, atomically: false, encoding: .utf8)
-        if Shell.getExitStatus("chmod +x \(executable.path)") != 0 {
-          terminate("Failed to add executable permissions to shim script")
-        }
-      } catch {
-        terminate("Failed to create symlink for Xcode to open; \(error)")
       }
     }
 
