@@ -103,6 +103,16 @@ extension Bundler {
         let packageFrameworksDir = productsDir.appendingPathComponent("PackageFrameworks")
         let libDir = appContents.appendingPathComponent("lib")
         try FileManager.default.createDirectory(at: libDir)
+        
+        let contents = try FileManager.default.contentsOfDirectory(at: productsDir, includingPropertiesForKeys: nil, options: [])
+        for file in contents where file.pathExtension == "dylib" {
+          log.info("Copying '\(file.lastPathComponent)' to app bundle")
+          try FileManager.default.copyItem(at: file, to: libDir.appendingPathComponent(file.lastPathComponent))
+          
+          // Update the executable's library path for this dylib
+          Shell.runSilently("install_name_tool -change @rpath/\(file.lastPathComponent) @rpath/../lib/\(file.lastPathComponent) \(executable.path)")
+        }
+        
         if FileManager.default.itemExists(at: packageFrameworksDir, withType: .directory) { // The app was built with Xcode
           let contents = try FileManager.default.contentsOfDirectory(at: packageFrameworksDir, includingPropertiesForKeys: nil, options: [])
           for framework in contents where framework.pathExtension == "framework" {
@@ -121,15 +131,6 @@ extension Bundler {
             
             // Update the executable's library path for this framework
             Shell.runSilently("install_name_tool -change @rpath/\(libName).framework/Versions/A/\(libName) @rpath/../lib/lib\(libName).dylib \(executable.escapedPath)")
-          }
-        } else { // The app was built with SwiftPM
-          let contents = try FileManager.default.contentsOfDirectory(at: productsDir, includingPropertiesForKeys: nil, options: [])
-          for file in contents where file.pathExtension == "dylib" {
-            log.info("Copying '\(file.lastPathComponent)' to app bundle")
-            try FileManager.default.copyItem(at: file, to: libDir.appendingPathComponent(file.lastPathComponent))
-            
-            // Update the executable's library path for this dylib
-            Shell.runSilently("install_name_tool -change @rpath/\(file.lastPathComponent) @rpath/../lib/\(file.lastPathComponent) \(executable.path)")
           }
         }
       } catch {
