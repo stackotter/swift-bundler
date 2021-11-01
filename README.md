@@ -7,7 +7,7 @@ A Swift Package Manager wrapper that allows the creation of MacOS apps with Swif
 ```sh
 git clone https://github.com/stackotter/swift-bundler
 cd swift-bundler
-sh ./build_and_install.sh
+sh ./install.sh
 ```
 
 ## Usage
