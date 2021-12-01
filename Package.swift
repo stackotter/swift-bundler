@@ -9,7 +9,6 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(name: "DeltaLogger", url: "https://github.com/stackotter/delta-logger", .branch("main")),
-    .package(url: "https://github.com/norio-nomura/SwiftBacktrace", from: "1.0.1"),
   ],
   targets: [
     .target(
@@ -17,7 +16,6 @@ let package = Package(
       dependencies: [
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         "DeltaLogger",
-        "SwiftBacktrace"
       ]),
   ]
 )

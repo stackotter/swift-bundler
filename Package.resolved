@@ -27,24 +27,6 @@
           "revision": "5d66f7ba25daf4f94100e7022febf3c75e37a6c7",
           "version": "1.4.2"
         }
-      },
-      {
-        "package": "swift-nio",
-        "repositoryURL": "https://github.com/apple/swift-nio.git",
-        "state": {
-          "branch": null,
-          "revision": "37e7a33de45bac894c0b08b56a2f755ebe4884e6",
-          "version": "2.35.0"
-        }
-      },
-      {
-        "package": "SwiftBacktrace",
-        "repositoryURL": "https://github.com/norio-nomura/SwiftBacktrace",
-        "state": {
-          "branch": null,
-          "revision": "1b4bbe87c19d5e2e04786d8140ab36fec4b7881b",
-          "version": "1.0.1"
-        }
       }
     ]
   },
