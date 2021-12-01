@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build
-swift build -c debug
+swift build -c release
 
 # Create directory with correct permissions
 sudo mkdir -p -m755 /opt/swift-bundler
