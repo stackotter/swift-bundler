@@ -89,8 +89,14 @@ extension Bundler {
       } else if line.starts(with: "[") {
         let parts = line.split(separator: "]")
         let progressParts = parts[0].dropFirst().split(separator: "/")
-        let progress = Double(progressParts[0])!
-        let total = Double(progressParts[1])!
+        
+        guard
+          let progress = Double(progressParts[0]),
+          let total = Double(progressParts[1])
+        else {
+          return
+        }
+        
         let decimalProgress = progress / total
         updateProgress(line, 0.8 * decimalProgress + 0.1, shouldLog: false)
       } else if line.starts(with: "Fetching") || line.starts(with: "Resolving") || line.starts(with: "Cloning") {
