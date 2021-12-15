@@ -42,9 +42,9 @@ extension Bundler {
       terminate("Failed to locate and create built app directory; \(error)")
     }
 
-    let runPrebuild = "swift bundler prebuild -d ${WORKSPACE_PATH}/../../../"
-    let createBundle = "swift bundler bundle -d ${WORKSPACE_PATH}/../../../ --products-dir ${BUILT_PRODUCTS_DIR} -o \(buildOutputDir.escapedPath) --dont-fix-bundles"
-    let runPostbuild = "swift bundler postbuild -d ${WORKSPACE_PATH}/../../../"
+    let runPrebuild = "/opt/swift-bundler/swift-bundler prebuild -d ${WORKSPACE_PATH}/../../../"
+    let createBundle = "/opt/swift-bundler/swift-bundler bundle -d ${WORKSPACE_PATH}/../../../ --products-dir ${BUILT_PRODUCTS_DIR} -o \(buildOutputDir.escapedPath) --dont-fix-bundles"
+    let runPostbuild = "/opt/swift-bundler/swift-bundler postbuild -d ${WORKSPACE_PATH}/../../../"
     return """
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
