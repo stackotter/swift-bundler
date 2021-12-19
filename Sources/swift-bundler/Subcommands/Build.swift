@@ -81,9 +81,10 @@ extension Bundler {
       command += " --arch arm64 --arch x86_64"
     }
     let exitStatus = Shell.getExitStatus(command, packageDir, silent: false, lineHandler: { line in
-      if shouldBuildUniversal && line.split(separator: ":")[0].last == "%" {
+      let parts = line.split(separator: ":")
+      if shouldBuildUniversal && !parts.isEmpty && parts[0].last == "%" {
         // The output style changes completely in universal builds for whatever reason :)
-        if let percentage = Double(line.split(separator: ":")[0].dropLast()) {
+        if let percentage = Double(parts[0].dropLast()) {
           updateProgress(line, 0.8 * (percentage / 100) + 0.1, shouldLog: false)
         }
       } else if line.starts(with: "[") {
