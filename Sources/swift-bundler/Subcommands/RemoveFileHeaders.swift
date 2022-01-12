@@ -18,7 +18,7 @@ extension Bundler {
       if let enumerator = FileManager.default.enumerator(at: sourcesDir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
         for case let fileURL as URL in enumerator {
           let fileAttributes = try fileURL.resourceValues(forKeys: [.isRegularFileKey])
-          if fileAttributes.isRegularFile! {
+          if fileAttributes.isRegularFile! && fileURL.pathExtension == "swift" {
             contents.append(fileURL)
           }
         }
