@@ -87,6 +87,22 @@ There are two ways to add custom app icons to a bundle project.
 
 If both are present, `AppIcon.icns` is used.
 
+### Info.plist customization
+
+If you want to add extra key-value pairs to your apps Info.plist, you can add the following to `Bundle.json`:
+
+```json
+{
+  // ...
+  "extraInfoPlistEntries": {
+    "YourKey": "YourValue",
+    "YourArrayKey": ["YourFirstArrayEntry"]
+  }
+}
+```
+
+If you provide a value for a key that is already present in the default Info.plist, the default value will be overidden with the value you provide.
+
 ### Help
 
 If you want to see all available options just add `--help` to the end, (e.g. `swift bundler run --help`).
