@@ -180,15 +180,16 @@ extension Bundler {
     // Create Info.plist
     updateProgress("Creating Info.plist", 0.7)
     let infoPlistFile = appContents.appendingPathComponent("Info.plist")
-    let infoPlist = createAppInfoPlist(
-      appName: target, 
-      bundleIdentifier: config.bundleIdentifier, 
-      versionString: config.versionString, 
-      buildNumber: config.buildNumber, 
-      category: config.category,
-      minOSVersion: config.minOSVersion)
     do {
-      try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
+      let infoPlist = try createAppInfoPlist(
+        appName: target,
+        bundleIdentifier: config.bundleIdentifier,
+        versionString: config.versionString,
+        buildNumber: config.buildNumber,
+        category: config.category,
+        minOSVersion: config.minOSVersion,
+        extraEntries: config.extraInfoPlistEntries)
+      try infoPlist.write(to: infoPlistFile)
     } catch {
       terminate("Failed to create Info.plist at '\(infoPlistFile.path)'; \(error)")
     }
@@ -240,9 +241,9 @@ extension Bundler {
           let infoPlistFile = bundleContents.appendingPathComponent("Info.plist")
           if !FileManager.default.itemExists(at: infoPlistFile, withType: .file) {
             log.info("Creating Info.plist for \(bundle.lastPathComponent)")
-            let infoPlist = createBundleInfoPlist(bundleIdentifier: bundleIdentifier, bundleName: bundleName, minOSVersion: config.minOSVersion)
             do {
-              try infoPlist.write(to: infoPlistFile, atomically: false, encoding: .utf8)
+              let infoPlist = try createBundleInfoPlist(bundleIdentifier: bundleIdentifier, bundleName: bundleName, minOSVersion: config.minOSVersion)
+              try infoPlist.write(to: infoPlistFile)
             } catch {
               terminate("Failed to create Info.plist for '\(bundle.lastPathComponent)'; \(error)")
             }

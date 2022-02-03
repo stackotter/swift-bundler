@@ -28,66 +28,40 @@ rm -R \(iconSetPath)
 	}
 }
 
-func createAppInfoPlist(appName: String, bundleIdentifier: String, versionString: String, buildNumber: Int, category: String, minOSVersion: String) -> String {
-  return """
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleExecutable</key>
-	<string>\(appName)</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
-	<key>CFBundleIdentifier</key>
-	<string>\(bundleIdentifier)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>\(appName)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>\(versionString)</string>
-	<key>CFBundleSupportedPlatforms</key>
-	<array>
-		<string>MacOSX</string>
-	</array>
-	<key>CFBundleVersion</key>
-	<string>\(buildNumber)</string>
-	<key>LSApplicationCategoryType</key>
-	<string>\(category)</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>\(minOSVersion)</string>
-</dict>
-</plist>
-"""
+func createAppInfoPlist(appName: String, bundleIdentifier: String, versionString: String, buildNumber: Int, category: String, minOSVersion: String, extraEntries: [String: Any]) throws -> Data {
+  var entries: [String: Any] = [
+    "CFBundleExecutable": appName,
+    "CFBundleIconFile": "AppIcon",
+    "CFBundleIconName": "AppIcon",
+    "CFBundleIdentifier": bundleIdentifier,
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleName": appName,
+    "CFBundlePackageType": "APPL",
+    "CFBundleShortVersionString": versionString,
+    "CFBundleSupportedPlatforms": ["MacOSX"],
+    "CFBundleVersion": "\(buildNumber)",
+    "LSApplicationCategoryType": category,
+    "LSMinimumSystemVersion": minOSVersion,
+  ]
+  
+  for (key, value) in extraEntries {
+    entries[key] = value
+  }
+  
+  return try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
 }
 
-func createBundleInfoPlist(bundleIdentifier: String, bundleName: String, minOSVersion: String) -> String {
-  return """
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleIdentifier</key>
-	<string>\(bundleIdentifier)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>\(bundleName)</string>
-	<key>CFBundlePackageType</key>
-	<string>BNDL</string>
-	<key>CFBundleSupportedPlatforms</key>
-	<array>
-		<string>MacOSX</string>
-	</array>
-	<key>LSMinimumSystemVersion</key>
-	<string>\(minOSVersion)</string>
-</dict>
-</plist>
-"""
+func createBundleInfoPlist(bundleIdentifier: String, bundleName: String, minOSVersion: String) throws -> Data {
+  let entries: [String: Any] = [
+    "CFBundleIdentifier": bundleIdentifier,
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleName": bundleName,
+    "CFBundlePackageType": "BNDL",
+    "CFBundleSupportedPlatforms": ["MacOSX"],
+    "LSMinimumSystemVersion": minOSVersion,
+  ]
+  
+  return try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
 }
 
 func terminate(_ message: String) -> Never {
