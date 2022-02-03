@@ -91,7 +91,7 @@ If both are present, `AppIcon.icns` is used.
 
 If you want to add extra key-value pairs to your apps Info.plist, you can add the following to `Bundle.json`:
 
-```json
+```jsonc
 {
   // ...
   "extraInfoPlistEntries": {
