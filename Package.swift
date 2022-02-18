@@ -6,6 +6,9 @@ import PackageDescription
 let package = Package(
   name: "swift-bundler",
   platforms: [.macOS(.v10_13)],
+  products: [
+    .executable(name: "swift-bundler", targets: ["swift-bundler"])
+  ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(name: "DeltaLogger", url: "https://github.com/stackotter/delta-logger", .branch("main")),
