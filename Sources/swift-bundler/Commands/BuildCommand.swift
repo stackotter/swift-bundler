@@ -35,19 +35,8 @@ struct BuildCommand: ParsableCommand {
   var universal = false
 
   func run() throws {
-    let configuration = try ConfigurationUtil.loadConfiguration(fromDirectory: packageDirectory)
-    let appConfiguration: AppConfiguration
-    if let first = configuration.apps.first, configuration.apps.count == 1 {
-      appConfiguration = first.value
-    } else if let appName = appName {
-      guard let selected = configuration.apps[appName] else {
-        throw ConfigurationError.failedToGetSelectedApp(appName)
-      }
-      appConfiguration = selected
-    } else {
-      log.error("There are multiple apps defined. Please use the `appName` argument to specify which one to build.")
-      return
-    }
+    let configuration = try Configuration.load(fromDirectory: packageDirectory)
+    let appConfiguration = try configuration.getAppConfiguration(appName)
     
     let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
     let productsDirectory = packageDirectory.appendingPathComponent(".build/\(buildConfiguration)")
