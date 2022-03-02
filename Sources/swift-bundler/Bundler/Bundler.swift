@@ -11,6 +11,14 @@ struct Bundler {
   var context: Context
   var scriptRunner: ScriptRunner
   
+  var appBundle: URL {
+    context.outputDirectory.appendingPathComponent("\(context.appName).app")
+  }
+  
+  var appExecutable: URL {
+    appBundle.appendingPathComponent("Contents/MacOS/\(context.appName)")
+  }
+  
   struct Context {
     var appConfiguration: AppConfiguration
     var buildConfiguration: BuildConfiguration
@@ -61,13 +69,12 @@ struct Bundler {
     let executable = context.productsDirectory.appendingPathComponent(context.appConfiguration.target)
     
     // Create an empty app bundle
-    let app = context.outputDirectory.appendingPathComponent("\(context.appName).app")
-    let appContents = app.appendingPathComponent("Contents")
+    let appContents = appBundle.appendingPathComponent("Contents")
     let appMacOS = appContents.appendingPathComponent("MacOS")
     
     do {
-      if fileManager.itemExists(at: app, withType: .directory) {
-        try fileManager.removeItem(at: app)
+      if fileManager.itemExists(at: appBundle, withType: .directory) {
+        try fileManager.removeItem(at: appBundle)
       }
       try fileManager.createDirectory(at: appMacOS)
     } catch {
@@ -80,7 +87,7 @@ struct Bundler {
         "/usr/bin/install_name_tool",
         arguments: ["-add_rpath", "@executable_path", executable.path])
       try process.runAndWait()
-      try fileManager.copyItem(at: executable, to: appMacOS.appendingPathComponent("\(context.appName)"))
+      try fileManager.copyItem(at: executable, to: appExecutable)
     }
     
     log.info("Creating PkgInfo file")
@@ -108,5 +115,12 @@ struct Bundler {
   func postbuild() throws {
     log.info("Running postbuild script")
     try scriptRunner.runPostbuildScriptIfPresent()
+  }
+  
+  func run() throws {
+    log.info("Running '\(context.appName).app'")
+    let process = Process.create(appExecutable.path)
+    try process.run()
+    process.waitUntilExit()
   }
 }
