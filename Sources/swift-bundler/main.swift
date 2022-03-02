@@ -1,4 +1,15 @@
-Bundler.main()
+import Foundation
+import ArgumentParser
 
-// TODO: support sandboxing
-// TODO: add proper help messages to subcommands, options and flags
+struct Command: ParsableCommand {
+  static let configuration = CommandConfiguration(
+    commandName: "swift-bundler",
+    abstract: "A tool for creating macOS apps from Swift packages.",
+    version: "v1.4.9",
+    shouldDisplay: true,
+    subcommands: [
+      BuildCommand.self
+    ])
+}
+
+Command.main()

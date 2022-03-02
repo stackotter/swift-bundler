@@ -2,15 +2,6 @@
   "object": {
     "pins": [
       {
-        "package": "DeltaLogger",
-        "repositoryURL": "https://github.com/stackotter/delta-logger",
-        "state": {
-          "branch": "main",
-          "revision": "a2ffeb3596fd32bf5ff0ad9fda9b610ae7481745",
-          "version": null
-        }
-      },
-      {
         "package": "swift-argument-parser",
         "repositoryURL": "https://github.com/apple/swift-argument-parser",
         "state": {
@@ -26,6 +17,15 @@
           "branch": null,
           "revision": "5d66f7ba25daf4f94100e7022febf3c75e37a6c7",
           "version": "1.4.2"
+        }
+      },
+      {
+        "package": "TOMLKit",
+        "repositoryURL": "https://github.com/LebJe/TOMLKit.git",
+        "state": {
+          "branch": null,
+          "revision": "be015e1a4f84b5aeae3ce4c4eab5ff6ca7ce7ff9",
+          "version": "0.5.0"
         }
       }
     ]

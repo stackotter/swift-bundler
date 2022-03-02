@@ -1,4 +1,3 @@
-import DeltaLogger
 import Logging
 
 struct Handler: LogHandler {
