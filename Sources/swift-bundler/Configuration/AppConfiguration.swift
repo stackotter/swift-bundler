@@ -4,7 +4,7 @@ struct AppConfiguration {
   var category: String
   var bundleIdentifier: String
   var minMacOSVersion: String
-  var plistEntries: [String: PlistValue]
+  var extraPlistEntries: [String: String]
   
   static var `default` = AppConfiguration(
     target: "ExampleApp",
@@ -12,5 +12,5 @@ struct AppConfiguration {
     category: "public.app-category.example",
     bundleIdentifier: "com.example.example",
     minMacOSVersion: "10.13",
-    plistEntries: [:])
+    extraPlistEntries: [:])
 }

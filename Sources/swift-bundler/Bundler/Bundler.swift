@@ -105,7 +105,10 @@ struct Bundler {
       let infoPlistFile = appContents.appendingPathComponent("Info.plist")
       let infoPlistContents = try PlistUtil.createAppInfoPlist(
         appName: context.appName,
-        configuration: context.appConfiguration)
+        configuration: context.appConfiguration,
+        expressionContext: .init(
+          packageDirectory: context.packageDirectory
+        ))
       try infoPlistContents.write(to: infoPlistFile)
     } catch {
       throw BundlerError.failedToCreateInfoPlist(error)

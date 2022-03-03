@@ -6,7 +6,7 @@ struct AppConfigurationDTO: Codable {
   var category: String?
   var bundleIdentifier: String?
   var minMacOSVersion: String?
-  var plistEntries: [String: PlistValue]?
+  var extraPlistEntries: [String: String]?
   
   init(_ configuration: AppConfiguration) {
     target = configuration.target
@@ -14,7 +14,7 @@ struct AppConfigurationDTO: Codable {
     category = configuration.category
     bundleIdentifier = configuration.bundleIdentifier
     minMacOSVersion = configuration.minMacOSVersion
-    plistEntries = configuration.plistEntries
+    extraPlistEntries = configuration.extraPlistEntries
   }
 }
 
@@ -25,6 +25,6 @@ extension AppConfiguration {
     category = dto.category ?? Self.default.category
     bundleIdentifier = dto.bundleIdentifier ?? Self.default.bundleIdentifier
     minMacOSVersion = dto.minMacOSVersion ?? Self.default.minMacOSVersion
-    plistEntries = dto.plistEntries ?? Self.default.plistEntries
+    extraPlistEntries = dto.extraPlistEntries ?? Self.default.extraPlistEntries
   }
 }

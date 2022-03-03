@@ -21,7 +21,7 @@ extension Process {
     let pipe = Pipe()
     setOutputPipe(pipe)
     
-    launch()
+    try runAndWait()
     
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     guard let output = String(data: data, encoding: .utf8) else {
