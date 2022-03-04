@@ -35,7 +35,10 @@ struct RunCommand: ParsableCommand {
   var universal = false
   
   func run() throws {
-    let configuration = try Configuration.load(fromDirectory: packageDirectory)
+    let configuration = try Configuration.load(
+      fromDirectory: packageDirectory,
+      evaluatorContext: .init(packageDirectory: packageDirectory))
+    
     let appConfiguration = try configuration.getAppConfiguration(appName)
     
     let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
