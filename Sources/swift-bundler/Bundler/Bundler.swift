@@ -5,6 +5,7 @@ enum BundlerError: LocalizedError {
   case failedToCreateAppBundleDirectory(Error)
   case failedToCreatePkgInfo(Error)
   case failedToCreateInfoPlist(Error)
+  case failedToCopyExecutable(Error)
 }
 
 struct Bundler {
@@ -64,52 +65,20 @@ struct Bundler {
   }
   
   func bundle() throws {
-    log.info("Creating '\(context.appName).app'")
-    let fileManager = FileManager.default
-    let executable = context.productsDirectory.appendingPathComponent(context.appConfiguration.target)
+    // Create app bundle structure
+    try createAppDirectoryStructure(at: appBundle)
     
-    // Create an empty app bundle
-    let appContents = appBundle.appendingPathComponent("Contents")
-    let appMacOS = appContents.appendingPathComponent("MacOS")
+    // Copy executable
+    let executableArtifact = context.productsDirectory.appendingPathComponent(context.appConfiguration.target)
+    try copyExecutable(at: executableArtifact, to: appExecutable)
     
-    do {
-      if fileManager.itemExists(at: appBundle, withType: .directory) {
-        try fileManager.removeItem(at: appBundle)
-      }
-      try fileManager.createDirectory(at: appMacOS)
-    } catch {
-      throw BundlerError.failedToCreateAppBundleDirectory(error)
-    }
-    
-    log.info("Copying executable")
-    do {
-      let process = Process.create(
-        "/usr/bin/install_name_tool",
-        arguments: ["-add_rpath", "@executable_path", executable.path])
-      try process.runAndWait()
-      try fileManager.copyItem(at: executable, to: appExecutable)
-    }
-    
-    log.info("Creating PkgInfo file")
-    do {
-      let pkgInfoFile = appContents.appendingPathComponent("PkgInfo")
-      var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
-      let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
-      try pkgInfoData.write(to: pkgInfoFile)
-    } catch {
-      throw BundlerError.failedToCreatePkgInfo(error)
-    }
-    
-    log.info("Creating Info.plist")
-    do {
-      let infoPlistFile = appContents.appendingPathComponent("Info.plist")
-      let plistCreator = PlistCreator(context: .init(
+    // Create `PkgInfo` and `Info.plist`
+    try createMetadataFiles(
+      at: appBundle.appendingPathComponent("Contents"),
+      context: .init(
         appName: context.appName,
-        configuration: context.appConfiguration))
-      try plistCreator.createAppInfoPlist(at: infoPlistFile)
-    } catch {
-      throw BundlerError.failedToCreateInfoPlist(error)
-    }
+        configuration: context.appConfiguration
+      ))
   }
   
   func postbuild() throws {
@@ -122,5 +91,68 @@ struct Bundler {
     let process = Process.create(appExecutable.path)
     try process.run()
     process.waitUntilExit()
+  }
+  
+  // MARK: Private methods
+  
+  /// Creates the following directory structure for the app:
+  /// - `AppName.app`
+  ///   - `Contents`
+  ///     - `MacOS`
+  ///
+  /// - Parameter appBundleDirectory: The directory for the app (should be of the form `/path/to/AppName.app`).
+  private func createAppDirectoryStructure(at appBundleDirectory: URL) throws {
+    log.info("Creating '\(context.appName).app'")
+    let fileManager = FileManager.default
+    
+    let appContents = appBundleDirectory.appendingPathComponent("Contents")
+    let appMacOS = appContents.appendingPathComponent("MacOS")
+    
+    do {
+      if fileManager.itemExists(at: appBundle, withType: .directory) {
+        try fileManager.removeItem(at: appBundle)
+      }
+      try fileManager.createDirectory(at: appMacOS)
+    } catch {
+      throw BundlerError.failedToCreateAppBundleDirectory(error)
+    }
+  }
+  
+  /// Copies the built executable into the app bundle.
+  /// - Parameters:
+  ///   - source: The location of the built executable.
+  ///   - destination: The target location of the built executable (the file not the directory).
+  private func copyExecutable(at source: URL, to destination: URL) throws {
+    log.info("Copying executable")
+    do {
+      try FileManager.default.copyItem(at: source, to: destination)
+    } catch {
+      throw BundlerError.failedToCopyExecutable(error)
+    }
+  }
+  
+  /// Creates an app's `PkgInfo` and `Info.plist` files.
+  /// - Parameters:
+  ///   - appContentsDirectory: The app's `Contents` directory.
+  ///   - context: The context to create the `Info.plist` within.
+  private func createMetadataFiles(at appContentsDirectory: URL, context: PlistCreator.Context) throws {
+    log.info("Creating PkgInfo file")
+    do {
+      let pkgInfoFile = appContentsDirectory.appendingPathComponent("PkgInfo")
+      var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
+      let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
+      try pkgInfoData.write(to: pkgInfoFile)
+    } catch {
+      throw BundlerError.failedToCreatePkgInfo(error)
+    }
+    
+    log.info("Creating Info.plist")
+    do {
+      let infoPlistFile = appContentsDirectory.appendingPathComponent("Info.plist")
+      let plistCreator = PlistCreator(context: context)
+      try plistCreator.createAppInfoPlist(at: infoPlistFile)
+    } catch {
+      throw BundlerError.failedToCreateInfoPlist(error)
+    }
   }
 }
