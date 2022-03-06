@@ -2,10 +2,12 @@ import Foundation
 
 enum BundlerError: LocalizedError {
   case failedToRunSwiftBuild(Error)
-  case failedToCreateAppBundleDirectory(Error)
+  case failedToCreateAppBundleDirectoryStructure(Error)
   case failedToCreatePkgInfo(Error)
   case failedToCreateInfoPlist(Error)
   case failedToCopyExecutable(Error)
+  case failedToCreateIcon(Error)
+  case failedToCopyICNS(Error)
 }
 
 struct Bundler {
@@ -73,12 +75,16 @@ struct Bundler {
     try copyExecutable(at: executableArtifact, to: appExecutable)
     
     // Create `PkgInfo` and `Info.plist`
+    let appContents = appBundle.appendingPathComponent("Contents")
     try createMetadataFiles(
-      at: appBundle.appendingPathComponent("Contents"),
+      at: appContents,
       context: .init(
         appName: context.appName,
         configuration: context.appConfiguration
       ))
+    
+    // Create or copy app icon if `Icon1024x1024.png` or `AppIcon.icns` is present
+    try createAppIcon(appContents.appendingPathComponent("Resources"))
   }
   
   func postbuild() throws {
@@ -106,15 +112,17 @@ struct Bundler {
     let fileManager = FileManager.default
     
     let appContents = appBundleDirectory.appendingPathComponent("Contents")
+    let appResources = appContents.appendingPathComponent("Resources")
     let appMacOS = appContents.appendingPathComponent("MacOS")
     
     do {
       if fileManager.itemExists(at: appBundle, withType: .directory) {
         try fileManager.removeItem(at: appBundle)
       }
+      try fileManager.createDirectory(at: appResources)
       try fileManager.createDirectory(at: appMacOS)
     } catch {
-      throw BundlerError.failedToCreateAppBundleDirectory(error)
+      throw BundlerError.failedToCreateAppBundleDirectoryStructure(error)
     }
   }
   
@@ -153,6 +161,32 @@ struct Bundler {
       try plistCreator.createAppInfoPlist(at: infoPlistFile)
     } catch {
       throw BundlerError.failedToCreateInfoPlist(error)
+    }
+  }
+  
+  /// Copies `AppIcon.icns` into the app bundle if present. Alternatively, it creates the app's `AppIcon.icns` from a png if an `Icon1024x1024.png` is present.
+  ///
+  /// `AppIcon.icns` takes precendence over `Icon1024x1024.png`.
+  /// - Parameter appResources: The app's `Resources` directory.
+  /// - Throws: If `Icon1024x1024.png` exists and there is an error while converting it to `icns`, an error is thrown.
+  private func createAppIcon(_ appResources: URL) throws {
+    let icnsFile = context.packageDirectory.appendingPathComponent("AppIcon.icns")
+    if FileManager.default.itemExists(at: icnsFile, withType: .file) {
+      log.info("Copying `AppIcon.icns")
+      do {
+        try FileManager.default.copyItem(at: icnsFile, to: appResources.appendingPathComponent("AppIcon.icns"))
+      } catch {
+        throw BundlerError.failedToCopyICNS(error)
+      }
+    }
+    let iconFile = context.packageDirectory.appendingPathComponent("Icon1024x1024.png")
+    if FileManager.default.itemExists(at: iconFile, withType: .file) {
+      log.info("Create `AppIcon.icns`")
+      do {
+        try IconSetCreator.createIcns(from: iconFile, outputDirectory: appResources)
+      } catch {
+        throw BundlerError.failedToCreateIcon(error)
+      }
     }
   }
 }
