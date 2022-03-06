@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.4
 
 import PackageDescription
 
@@ -11,19 +11,17 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
-    .package(url: "https://github.com/LebJe/TOMLKit.git", from: "0.5.0"),
     .package(url: "https://github.com/pointfreeco/swift-parsing.git", from: "0.7.1"),
-    .package(url: "https://github.com/JohnSundell/Files", from: "4.2.0")
+    .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0")
   ],
   targets: [
-    .target(
+    .executableTarget(
       name: "swift-bundler",
       dependencies: [
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
-        "Files",
-        "TOMLKit"
+        .product(name: "Yams", package: "Yams")
       ])
   ]
 )
