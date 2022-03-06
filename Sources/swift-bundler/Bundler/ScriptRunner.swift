@@ -2,66 +2,66 @@ import Foundation
 
 enum ScriptRunnerError: LocalizedError {
   case scriptDoesntExist(URL)
+  case failedToRunScript(ProcessError)
 }
 
 struct ScriptRunner {
-  var context: Context
+  var packageDirectory: URL
   
-  struct Context {
-    var packageDirectory: URL
-  }
-  
-  init(_ context: Context) {
-    self.context = context
+  init(_ packageDirectory: URL) {
+    self.packageDirectory = packageDirectory
   }
   
   /// Runs the prebuild script in the package of this script runner.
-  /// - Throws: Throws an error if the script doesn't exist or fails to run.
-  func runPrebuildScript() throws {
-    let script = context.packageDirectory.appendingPathComponent("prebuild.sh")
-    try runScript(script)
+  func runPrebuildScript() -> Result<Void, ScriptRunnerError> {
+    let script = packageDirectory.appendingPathComponent("prebuild.sh")
+    return Self.runScript(script)
   }
   
   /// Runs the postbuild script in the package of this script runner.
-  /// - Throws: Throws an error if the script doesn't exist or fails to run.
-  func runPostbuildScript() throws {
-    let script = context.packageDirectory.appendingPathComponent("postbuild.sh")
-    try runScript(script)
+  func runPostbuildScript() -> Result<Void, ScriptRunnerError> {
+    let script = packageDirectory.appendingPathComponent("postbuild.sh")
+    return Self.runScript(script)
   }
   
   /// Runs the prebuild script in the package of this script runner if it exists.
-  /// - Throws: Throws an error if the script exists and fails to run.
-  func runPrebuildScriptIfPresent() throws {
-    do {
-      try runPrebuildScript()
-    } catch ScriptRunnerError.scriptDoesntExist(_) {
-      return // Ignore errors if the script doesn't exist
-    } catch {
-      throw error
-    }
+  /// - Returns: Returns a failure if the script exists and fails to run.
+  func runPrebuildScriptIfPresent() -> Result<Void, ScriptRunnerError> {
+    runPrebuildScript()
+      .flatMapError { error in
+        if case ScriptRunnerError.scriptDoesntExist(_) = error {
+          return .success()
+        } else {
+          return .failure(error)
+        }
+      }
   }
   
   /// Runs the postbuild script in the package of this script runner if it exists.
-  /// - Throws: Throws an error if the script exists and fails to run.
-  func runPostbuildScriptIfPresent() throws {
-    do {
-      try runPostbuildScript()
-    } catch ScriptRunnerError.scriptDoesntExist(_) {
-      return // Ignore errors if the script doesn't exist
-    } catch {
-      throw error
-    }
+  /// - Returns: Returns a failure if the script exists and fails to run.
+  func runPostbuildScriptIfPresent() -> Result<Void, ScriptRunnerError> {
+    runPostbuildScript()
+      .flatMapError { error in
+        if case ScriptRunnerError.scriptDoesntExist(_) = error {
+          return .success()
+        } else {
+          return .failure(error)
+        }
+      }
   }
   
   /// Runs a shell script.
   /// - Parameter url: The url to the shell script.
   /// - Throws: Throws an error if the script doesn't exist or the script returns a non-zero exit status.
-  func runScript(_ url: URL) throws {
+  static func runScript(_ url: URL) -> Result<Void, ScriptRunnerError> {
     guard FileManager.default.itemExists(at: url, withType: .file) else {
-      throw ScriptRunnerError.scriptDoesntExist(url)
+      return .failure(ScriptRunnerError.scriptDoesntExist(url))
     }
     
     let process = Process.create("/bin/sh", arguments: [url.path], directory: url.deletingLastPathComponent())
-    try process.runAndWait()
+    return process.runAndWait()
+      .mapError { error in
+        .failedToRunScript(error)
+      }
   }
 }

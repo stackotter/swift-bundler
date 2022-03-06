@@ -6,13 +6,15 @@ enum BundlerError: LocalizedError {
   case failedToCreatePkgInfo(Error)
   case failedToCreateInfoPlist(Error)
   case failedToCopyExecutable(Error)
-  case failedToCreateIcon(Error)
+  case failedToCreateIcon(IconError)
   case failedToCopyICNS(Error)
+  case failedToRunExecutable(ProcessError)
+  case failedToRunPrebuildScript(ScriptRunnerError)
+  case failedToRunPostbuildScript(ScriptRunnerError)
 }
 
 struct Bundler {
   var context: Context
-  var scriptRunner: ScriptRunner
   
   var appBundle: URL {
     context.outputDirectory.appendingPathComponent("\(context.appName).app")
@@ -37,19 +39,25 @@ struct Bundler {
     case release
   }
   
+  /// Creates a new bundler for the given context.
+  /// - Parameter context: The context of the app to bundle.
   init(_ context: Context) {
     self.context = context
-    scriptRunner = ScriptRunner(.init(
-      packageDirectory: context.packageDirectory
-    ))
   }
   
-  func prebuild() throws {
+  /// Runs the app's prebuild script.
+  /// - Returns: Returns an error if the script exists and fails to run.
+  func prebuild() -> Result<Void, BundlerError> {
     log.info("Running prebuild script")
-    try scriptRunner.runPrebuildScriptIfPresent()
+    let scriptRunner = ScriptRunner(context.packageDirectory)
+    return scriptRunner.runPrebuildScriptIfPresent()
+      .mapError { error in
+          .failedToRunPrebuildScript(error)
+      }
   }
   
-  func build() throws {
+  /// Builds the app's executable.
+  func build() -> Result<Void, BundlerError> {
     let buildConfiguration = context.buildConfiguration.rawValue
     log.info("Starting \(buildConfiguration) build")
     
@@ -59,44 +67,62 @@ struct Bundler {
     }
     
     let process = Process.create("/usr/bin/swift", arguments: arguments, directory: context.packageDirectory)
-    do {
-      try process.runAndWait()
-    } catch {
-      throw BundlerError.failedToRunSwiftBuild(error)
-    }
+    return process.runAndWait()
+      .mapError { error in
+        .failedToRunSwiftBuild(error)
+      }
   }
   
-  func bundle() throws {
-    // Create app bundle structure
-    try createAppDirectoryStructure(at: appBundle)
-    
-    // Copy executable
+  /// Bundles the built executable into a macOS app.
+  /// - Returns: If a failure occurs, it is returned.
+  func bundle() -> Result<Void, BundlerError> {
     let executableArtifact = context.productsDirectory.appendingPathComponent(context.appConfiguration.target)
-    try copyExecutable(at: executableArtifact, to: appExecutable)
-    
-    // Create `PkgInfo` and `Info.plist`
     let appContents = appBundle.appendingPathComponent("Contents")
-    try createMetadataFiles(
-      at: appContents,
-      context: .init(
-        appName: context.appName,
-        configuration: context.appConfiguration
-      ))
     
-    // Create or copy app icon if `Icon1024x1024.png` or `AppIcon.icns` is present
-    try createAppIcon(appContents.appendingPathComponent("Resources"))
+    return .success()
+      .flatMap { _ in
+        // Create app bundle structure
+        createAppDirectoryStructure(at: appBundle)
+      }
+      .flatMap { _ in
+        // Copy executable
+        copyExecutable(at: executableArtifact, to: appExecutable)
+      }
+      .flatMap { _ in
+        // Create `PkgInfo` and `Info.plist`
+        createMetadataFiles(
+          at: appContents,
+          context: .init(
+            appName: context.appName,
+            configuration: context.appConfiguration
+          ))
+      }
+      .flatMap { _ in
+        // Create or copy app icon if `Icon1024x1024.png` or `AppIcon.icns` is present
+        createAppIcon(appContents.appendingPathComponent("Resources"))
+      }
   }
   
-  func postbuild() throws {
+  /// Runs the app's postbuild script.
+  /// - Returns: Returns an error if the script exists and fails to run.
+  func postbuild() -> Result<Void, BundlerError> {
     log.info("Running postbuild script")
-    try scriptRunner.runPostbuildScriptIfPresent()
+    let scriptRunner = ScriptRunner(context.packageDirectory)
+    return scriptRunner.runPostbuildScriptIfPresent()
+      .mapError { error in
+        .failedToRunPostbuildScript(error)
+      }
   }
   
-  func run() throws {
+  /// Runs the app (``build()`` and ``bundle()`` must be called first.
+  /// - Returns: Returns a failure if the app fails to run.
+  func run() -> Result<Void, BundlerError> {
     log.info("Running '\(context.appName).app'")
     let process = Process.create(appExecutable.path)
-    try process.run()
-    process.waitUntilExit()
+    return process.runAndWait()
+      .mapError { error in
+        .failedToRunExecutable(error)
+      }
   }
   
   // MARK: Private methods
@@ -107,7 +133,7 @@ struct Bundler {
   ///     - `MacOS`
   ///
   /// - Parameter appBundleDirectory: The directory for the app (should be of the form `/path/to/AppName.app`).
-  private func createAppDirectoryStructure(at appBundleDirectory: URL) throws {
+  private func createAppDirectoryStructure(at appBundleDirectory: URL) -> Result<Void, BundlerError> {
     log.info("Creating '\(context.appName).app'")
     let fileManager = FileManager.default
     
@@ -121,8 +147,9 @@ struct Bundler {
       }
       try fileManager.createDirectory(at: appResources)
       try fileManager.createDirectory(at: appMacOS)
+      return .success()
     } catch {
-      throw BundlerError.failedToCreateAppBundleDirectoryStructure(error)
+      return .failure(.failedToCreateAppBundleDirectoryStructure(error))
     }
   }
   
@@ -130,12 +157,13 @@ struct Bundler {
   /// - Parameters:
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
-  private func copyExecutable(at source: URL, to destination: URL) throws {
+  private func copyExecutable(at source: URL, to destination: URL) -> Result<Void, BundlerError> {
     log.info("Copying executable")
     do {
       try FileManager.default.copyItem(at: source, to: destination)
+      return .success()
     } catch {
-      throw BundlerError.failedToCopyExecutable(error)
+      return .failure(.failedToCopyExecutable(error))
     }
   }
   
@@ -143,7 +171,7 @@ struct Bundler {
   /// - Parameters:
   ///   - appContentsDirectory: The app's `Contents` directory.
   ///   - context: The context to create the `Info.plist` within.
-  private func createMetadataFiles(at appContentsDirectory: URL, context: PlistCreator.Context) throws {
+  private func createMetadataFiles(at appContentsDirectory: URL, context: PlistCreator.Context) -> Result<Void, BundlerError> {
     log.info("Creating PkgInfo file")
     do {
       let pkgInfoFile = appContentsDirectory.appendingPathComponent("PkgInfo")
@@ -151,17 +179,16 @@ struct Bundler {
       let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
       try pkgInfoData.write(to: pkgInfoFile)
     } catch {
-      throw BundlerError.failedToCreatePkgInfo(error)
+      return .failure(.failedToCreatePkgInfo(error))
     }
     
     log.info("Creating Info.plist")
-    do {
-      let infoPlistFile = appContentsDirectory.appendingPathComponent("Info.plist")
-      let plistCreator = PlistCreator(context: context)
-      try plistCreator.createAppInfoPlist(at: infoPlistFile)
-    } catch {
-      throw BundlerError.failedToCreateInfoPlist(error)
-    }
+    let infoPlistFile = appContentsDirectory.appendingPathComponent("Info.plist")
+    let plistCreator = PlistCreator(context: context)
+    return plistCreator.createAppInfoPlist(at: infoPlistFile)
+      .mapError { error in
+        .failedToCreateInfoPlist(error)
+      }
   }
   
   /// Copies `AppIcon.icns` into the app bundle if present. Alternatively, it creates the app's `AppIcon.icns` from a png if an `Icon1024x1024.png` is present.
@@ -169,24 +196,29 @@ struct Bundler {
   /// `AppIcon.icns` takes precendence over `Icon1024x1024.png`.
   /// - Parameter appResources: The app's `Resources` directory.
   /// - Throws: If `Icon1024x1024.png` exists and there is an error while converting it to `icns`, an error is thrown.
-  private func createAppIcon(_ appResources: URL) throws {
+  private func createAppIcon(_ appResources: URL) -> Result<Void, BundlerError> {
+    // Copy `AppIcon.icns` if present
     let icnsFile = context.packageDirectory.appendingPathComponent("AppIcon.icns")
     if FileManager.default.itemExists(at: icnsFile, withType: .file) {
       log.info("Copying `AppIcon.icns")
       do {
         try FileManager.default.copyItem(at: icnsFile, to: appResources.appendingPathComponent("AppIcon.icns"))
+        return .success()
       } catch {
-        throw BundlerError.failedToCopyICNS(error)
+        return .failure(.failedToCopyICNS(error))
       }
     }
+    
+    // Create `AppIcon.icns` from `Icon1024x1024.png` if present
     let iconFile = context.packageDirectory.appendingPathComponent("Icon1024x1024.png")
     if FileManager.default.itemExists(at: iconFile, withType: .file) {
       log.info("Create `AppIcon.icns`")
-      do {
-        try IconSetCreator.createIcns(from: iconFile, outputDirectory: appResources)
-      } catch {
-        throw BundlerError.failedToCreateIcon(error)
-      }
+      return IconSetCreator.createIcns(from: iconFile, outputDirectory: appResources)
+        .mapError { error in
+          .failedToCreateIcon(error)
+        }
     }
+    
+    return .success()
   }
 }

@@ -19,18 +19,21 @@ struct PlistCreator {
   
   /// Creates an app's `Info.plist` file.
   /// - Parameter file: The URL of the file to create.
-  func createAppInfoPlist(at file: URL) throws {
-    let contents = try createAppInfoPlistContents()
-    do {
-      try contents.write(to: file)
-    } catch {
-      throw PlistError.failedToWriteAppInfoPlist(file, error)
-    }
+  func createAppInfoPlist(at file: URL) -> Result<Void, PlistError> {
+    createAppInfoPlistContents()
+      .flatMap { contents in
+        do {
+          try contents.write(to: file)
+          return .success()
+        } catch {
+          return .failure(.failedToWriteAppInfoPlist(file, error))
+        }
+      }
   }
   
   /// Creates the contents of an app's `Info.plist` file.
   /// - Returns: The generated contents for the `Info.plist` file.
-  func createAppInfoPlistContents() throws -> Data {
+  func createAppInfoPlistContents() -> Result<Data, PlistError> {
     var entries: [String: Any] = [
       "CFBundleExecutable": context.appName,
       "CFBundleIconFile": "AppIcon",
@@ -49,13 +52,10 @@ struct PlistCreator {
       entries[key] = value
     }
     
-    return try Self.serialize(entries)
+    return Self.serialize(entries)
   }
   
-  func createBundleInfoPlist(
-    bundleIdentifier: String,
-    bundleName: String
-  ) throws -> Data {
+  func createBundleInfoPlist(bundleIdentifier: String, bundleName: String) -> Result<Data, PlistError> {
     let entries: [String: Any] = [
       "CFBundleIdentifier": bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
@@ -65,17 +65,18 @@ struct PlistCreator {
       "LSMinimumSystemVersion": context.configuration.minMacOSVersion,
     ]
     
-    return try Self.serialize(entries)
+    return Self.serialize(entries)
   }
   
   /// Serializes a plist dictionary into an `xml` format.
   /// - Parameter entries: The dictionary of entries to serialize.
   /// - Returns: The serialized plist file.
-  static func serialize(_ entries: [String: Any]) throws -> Data {
+  static func serialize(_ entries: [String: Any]) -> Result<Data, PlistError> {
     do {
-      return try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
+      let data = try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
+      return .success(data)
     } catch {
-      throw PlistError.serializationFailed(error)
+      return .failure(.serializationFailed(error))
     }
   }
 }
