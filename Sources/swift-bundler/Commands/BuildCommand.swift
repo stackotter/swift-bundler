@@ -35,10 +35,10 @@ struct BuildCommand: ParsableCommand {
   var universal = false
 
   func run() throws {
-    let configuration = try Configuration.load(fromDirectory: packageDirectory, evaluatorContext: .init(
-      packageDirectory: packageDirectory
-    ))
-    let appConfiguration = try configuration.getAppConfiguration(appName)
+    let configuration = try Configuration.load(
+      fromDirectory: packageDirectory,
+      evaluatorContext: .init(packageDirectory: packageDirectory)).unwrap()
+    let appConfiguration = try configuration.getAppConfiguration(appName).unwrap()
     
     let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
     let productsDirectory = packageDirectory.appendingPathComponent(".build/\(buildConfiguration)")
@@ -52,9 +52,12 @@ struct BuildCommand: ParsableCommand {
       appName: appName ?? configuration.apps.first!.key,
       universal: universal))
     
-    try bundler.prebuild()
-    try bundler.build()
-    try bundler.postbuild()
-    try bundler.bundle()
+    let buildAndBundle = flatten(
+      bundler.prebuild,
+      bundler.build,
+      bundler.postbuild,
+      bundler.bundle)
+    
+    try buildAndBundle().unwrap()
   }
 }

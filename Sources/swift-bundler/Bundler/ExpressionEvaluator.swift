@@ -48,25 +48,34 @@ class ExpressionEvaluator {
   /// - Parameters:
   ///   - value: The expression to evaluate.
   /// - Returns: The string after substituting all variables with their respective values.
-  func evaluateExpression(_ expression: String) throws -> String {
+  func evaluateExpression(_ expression: String) -> Result<String, ExpressionEvaluatorError> {
     var input = expression[...]
     var output = ""
-    do {
-      while true {
-        let (string, variable) = try Self.expressionParser.parse(&input)
-        output += string
-        
-        guard let variable = variable else {
-          break
-        }
-        
-        let variableValue = try evaluateExpressionVariable(String(variable))
-        output += variableValue
+    
+    while true {
+      let variable: Substring?
+      do {
+        let result = try Self.expressionParser.parse(&input)
+        output += result.0
+        variable = result.1
+      } catch {
+        return .failure(.invalidValueExpression(expression, error))
       }
-    } catch {
-      throw ExpressionEvaluatorError.invalidValueExpression(expression, error)
+      
+      guard let variable = variable else {
+        break
+      }
+      
+      let result = evaluateExpressionVariable(String(variable))
+      switch result {
+        case let .success(variableValue):
+          output += variableValue
+        case .failure(_):
+          return result
+      }
     }
-    return output
+
+    return .success(output)
   }
   
   /// Evaluates the value of a given variable.
@@ -78,25 +87,27 @@ class ExpressionEvaluator {
   ///   - variable: The name of the variable to evaluate the value of.
   /// - Returns: The value of the variable.
   /// - Throws: If the variable doesn't exist or the evaluator fails to compute the value, an error is thrown.
-  func evaluateExpressionVariable(_ variable: String) throws -> String {
+  func evaluateExpressionVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
     if let value = cache[variable] {
-      return value
+      return .success(value)
     }
     
     let output: String
     switch variable {
       case "COMMIT_HASH":
-        do {
-          let process = Process.create("/usr/bin/git", arguments: ["rev-parse", "HEAD"], directory: context.packageDirectory)
-          output = try process.getOutput().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        } catch {
-          throw ExpressionEvaluatorError.failedToEvaluateExpressionVariable("Failed to evaluate commit hash. Check that the package directory is a git repository and git is installed at `/usr/bin/git`.")
+        let process = Process.create("/usr/bin/git", arguments: ["rev-parse", "HEAD"], directory: context.packageDirectory)
+        let result = process.getOutput()
+        
+        guard case let .success(string) = result else {
+          return .failure(.failedToEvaluateExpressionVariable("Failed to evaluate commit hash. Check that the package directory is a git repository and git is installed at `/usr/bin/git`."))
         }
+        
+        output = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
       default:
-        throw ExpressionEvaluatorError.unknownVariable(variable)
+        return .failure(.unknownVariable(variable))
     }
     
     cache[variable] = output
-    return output
+    return .success(output)
   }
 }
