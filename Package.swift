@@ -13,7 +13,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
     .package(url: "https://github.com/LebJe/TOMLKit.git", from: "0.5.0"),
     .package(url: "https://github.com/pointfreeco/swift-parsing.git", from: "0.7.1"),
-    .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0")
+    .package(url: "https://github.com/JohnSundell/Files", from: "4.2.0")
   ],
   targets: [
     .target(
@@ -22,7 +22,7 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
-        .product(name: "Overture", package: "swift-overture"),
+        "Files",
         "TOMLKit"
       ])
   ]
