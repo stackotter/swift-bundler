@@ -172,7 +172,7 @@ struct Bundler {
   ///   - appContentsDirectory: The app's `Contents` directory.
   ///   - context: The context to create the `Info.plist` within.
   private func createMetadataFiles(at appContentsDirectory: URL, context: PlistCreator.Context) -> Result<Void, BundlerError> {
-    log.info("Creating PkgInfo file")
+    log.info("Creating 'PkgInfo'")
     do {
       let pkgInfoFile = appContentsDirectory.appendingPathComponent("PkgInfo")
       var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
@@ -182,7 +182,7 @@ struct Bundler {
       return .failure(.failedToCreatePkgInfo(error))
     }
     
-    log.info("Creating Info.plist")
+    log.info("Creating 'Info.plist'")
     let infoPlistFile = appContentsDirectory.appendingPathComponent("Info.plist")
     let plistCreator = PlistCreator(context: context)
     return plistCreator.createAppInfoPlist(at: infoPlistFile)
@@ -200,7 +200,7 @@ struct Bundler {
     // Copy `AppIcon.icns` if present
     let icnsFile = context.packageDirectory.appendingPathComponent("AppIcon.icns")
     if FileManager.default.itemExists(at: icnsFile, withType: .file) {
-      log.info("Copying `AppIcon.icns")
+      log.info("Copying 'AppIcon.icns'")
       do {
         try FileManager.default.copyItem(at: icnsFile, to: appResources.appendingPathComponent("AppIcon.icns"))
         return .success()
@@ -212,7 +212,7 @@ struct Bundler {
     // Create `AppIcon.icns` from `Icon1024x1024.png` if present
     let iconFile = context.packageDirectory.appendingPathComponent("Icon1024x1024.png")
     if FileManager.default.itemExists(at: iconFile, withType: .file) {
-      log.info("Create `AppIcon.icns`")
+      log.info("Creating 'AppIcon.icns' from 'Icon1024x1024.png'")
       return IconSetCreator.createIcns(from: iconFile, outputDirectory: appResources)
         .mapError { error in
           .failedToCreateIcon(error)
