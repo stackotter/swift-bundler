@@ -18,6 +18,7 @@ extension Result where Success == Void {
   }
 }
 
+/// Returns a closure that runs the given operations one by one and stops on failure.
 func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> () -> Result<Void, Failure> {
   return {
     for operation in operations {
@@ -29,3 +30,16 @@ func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> 
     return .success()
   }
 }
+
+/// Returns a closure that runs the given parameter expressions (using autoclosure) one by one and stops on failure.
+//func flatten<Failure: Error>(_ operations: @autoclosure (() -> Result<Void, Failure>)...) -> () -> Result<Void, Failure> {
+//  return {
+//    for operation in operations {
+//      let result = operation()
+//      if case .failure(_) = result {
+//        return result
+//      }
+//    }
+//    return .success()
+//  }
+//}

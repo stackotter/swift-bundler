@@ -9,18 +9,29 @@ enum PlistError: LocalizedError {
 
 /// A utility for creating the contents of plist files.
 struct PlistCreator {
-  /// The contextual information used to generate plist files.
-  var context: Context
-  
-  struct Context {
-    var appName: String
-    var configuration: AppConfiguration
+  /// Creates an app's `Info.plist` file.
+  /// - Parameters:
+  ///   - file: The URL of the file to create.
+  ///   - appName: The name of the app.
+  ///   - appConfiguration: The app's configuration.
+  func createAppInfoPlist(at file: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
+    createAppInfoPlistContents(appName: appName, appConfiguration: appConfiguration)
+      .flatMap { contents in
+        do {
+          try contents.write(to: file)
+          return .success()
+        } catch {
+          return .failure(.failedToWriteAppInfoPlist(file, error))
+        }
+      }
   }
   
-  /// Creates an app's `Info.plist` file.
-  /// - Parameter file: The URL of the file to create.
-  func createAppInfoPlist(at file: URL) -> Result<Void, PlistError> {
-    createAppInfoPlistContents()
+  /// Creates the `Info.plist` file for a resource bundle.
+  /// - Parameters:
+  ///   - file: The URL of the file to create.
+  ///   - bundleName: The bundle's name.
+  func createResourceBundleInfoPlist(at file: URL, bundleName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
+    createResourceBundleInfoPlistContents(bundleName: bundleName, appConfiguration: appConfiguration)
       .flatMap { contents in
         do {
           try contents.write(to: file)
@@ -32,37 +43,45 @@ struct PlistCreator {
   }
   
   /// Creates the contents of an app's `Info.plist` file.
+  /// - Parameters:
+  ///   - appName: The app's name.
+  ///   - appConfiguration: The app's configuration.
   /// - Returns: The generated contents for the `Info.plist` file.
-  func createAppInfoPlistContents() -> Result<Data, PlistError> {
+  func createAppInfoPlistContents(appName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
     var entries: [String: Any] = [
-      "CFBundleExecutable": context.appName,
+      "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
       "CFBundleIconName": "AppIcon",
-      "CFBundleIdentifier": context.configuration.bundleIdentifier,
+      "CFBundleIdentifier": appConfiguration.bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
-      "CFBundleName": context.appName,
+      "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
-      "CFBundleShortVersionString": context.configuration.version,
+      "CFBundleShortVersionString": appConfiguration.version,
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSApplicationCategoryType": context.configuration.category,
-      "LSMinimumSystemVersion": context.configuration.minMacOSVersion,
+      "LSApplicationCategoryType": appConfiguration.category,
+      "LSMinimumSystemVersion": appConfiguration.minMacOSVersion,
     ]
     
-    for (key, value) in context.configuration.extraPlistEntries {
+    for (key, value) in appConfiguration.extraPlistEntries {
       entries[key] = value
     }
     
     return Self.serialize(entries)
   }
   
-  func createBundleInfoPlist(bundleIdentifier: String, bundleName: String) -> Result<Data, PlistError> {
+  /// Creates the contents of a resource bundle's `Info.plist` file.
+  /// - Parameters:
+  ///   - bundleName: The bundle's name.
+  /// - Returns: The generated contents for the `Info.plist` file.
+  func createResourceBundleInfoPlistContents(bundleName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
+    let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
     let entries: [String: Any] = [
       "CFBundleIdentifier": bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": bundleName,
       "CFBundlePackageType": "BNDL",
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSMinimumSystemVersion": context.configuration.minMacOSVersion,
+      "LSMinimumSystemVersion": appConfiguration.minMacOSVersion,
     ]
     
     return Self.serialize(entries)
