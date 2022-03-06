@@ -2,15 +2,6 @@
   "object": {
     "pins": [
       {
-        "package": "Files",
-        "repositoryURL": "https://github.com/JohnSundell/Files",
-        "state": {
-          "branch": null,
-          "revision": "d273b5b7025d386feef79ef6bad7de762e106eaf",
-          "version": "4.2.0"
-        }
-      },
-      {
         "package": "swift-argument-parser",
         "repositoryURL": "https://github.com/apple/swift-argument-parser",
         "state": {
@@ -38,12 +29,12 @@
         }
       },
       {
-        "package": "TOMLKit",
-        "repositoryURL": "https://github.com/LebJe/TOMLKit.git",
+        "package": "Yams",
+        "repositoryURL": "https://github.com/jpsim/Yams.git",
         "state": {
           "branch": null,
-          "revision": "be015e1a4f84b5aeae3ce4c4eab5ff6ca7ce7ff9",
-          "version": "0.5.0"
+          "revision": "00c403debcd0a007b854bb35e598466207a2d58c",
+          "version": "5.0.0"
         }
       }
     ]
