@@ -1,5 +1,5 @@
 import Foundation
-import Yams
+import TOMLKit
 
 enum ConfigurationError: LocalizedError {
   case invalidAppName(String)
@@ -57,7 +57,7 @@ struct Configuration {
   ///   - evaluatorContext: Used to evaluate configuration values that support expressions.
   /// - Returns: The configuration.
   static func load(fromDirectory packageDirectory: URL, evaluatorContext: ExpressionEvaluator.Context) -> Result<Configuration, ConfigurationError> {
-    let configurationFile = packageDirectory.appendingPathComponent("Bundler.yaml")
+    let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
     
     let contents: String
     do {
@@ -68,7 +68,7 @@ struct Configuration {
     
     let dto: ConfigurationDTO
     do {
-      dto = try YAMLDecoder().decode(
+      dto = try TOMLDecoder().decode(
         ConfigurationDTO.self,
         from: contents)
     } catch {

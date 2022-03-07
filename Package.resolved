@@ -29,12 +29,12 @@
         }
       },
       {
-        "package": "Yams",
-        "repositoryURL": "https://github.com/jpsim/Yams.git",
+        "package": "TOMLKit",
+        "repositoryURL": "https://github.com/LebJe/TOMLKit",
         "state": {
           "branch": null,
-          "revision": "00c403debcd0a007b854bb35e598466207a2d58c",
-          "version": "5.0.0"
+          "revision": "be015e1a4f84b5aeae3ce4c4eab5ff6ca7ce7ff9",
+          "version": "0.5.0"
         }
       }
     ]
