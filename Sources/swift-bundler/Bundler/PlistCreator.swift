@@ -8,13 +8,13 @@ enum PlistError: LocalizedError {
 }
 
 /// A utility for creating the contents of plist files.
-struct PlistCreator {
+enum PlistCreator {
   /// Creates an app's `Info.plist` file.
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - appName: The name of the app.
   ///   - appConfiguration: The app's configuration.
-  func createAppInfoPlist(at file: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
+  static func createAppInfoPlist(at file: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
     createAppInfoPlistContents(appName: appName, appConfiguration: appConfiguration)
       .flatMap { contents in
         do {
@@ -30,8 +30,8 @@ struct PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - bundleName: The bundle's name.
-  func createResourceBundleInfoPlist(at file: URL, bundleName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
-    createResourceBundleInfoPlistContents(bundleName: bundleName, appConfiguration: appConfiguration)
+  static func createResourceBundleInfoPlist(at file: URL, bundleName: String, minMacOSVersion: String) -> Result<Void, PlistError> {
+    createResourceBundleInfoPlistContents(bundleName: bundleName, minMacOSVersion: minMacOSVersion)
       .flatMap { contents in
         do {
           try contents.write(to: file)
@@ -47,7 +47,7 @@ struct PlistCreator {
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
   /// - Returns: The generated contents for the `Info.plist` file.
-  func createAppInfoPlistContents(appName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
+  static func createAppInfoPlistContents(appName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
     var entries: [String: Any] = [
       "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
@@ -73,7 +73,7 @@ struct PlistCreator {
   /// - Parameters:
   ///   - bundleName: The bundle's name.
   /// - Returns: The generated contents for the `Info.plist` file.
-  func createResourceBundleInfoPlistContents(bundleName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
+  static func createResourceBundleInfoPlistContents(bundleName: String, minMacOSVersion: String) -> Result<Data, PlistError> {
     let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
     let entries: [String: Any] = [
       "CFBundleIdentifier": bundleIdentifier,
@@ -81,7 +81,7 @@ struct PlistCreator {
       "CFBundleName": bundleName,
       "CFBundlePackageType": "BNDL",
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSMinimumSystemVersion": appConfiguration.minMacOSVersion,
+      "LSMinimumSystemVersion": minMacOSVersion,
     ]
     
     return Self.serialize(entries)
