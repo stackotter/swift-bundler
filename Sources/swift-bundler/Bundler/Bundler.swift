@@ -12,26 +12,15 @@ enum BundlerError: LocalizedError {
   case failedToRunPrebuildScript(ScriptRunnerError)
   case failedToRunPostbuildScript(ScriptRunnerError)
   case failedToCopyResourceBundles(ResourceBundlerError)
+  case failedToEnumerateFrameworks(Error)
+  case failedToEnumerateDylibs(Error)
+  case failedToRenameFrameworkDylib(Error)
+  case failedToCopyDynamicLibrary(Error)
+  case failedToUpdateExecutableRPath(library: String, ProcessError)
 }
 
 struct Bundler {
   var context: Context
-  
-  var appBundle: URL {
-    context.outputDirectory.appendingPathComponent("\(context.appName).app")
-  }
-  
-  var appExecutable: URL {
-    appBundle.appendingPathComponent("Contents/MacOS/\(context.appName)")
-  }
-  
-  var appResources: URL {
-    appBundle.appendingPathComponent("Contents/Resources")
-  }
-  
-  var isXcodeBuild: Bool {
-    false
-  }
   
   struct Context {
     var appConfiguration: AppConfiguration
@@ -41,6 +30,10 @@ struct Bundler {
     var outputDirectory: URL
     var appName: String
     var universal: Bool
+    
+    var appBundle: URL {
+      outputDirectory.appendingPathComponent("\(appName).app")
+    }
   }
   
   enum BuildConfiguration: String {
@@ -73,12 +66,16 @@ struct Bundler {
     var arguments = [
       "build",
       "-c", buildConfiguration,
-      "--target", context.appConfiguration.target]
+      "--product", context.appConfiguration.product]
     if context.universal {
       arguments += ["--arch", "arm64", "--arch", "x86_64"]
     }
     
-    let process = Process.create("/usr/bin/swift", arguments: arguments, directory: context.packageDirectory)
+    let process = Process.create(
+      "/usr/bin/swift",
+      arguments: arguments,
+      directory: context.packageDirectory)
+    
     return process.runAndWait()
       .mapError { error in
         .failedToRunSwiftBuild(error)
@@ -88,13 +85,15 @@ struct Bundler {
   /// Bundles the built executable into a macOS app.
   /// - Returns: If a failure occurs, it is returned.
   func bundle() -> Result<Void, BundlerError> {
-    let executableArtifact = context.productsDirectory.appendingPathComponent(context.appConfiguration.target)
-    let appContents = appBundle.appendingPathComponent("Contents")
+    let executableArtifact = context.productsDirectory.appendingPathComponent(context.appConfiguration.product)
+    
+    let appContents = context.appBundle.appendingPathComponent("Contents")
+    let appExecutable = appContents.appendingPathComponent("MacOS/\(context.appName)")
     let appResources = appContents.appendingPathComponent("Resources")
-    let appDynamicLibrariesDirectory = appContents.appendingPathComponent("")
+    let appDynamicLibrariesDirectory = appContents.appendingPathComponent("Libraries")
     
     let bundleApp = flatten(
-      { createAppDirectoryStructure(at: appBundle) },
+      { createAppDirectoryStructure(at: context.appBundle) },
       { copyExecutable(at: executableArtifact, to: appExecutable) },
       { createMetadataFiles(at: appContents) },
       { createAppIcon(appResources) },
@@ -108,7 +107,13 @@ struct Bundler {
           .failedToCopyResourceBundles(error)
         }
       },
-      { copyDynamicLibraries(from: context.productsDirectory, to: ) })
+      {
+        copyDynamicLibraries(
+          from: context.productsDirectory,
+          to: appDynamicLibrariesDirectory,
+          appExecutable: appExecutable,
+          isXcodeBuild: false)
+      })
     
     return bundleApp()
   }
@@ -124,10 +129,11 @@ struct Bundler {
       }
   }
   
-  /// Runs the app (``build()`` and ``bundle()`` must be called first.
+  /// Runs the app (without building or bundling first).
   /// - Returns: Returns a failure if the app fails to run.
   func run() -> Result<Void, BundlerError> {
     log.info("Running '\(context.appName).app'")
+    let appExecutable = context.appBundle.appendingPathComponent("Contents/MacOS/\(context.appName)")
     let process = Process.create(appExecutable.path)
     return process.runAndWait()
       .mapError { error in
@@ -137,11 +143,11 @@ struct Bundler {
   
   // MARK: Private methods
   
-  /// Creates the following directory structure for the app:
+  /// Creates the following directory structure for an app:
+  ///
   /// - `AppName.app`
   ///   - `Contents`
   ///     - `MacOS`
-  ///
   /// - Parameter appBundleDirectory: The directory for the app (should be of the form `/path/to/AppName.app`).
   private func createAppDirectoryStructure(at appBundleDirectory: URL) -> Result<Void, BundlerError> {
     log.info("Creating '\(context.appName).app'")
@@ -150,13 +156,15 @@ struct Bundler {
     let appContents = appBundleDirectory.appendingPathComponent("Contents")
     let appResources = appContents.appendingPathComponent("Resources")
     let appMacOS = appContents.appendingPathComponent("MacOS")
+    let appDynamicLibrariesDirectory = appContents.appendingPathComponent("Libraries")
     
     do {
-      if fileManager.itemExists(at: appBundle, withType: .directory) {
-        try fileManager.removeItem(at: appBundle)
+      if fileManager.itemExists(at: appBundleDirectory, withType: .directory) {
+        try fileManager.removeItem(at: appBundleDirectory)
       }
       try fileManager.createDirectory(at: appResources)
       try fileManager.createDirectory(at: appMacOS)
+      try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
       return .failure(.failedToCreateAppBundleDirectoryStructure(error))
@@ -226,6 +234,91 @@ struct Bundler {
         .mapError { error in
           .failedToCreateIcon(error)
         }
+    }
+    
+    return .success()
+  }
+  
+  private func copyDynamicLibraries(
+    from productsDirectory: URL,
+    to outputDirectory: URL,
+    appExecutable: URL,
+    isXcodeBuild: Bool
+  ) -> Result<Void, BundlerError> {
+    log.info("Copying dynamic libraries")
+    
+    let libraries: [(name: String, file: URL)]
+    if isXcodeBuild {
+      let packageFrameworksDirectory = productsDirectory.appendingPathComponent("PackageFrameworks")
+      let contents: [URL]
+      do {
+        contents = try FileManager.default.contentsOfDirectory(
+          at: packageFrameworksDirectory,
+          includingPropertiesForKeys: nil,
+          options: [])
+      } catch {
+        return .failure(.failedToEnumerateFrameworks(error))
+      }
+      
+      libraries = contents
+        .filter { $0.pathExtension == "framework" }
+        .map { framework in
+          let name = framework.deletingPathExtension().lastPathComponent
+          return (name: name, file: framework.appendingPathComponent("Versions/A/\(name)"))
+        }
+    } else {
+      let contents: [URL]
+      do {
+        contents = try FileManager.default.contentsOfDirectory(
+          at: productsDirectory,
+          includingPropertiesForKeys: nil,
+          options: [])
+      } catch {
+        return .failure(.failedToEnumerateDylibs(error))
+      }
+      
+      libraries = contents
+        .filter { $0.pathExtension == "dylib" }
+        .map { library in
+          let name = library.deletingPathExtension().lastPathComponent.dropFirst(3)
+          return (name: String(name), file: library)
+        }
+    }
+    
+    for (name, library) in libraries {
+      log.info("Copying dynamic library '\(name)`")
+      
+      // Copy and rename the library
+      do {
+        try FileManager.default.copyItem(
+          at: library,
+          to: outputDirectory.appendingPathComponent("lib\(name).dylib"))
+      } catch {
+        return .failure(.failedToCopyDynamicLibrary(error))
+      }
+      
+      // Update the executable's rpath to reflect the change of the library's location relative to the executable
+      var originalRelativePath = library.path
+        .replacingOccurrences(
+          of: productsDirectory.path,
+          with: "")
+        .dropFirst()
+      
+      let xcodePrefix = "PackageFrameworks/"
+      if isXcodeBuild && originalRelativePath.starts(with: xcodePrefix) {
+        originalRelativePath = originalRelativePath.dropFirst(xcodePrefix.count)
+      }
+      
+      let process = Process.create(
+        "/usr/bin/install_name_tool",
+        arguments: [
+          "-change", "@rpath/\(originalRelativePath)", "@rpath/../Libraries/lib\(name).dylib",
+          appExecutable.path
+        ])
+      
+      if case let .failure(error) = process.runAndWait() {
+        return .failure(.failedToUpdateExecutableRPath(library: name, error))
+      }
     }
     
     return .success()

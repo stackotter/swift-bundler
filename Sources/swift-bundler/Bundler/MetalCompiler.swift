@@ -7,7 +7,6 @@ enum MetalCompilerError: LocalizedError {
   case failedToCreateMetalLibrary(ProcessError)
   case failedToDeleteShaderSource(String, Error)
   case failedToEnumerateMetalShaders
-  case failedToDeleteAirFile(String, Error)
 }
 
 /// A utility for compiling metal shader source files.
@@ -81,13 +80,6 @@ enum MetalCompiler {
       let result = process.runAndWait()
       if case let .failure(error) = result {
         return .failure(.failedToCompileMetalShader(shaderSource.lastPathComponent, error))
-      }
-      
-      // TODO: Figure out why a copy of the air files is output to the `destination` directory and then remove this code when it's not needed anymore
-      do {
-        try FileManager.default.removeItem(at: destination.appendingPathComponent(outputFileName))
-      } catch {
-        return .failure(.failedToDeleteAirFile(outputFileName, error))
       }
     }
     
