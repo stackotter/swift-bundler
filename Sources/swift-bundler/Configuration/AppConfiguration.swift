@@ -6,7 +6,7 @@ enum AppConfigurationError: LocalizedError {
 }
 
 struct AppConfiguration {
-  var target: String
+  var product: String
   var version: String
   var category: String
   var bundleIdentifier: String
@@ -14,7 +14,7 @@ struct AppConfiguration {
   var extraPlistEntries: [String: String]
   
   static var `default` = AppConfiguration(
-    target: "ExampleApp",
+    product: "ExampleApp",
     version: "0.1.0",
     category: "public.app-category.example",
     bundleIdentifier: "com.example.example",

@@ -1,7 +1,7 @@
 import Foundation
 
 struct AppConfigurationDTO: Codable {
-  var target: String
+  var product: String
   var version: String?
   var category: String?
   var bundleIdentifier: String?
@@ -9,7 +9,7 @@ struct AppConfigurationDTO: Codable {
   var extraPlistEntries: [String: String]?
   
   init(_ configuration: AppConfiguration) {
-    target = configuration.target
+    product = configuration.product
     version = configuration.version
     category = configuration.category
     bundleIdentifier = configuration.bundleIdentifier
@@ -20,7 +20,7 @@ struct AppConfigurationDTO: Codable {
 
 extension AppConfiguration {
   init(_ dto: AppConfigurationDTO) {
-    target = dto.target
+    product = dto.product
     version = dto.version ?? Self.default.version
     category = dto.category ?? Self.default.category
     bundleIdentifier = dto.bundleIdentifier ?? Self.default.bundleIdentifier
