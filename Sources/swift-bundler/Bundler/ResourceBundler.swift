@@ -67,7 +67,7 @@ enum ResourceBundler {
   ///   - bundle: The bundle to copy.
   ///   - destination: The directory to copy the bundle to.
   static func copyResourceBundle(_ bundle: URL, to destination: URL) -> Result<Void, ResourceBundlerError> {
-    log.info("Copying resource bundle `\(bundle.lastPathComponent)`")
+    log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
     
     let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
     
@@ -93,7 +93,7 @@ enum ResourceBundler {
     to destination: URL,
     minMacOSVersion: String
   ) -> Result<Void, ResourceBundlerError> {
-    log.info("Fixing and copying resource bundle `\(bundle.lastPathComponent)`")
+    log.info("Fixing and copying resource bundle '\(bundle.lastPathComponent)'")
     
     let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
     let destinationBundleResources = destinationBundle
