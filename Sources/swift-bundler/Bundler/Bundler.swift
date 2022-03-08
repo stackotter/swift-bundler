@@ -17,6 +17,9 @@ enum BundlerError: LocalizedError {
   case failedToRenameFrameworkDylib(Error)
   case failedToCopyDynamicLibrary(Error)
   case failedToUpdateExecutableRPath(library: String, ProcessError)
+  case failedToGetTargetTriple(ProcessError)
+  case invalidTargetInfoJSONFormat
+  case failedToDeserializeTargetInfo(Error)
 }
 
 struct Bundler {
@@ -142,6 +145,54 @@ struct Bundler {
   }
   
   // MARK: Private methods
+  
+  /// Gets the default products directory for the specified package and configuration.
+  /// - Parameters:
+  ///   - packageDirectory: The package's root directory.
+  ///   - buildConfiguration: The current build configuration.
+  static func getDefaultProductsDirectory(in packageDirectory: URL, buildConfiguration: BuildConfiguration) -> Result<URL, BundlerError> {
+    return getSwiftTargetTriple()
+      .map { targetTriple in
+        packageDirectory
+          .appendingPathComponent(".build")
+          .appendingPathComponent(targetTriple)
+          .appendingPathComponent(buildConfiguration.rawValue)
+      }
+  }
+  
+  /// Gets the device's target info.
+  /// - Returns: The device's target info.
+  private static func getSwiftTargetTriple() -> Result<String, BundlerError> {
+    // TODO: move to a SwiftCompiler utility
+    let process = Process.create(
+      "/usr/bin/swift",
+      arguments: ["-print-target-info"])
+    
+    return process.getOutputData()
+      .mapError { error in
+        .failedToGetTargetTriple(error)
+      }
+      .flatMap { output in
+        let object: Any
+        do {
+          object = try JSONSerialization.jsonObject(
+            with: output,
+            options: [])
+        } catch {
+          return .failure(.failedToDeserializeTargetInfo(error))
+        }
+        
+        guard
+          let dictionary = object as? [String: Any],
+          let targetDictionary = dictionary["target"] as? [String: Any],
+          let unversionedTriple = targetDictionary["unversionedTriple"] as? String
+        else {
+          return .failure(.invalidTargetInfoJSONFormat)
+        }
+        
+        return .success(unversionedTriple)
+      }
+  }
   
   /// Creates the following directory structure for an app:
   ///
@@ -286,7 +337,7 @@ struct Bundler {
     }
     
     for (name, library) in libraries {
-      log.info("Copying dynamic library '\(name)`")
+      log.info("Copying dynamic library '\(name)'")
       
       // Copy and rename the library
       do {

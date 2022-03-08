@@ -40,7 +40,8 @@ struct BuildCommand: ParsableCommand {
     let appConfiguration = try configuration.getAppConfiguration(appName).unwrap()
     
     let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
-    let productsDirectory = packageDirectory.appendingPathComponent(".build/\(buildConfiguration)").resolvingSymlinksInPath()
+    // TODO: Bundler should compute products directory
+    let productsDirectory = try Bundler.getDefaultProductsDirectory(in: packageDirectory, buildConfiguration: buildConfiguration).unwrap()
     
     let bundler = Bundler(.init(
       appConfiguration: appConfiguration,

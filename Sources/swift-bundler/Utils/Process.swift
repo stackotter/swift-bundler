@@ -14,16 +14,24 @@ extension Process {
     standardError = pipe
   }
   
-  /// Gets the process's stdout and stderr as a string.
+  /// Gets the process's stdout and stderr as `Data`.
   /// - Returns: The process's stdout and stderr.
-  func getOutput() -> Result<String, ProcessError> {
+  func getOutputData() -> Result<Data, ProcessError> {
     let pipe = Pipe()
     setOutputPipe(pipe)
     
     return runAndWait()
-      .flatMap {
+      .map { _ in
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        
+        return data
+      }
+  }
+  
+  /// Gets the process's stdout and stderr as a string.
+  /// - Returns: The process's stdout and stderr.
+  func getOutput() -> Result<String, ProcessError> {
+    return getOutputData()
+      .flatMap { data in
         guard let output = String(data: data, encoding: .utf8) else {
           return .failure(.invalidUTF8Output(output: data))
         }
