@@ -18,9 +18,9 @@ struct RunCommand: ParsableCommand {
     name: [.customShort("c"), .customLong("config")],
     help: "The build configuration to use (debug|release)",
     transform: {
-      Bundler.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
+      SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
     })
-  var buildConfiguration = Bundler.BuildConfiguration.debug
+  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
   
   @Option(
     name: .shortAndLong,
@@ -40,8 +40,10 @@ struct RunCommand: ParsableCommand {
     let appConfiguration = try configuration.getAppConfiguration(appName).unwrap()
     
     let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
-    // TODO: Bundler should compute products directory
-    let productsDirectory = try Bundler.getDefaultProductsDirectory(in: packageDirectory, buildConfiguration: buildConfiguration).unwrap()
+    
+    let productsDirectory = try SwiftPackageManager.getDefaultProductsDirectory(
+      in: packageDirectory,
+      buildConfiguration: buildConfiguration).unwrap()
     
     let bundler = Bundler(.init(
       appConfiguration: appConfiguration,
