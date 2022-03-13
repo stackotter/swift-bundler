@@ -17,16 +17,15 @@ struct Configuration {
   
   /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.
   /// - Parameter name: The name of the app to get.
-  /// - Returns: The app configuration.
-  /// - Throws: If no app is specified, and there is more than one app, an error is thrown.
-  func getAppConfiguration(_ name: String?) -> Result<AppConfiguration, ConfigurationError> {
+  /// - Returns: The app's name and configuration. If no app is specified, and there is more than one app, a failure is returned.
+  func getAppConfiguration(_ name: String?) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
     if let name = name {
       guard let selected = apps[name] else {
         return .failure(.invalidAppName(name))
       }
-      return .success(selected)
+      return .success((name: name, app: selected))
     } else if let first = apps.first, apps.count == 1 {
-      return .success(first.value)
+      return .success((name: first.key, app: first.value))
     } else {
       return .failure(.multipleAppsAndNoneSpecified)
     }
