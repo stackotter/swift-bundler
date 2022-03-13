@@ -15,9 +15,7 @@ enum BundlerError: LocalizedError {
   case failedToRunExecutable(ProcessError)
 }
 
-struct Bundler {
-  var context: Context
-  
+enum Bundler {
   struct Context {
     var appConfiguration: AppConfiguration
     var buildConfiguration: SwiftPackageManager.BuildConfiguration
@@ -32,30 +30,30 @@ struct Bundler {
     }
   }
   
-  /// Creates a new bundler for the given context.
-  /// - Parameter context: The context of the app to bundle.
-  init(_ context: Context) {
-    self.context = context
-  }
-  
   /// Runs the app's prebuild script.
+  /// - Parameter packageDirectory: The package's root directory
   /// - Returns: Returns an error if the script exists and fails to run.
-  func prebuild() -> Result<Void, BundlerError> {
+  static func prebuild(_ packageDirectory: URL) -> Result<Void, BundlerError> {
     log.info("Running prebuild script")
-    let scriptRunner = ScriptRunner(context.packageDirectory)
+    let scriptRunner = ScriptRunner(packageDirectory)
     return scriptRunner.runPrebuildScriptIfPresent()
       .mapError { error in
-          .failedToRunPrebuildScript(error)
+        .failedToRunPrebuildScript(error)
       }
   }
   
   /// Builds the app's executable.
-  func build() -> Result<Void, BundlerError> {
+  static func build(
+    product: String,
+    in packageDirectory: URL,
+    buildConfiguration: SwiftPackageManager.BuildConfiguration,
+    universal: Bool
+  ) -> Result<Void, BundlerError> {
     return SwiftPackageManager.build(
-      product: context.appConfiguration.product,
-      packageDirectory: context.packageDirectory,
-      configuration: context.buildConfiguration,
-      universal: context.universal
+      product: product,
+      packageDirectory: packageDirectory,
+      configuration: buildConfiguration,
+      universal: universal
     ).mapError { error in
       .failedToBuild(error)
     }
@@ -63,20 +61,22 @@ struct Bundler {
   
   /// Bundles the built executable into a macOS app.
   /// - Returns: If a failure occurs, it is returned.
-  func bundle() -> Result<Void, BundlerError> {
-    let executableArtifact = context.productsDirectory.appendingPathComponent(context.appConfiguration.product)
+  static func bundle(appName: String, appConfiguration: AppConfiguration, packageDirectory: URL, productsDirectory: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
+    log.info("Bundling '\(appName).app'")
+    let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
     
-    let appContents = context.appBundle.appendingPathComponent("Contents")
-    let appExecutable = appContents.appendingPathComponent("MacOS/\(context.appName)")
+    let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
+    let appContents = appBundle.appendingPathComponent("Contents")
+    let appExecutable = appContents.appendingPathComponent("MacOS/\(appName)")
     let appResources = appContents.appendingPathComponent("Resources")
     let appDynamicLibrariesDirectory = appContents.appendingPathComponent("Libraries")
     
     let copyResourcesBundles: () -> Result<Void, BundlerError> = {
       ResourceBundler.copyResourceBundles(
-        from: context.productsDirectory,
+        from: productsDirectory,
         to: appResources,
         isXcodeBuild: false,
-        minMacOSVersion: context.appConfiguration.minMacOSVersion
+        minMacOSVersion: appConfiguration.minMacOSVersion
       ).mapError { error in
         .failedToCopyResourceBundles(error)
       }
@@ -84,20 +84,20 @@ struct Bundler {
     
     let copyDynamicLibraries: () -> Result<Void, BundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
-        from: context.productsDirectory,
+        from: productsDirectory,
         to: appDynamicLibrariesDirectory,
         appExecutable: appExecutable,
         isXcodeBuild: false
       ).mapError { error in
-          .failedToCopyDynamicLibraries(error)
+        .failedToCopyDynamicLibraries(error)
       }
     }
     
     let bundleApp = flatten(
-      { Self.createAppDirectoryStructure(at: context.outputDirectory, appName: context.appName) },
+      { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appContents, appName: context.appName, appConfiguration: context.appConfiguration) },
-      { Self.createAppIcon(from: context.packageDirectory, outputDirectory: appResources) },
+      { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration) },
+      { Self.createAppIcon(from: packageDirectory, outputDirectory: appResources) },
       { copyResourcesBundles() },
       { copyDynamicLibraries() })
     
@@ -105,10 +105,11 @@ struct Bundler {
   }
   
   /// Runs the app's postbuild script.
+  /// - Parameter packageDirectory: The package's root directory
   /// - Returns: Returns an error if the script exists and fails to run.
-  func postbuild() -> Result<Void, BundlerError> {
+  static func postbuild(_ packageDirectory: URL) -> Result<Void, BundlerError> {
     log.info("Running postbuild script")
-    let scriptRunner = ScriptRunner(context.packageDirectory)
+    let scriptRunner = ScriptRunner(packageDirectory)
     return scriptRunner.runPostbuildScriptIfPresent()
       .mapError { error in
         .failedToRunPostbuildScript(error)
@@ -116,10 +117,14 @@ struct Bundler {
   }
   
   /// Runs the app (without building or bundling first).
+  /// - Parameters:
+  ///   - appName: The app's name.
+  ///   - outputDirectory: The output directory containing the built app.
   /// - Returns: Returns a failure if the app fails to run.
-  func run() -> Result<Void, BundlerError> {
-    log.info("Running '\(context.appName).app'")
-    let appExecutable = context.appBundle.appendingPathComponent("Contents/MacOS/\(context.appName)")
+  static func run(appName: String, outputDirectory: URL) -> Result<Void, BundlerError> {
+    log.info("Running '\(appName).app'")
+    let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
+    let appExecutable = appBundle.appendingPathComponent("Contents/MacOS/\(appName)")
     let process = Process.create(appExecutable.path)
     return process.runAndWait()
       .mapError { error in
@@ -182,6 +187,9 @@ struct Bundler {
   /// Creates an app's `PkgInfo` and `Info.plist` files.
   /// - Parameters:
   ///   - outputDirectory: Should be the app's `Contents` directory.
+  ///   - appName: The app's name.
+  ///   - appConfiguration: The app's configuration.
+  /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(at outputDirectory: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, BundlerError> {
     log.info("Creating 'PkgInfo'")
     do {
@@ -195,10 +203,17 @@ struct Bundler {
     
     log.info("Creating 'Info.plist'")
     let infoPlistFile = outputDirectory.appendingPathComponent("Info.plist")
-    return PlistCreator.createAppInfoPlist(at: infoPlistFile, appName: appName, appConfiguration: appConfiguration)
-      .mapError { error in
-        .failedToCreateInfoPlist(error)
-      }
+    return PlistCreator.createAppInfoPlist(
+      at: infoPlistFile,
+      appName: appName,
+      bundleIdentifier: appConfiguration.bundleIdentifier,
+      version: appConfiguration.version,
+      category: appConfiguration.category,
+      minMacOSVersion: appConfiguration.minMacOSVersion,
+      extraPlistEntries: appConfiguration.extraPlistEntries
+    ).mapError { error in
+      .failedToCreateInfoPlist(error)
+    }
   }
   
   /// Copies `AppIcon.icns` into the app bundle if present. Alternatively, it creates the app's `AppIcon.icns` from a png if an `Icon1024x1024.png` is present.

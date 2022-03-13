@@ -34,32 +34,67 @@ struct BuildCommand: ParsableCommand {
   var universal = false
 
   func run() throws {
-    let configuration = try Configuration.load(
-      fromDirectory: packageDirectory,
-      evaluatorContext: .init(packageDirectory: packageDirectory)).unwrap()
-    let appConfiguration = try configuration.getAppConfiguration(appName).unwrap()
-    
-    let outputDirectory = outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
+    let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
+    let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
     
     let productsDirectory = try SwiftPackageManager.getDefaultProductsDirectory(
       in: packageDirectory,
       buildConfiguration: buildConfiguration).unwrap()
     
-    let bundler = Bundler(.init(
-      appConfiguration: appConfiguration,
-      buildConfiguration: buildConfiguration,
-      packageDirectory: packageDirectory,
-      productsDirectory: productsDirectory,
-      outputDirectory: outputDirectory,
-      appName: appName ?? configuration.apps.first!.key,
-      universal: universal))
+    let prebuild = {
+      Bundler.prebuild(packageDirectory)
+    }
+    
+    let build = {
+      Bundler.build(
+        product: appConfiguration.product,
+        in: packageDirectory,
+        buildConfiguration: buildConfiguration,
+        universal: universal)
+    }
+    
+    let bundle = {
+      Bundler.bundle(
+        appName: appName,
+        appConfiguration: appConfiguration,
+        packageDirectory: packageDirectory,
+        productsDirectory: productsDirectory,
+        outputDirectory: outputDirectory)
+    }
+    
+    let postbuild = {
+      Bundler.postbuild(packageDirectory)
+    }
     
     let buildAndBundle = flatten(
-      bundler.prebuild,
-      bundler.build,
-      bundler.postbuild,
-      bundler.bundle)
+      prebuild,
+      build,
+      bundle,
+      postbuild)
     
     try buildAndBundle().unwrap()
+  }
+  
+  /// Gets the configuration for the specified app. If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).
+  /// - Parameters:
+  ///   - appName: The app's name.
+  ///   - packageDirectory: The package's root directory.
+  /// - Returns: The app's configuration if successful.
+  static func getAppConfiguration(_ appName: String?, packageDirectory: URL) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
+    return Configuration.load(
+      fromDirectory: packageDirectory,
+      evaluatorContext: .init(packageDirectory: packageDirectory)
+    ).flatMap { configuration in
+      configuration.getAppConfiguration(appName)
+    }
+  }
+  
+  /// Unwraps an optional output directory and returns the default output directory if it's `nil`.
+  /// - Parameters:
+  ///   - outputDirectory: The output directory. Returned as-is if not `nil`.
+  ///   - packageDirectory: The root directory of the package.
+  /// - Returns: The output directory to use.
+  static func getOutputDirectory(_ outputDirectory: URL?, packageDirectory: URL) -> URL {
+    return outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
   }
 }

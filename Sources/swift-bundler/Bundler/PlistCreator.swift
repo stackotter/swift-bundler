@@ -13,17 +13,35 @@ enum PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - appName: The name of the app.
-  ///   - appConfiguration: The app's configuration.
-  static func createAppInfoPlist(at file: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, PlistError> {
-    createAppInfoPlistContents(appName: appName, appConfiguration: appConfiguration)
-      .flatMap { contents in
-        do {
-          try contents.write(to: file)
-          return .success()
-        } catch {
-          return .failure(.failedToWriteAppInfoPlist(file, error))
-        }
+  ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
+  ///   - version: The app's version string.
+  ///   - category: The app's category.
+  ///   - minMacOSVersion: The app's minimum macOS version.
+  ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  static func createAppInfoPlist(
+    at file: URL,
+    appName: String,
+    bundleIdentifier: String,
+    version: String,
+    category: String,
+    minMacOSVersion: String,
+    extraPlistEntries: [String: String]
+  ) -> Result<Void, PlistError> {
+    createAppInfoPlistContents(
+      appName: appName,
+      bundleIdentifier: bundleIdentifier,
+      version: version,
+      category: category,
+      minMacOSVersion: minMacOSVersion,
+      extraPlistEntries: extraPlistEntries
+    ).flatMap { contents in
+      do {
+        try contents.write(to: file)
+        return .success()
+      } catch {
+        return .failure(.failedToWriteAppInfoPlist(file, error))
       }
+    }
   }
   
   /// Creates the `Info.plist` file for a resource bundle.
@@ -45,24 +63,35 @@ enum PlistCreator {
   /// Creates the contents of an app's `Info.plist` file.
   /// - Parameters:
   ///   - appName: The app's name.
-  ///   - appConfiguration: The app's configuration.
+  ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
+  ///   - version: The app's version string.
+  ///   - category: The app's category.
+  ///   - minMacOSVersion: The app's minimum macOS version.
+  ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
   /// - Returns: The generated contents for the `Info.plist` file.
-  static func createAppInfoPlistContents(appName: String, appConfiguration: AppConfiguration) -> Result<Data, PlistError> {
+  static func createAppInfoPlistContents(
+    appName: String,
+    bundleIdentifier: String,
+    version: String,
+    category: String,
+    minMacOSVersion: String,
+    extraPlistEntries: [String: String]
+  ) -> Result<Data, PlistError> {
     var entries: [String: Any] = [
       "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
       "CFBundleIconName": "AppIcon",
-      "CFBundleIdentifier": appConfiguration.bundleIdentifier,
+      "CFBundleIdentifier": bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
-      "CFBundleShortVersionString": appConfiguration.version,
+      "CFBundleShortVersionString": version,
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSApplicationCategoryType": appConfiguration.category,
-      "LSMinimumSystemVersion": appConfiguration.minMacOSVersion,
+      "LSApplicationCategoryType": category,
+      "LSMinimumSystemVersion": minMacOSVersion,
     ]
     
-    for (key, value) in appConfiguration.extraPlistEntries {
+    for (key, value) in extraPlistEntries {
       entries[key] = value
     }
     
