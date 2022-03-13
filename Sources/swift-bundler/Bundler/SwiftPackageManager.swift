@@ -5,12 +5,71 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToGetTargetTriple(ProcessError)
   case failedToDeserializeTargetInfo(Error)
   case invalidTargetInfoJSONFormat
+  case failedToCreatePackageDirectory(Error)
+  case failedToRunInitCommand(ProcessError)
+  case failedToCreateConfigurationFile(ConfigurationError)
 }
 
+/// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
   enum BuildConfiguration: String {
     case debug
     case release
+  }
+  
+  /// Creates a new package using the given directory as the package's root directory.
+  /// - Parameters:
+  ///   - directory: The package's root directory (will be created if it doesn't exist).
+  ///   - name: The name for the package.
+  /// - Returns: If an error occurs, a failure is returned.
+  static func createPackage(
+    in directory: URL,
+    name: String
+  ) -> Result<Void, SwiftPackageManagerError> {
+    // Create the package directory if it doesn't exist
+    let createPackageDirectory: () -> Result<Void, SwiftPackageManagerError> = {
+      if !FileManager.default.itemExists(at: directory, withType: .directory) {
+        do {
+          try FileManager.default.createDirectory(at: directory)
+        } catch {
+          return .failure(.failedToCreatePackageDirectory(error))
+        }
+      }
+      return .success()
+    }
+    
+    // Run the init command
+    let runInitCommand: () -> Result<Void, SwiftPackageManagerError> = {
+      let process = Process.create(
+        "/usr/bin/swift",
+        arguments: [
+          "package", "init",
+          "--type=executable",
+          "--name=\(name)"
+        ],
+        directory: directory)
+      
+      return process.runAndWait()
+        .mapError { error in
+          .failedToRunInitCommand(error)
+        }
+    }
+    
+    // Create the configuration file
+    let createConfigurationFile: () -> Result<Void, SwiftPackageManagerError> = {
+      Configuration.createConfigurationFile(in: directory, app: name, product: name)
+        .mapError { error in
+            .failedToCreateConfigurationFile(error)
+        }
+    }
+    
+    // Compose the function
+    let create = flatten(
+      createPackageDirectory,
+      runInitCommand,
+      createConfigurationFile)
+    
+    return create()
   }
   
   /// Builds the specified product of a Swift package.

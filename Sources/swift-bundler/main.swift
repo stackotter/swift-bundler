@@ -9,7 +9,8 @@ struct Command: ParsableCommand {
     shouldDisplay: true,
     subcommands: [
       BuildCommand.self,
-      RunCommand.self
+      RunCommand.self,
+      CreateCommand.self
     ])
 }
 
