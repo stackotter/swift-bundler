@@ -7,6 +7,8 @@ enum ConfigurationError: LocalizedError {
   case failedToEvaluateExpressions(app: String, AppConfigurationError)
   case failedToReadConfigurationFile(Error)
   case failedToDeserializeConfiguration(Error)
+  case failedToSerializeConfiguration(Error)
+  case failedToWriteToConfigurationFile(Error)
 }
 
 struct Configuration {
@@ -77,5 +79,35 @@ struct Configuration {
     
     let configuration = Configuration(dto)
     return configuration.withExpressionsEvaluated(evaluatorContext)
+  }
+  
+  /// Creates a configuration file for the specified app and product in the given directory.
+  /// - Parameters:
+  ///   - directory: The directory to create the configuration file in.
+  ///   - app: The name of the app.
+  ///   - product: The name of the product.
+  /// - Returns: If an error occurs, a failure is returned.
+  static func createConfigurationFile(in directory: URL, app: String, product: String) -> Result<Void, ConfigurationError> {
+    let configuration = ConfigurationDTO(apps: [
+      app: AppConfigurationDTO(product: product, version: "0.1.0")
+    ])
+    
+    let contents: String
+    do {
+      contents = try TOMLEncoder().encode(configuration)
+    } catch {
+      return .failure(.failedToSerializeConfiguration(error))
+    }
+    
+    do {
+      try contents.write(
+        to: directory.appendingPathComponent("Bundler.toml"),
+        atomically: false,
+        encoding: .utf8)
+    } catch {
+      return .failure(.failedToWriteToConfigurationFile(error))
+    }
+    
+    return .success()
   }
 }
