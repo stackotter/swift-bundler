@@ -51,7 +51,7 @@ struct BundleCommand: ParsableCommand {
   
   func run() throws {
     // Validate parameters
-    if skipBuild {
+    if !skipBuild {
       guard productsDirectory == nil, !builtWithXcode else {
         log.error("`--products-directory` and `--built-with-xcode` are only compatible with `--skip-build`")
         Foundation.exit(1)
