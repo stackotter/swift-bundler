@@ -31,7 +31,7 @@ enum DynamicLibraryBundler {
     log.info("Copying dynamic libraries")
     
     // Update the app's rpath
-    if universal {
+    if universal || isXcodeBuild {
       let process = Process.create(
         "/usr/bin/install_name_tool",
         arguments: ["-rpath", "@executable_path/../lib", "@executable_path", appExecutable.path])
