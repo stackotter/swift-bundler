@@ -9,6 +9,11 @@ enum ConfigurationError: LocalizedError {
   case failedToDeserializeConfiguration(Error)
   case failedToSerializeConfiguration(Error)
   case failedToWriteToConfigurationFile(Error)
+  
+  case failedToDeserializeOldConfiguration(Error)
+  case failedToReadContentsOfOldConfigurationFile(Error)
+  case failedToSerializeMigratedConfiguration(Error)
+  case failedToWriteToMigratedConfigurationFile(Error)
 }
 
 struct Configuration {
@@ -58,6 +63,14 @@ struct Configuration {
   /// - Returns: The configuration.
   static func load(fromDirectory packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
     let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
+    let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
+    
+    // Migrate old configuration if no new configuration exists
+    let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
+    let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
+    if oldConfigurationExists && !configurationExists {
+      return migrateOldConfiguration(from: oldConfigurationFile, to: configurationFile)
+    }
     
     let contents: String
     do {
@@ -77,6 +90,59 @@ struct Configuration {
     
     let configuration = Configuration(dto)
     return configuration.withExpressionsEvaluated(.init(packageDirectory: packageDirectory))
+  }
+  
+  /// Migrates a `Bundle.json` to a `Bundler.toml` file.
+  /// - Parameters:
+  ///   - oldConfigurationFile: The `Bundle.json` file to migrate.
+  ///   - newConfigurationFile: The `Bundler.toml` file to output to.
+  /// - Returns: The converted configuration.
+  static func migrateOldConfiguration(from oldConfigurationFile: URL, to newConfigurationFile: URL) -> Result<Configuration, ConfigurationError> {
+    log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
+    log.info("Migrating the 'Bundle.json' configuration to the new format")
+    
+    return OldConfiguration.load(from: oldConfigurationFile)
+      .flatMap { oldConfiguration in
+        var extraPlistEntries: [String: String] = [:]
+        for (key, value) in oldConfiguration.extraInfoPlistEntries {
+          if let value = value as? String {
+            extraPlistEntries[key] = value
+          }
+        }
+        
+        if extraPlistEntries.count != oldConfiguration.extraInfoPlistEntries.count {
+          log.warning("Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings). These will have to be manually converted")
+        }
+        
+        log.warning("Discarding the build number because the new configuration format has no build number field")
+        
+        let appConfiguration = AppConfigurationDTO(
+          product: oldConfiguration.target,
+          version: oldConfiguration.versionString,
+          category: oldConfiguration.category,
+          bundleIdentifier: oldConfiguration.bundleIdentifier,
+          minMacOSVersion: oldConfiguration.minOSVersion,
+          extraPlistEntries: extraPlistEntries.isEmpty ? nil : extraPlistEntries)
+        
+        let configuration = ConfigurationDTO(apps: [oldConfiguration.target: appConfiguration])
+        let newContents: String
+        do {
+          newContents = try TOMLEncoder().encode(configuration)
+        } catch {
+          return .failure(.failedToSerializeMigratedConfiguration(error))
+        }
+        
+        do {
+          try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
+        } catch {
+          return .failure(.failedToWriteToMigratedConfigurationFile(error))
+        }
+        
+        log.warning("Only the 'product' and 'version' fields are mandatory for apps in the new configuration format. You can delete any of the other fields that you don't need")
+        log.info("The old configuration file was successfully migrated, you can now safely delete 'Bundle.json'")
+        
+        return .success(Configuration(configuration))
+      }
   }
   
   /// Creates a configuration file for the specified app and product in the given directory.
