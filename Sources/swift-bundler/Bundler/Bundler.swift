@@ -61,7 +61,7 @@ enum Bundler {
   
   /// Bundles the built executable into a macOS app.
   /// - Returns: If a failure occurs, it is returned.
-  static func bundle(appName: String, appConfiguration: AppConfiguration, packageDirectory: URL, productsDirectory: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
+  static func bundle(appName: String, appConfiguration: AppConfiguration, packageDirectory: URL, productsDirectory: URL, outputDirectory: URL, isXcodeBuild: Bool, universal: Bool) -> Result<Void, BundlerError> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
     
@@ -75,7 +75,7 @@ enum Bundler {
       ResourceBundler.copyResourceBundles(
         from: productsDirectory,
         to: appResources,
-        isXcodeBuild: false,
+        fixBundles: !isXcodeBuild && !universal,
         minMacOSVersion: appConfiguration.minMacOSVersion
       ).mapError { error in
         .failedToCopyResourceBundles(error)
@@ -87,7 +87,8 @@ enum Bundler {
         from: productsDirectory,
         to: appDynamicLibrariesDirectory,
         appExecutable: appExecutable,
-        isXcodeBuild: false
+        isXcodeBuild: isXcodeBuild,
+        universal: universal
       ).mapError { error in
         .failedToCopyDynamicLibraries(error)
       }

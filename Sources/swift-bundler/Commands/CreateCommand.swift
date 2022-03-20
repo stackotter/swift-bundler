@@ -5,18 +5,18 @@ struct CreateCommand: ParsableCommand {
   static var configuration = CommandConfiguration(commandName: "create")
   
   @Argument(
-    help: "The name of the app to create")
+    help: "The name of the app to create.")
   var appName: String
   
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there",
+    help: "The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   
   func run() throws {
     guard Self.isValidAppName(appName) else {
-      log.error("Invalid app name: app names must only include uppercase and lowercase characters from the English alphabet")
+      log.error("Invalid app name: app names must only include uppercase and lowercase characters from the English alphabet.")
       return
     }
     

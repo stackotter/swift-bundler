@@ -3,9 +3,10 @@ import Foundation
 enum DynamicLibraryBundlerError: LocalizedError {
   case failedToEnumerateDynamicLibraries(Error)
   case failedToCopyDynamicLibrary(Error)
-  case failedToUpdateExecutableRPath(library: String, Error)
-  case failedToGetOutputRelativePath
-  case failedToGetOriginalRelativePath
+  case failedToUpdateLibraryInstallName(library: String, ProcessError)
+  case failedToGetRelativeOutputPath
+  case failedToGetRelativeOriginalPath
+  case failedToUpdateAppRPath(ProcessError)
 }
 
 /// A utility for copying dynamic libraries and updating an executable's rpaths accordingly.
@@ -18,14 +19,26 @@ enum DynamicLibraryBundler {
   ///   - outputDirectory: The directory to copy the dynamic libraries to.
   ///   - appExecutable: The app executable to update the rpaths of.
   ///   - isXcodeBuild: If `true` the `PackageFrameworks` subdirectory will be searched for frameworks containing dynamic libraries instead.
+  ///   - universal: Whether the build is a universal build or not. Only true if the build is a SwiftPM build and universal.
   /// - Returns: If an error occurs, a failure is returned.
   static func copyDynamicLibraries(
     from productsDirectory: URL,
     to outputDirectory: URL,
     appExecutable: URL,
-    isXcodeBuild: Bool
+    isXcodeBuild: Bool,
+    universal: Bool
   ) -> Result<Void, DynamicLibraryBundlerError> {
     log.info("Copying dynamic libraries")
+    
+    // Update the app's rpath
+    if universal {
+      let process = Process.create(
+        "/usr/bin/install_name_tool",
+        arguments: ["-rpath", "@executable_path/../lib", "@executable_path", appExecutable.path])
+      if case let .failure(error) = process.runAndWait() {
+        return .failure(.failedToUpdateAppRPath(error))
+      }
+    }
     
     // Select directory to enumerate
     let searchDirectory: URL
@@ -46,7 +59,7 @@ enum DynamicLibraryBundler {
     
     // Copy dynamic libraries
     guard let outputDirectoryRelativePath = outputDirectory.relativePath(from: appExecutable.deletingLastPathComponent()) else {
-      return .failure(.failedToGetOutputRelativePath)
+      return .failure(.failedToGetRelativeOutputPath)
     }
     
     for (name, library) in libraries {
@@ -63,7 +76,7 @@ enum DynamicLibraryBundler {
       
       // Update the executable's rpath to reflect the change of the library's location relative to the executable
       guard let originalRelativePath = library.relativePath(from: searchDirectory) else {
-        return .failure(.failedToGetOriginalRelativePath)
+        return .failure(.failedToGetRelativeOriginalPath)
       }
       
       let process = Process.create(
@@ -72,9 +85,8 @@ enum DynamicLibraryBundler {
           "-change", "@rpath/\(originalRelativePath)", "@rpath/\(outputDirectoryRelativePath)/lib\(name).dylib",
           appExecutable.path
         ])
-      
       if case let .failure(error) = process.runAndWait() {
-        return .failure(.failedToUpdateExecutableRPath(library: name, error))
+        return .failure(.failedToUpdateLibraryInstallName(library: name, error))
       }
     }
     
