@@ -55,9 +55,8 @@ struct Configuration {
   /// Loads configuration from the `Bundler.toml` file in the given directory.
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
-  ///   - evaluatorContext: Used to evaluate configuration values that support expressions.
   /// - Returns: The configuration.
-  static func load(fromDirectory packageDirectory: URL, evaluatorContext: ExpressionEvaluator.Context) -> Result<Configuration, ConfigurationError> {
+  static func load(fromDirectory packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
     let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
     
     let contents: String
@@ -77,7 +76,7 @@ struct Configuration {
     }
     
     let configuration = Configuration(dto)
-    return configuration.withExpressionsEvaluated(evaluatorContext)
+    return configuration.withExpressionsEvaluated(.init(packageDirectory: packageDirectory))
   }
   
   /// Creates a configuration file for the specified app and product in the given directory.
