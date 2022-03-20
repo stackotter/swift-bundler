@@ -7,18 +7,18 @@ struct RunCommand: ParsableCommand {
   // MARK: Build and bundle arguments (keep up-to-date with BuildCommand)
   
   @Argument(
-    help: "The name of the app to run")
+    help: "The name of the app to run.")
   var appName: String?
   
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to run",
+    help: "The directory containing the package to run.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
   
   @Option(
     name: [.customShort("c"), .customLong("config")],
-    help: "The build configuration to use (debug|release)",
+    help: "The build configuration to use (debug|release).",
     transform: {
       SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
     })
@@ -26,20 +26,20 @@ struct RunCommand: ParsableCommand {
   
   @Option(
     name: .shortAndLong,
-    help: "The directory to output the bundled .app to",
+    help: "The directory to output the bundled .app to.",
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
   
   @Flag(
     name: .shortAndLong,
-    help: "Build a universal application (arm and intel)")
+    help: "Build a universal application (arm and intel).")
   var universal = false
   
   // MARK: Run arguments
   
   @Flag(
     name: .long,
-    help: "Skips the building and bundling steps")
+    help: "Skips the building and bundling steps.")
   var skipBuild = false
   
   // MARK: Methods
@@ -49,18 +49,18 @@ struct RunCommand: ParsableCommand {
     var arguments = Array(CommandLine.arguments.dropFirst(2))
     arguments.removeAll { $0 == "--skip-build" }
     
-    let buildCommand = try BuildCommand.parse(arguments)
+    let buildCommand = try BundleCommand.parse(arguments)
     
     if !skipBuild {
       try buildCommand.run()
     }
     
-    let (appName, _) = try BuildCommand.getAppConfiguration(
+    let (appName, _) = try BundleCommand.getAppConfiguration(
       buildCommand.appName,
       packageDirectory: buildCommand.packageDirectory
     ).unwrap()
     
-    let outputDirectory = BuildCommand.getOutputDirectory(
+    let outputDirectory = BundleCommand.getOutputDirectory(
       buildCommand.outputDirectory,
       packageDirectory: buildCommand.packageDirectory)
     

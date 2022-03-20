@@ -143,13 +143,20 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - packageDirectory: The package's root directory.
   ///   - buildConfiguration: The current build configuration.
-  static func getDefaultProductsDirectory(in packageDirectory: URL, buildConfiguration: BuildConfiguration) -> Result<URL, SwiftPackageManagerError> {
-    return getSwiftTargetTriple()
-      .map { targetTriple in
-        packageDirectory
-          .appendingPathComponent(".build")
-          .appendingPathComponent(targetTriple)
-          .appendingPathComponent(buildConfiguration.rawValue)
-      }
+  ///   - universal: Whether the build is universal or not.
+  static func getProductsDirectory(in packageDirectory: URL, buildConfiguration: BuildConfiguration, universal: Bool) -> Result<URL, SwiftPackageManagerError> {
+    if !universal {
+      return getSwiftTargetTriple()
+        .map { targetTriple in
+          packageDirectory
+            .appendingPathComponent(".build")
+            .appendingPathComponent(targetTriple)
+            .appendingPathComponent(buildConfiguration.rawValue)
+        }
+    } else {
+      return .success(packageDirectory
+        .appendingPathComponent(".build/apple/Products")
+        .appendingPathComponent(buildConfiguration.rawValue.capitalized))
+    }
   }
 }

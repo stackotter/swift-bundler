@@ -22,12 +22,12 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - sourceDirectory: The directory containing generated bundles.
   ///   - destinationDirectory: The directory to copy the bundles to, fixing them if required.
-  ///   - isXcodeBuild: If `true`, bundles will be left alone when copying them.
+  ///   - fixBundles: If `false`, bundles will be left alone when copying them.
   ///   - minMacOSVersion: The app's minimum macOS version. Used to create the `Info.plist` for each bundle when `isXcodeBuild` is `false`.
   static func copyResourceBundles(
     from sourceDirectory: URL,
     to destinationDirectory: URL,
-    isXcodeBuild: Bool,
+    fixBundles: Bool,
     minMacOSVersion: String
   ) -> Result<Void, ResourceBundlerError> {
     let contents: [URL]
@@ -43,7 +43,7 @@ enum ResourceBundler {
       }
       
       let result: Result<Void, ResourceBundlerError>
-      if isXcodeBuild {
+      if !fixBundles {
         result = copyResourceBundle(
           file,
           to: destinationDirectory)

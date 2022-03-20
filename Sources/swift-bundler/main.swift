@@ -8,9 +8,11 @@ struct Command: ParsableCommand {
     version: "v1.4.9",
     shouldDisplay: true,
     subcommands: [
-      BuildCommand.self,
+      BundleCommand.self,
       RunCommand.self,
-      CreateCommand.self
+      CreateCommand.self,
+      PostbuildCommand.self,
+      PrebuildCommand.self
     ])
 }
 
