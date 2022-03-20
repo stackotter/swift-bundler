@@ -113,12 +113,10 @@ struct BundleCommand: ParsableCommand {
   ///   - packageDirectory: The package's root directory.
   /// - Returns: The app's configuration if successful.
   static func getAppConfiguration(_ appName: String?, packageDirectory: URL) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
-    return Configuration.load(
-      fromDirectory: packageDirectory,
-      evaluatorContext: .init(packageDirectory: packageDirectory)
-    ).flatMap { configuration in
-      configuration.getAppConfiguration(appName)
-    }
+    return Configuration.load(fromDirectory: packageDirectory)
+      .flatMap { configuration in
+        configuration.getAppConfiguration(appName)
+      }
   }
   
   /// Unwraps an optional output directory and returns the default output directory if it's `nil`.
