@@ -1,0 +1,33 @@
+import Foundation
+import TOMLKit
+
+/// The contents of a template's manifest file.
+struct TemplateManifest: Codable {
+  /// A short description of the package.
+  var description: String
+  /// The list of supported platforms.
+  var platforms: [String]
+  /// The minimum Swift version required to use the template.
+  var minimumSwiftVersion: String
+  
+  /// Loads a template's manifest file.
+  /// - Parameter file: The manifest file to load.
+  /// - Returns: The loaded manifest, or a failure if the file could not be read or decoded.
+  static func load(from file: URL) -> Result<TemplateManifest, TemplaterError> {
+    let contents: String
+    do {
+      contents = try String.init(contentsOf: file)
+    } catch {
+      return .failure(.failedToReadTemplateManifest(error))
+    }
+    
+    let manifest: TemplateManifest
+    do {
+      manifest = try TOMLDecoder().decode(TemplateManifest.self, from: contents)
+    } catch {
+      return .failure(.failedToDecodeTemplateManifest(error))
+    }
+    
+    return .success(manifest)
+  }
+}

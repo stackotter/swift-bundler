@@ -13,7 +13,8 @@ struct Command: ParsableCommand {
       CreateCommand.self,
       PostbuildCommand.self,
       PrebuildCommand.self,
-      GenerateXcodeSupportCommand.self
+      GenerateXcodeSupportCommand.self,
+      TemplatesCommand.self
     ])
 }
 
