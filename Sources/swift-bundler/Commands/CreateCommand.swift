@@ -2,7 +2,9 @@ import Foundation
 import ArgumentParser
 
 struct CreateCommand: ParsableCommand {
-  static var configuration = CommandConfiguration(commandName: "create")
+  static var configuration = CommandConfiguration(
+    commandName: "create",
+    abstract: "Create a new package.")
   
   @Argument(
     help: "The name of the app to create.")

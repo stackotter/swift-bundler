@@ -2,7 +2,9 @@ import Foundation
 import ArgumentParser
 
 struct RunCommand: ParsableCommand {
-  static var configuration = CommandConfiguration(commandName: "run")
+  static var configuration = CommandConfiguration(
+    commandName: "run",
+    abstract: "Run a package as an app.")
   
   // MARK: Build and bundle arguments (keep up-to-date with BuildCommand)
   
@@ -14,7 +16,7 @@ struct RunCommand: ParsableCommand {
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to run.",
     transform: URL.init(fileURLWithPath:))
-  var packageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  var packageDirectory: URL?
   
   @Option(
     name: [.customShort("c"), .customLong("config")],
@@ -51,18 +53,20 @@ struct RunCommand: ParsableCommand {
     
     let buildCommand = try BundleCommand.parse(arguments)
     
+    let packageDirectory = buildCommand.packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    
     if !skipBuild {
       try buildCommand.run()
     }
     
     let (appName, _) = try BundleCommand.getAppConfiguration(
       buildCommand.appName,
-      packageDirectory: buildCommand.packageDirectory
+      packageDirectory: packageDirectory
     ).unwrap()
     
     let outputDirectory = BundleCommand.getOutputDirectory(
       buildCommand.outputDirectory,
-      packageDirectory: buildCommand.packageDirectory)
+      packageDirectory: packageDirectory)
     
     try Bundler.run(appName: appName, outputDirectory: outputDirectory).unwrap()
   }
