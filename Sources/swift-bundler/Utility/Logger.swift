@@ -1,5 +1,6 @@
 import Logging
 
+/// Swift Bundler's basic log handler.
 struct Handler: LogHandler {
   var metadata: Logger.Metadata = [:]
   var logLevel: Logger.Level = .debug
