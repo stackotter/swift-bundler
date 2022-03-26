@@ -2,7 +2,9 @@ import Foundation
 import ArgumentParser
 
 struct BundleCommand: ParsableCommand {
-  static var configuration = CommandConfiguration(commandName: "bundle")
+  static var configuration = CommandConfiguration(
+    commandName: "bundle",
+    abstract: "Create an app bundle from a package.")
   
   @Argument(
     help: "The name of the app to build.")
@@ -12,7 +14,7 @@ struct BundleCommand: ParsableCommand {
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to build.",
     transform: URL.init(fileURLWithPath:))
-  var packageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  var packageDirectory: URL?
 
   @Option(
     name: [.customShort("c"), .customLong("config")],
@@ -35,7 +37,7 @@ struct BundleCommand: ParsableCommand {
     
   @Flag(
     name: .long,
-    help: "Skip the build step")
+    help: "Skip the build step.")
   var skipBuild = false
   
   @Option(
@@ -50,6 +52,8 @@ struct BundleCommand: ParsableCommand {
   var builtWithXcode = false
   
   func run() throws {
+    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    
     // Validate parameters
     if !skipBuild {
       guard productsDirectory == nil, !builtWithXcode else {

@@ -4,7 +4,7 @@ import ArgumentParser
 struct TemplatesListCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "list",
-    abstract: "Lists available templates")
+    abstract: "List available templates.")
   
   @Option(
     name: .long,
