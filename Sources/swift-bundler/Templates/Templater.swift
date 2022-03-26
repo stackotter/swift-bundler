@@ -20,7 +20,17 @@ enum TemplaterError: LocalizedError {
   case failedToPullLatestTemplates(ProcessError)
 }
 
+/// A utility for creating packages from package templates.
 enum Templater {
+  /// Creates a package from the specified template from the default template repository.
+  ///
+  /// Downloads the default template repository if it hasn't already been downloaded.
+  /// - Parameters:
+  ///   - directory: The directory to create the package in.
+  ///   - template: The template to use to create the package.
+  ///   - targetName: The name of the package's initial target.
+  ///   - forceCreation: If `true`, the package will be created even if the selected template isn't compatible with the user's system and Swift version.
+  /// - Returns: A failure if package creation fails.
   static func createPackage(
     in directory: URL,
     from template: String,
@@ -43,6 +53,14 @@ enum Templater {
       }
   }
   
+  /// Creates a package from the specified template from the specified template repository.
+  /// - Parameters:
+  ///   - outputDirectory: The directory to create the package in.
+  ///   - template: The template to use to create the package.
+  ///   - templatesDirectory: The directory containing the template to use.
+  ///   - targetName: The name of the package's initial target.
+  ///   - forceCreation: If `true`, the package will be created even if the selected template isn't compatible with the user's system and Swift version.
+  /// - Returns: A failure if package creation fails.
   static func createPackage(
     in outputDirectory: URL,
     from template: String,
@@ -106,6 +124,12 @@ enum Templater {
     return applyTemplate(templateDirectory, to: outputDirectory, targetName: targetName)
   }
   
+  /// Applies a template to a directory (processes and copies the template's files).
+  /// - Parameters:
+  ///   - templateDirectory: The template's directory.
+  ///   - outputDirectory: The directory to copy the resulting files to.
+  ///   - targetName: The name of the target for the package.
+  /// - Returns: A failure if template application fails.
   static func applyTemplate(_ templateDirectory: URL, to outputDirectory: URL, targetName: String) -> Result<Void, TemplaterError> {
     guard let enumerator = FileManager.default.enumerator(at: templateDirectory, includingPropertiesForKeys: nil) else {
       return .failure(.failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
@@ -129,6 +153,9 @@ enum Templater {
     return .success()
   }
   
+  /// Gets the default templates directory.
+  /// - Parameter downloadIfNecessary: If `true` the default templates repository is downloaded if the templates directory doesn't exist.
+  /// - Returns: The default templates directory, or a failure if the templates directory doesn't exist and couldn't be downloaded.
   static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError> {
     // Get the templates directory
     let templatesDirectory: URL
@@ -150,6 +177,8 @@ enum Templater {
     return .success(templatesDirectory)
   }
   
+  /// Updates the default templates to the latest version from GitHub.
+  /// - Returns: A failure if updating fails.
   static func updateTemplates() -> Result<Void, TemplaterError> {
     return getDefaultTemplatesDirectory(downloadIfNecessary: false)
       .flatMap { templatesDirectory in
@@ -168,7 +197,9 @@ enum Templater {
       }
   }
   
-  static func listTemplates() -> Result<[Template], TemplaterError> {
+  /// Gets the list of available templates.
+  /// - Returns: The available templates, or an error if template enumeration fails.
+  static func enumerateTemplates() -> Result<[Template], TemplaterError> {
     return getDefaultTemplatesDirectory(downloadIfNecessary: true)
       .flatMap { templatesDirectory in
         do {
@@ -217,6 +248,13 @@ enum Templater {
       }
   }
   
+  /// Creates a package for the 'Skeleton' template.
+  ///
+  /// It just generates a package using the SwiftPM cli and then adds a basic `Bundler.toml` configuration file.
+  /// - Parameters:
+  ///   - directory: The directory create the package in.
+  ///   - targetName: The name of the package.
+  /// - Returns: A failure if package creation fails.
   static func createSkeletonPackage(in directory: URL, targetName: String) -> Result<Void, TemplaterError> {
     return SwiftPackageManager.createPackage(in: directory, name: targetName)
       .mapError { error in
@@ -226,6 +264,7 @@ enum Templater {
   
   /// Downloads the default template repository.
   /// - Parameter directory: The directory to clone the template repository in.
+  /// - Returns: A failure if cloning the repository fails.
   static func downloadTemplates(into directory: URL) -> Result<Void, TemplaterError> {
     log.info("Downloading default templates (https://github.com/stackotter/swift-bundler-templates)")
     
@@ -246,6 +285,15 @@ enum Templater {
       }
   }
   
+  // MARK: Private methods
+  
+  /// Processes a template file (replacing occurences of `{{TARGET}}` with the package name) and then copies it to a destination directory.
+  /// - Parameters:
+  ///   - file: The template file.
+  ///   - templateDirectory: The directory of the template that the file is from.
+  ///   - outputDirectory: The directory to output the file to (the file gets copied to the same relative location as in `templateDirectory`).
+  ///   - targetName: The name of the package.
+  /// - Returns: A failure if file processing or copying fails.
   private static func processAndCopyFile(
     _ file: URL,
     from templateDirectory: URL,
