@@ -1,10 +1,11 @@
 import Foundation
 
 enum XcodeSupportGeneratorError: LocalizedError {
-  case failedToCreateOutputDirectory(Error)
+  case failedToGetOutputDirectory(Error)
   case outputDirectoryCannotContainSingleQuote
   case failedToCreateSchemesDirectory(Error)
   case failedToWriteToAppScheme(app: String, Error)
+  case failedToCreateOutputBundle(Error)
 }
 
 enum XcodeSupportGenerator {
@@ -63,20 +64,21 @@ enum XcodeSupportGenerator {
     
     let product = configuration.product
     
-    // Get the global output directory and output app bundle location
+    // Get the global output directory
     let outputDirectory: URL
-    let outputAppBundle: URL
+    switch Bundler.getApplicationSupportDirectory() {
+      case let .success(directory):
+        outputDirectory = directory.appendingPathComponent("build")
+      case let .failure(error):
+        return .failure(.failedToGetOutputDirectory(error))
+    }
+    
+    // Get the output app bundle location
+    let outputAppBundle = outputDirectory.appendingPathComponent("\(product).app")
     do {
-      outputDirectory = try FileManager.default.url(
-        for: .applicationSupportDirectory,
-        in: .userDomainMask,
-        appropriateFor: nil,
-        create: false
-      ).appendingPathComponent("dev.stackotter.swift-bundler")
-      outputAppBundle = outputDirectory.appendingPathComponent("\(product).app")
       try FileManager.default.createDirectory(at: outputAppBundle)
     } catch {
-      return .failure(.failedToCreateOutputDirectory(error))
+      return .failure(.failedToCreateOutputBundle(error))
     }
     
     // This shouldn't be able to happen, but it would break stuff if it did
