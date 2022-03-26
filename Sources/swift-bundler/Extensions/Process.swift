@@ -6,6 +6,8 @@ enum ProcessError: LocalizedError {
   case failedToRunProcess(Error)
 }
 
+var processes: [Process] = []
+
 extension Process {
   /// Sets the pipe for the process's stdout and stderr.
   /// - Parameter pipe: The pipe.
@@ -76,6 +78,8 @@ extension Process {
     process.currentDirectoryURL = directory
     process.launchPath = tool
     process.arguments = arguments
+    
+    processes.append(process)
 
     return process
   }

@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import Darwin
 
 struct Command: ParsableCommand {
   static let configuration = CommandConfiguration(
@@ -17,5 +18,15 @@ struct Command: ParsableCommand {
       TemplatesCommand.self
     ])
 }
+
+// Kill all running processes on exit
+#if os(macOS)
+trap(.interrupt) { _ in
+  for process in processes {
+    process.terminate()
+  }
+  exit(1)
+}
+#endif
 
 Command.main()
