@@ -33,7 +33,7 @@ struct CreateCommand: ParsableCommand {
     let defaultPackageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
-    try Templater.createPackage(in: packageDirectory, from: template, targetName: appName, forceCreation: force).unwrap()
+    try Templater.createPackage(in: packageDirectory, from: template, packageName: appName, forceCreation: force).unwrap()
   }
   
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
