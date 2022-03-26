@@ -1,6 +1,7 @@
 import Foundation
 
 enum TemplaterError: LocalizedError {
+  case packageDirectoryAlreadyExists
   case failedToCloneTemplateRepository(ProcessError)
   case failedToGetApplicationSupportDirectory(Error)
   case cannotCreatePackageFromBaseTemplate
@@ -26,26 +27,30 @@ enum Templater {
   ///
   /// Downloads the default template repository if it hasn't already been downloaded.
   /// - Parameters:
-  ///   - directory: The directory to create the package in.
+  ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
   ///   - packageName: The name of the package.
   ///   - forceCreation: If `true`, the package will be created even if the selected template isn't compatible with the user's system and Swift version.
   /// - Returns: A failure if package creation fails.
   static func createPackage(
-    in directory: URL,
+    in outputDirectory: URL,
     from template: String,
     packageName: String,
     forceCreation: Bool
   ) -> Result<Void, TemplaterError> {
+    if FileManager.default.fileExists(atPath: outputDirectory.path) {
+      return .failure(.packageDirectoryAlreadyExists)
+    }
+    
     guard template != "Skeleton" else {
-      return createSkeletonPackage(in: directory, packageName: packageName)
+      return createSkeletonPackage(in: outputDirectory, packageName: packageName)
     }
     
     // Get the default templates directory (and download if not present), and then create the package
     return getDefaultTemplatesDirectory(downloadIfNecessary: true)
       .flatMap { templatesDirectory in
         createPackage(
-          in: directory,
+          in: outputDirectory,
           from: template,
           in: templatesDirectory,
           packageName: packageName,
@@ -68,6 +73,10 @@ enum Templater {
     packageName: String,
     forceCreation: Bool
   ) -> Result<Void, TemplaterError> {
+    if FileManager.default.fileExists(atPath: outputDirectory.path) {
+      return .failure(.packageDirectoryAlreadyExists)
+    }
+    
     // The `Base` template should not be used to create packages directly
     guard template != "Base" else {
       return .failure(.cannotCreatePackageFromBaseTemplate)
@@ -122,35 +131,6 @@ enum Templater {
     
     // Apply the template
     return applyTemplate(templateDirectory, to: outputDirectory, packageName: packageName)
-  }
-  
-  /// Applies a template to a directory (processes and copies the template's files).
-  /// - Parameters:
-  ///   - templateDirectory: The template's directory.
-  ///   - outputDirectory: The directory to copy the resulting files to.
-  ///   - packageName: The name of the package.
-  /// - Returns: A failure if template application fails.
-  static func applyTemplate(_ templateDirectory: URL, to outputDirectory: URL, packageName: String) -> Result<Void, TemplaterError> {
-    guard let enumerator = FileManager.default.enumerator(at: templateDirectory, includingPropertiesForKeys: nil) else {
-      return .failure(.failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
-    }
-    
-    // Enumerate the template's files
-    let excluded = Set(["Template.toml"])
-    let files = enumerator
-      .compactMap { $0 as? URL }
-      .filter { !excluded.contains($0.lastPathComponent) }
-      .filter { FileManager.default.itemExists(at: $0, withType: .file) }
-    
-    // Process and copy each file
-    for file in files {
-      let result = processAndCopyFile(file, from: templateDirectory, to: outputDirectory, packageName: packageName)
-      if case .failure = result {
-        return result
-      }
-    }
-    
-    return .success()
   }
   
   /// Gets the default templates directory.
@@ -248,20 +228,6 @@ enum Templater {
       }
   }
   
-  /// Creates a package for the 'Skeleton' template.
-  ///
-  /// It just generates a package using the SwiftPM cli and then adds a basic `Bundler.toml` configuration file.
-  /// - Parameters:
-  ///   - directory: The directory create the package in.
-  ///   - packageName: The name of the package.
-  /// - Returns: A failure if package creation fails.
-  static func createSkeletonPackage(in directory: URL, packageName: String) -> Result<Void, TemplaterError> {
-    return SwiftPackageManager.createPackage(in: directory, name: packageName)
-      .mapError { error in
-        .failedToCreateSkeletonPackage(error)
-      }
-  }
-  
   /// Downloads the default template repository.
   /// - Parameter directory: The directory to clone the template repository in.
   /// - Returns: A failure if cloning the repository fails.
@@ -286,6 +252,49 @@ enum Templater {
   }
   
   // MARK: Private methods
+  
+  /// Creates a package for the 'Skeleton' template.
+  ///
+  /// It just generates a package using the SwiftPM cli and then adds a basic `Bundler.toml` configuration file.
+  /// - Parameters:
+  ///   - directory: The directory create the package in.
+  ///   - packageName: The name of the package.
+  /// - Returns: A failure if package creation fails.
+  private static func createSkeletonPackage(in directory: URL, packageName: String) -> Result<Void, TemplaterError> {
+    return SwiftPackageManager.createPackage(in: directory, name: packageName)
+      .mapError { error in
+          .failedToCreateSkeletonPackage(error)
+      }
+  }
+  
+  /// Applies a template to a directory (processes and copies the template's files).
+  /// - Parameters:
+  ///   - templateDirectory: The template's directory.
+  ///   - outputDirectory: The directory to copy the resulting files to.
+  ///   - packageName: The name of the package.
+  /// - Returns: A failure if template application fails.
+  private static func applyTemplate(_ templateDirectory: URL, to outputDirectory: URL, packageName: String) -> Result<Void, TemplaterError> {
+    guard let enumerator = FileManager.default.enumerator(at: templateDirectory, includingPropertiesForKeys: nil) else {
+      return .failure(.failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
+    }
+    
+    // Enumerate the template's files
+    let excluded = Set(["Template.toml"])
+    let files = enumerator
+      .compactMap { $0 as? URL }
+      .filter { !excluded.contains($0.lastPathComponent) }
+      .filter { FileManager.default.itemExists(at: $0, withType: .file) }
+    
+    // Process and copy each file
+    for file in files {
+      let result = processAndCopyFile(file, from: templateDirectory, to: outputDirectory, packageName: packageName)
+      if case .failure = result {
+        return result
+      }
+    }
+    
+    return .success()
+  }
   
   /// Processes a template file (replacing occurences of `{{PACKAGE}}` with the package name) and then copies it to a destination directory.
   /// - Parameters:
