@@ -12,9 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        
-#       - name: Force Xcode 13
-#         run: sudo xcode-select -switch /Applications/Xcode_13.0.app
 
       - name: Build
         run: swift build -c release --arch arm64 --arch x86_64
