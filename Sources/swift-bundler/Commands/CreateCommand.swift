@@ -24,6 +24,12 @@ struct CreateCommand: ParsableCommand {
     help: "Force creation of the package even if the template does not support the current platform.")
   var force = false
   
+  @Option(
+    name: .long,
+    help: "An alternate directory to search for the template in instead.",
+    transform: URL.init(fileURLWithPath:))
+  var templatesDirectory: URL?
+  
   func run() throws {
     guard Self.isValidAppName(appName) else {
       log.error("Invalid app name: app names must only include uppercase and lowercase characters from the English alphabet.")
@@ -33,7 +39,11 @@ struct CreateCommand: ParsableCommand {
     let defaultPackageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
-    try Templater.createPackage(in: packageDirectory, from: template, packageName: appName, forceCreation: force).unwrap()
+    if let templatesDirectory = templatesDirectory {
+      try Templater.createPackage(in: packageDirectory, from: template, in: templatesDirectory, packageName: appName, forceCreation: force).unwrap()
+    } else {
+      try Templater.createPackage(in: packageDirectory, from: template, packageName: appName, forceCreation: force).unwrap()
+    }
   }
   
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
