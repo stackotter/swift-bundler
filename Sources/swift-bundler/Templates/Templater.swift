@@ -28,17 +28,17 @@ enum Templater {
   /// - Parameters:
   ///   - directory: The directory to create the package in.
   ///   - template: The template to use to create the package.
-  ///   - targetName: The name of the package's initial target.
+  ///   - packageName: The name of the package.
   ///   - forceCreation: If `true`, the package will be created even if the selected template isn't compatible with the user's system and Swift version.
   /// - Returns: A failure if package creation fails.
   static func createPackage(
     in directory: URL,
     from template: String,
-    targetName: String,
+    packageName: String,
     forceCreation: Bool
   ) -> Result<Void, TemplaterError> {
     guard template != "Skeleton" else {
-      return createSkeletonPackage(in: directory, targetName: targetName)
+      return createSkeletonPackage(in: directory, packageName: packageName)
     }
     
     // Get the default templates directory (and download if not present), and then create the package
@@ -48,7 +48,7 @@ enum Templater {
           in: directory,
           from: template,
           in: templatesDirectory,
-          targetName: targetName,
+          packageName: packageName,
           forceCreation: forceCreation)
       }
   }
@@ -58,14 +58,14 @@ enum Templater {
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
   ///   - templatesDirectory: The directory containing the template to use.
-  ///   - targetName: The name of the package's initial target.
+  ///   - packageName: The name of the package.
   ///   - forceCreation: If `true`, the package will be created even if the selected template isn't compatible with the user's system and Swift version.
   /// - Returns: A failure if package creation fails.
   static func createPackage(
     in outputDirectory: URL,
     from template: String,
     in templatesDirectory: URL,
-    targetName: String,
+    packageName: String,
     forceCreation: Bool
   ) -> Result<Void, TemplaterError> {
     // The `Base` template should not be used to create packages directly
@@ -114,23 +114,23 @@ enum Templater {
     // Apply the base template first if it exists
     let baseTemplate = templatesDirectory.appendingPathComponent("Base")
     if FileManager.default.itemExists(at: baseTemplate, withType: .directory) {
-      let result = applyTemplate(baseTemplate, to: outputDirectory, targetName: targetName)
+      let result = applyTemplate(baseTemplate, to: outputDirectory, packageName: packageName)
       if case .failure = result {
         return result
       }
     }
     
     // Apply the template
-    return applyTemplate(templateDirectory, to: outputDirectory, targetName: targetName)
+    return applyTemplate(templateDirectory, to: outputDirectory, packageName: packageName)
   }
   
   /// Applies a template to a directory (processes and copies the template's files).
   /// - Parameters:
   ///   - templateDirectory: The template's directory.
   ///   - outputDirectory: The directory to copy the resulting files to.
-  ///   - targetName: The name of the target for the package.
+  ///   - packageName: The name of the package.
   /// - Returns: A failure if template application fails.
-  static func applyTemplate(_ templateDirectory: URL, to outputDirectory: URL, targetName: String) -> Result<Void, TemplaterError> {
+  static func applyTemplate(_ templateDirectory: URL, to outputDirectory: URL, packageName: String) -> Result<Void, TemplaterError> {
     guard let enumerator = FileManager.default.enumerator(at: templateDirectory, includingPropertiesForKeys: nil) else {
       return .failure(.failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
     }
@@ -144,7 +144,7 @@ enum Templater {
     
     // Process and copy each file
     for file in files {
-      let result = processAndCopyFile(file, from: templateDirectory, to: outputDirectory, targetName: targetName)
+      let result = processAndCopyFile(file, from: templateDirectory, to: outputDirectory, packageName: packageName)
       if case .failure = result {
         return result
       }
@@ -253,10 +253,10 @@ enum Templater {
   /// It just generates a package using the SwiftPM cli and then adds a basic `Bundler.toml` configuration file.
   /// - Parameters:
   ///   - directory: The directory create the package in.
-  ///   - targetName: The name of the package.
+  ///   - packageName: The name of the package.
   /// - Returns: A failure if package creation fails.
-  static func createSkeletonPackage(in directory: URL, targetName: String) -> Result<Void, TemplaterError> {
-    return SwiftPackageManager.createPackage(in: directory, name: targetName)
+  static func createSkeletonPackage(in directory: URL, packageName: String) -> Result<Void, TemplaterError> {
+    return SwiftPackageManager.createPackage(in: directory, name: packageName)
       .mapError { error in
         .failedToCreateSkeletonPackage(error)
       }
@@ -287,18 +287,18 @@ enum Templater {
   
   // MARK: Private methods
   
-  /// Processes a template file (replacing occurences of `{{TARGET}}` with the package name) and then copies it to a destination directory.
+  /// Processes a template file (replacing occurences of `{{PACKAGE}}` with the package name) and then copies it to a destination directory.
   /// - Parameters:
   ///   - file: The template file.
   ///   - templateDirectory: The directory of the template that the file is from.
   ///   - outputDirectory: The directory to output the file to (the file gets copied to the same relative location as in `templateDirectory`).
-  ///   - targetName: The name of the package.
+  ///   - packageName: The name of the package.
   /// - Returns: A failure if file processing or copying fails.
   private static func processAndCopyFile(
     _ file: URL,
     from templateDirectory: URL,
     to outputDirectory: URL,
-    targetName: String
+    packageName: String
   ) -> Result<Void, TemplaterError> {
     // Read the file's contents
     var contents: String
@@ -310,9 +310,9 @@ enum Templater {
     
     var file = file
     
-    // If the file is a template, replace all instances of `{{TARGET}}` with the package's name
+    // If the file is a template, replace all instances of `{{PACKAGE}}` with the package's name
     if file.pathExtension == "template" {
-      contents = contents.replacingOccurrences(of: "{{TARGET}}", with: targetName)
+      contents = contents.replacingOccurrences(of: "{{PACKAGE}}", with: packageName)
       file = file.deletingPathExtension()
     }
     
@@ -321,9 +321,9 @@ enum Templater {
       return .failure(.failedToGetRelativePath(from: templateDirectory, to: file))
     }
     
-    // Compute the output directory, replacing occurrences of `{{TARGET}}` in the original path with the package's name
+    // Compute the output directory, replacing occurrences of `{{PACKAGE}}` in the original path with the package's name
     relativePath = relativePath
-      .replacingOccurrences(of: "{{TARGET}}", with: targetName)
+      .replacingOccurrences(of: "{{PACKAGE}}", with: packageName)
     let outputFile = outputDirectory.appendingPathComponent(relativePath)
     
     // Write to the output file
