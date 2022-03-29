@@ -6,14 +6,23 @@ struct AppConfigurationDTO: Codable {
   var product: String
   /// The app's current version.
   var version: String
-  /// The app's category. See [Apple's documentation](https://developer.apple.com/app-store/categories/) for more details.
+  /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String?
   /// The minimum macOS version that the app can run on.
   var minimumMacOSVersion: String?
-  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain expressions (see ``ExpressionEvaluator`` for details).
+  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]?
+
+  private enum CodingKeys: String, CodingKey {
+    case product
+    case version
+    case category
+    case bundleIdentifier = "bundle_identifier"
+    case minimumMacOSVersion = "minimum_macos_version"
+    case extraPlistEntries = "extra_plist_entries"
+  }
   
   /// Creates a new intermediate app configuration representation.
   init(
@@ -50,7 +59,7 @@ extension AppConfiguration {
   init(_ dto: AppConfigurationDTO) {
     product = dto.product
     version = dto.version
-    category = dto.category ?? Self.default.category
+    category = dto.category
     bundleIdentifier = dto.bundleIdentifier ?? Self.default.bundleIdentifier
     minimumMacOSVersion = dto.minimumMacOSVersion ?? Self.default.minimumMacOSVersion
     extraPlistEntries = dto.extraPlistEntries ?? Self.default.extraPlistEntries

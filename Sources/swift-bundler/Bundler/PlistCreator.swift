@@ -25,7 +25,7 @@ enum PlistCreator {
     appName: String,
     bundleIdentifier: String,
     version: String,
-    category: String,
+    category: String?,
     minimumMacOSVersion: String,
     extraPlistEntries: [String: String]
   ) -> Result<Void, PlistCreatorError> {
@@ -77,7 +77,7 @@ enum PlistCreator {
     appName: String,
     bundleIdentifier: String,
     version: String,
-    category: String,
+    category: String?,
     minimumMacOSVersion: String,
     extraPlistEntries: [String: String]
   ) -> Result<Data, PlistCreatorError> {
@@ -91,9 +91,12 @@ enum PlistCreator {
       "CFBundlePackageType": "APPL",
       "CFBundleShortVersionString": version,
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSApplicationCategoryType": category,
       "LSMinimumSystemVersion": minimumMacOSVersion,
     ]
+
+    if let category = category {
+      entries["LSApplicationCategoryType"] = category
+    }
     
     for (key, value) in extraPlistEntries {
       entries[key] = value
