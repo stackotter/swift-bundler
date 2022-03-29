@@ -14,9 +14,7 @@ enum ExpressionEvaluatorError: LocalizedError {
 /// environment values such as the repository's git commit hash.
 ///
 /// An evaluator caches all evaluated variable values to make repeated accesses faster.
-///
-/// It's a class so that caching works when the evaluator is passed around.
-class ExpressionEvaluator {
+struct ExpressionEvaluator {
   /// The parser used to parse expressions. See ``evaluateExpression(_:)``.
   static let expressionParser = Parse {
     Prefix { $0 != "{" }
@@ -36,6 +34,8 @@ class ExpressionEvaluator {
   struct Context {
     /// The root directory of the package.
     var packageDirectory: URL
+    /// The app's version.
+    var version: String
   }
   
   /// Creates a new evaluator.
@@ -50,7 +50,7 @@ class ExpressionEvaluator {
   /// - Parameters:
   ///   - expression: The expression to evaluate.
   /// - Returns: The string after substituting all variables with their respective values.
-  func evaluateExpression(_ expression: String) -> Result<String, ExpressionEvaluatorError> {
+  mutating func evaluateExpression(_ expression: String) -> Result<String, ExpressionEvaluatorError> {
     var input = expression[...]
     var output = ""
     
@@ -88,7 +88,7 @@ class ExpressionEvaluator {
   /// - Parameters:
   ///   - variable: The name of the variable to evaluate the value of.
   /// - Returns: The value of the variable. If the variable doesn't exist or the evaluator fails to compute the value, a failure is returned.
-  func evaluateExpressionVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
+  mutating func evaluateExpressionVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
     if let value = cache[variable] {
       return .success(value)
     }
@@ -104,6 +104,8 @@ class ExpressionEvaluator {
         }
         
         output = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+      case "VERSION":
+        output = context.version
       default:
         return .failure(.unknownVariable(variable))
     }

@@ -91,10 +91,6 @@ struct BundleCommand: ParsableCommand {
         universal: universal)
     }
     
-    let postbuild = {
-      Bundler.postbuild(packageDirectory)
-    }
-    
     let bundle = {
       Bundler.bundle(
         appName: appName,
@@ -104,6 +100,10 @@ struct BundleCommand: ParsableCommand {
         outputDirectory: outputDirectory,
         isXcodeBuild: builtWithXcode,
         universal: universal)
+    }
+
+    let postbuild = {
+      Bundler.postbuild(packageDirectory)
     }
     
     let task: () -> Result<Void, BundlerError>
