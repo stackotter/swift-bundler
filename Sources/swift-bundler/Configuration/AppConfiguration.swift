@@ -33,31 +33,12 @@ struct AppConfiguration {
   /// Evaluates the value expressions for each field that supports expressions.
   ///
   /// The currently supported fields are:
-  /// - `version`
   /// - `extraPlistEntries`
   ///
   /// - Parameter evaluator: The evaluator to evaluate expressions with.
   /// - Returns: The configuration with all expressions evaluated. If any of the expressions are invalid, a failure is returned.
   func withExpressionsEvaluated(_ evaluator: ExpressionEvaluator) -> Result<AppConfiguration, AppConfigurationError> {
-    // Strings fields to evaluate
-    let keyPaths: [WritableKeyPath<AppConfiguration, String>] = [\.version]
-    
-    // Evaluate the expression at each field that supports expressions
     var config = self
-    for keyPath in keyPaths {
-      let result = evaluator.evaluateExpression(config[keyPath: keyPath])
-      switch result {
-        case let .success(value):
-          config[keyPath: keyPath] = value
-        case let .failure(error):
-          return .failure(
-            .invalidValueExpression(
-              key: Mirror(reflecting: keyPath).description,
-              value: config[keyPath: keyPath],
-              error
-            ))
-      }
-    }
     
     // Evaluate expressions in the plist entry values
     for (key, value) in config.extraPlistEntries {
