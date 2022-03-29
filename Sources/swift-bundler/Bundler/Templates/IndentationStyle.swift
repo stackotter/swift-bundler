@@ -32,17 +32,13 @@ extension IndentationStyle: ExpressibleByArgument {
   init?(argument: String) {
     let parser = Parse {
       OneOf {
-        Parse {
+        Parse(IndentationStyle.tabs) {
           "tabs"
-        }.map {
-          IndentationStyle.tabs
         }
         
-        Parse {
+        Parse(IndentationStyle.spaces) {
           "spaces="
           Int.parser()
-        }.map { count in
-          IndentationStyle.spaces(count)
         }
       }
     }
