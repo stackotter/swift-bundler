@@ -39,14 +39,14 @@ struct Configuration {
   }
   
   /// Evaluates the expressions in all configuration field values that support expressions.
-  /// - Parameter context: The evaluator context to use.
-  /// - Returns: The evaluated configuration.
-  /// - Throws: If any of the expressions are invalid, an error is thrown.
-  func withExpressionsEvaluated(_ context: ExpressionEvaluator.Context) -> Result<Configuration, ConfigurationError> {
-    let evaluator = ExpressionEvaluator(context: context)
-    
+  /// - Parameter packageDirectory: The root directory of the package. Used to evaluate the `COMMIT` expression.
+  /// - Returns: The evaluated configuration. If any of the expressions are invalid, a failure is returned.
+  func withExpressionsEvaluated(in packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
     var config = self
     for (appName, app) in config.apps {
+      let evaluator = ExpressionEvaluator(context: .init(
+        packageDirectory: packageDirectory,
+        version: app.version))
       let result = app.withExpressionsEvaluated(evaluator)
       switch result {
         case let .success(evaluatedConfig):
@@ -91,7 +91,7 @@ struct Configuration {
     }
     
     let configuration = Configuration(dto)
-    return configuration.withExpressionsEvaluated(.init(packageDirectory: packageDirectory))
+    return configuration.withExpressionsEvaluated(in: packageDirectory)
   }
   
   /// Migrates a `Bundle.json` to a `Bundler.toml` file.

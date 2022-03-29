@@ -39,6 +39,7 @@ struct AppConfiguration {
   /// - Returns: The configuration with all expressions evaluated. If any of the expressions are invalid, a failure is returned.
   func withExpressionsEvaluated(_ evaluator: ExpressionEvaluator) -> Result<AppConfiguration, AppConfigurationError> {
     var config = self
+    var evaluator = evaluator
     
     // Evaluate expressions in the plist entry values
     for (key, value) in config.extraPlistEntries {
