@@ -71,6 +71,8 @@ struct CreateCommand: ParsableCommand {
         indentationStyle: indentation
       ).unwrap()
     }
+
+    log.info("Done")
   }
   
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).

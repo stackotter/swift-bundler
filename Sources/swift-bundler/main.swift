@@ -17,7 +17,7 @@ struct Command: ParsableCommand {
       TemplatesCommand.self,
 
       GenerateXcodeSupportCommand.self,
-      
+
       PrebuildCommand.self,
       PostbuildCommand.self,
     ])
@@ -34,4 +34,3 @@ trap(.interrupt) { _ in
 #endif
 
 Command.main()
-log.info("Done")

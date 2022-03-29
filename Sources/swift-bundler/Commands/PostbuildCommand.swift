@@ -17,5 +17,7 @@ struct PostbuildCommand: ParsableCommand {
   func run() throws {
     let packageDirectory = packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     try Bundler.postbuild(packageDirectory).unwrap()
+
+    log.info("Done")
   }
 }

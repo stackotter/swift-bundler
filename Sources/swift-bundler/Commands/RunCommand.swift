@@ -77,5 +77,7 @@ struct RunCommand: ParsableCommand {
       packageDirectory: packageDirectory)
     
     try Bundler.run(appName: appName, outputDirectory: outputDirectory).unwrap()
+
+    log.info("Done")
   }
 }
