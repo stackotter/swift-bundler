@@ -11,7 +11,7 @@ struct AppConfigurationDTO: Codable {
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String?
   /// The minimum macOS version that the app can run on.
-  var minMacOSVersion: String?
+  var minimumMacOSVersion: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain expressions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]?
   
@@ -21,14 +21,14 @@ struct AppConfigurationDTO: Codable {
     version: String,
     category: String? = nil,
     bundleIdentifier: String? = nil,
-    minMacOSVersion: String? = nil,
+    minimumMacOSVersion: String? = nil,
     extraPlistEntries: [String : String]? = nil
   ) {
     self.product = product
     self.version = version
     self.category = category
     self.bundleIdentifier = bundleIdentifier
-    self.minMacOSVersion = minMacOSVersion
+    self.minimumMacOSVersion = minimumMacOSVersion
     self.extraPlistEntries = extraPlistEntries
   }
   
@@ -39,7 +39,7 @@ struct AppConfigurationDTO: Codable {
     version = configuration.version
     category = configuration.category
     bundleIdentifier = configuration.bundleIdentifier
-    minMacOSVersion = configuration.minMacOSVersion
+    minimumMacOSVersion = configuration.minimumMacOSVersion
     extraPlistEntries = configuration.extraPlistEntries
   }
 }
@@ -52,7 +52,7 @@ extension AppConfiguration {
     version = dto.version
     category = dto.category ?? Self.default.category
     bundleIdentifier = dto.bundleIdentifier ?? Self.default.bundleIdentifier
-    minMacOSVersion = dto.minMacOSVersion ?? Self.default.minMacOSVersion
+    minimumMacOSVersion = dto.minimumMacOSVersion ?? Self.default.minimumMacOSVersion
     extraPlistEntries = dto.extraPlistEntries ?? Self.default.extraPlistEntries
   }
 }

@@ -90,7 +90,7 @@ enum Bundler {
         from: productsDirectory,
         to: appResources,
         fixBundles: !isXcodeBuild && !universal,
-        minMacOSVersion: appConfiguration.minMacOSVersion
+        minimumMacOSVersion: appConfiguration.minimumMacOSVersion
       ).mapError { error in
         .failedToCopyResourceBundles(error)
       }
@@ -252,7 +252,7 @@ enum Bundler {
       bundleIdentifier: appConfiguration.bundleIdentifier,
       version: appConfiguration.version,
       category: appConfiguration.category,
-      minMacOSVersion: appConfiguration.minMacOSVersion,
+      minimumMacOSVersion: appConfiguration.minimumMacOSVersion,
       extraPlistEntries: appConfiguration.extraPlistEntries
     ).mapError { error in
       .failedToCreateInfoPlist(error)

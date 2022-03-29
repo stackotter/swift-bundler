@@ -123,7 +123,7 @@ struct Configuration {
           version: oldConfiguration.versionString,
           category: oldConfiguration.category,
           bundleIdentifier: oldConfiguration.bundleIdentifier,
-          minMacOSVersion: oldConfiguration.minOSVersion,
+          minimumMacOSVersion: oldConfiguration.minOSVersion,
           extraPlistEntries: extraPlistEntries.isEmpty ? nil : extraPlistEntries)
         
         let configuration = ConfigurationDTO(apps: [oldConfiguration.target: appConfiguration])
