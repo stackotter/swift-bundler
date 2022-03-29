@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My motivation is that I think Xcode projects are a lot more restrictive than Swift packages, and Swift packages are less convoluted. My end goal is to be able to create Swift apps for Windows, Linux and MacOS with a single codebase.
+A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My motivation is that I think Xcode projects are a lot more restrictive than Swift packages, and Swift packages are less convoluted. My end goal is to be able to create Swift apps for Windows, Linux and MacOS with a single codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
 ## Installation
 
@@ -18,103 +18,115 @@ cd swift-bundler
 sh ./install.sh
 ```
 
-## Usage
+## Getting started
 
-### Init
+To create your first app with Swift Bundler, the `create` command is an easy place to get started.
 
 ```sh
-# Create a new swift package and set it up for bundling, by default the packge is created in a new directory with a name matching the package.
-swift bundler init [name]
+# Create a new swift package and from the SwiftUI template and set it up for Swift Bundler.
+swift bundler create HelloWorld --template SwiftUI
 ```
 
-Currently it is not possible to automatically setup swift bundler for an existing package. However it is not too difficult to do manually. First make sure your package contains a `main.swift` file and make sure macOS platform version in `Package.swift` is at least 11.0 (earlier versions will likely work as well, but they are not tested). Then create a file called `Bundle.json` containing configuration in the format specified in the following section. You should now be good to go. If your `Package.swift` explicitly specifies an executable product, the name of the product must match the name of the package.
+### Build
+
+```sh
+# Build and bundle the app. The default output directory is .build/bundler, but
+# it can be changed using the '-o' option.
+swift bundler bundle
+```
+
+### Build and run
+
+```sh
+# Builds and runs the app. The build configuration can
+# be specified with the '-c' option (e.g. '-c debug').
+swift bundler run
+```
 
 ### Configuration
 
-Running `swift bundler init` creates a `Bundle.json` file which contains all the configuration for the app. Below is an example configuration;
+Running `swift bundler create` creates a `Bundler.toml` file which contains all the configuration for the app. Below is an example configuration;
 
-```json
-{
-  "target": "AppTargetName",
-  "buildNumber" : 1,
-  "bundleIdentifier" : "com.example.bundler-hello-world",
-  "category" : "public.app-category.games",
-  "minOSVersion" : "11.0",
-  "versionString" : "0.1.0"
-}
+```toml
+[apps.HelloWorld]
+product = "HelloWorld"
+version = "0.1.0"
 ```
 
-Remember to change this configuration to match your project.
+If you want to add another app to the same package, it's easy, just duplicate that configuration section and replace the app name and product.
+
+Here's an example of a configuration file containing example values for all fields:
+
+```toml
+[apps.HelloWorld]
+product = "HelloWorld"
+version = "0.1.0"
+category = "public.app-category.education"
+bundle_identifier = "com.example.HelloWorld"
+minimum_macos_version = "11"
+
+[apps.HelloWorld.extra_plist_entries]
+commit = "{COMMIT}"
+```
 
 ### Xcode support
 
-If you want to use xcode as your ide, run this in the package directory. Make sure you've run init first. This command only needs to be run once (or each time you clone if you gitignore the .swiftpm directory).
+If you want to use xcode as your ide, run this in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
 ```sh
 # Creates the files necessary to get xcode to run the package as an app
 swift bundler generate-xcode-support
 ```
 
-### Build
-
-```sh
-# Build the app and output the .app to the specified dir
-# If no directory is specified the default output dir is .build/bundler
-swift bundler build -o [dir]
-```
-
-### Build and run
-
-```sh
-# Builds and runs the app
-swift bundler run
-```
-
-### Bundle
-
-```sh
-# Bundles an executable into a .app using config from the given package dir
-swift bundler bundle -d [package dir] -e [executable file] -o [output dir]
-
-# OR
-# Converts the executable and bundles in a products dir into a .app
-# If doing it this way and your app contains bundles, you may need to add the --dont-fix-bundles flag if the build was performed as a universal build or using xcode because both of those produce correct bundles
-swift bundler bundle -d [package dir] -P [products dir] -o [output dir]
-```
+To open the package in Xcode, just run `open Package.swift` or open `Package.swift` with Xcode through Finder.
 
 ### Custom build scripts
 
-Both prebuild and postbuild scripts are supported. Just create the `prebuild.sh` and/or `postbuild.sh` files in the root directory of your project and they will automatically be run with the next build. No extra configuration required.
+Both prebuild and postbuild scripts are supported. Just create the `prebuild.sh` and/or `postbuild.sh` files in the root directory of your project and they will automatically be run with the next build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after bundling (creating the `.app`).
 
 ### App Icons
 
-There are two ways to add custom app icons to a bundle project.
+There are two ways to add custom app icons to a bundler project.
 
-1. The simplest way is to add an Icon1024x1024.png file in the root directory of your project and the bundler will automatically convert it to all the required sizes and create the AppIcon.icns in the app's resources. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
-2. If you want to have different versions of your icon for different file sizes you can create a custom AppIcon.icns and add it to the root directory. You can even generate it from an IconSet in a custom prebuild script! (just see createIcns in Utils.swift for how this is done).
+1. The simplest way is to add a file called `Icon1024x1024.png` to the root directory of your package. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
+2. If you want to have different versions of your icon for different resolutions you can add an `AppIcon.icns` iconset in the root directory of your package.
 
-If both are present, `AppIcon.icns` is used.
+If both are present, `AppIcon.icns` is used because it is more specific.
 
 ### Info.plist customization
 
-If you want to add extra key-value pairs to your apps Info.plist, you can add the following to `Bundle.json`:
+If you want to add extra key-value pairs to your app's Info.plist, you can specify them in an app's `extraPlistEntries` field. Here's an example where the version displayed on the app's about screen is updated to include the current commit hash:
 
-```jsonc
-{
-  // ...
-  "extraInfoPlistEntries": {
-    "YourKey": "YourValue",
-    "YourArrayKey": ["YourFirstArrayEntry"]
-  }
-}
+```toml
+[app.HelloWorld.extra_plist_entries]
+CFBundleShortVersionString = "{VERSION}_{COMMIT_HASH}"
 ```
+
+The `{VERSION}` and `{COMMIT_HASH}` variables get replaced at build time with their respective values. See [the variable substition section](#variable-substitions) for more information.
 
 If you provide a value for a key that is already present in the default Info.plist, the default value will be overidden with the value you provide.
 
+### Variable substitions
+
+Some configuration fields (currently only `extraPlistEntries`) support variable substitution. This means that anything of the form `{VARIABLE}` within the field's value will be replaced by the variable's value. Below is a list of all supported variables:
+
+- `VERSION`: The app's configured version
+- `COMMIT_HASH`: The commit hash of the git repository at the package's root directory. If there is no git repository, an error will be thrown.
+
 ### Help
 
-If you want to see all available options just add `--help` to the end, (e.g. `swift bundler run --help`).
+If you want to see all available options just use the `help` command (e.g. `swift bundler help run`).
 
-## Troubleshooting
+## Advanced usage
 
-If you are having an issue to do with bundle resources, try doing a universal build. Universal builds output correct bundles whereas for regular single architecture builds the bundler has to compile metal shaders and structure the bundles correctly. I don't know why only universal builds output correct bundles.
+### Metal shaders
+
+Swift Bundler supports Metal shaders, however all metal files must be siblings within a single directory and they cannot import any header files from the project. This limitation may be fixed in future versions of Swift Bundler, contributions are welcome! The folder containing the shaders must also be added to the app's target (in `Package.swift`) as resources to process, like so:
+
+```swift
+// ...
+resources: [
+  .process("Render/Shader/"),
+]
+// ...
+```
