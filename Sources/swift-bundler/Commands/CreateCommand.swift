@@ -7,32 +7,38 @@ struct CreateCommand: ParsableCommand {
     commandName: "create",
     abstract: "Create a new package.")
   
+  /// The name of the app to create.
   @Argument(
     help: "The name of the app to create.")
   var appName: String
   
+  /// The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   
+  /// The template to create the app from. Defaults to 'Skeleton', the bare minimum template.
   @Option(
     name: .shortAndLong,
     help: "The template to create the app from. Defaults to 'Skeleton', the bare minimum template.")
   var template: String = "Skeleton"
   
+  /// If `true`, force creation of the package even if the template does not support the current platform.
   @Flag(
     name: .shortAndLong,
     help: "Force creation of the package even if the template does not support the current platform.")
   var force = false
   
+  /// An alternate directory to search for the template in instead.
   @Option(
     name: .long,
     help: "An alternate directory to search for the template in instead.",
     transform: URL.init(fileURLWithPath:))
   var templatesDirectory: URL?
   
+  /// The indentation style to create the package with.
   @Option(
     name: .long,
     help: "The indentation style to create the package with. The possible values are 'tabs' and 'spaces=[count]'.")

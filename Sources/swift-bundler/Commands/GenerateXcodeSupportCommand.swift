@@ -7,9 +7,10 @@ struct GenerateXcodeSupportCommand: ParsableCommand {
     commandName: "generate-xcode-support",
     abstract: "Generate the files required for Xcode to work nicely with a package.")
   
+  /// The root directory of the package to generate Xcode support files for.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to generate Xcode support files for.",
+    help: "The root directory of the package to generate Xcode support files for.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   

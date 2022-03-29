@@ -7,16 +7,19 @@ struct BundleCommand: ParsableCommand {
     commandName: "bundle",
     abstract: "Create an app bundle from a package.")
   
+  /// The name of the app to build.
   @Argument(
     help: "The name of the app to build.")
   var appName: String?
   
+  /// The directory containing the package to build.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to build.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
+  /// The build configuration to use
   @Option(
     name: [.customShort("c"), .customLong("config")],
     help: "The build configuration to use (debug|release).",
@@ -25,28 +28,33 @@ struct BundleCommand: ParsableCommand {
     })
   var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
 
+  /// The directory to output the bundled .app to.
   @Option(
     name: .shortAndLong,
     help: "The directory to output the bundled .app to.",
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
-
+  
+  /// If `true` a universal application will be created (arm64 and x64).
   @Flag(
     name: .shortAndLong,
     help: "Build a universal application (arm64 and x64).")
   var universal = false
-    
+  
+  /// Whether to skip the build step or not.
   @Flag(
     name: .long,
     help: "Skip the build step.")
   var skipBuild = false
   
+  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
   @Option(
     name: .long,
     help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
     transform: URL.init(fileURLWithPath:))
   var productsDirectory: URL?
   
+  /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM). Can only be `true` when ``skipBuild`` is `true`.
   @Flag(
     name: .long,
     help: "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM). Can only be set when `--skip-build` is supplied.")

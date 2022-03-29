@@ -7,18 +7,22 @@ struct RunCommand: ParsableCommand {
     commandName: "run",
     abstract: "Run a package as an app.")
   
-  // MARK: Build and bundle arguments (keep up-to-date with BuildCommand)
+  // MARK: Build and bundle arguments (keep up-to-date with BundleCommand)
+  // TODO: Use an option bundle
   
+  /// The name of the app to build.
   @Argument(
-    help: "The name of the app to run.")
+    help: "The name of the app to build.")
   var appName: String?
   
+  /// The directory containing the package to build.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to run.",
+    help: "The directory containing the package to build.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   
+  /// The build configuration to use
   @Option(
     name: [.customShort("c"), .customLong("config")],
     help: "The build configuration to use (debug|release).",
@@ -27,19 +31,22 @@ struct RunCommand: ParsableCommand {
     })
   var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
   
+  /// The directory to output the bundled .app to.
   @Option(
     name: .shortAndLong,
     help: "The directory to output the bundled .app to.",
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
   
+  /// If `true` a universal application will be created (arm64 and x64).
   @Flag(
     name: .shortAndLong,
-    help: "Build a universal application (arm and intel).")
+    help: "Build a universal application (arm64 and x64).")
   var universal = false
   
   // MARK: Run arguments
   
+  /// If `true`, the building and bundling step is skipped.
   @Flag(
     name: .long,
     help: "Skips the building and bundling steps.")
