@@ -7,7 +7,11 @@ struct PostbuildCommand: ParsableCommand {
     commandName: "postbuild",
     abstract: "Run a package's postbuild script.")
   
-  @Option(name: [.customLong("directory"), .customShort("d")], help: "The directory of the package to run the postbuild script of.", transform: URL.init(fileURLWithPath:))
+  /// The directory of the package to run the postbuild script of.
+  @Option(
+    name: [.customLong("directory"), .customShort("d")],
+    help: "The directory of the package to run the postbuild script of.",
+    transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   
   func run() throws {

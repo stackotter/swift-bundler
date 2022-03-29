@@ -1,6 +1,7 @@
 import Foundation
 import TOMLKit
 
+/// An error related to package configuration.
 enum ConfigurationError: LocalizedError {
   case invalidAppName(String)
   case multipleAppsAndNoneSpecified
