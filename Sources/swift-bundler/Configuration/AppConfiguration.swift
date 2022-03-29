@@ -12,21 +12,21 @@ struct AppConfiguration {
   var product: String
   /// The app's current version.
   var version: String
-  /// The app's category. See [Apple's documentation](https://developer.apple.com/app-store/categories/) for more details.
-  var category: String
+  /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
+  var category: String?
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String
   /// The minimum macOS version that the app can run on.
   var minimumMacOSVersion: String
-  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain expressions (see ``ExpressionEvaluator`` for details).
+  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]
   
   /// The default app configuration.
   static var `default` = AppConfiguration(
     product: "ExampleApp",
     version: "0.1.0",
-    category: "public.app-category.example",
-    bundleIdentifier: "com.example.example",
+    category: nil,
+    bundleIdentifier: "com.example.ExampleApp",
     minimumMacOSVersion: "10.13",
     extraPlistEntries: [:])
   

@@ -4,6 +4,10 @@ import Foundation
 struct ConfigurationDTO: Codable {
   /// The apps contained within the package.
   var apps: [String: AppConfigurationDTO]
+
+  private enum CodingKeys: String, CodingKey {
+    case apps
+  }
   
   /// Creates a new intermediate configuration representation.
   init(apps: [String : AppConfigurationDTO]) {
