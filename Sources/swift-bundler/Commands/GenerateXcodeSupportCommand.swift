@@ -22,5 +22,7 @@ struct GenerateXcodeSupportCommand: ParsableCommand {
       for: configuration,
       in: packageDirectory
     ).unwrap()
+
+    log.info("Done")
   }
 }

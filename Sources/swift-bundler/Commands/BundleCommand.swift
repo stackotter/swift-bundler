@@ -118,6 +118,8 @@ struct BundleCommand: ParsableCommand {
     }
     
     try task().unwrap()
+
+    log.info("Done")
   }
   
   /// Gets the configuration for the specified app. If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).

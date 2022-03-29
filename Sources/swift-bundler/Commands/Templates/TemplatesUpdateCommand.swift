@@ -9,5 +9,7 @@ struct TemplatesUpdateCommand: ParsableCommand {
   
   func run() throws {
     try Templater.updateTemplates().unwrap()
+
+    log.info("Done")
   }
 }

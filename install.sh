@@ -1,4 +1,7 @@
 #!/bin/sh
+# Exit on error
+set -e
+
 # Build
 swift build -c release
 
@@ -6,6 +9,7 @@ swift build -c release
 sudo mkdir -p -m755 /opt/swift-bundler
 
 # Copy executable
+echo "Your password is required to copy the executable to /opt/swift-bundler"
 sudo cp .build/release/swift-bundler /opt/swift-bundler
 
 # Add to PATH if it isn't in PATH already
