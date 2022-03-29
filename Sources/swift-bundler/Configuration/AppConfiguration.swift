@@ -17,7 +17,7 @@ struct AppConfiguration {
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String
   /// The minimum macOS version that the app can run on.
-  var minMacOSVersion: String
+  var minimumMacOSVersion: String
   /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain expressions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]
   
@@ -27,7 +27,7 @@ struct AppConfiguration {
     version: "0.1.0",
     category: "public.app-category.example",
     bundleIdentifier: "com.example.example",
-    minMacOSVersion: "10.13",
+    minimumMacOSVersion: "10.13",
     extraPlistEntries: [:])
   
   /// Evaluates the value expressions for each field that supports expressions.
