@@ -6,13 +6,20 @@ enum AppConfigurationError: LocalizedError {
 }
 
 struct AppConfiguration {
+  /// The name of the executable product.
   var product: String
+  /// The app's current version.
   var version: String
+  /// The app's category. See [Apple's documentation](https://developer.apple.com/app-store/categories/) for more details.
   var category: String
+  /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String
+  /// The minimum macOS version that the app can run on.
   var minMacOSVersion: String
+  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain expressions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]
   
+  /// The default app configuration.
   static var `default` = AppConfiguration(
     product: "ExampleApp",
     version: "0.1.0",
@@ -28,8 +35,7 @@ struct AppConfiguration {
   /// - `extraPlistEntries`
   ///
   /// - Parameter evaluator: The evaluator to evaluate expressions with.
-  /// - Returns: The configuration with all expressions evaluated.
-  /// - Throws: If any of the expressions are invalid, an error is thrown.
+  /// - Returns: The configuration with all expressions evaluated. If any of the expressions are invalid, a failure is returned.
   func withExpressionsEvaluated(_ evaluator: ExpressionEvaluator) -> Result<AppConfiguration, AppConfigurationError> {
     // Strings fields to evaluate
     let keyPaths: [WritableKeyPath<AppConfiguration, String>] = [\.version]

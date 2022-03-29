@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for running an app's prebuild script.
 struct PrebuildCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "prebuild",

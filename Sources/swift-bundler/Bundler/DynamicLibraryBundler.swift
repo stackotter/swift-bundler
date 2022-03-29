@@ -1,5 +1,6 @@
 import Foundation
 
+/// An error returned by ``DynamicLibraryBundler``.
 enum DynamicLibraryBundlerError: LocalizedError {
   case failedToEnumerateDynamicLibraries(Error)
   case failedToCopyDynamicLibrary(Error)
@@ -9,7 +10,7 @@ enum DynamicLibraryBundlerError: LocalizedError {
   case failedToUpdateAppRPath(ProcessError)
 }
 
-/// A utility for copying dynamic libraries and updating an executable's rpaths accordingly.
+/// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {
   /// Copies the dynamic libraries within a build's products directory to an output directory.
   ///
@@ -100,7 +101,7 @@ enum DynamicLibraryBundler {
   /// - Parameters:
   ///   - searchDirectory: The directory to search for dynamic libraries within.
   ///   - isXcodeBuild: If `true`, frameworks containing dynamic libraries will be searched for instead of dynamic libraries. The dynamic library wihtin each framework is returned.
-  /// - Returns: Each dynamic library and its name.
+  /// - Returns: Each dynamic library and its name, or a failure if an error occurs.
   static func enumerateDynamicLibraries(_ searchDirectory: URL, isXcodeBuild: Bool) -> Result<[(name: String, file: URL)], DynamicLibraryBundlerError> {
     let libraries: [(name: String, file: URL)]
     

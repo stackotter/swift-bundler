@@ -16,8 +16,9 @@ enum ConfigurationError: LocalizedError {
   case failedToWriteToMigratedConfigurationFile(Error)
 }
 
+/// The configuration for a package.
 struct Configuration {
-  /// The configuration specific to each app.
+  /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
   
   /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.

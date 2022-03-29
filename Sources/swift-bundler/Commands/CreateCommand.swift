@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for creating new app packages from templates.
 struct CreateCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "create",

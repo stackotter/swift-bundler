@@ -1,5 +1,6 @@
 import Foundation
 
+/// An error returned by ``XcodeSupportGenerator``.
 enum XcodeSupportGeneratorError: LocalizedError {
   case failedToGetOutputDirectory(Error)
   case outputDirectoryCannotContainSingleQuote
@@ -8,7 +9,13 @@ enum XcodeSupportGeneratorError: LocalizedError {
   case failedToCreateOutputBundle(Error)
 }
 
+/// A utility for creating Xcode related support files (i.e. Xcode schemes).
 enum XcodeSupportGenerator {
+  /// Generates the schemes required for Xcode to build and run a package.
+  /// - Parameters:
+  ///   - configuration: The package's configuration.
+  ///   - packageDirectory: The package's root directory.
+  /// - Returns: If an error occurs, a failure is returned.
   static func generateXcodeSupport(
     for configuration: Configuration,
     in packageDirectory: URL
@@ -26,6 +33,9 @@ enum XcodeSupportGenerator {
       }
   }
   
+  /// Gets the location to create Xcode schemes for a given package.
+  /// - Parameter packageDirectory: The root directory of the package.
+  /// - Returns: The package's schemes directory. If an error occurs, a failure is returned.
   private static func getSchemesDirectory(in packageDirectory: URL) -> Result<URL, XcodeSupportGeneratorError> {
     let schemesDirectory = packageDirectory.appendingPathComponent(".swiftpm/xcode/xcshareddata/xcschemes")
     do {
@@ -37,6 +47,12 @@ enum XcodeSupportGenerator {
     return .success(schemesDirectory)
   }
   
+  /// Generates the Xcode schemes for an app.
+  /// - Parameters:
+  ///   - app: The name of the app.
+  ///   - configuration: The app's configuration.
+  ///   - schemesDirectory: The directory to output the schemes to.
+  /// - Returns: If an error occurs, a failure is returned.
   private static func generateAppScheme(
     for app: String,
     with configuration: AppConfiguration,
@@ -56,6 +72,11 @@ enum XcodeSupportGenerator {
       }
   }
   
+  /// Generates the contents of the Xcode scheme for an app.
+  /// - Parameters:
+  ///   - app: The name of the app.
+  ///   - configuration: The app's configuration.
+  /// - Returns: The contents of the scheme. If an error occurs, a failure is returned.
   private static func generateAppSchemeContents(
     for app: String,
     with configuration: AppConfiguration

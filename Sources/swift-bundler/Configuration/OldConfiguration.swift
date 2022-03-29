@@ -1,23 +1,30 @@
 import Foundation
 
-/// The old configuration format (from swift-bundler 1.x.x)
+/// The old configuration format (from swift-bundler 1.x.x). Kept for use in automatic configuration migration.
 struct OldConfiguration: Codable {
+  /// The name of the app's executable target.
   var target: String
+  /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
   var bundleIdentifier: String
+  /// The app's version string (e.g. `0.1.0`).
   var versionString: String
+  /// The app's build number.
   var buildNumber: Int
+  /// The app's category. See ``AppConfigurationDTO/category``.
   var category: String
+  /// The minimum macOS version that the app should run on.
   var minOSVersion: String
   
+  /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   var extraInfoPlistEntries: [String: Any] = [:]
   
-  enum CodingKeys: String, CodingKey {
+  private enum CodingKeys: String, CodingKey {
     case target, bundleIdentifier, versionString, buildNumber, category, minOSVersion
   }
   
   /// Loads the configuration from a `Bundle.json` file.
   /// - Parameter file: The file to load the configuration from.
-  /// - Returns: The configuration.
+  /// - Returns: The configuration. If an error occurs, a failure is returned.
   static func load(from file: URL) -> Result<OldConfiguration, ConfigurationError> {
     let data: Data
     do {

@@ -1,5 +1,6 @@
 import Foundation
 
+/// An error returned by ``MetalCompiler``.
 enum MetalCompilerError: LocalizedError {
   case failedToCreateMetalCompilationTempDirectory(Error)
   case failedToCompileMetalShader(String, ProcessError)
@@ -15,6 +16,7 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - directory: The directory to compile shaders from.
   ///   - keepSources: If `false`, the sources will get deleted after compilation.
+  /// - Returns: If an error occurs, a failure is returned.
   static func compileMetalShaders(in directory: URL, keepSources: Bool) -> Result<Void, MetalCompilerError> {
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
       return .failure(.failedToEnumerateMetalShaders)
@@ -54,6 +56,7 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - sources: The source files to comile.
   ///   - destination: The directory to output the `default.metallib` to.
+  /// - Returns: If an error occurs, a failure is returned.
   static func compileMetalShaders(_ sources: [URL], destination: URL) -> Result<Void, MetalCompilerError> {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory

@@ -15,6 +15,7 @@ struct Handler: LogHandler {
   }
 }
 
+/// The global logger.
 var log = Logger(label: "Bundler") { _ in
   return Handler()
 }

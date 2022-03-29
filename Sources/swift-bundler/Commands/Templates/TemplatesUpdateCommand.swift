@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for updating the default templates repository.
 struct TemplatesUpdateCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "update",

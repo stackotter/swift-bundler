@@ -1,6 +1,7 @@
 import Foundation
 import Parsing
 
+/// An error returned by ``ExpressionEvaluator``.
 enum ExpressionEvaluatorError: LocalizedError {
   case unknownVariable(String)
   case invalidValueExpression(String, Error)
@@ -14,9 +15,9 @@ enum ExpressionEvaluatorError: LocalizedError {
 ///
 /// An evaluator caches all evaluated variable values to make repeated accesses faster.
 ///
-/// It's a class so that caching is more useful when the evaluator is passed around.
+/// It's a class so that caching works when the evaluator is passed around.
 class ExpressionEvaluator {
-  /// The parser used to parse expressions. See ``evaluateExpression(_:context:)``.
+  /// The parser used to parse expressions. See ``evaluateExpression(_:)``.
   static let expressionParser = Parse {
     Prefix { $0 != "{" }
     Optionally {
@@ -31,8 +32,9 @@ class ExpressionEvaluator {
   /// A cache holding the most recently computed value for each variable that has been evaluated.
   var cache: [String: String] = [:]
   
-  /// The contextual information required to evaluate value expressions. See ``evaluateExpression(_:context:)``.
+  /// The contextual information required to evaluate value expressions. See ``evaluateExpression(_:)``.
   struct Context {
+    /// The root directory of the package.
     var packageDirectory: URL
   }
   
@@ -46,7 +48,7 @@ class ExpressionEvaluator {
   ///
   /// For the list of valid variables, see ``evaluateExpressionVariable(_:)``.
   /// - Parameters:
-  ///   - value: The expression to evaluate.
+  ///   - expression: The expression to evaluate.
   /// - Returns: The string after substituting all variables with their respective values.
   func evaluateExpression(_ expression: String) -> Result<String, ExpressionEvaluatorError> {
     var input = expression[...]
@@ -85,8 +87,7 @@ class ExpressionEvaluator {
   ///
   /// - Parameters:
   ///   - variable: The name of the variable to evaluate the value of.
-  /// - Returns: The value of the variable.
-  /// - Throws: If the variable doesn't exist or the evaluator fails to compute the value, an error is thrown.
+  /// - Returns: The value of the variable. If the variable doesn't exist or the evaluator fails to compute the value, a failure is returned.
   func evaluateExpressionVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
     if let value = cache[variable] {
       return .success(value)
