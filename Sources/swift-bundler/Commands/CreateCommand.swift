@@ -32,6 +32,11 @@ struct CreateCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var templatesDirectory: URL?
   
+  @Option(
+    name: .long,
+    help: "The indentation style to create the package with. The possible values are 'tabs' and 'spaces=[count]'.")
+  var indentation: IndentationStyle = .spaces(4)
+  
   func run() throws {
     guard Self.isValidAppName(appName) else {
       log.error("Invalid app name: app names must only include uppercase and lowercase characters from the English alphabet.")
@@ -42,9 +47,22 @@ struct CreateCommand: ParsableCommand {
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
     if let templatesDirectory = templatesDirectory {
-      try Templater.createPackage(in: packageDirectory, from: template, in: templatesDirectory, packageName: appName, forceCreation: force).unwrap()
+      try Templater.createPackage(
+        in: packageDirectory,
+        from: template,
+        in: templatesDirectory,
+        packageName: appName,
+        forceCreation: force,
+        indentationStyle: indentation
+      ).unwrap()
     } else {
-      try Templater.createPackage(in: packageDirectory, from: template, packageName: appName, forceCreation: force).unwrap()
+      try Templater.createPackage(
+        in: packageDirectory,
+        from: template,
+        packageName: appName,
+        forceCreation: force,
+        indentationStyle: indentation
+      ).unwrap()
     }
   }
   

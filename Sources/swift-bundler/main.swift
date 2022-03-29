@@ -30,3 +30,4 @@ trap(.interrupt) { _ in
 #endif
 
 Command.main()
+log.info("Done")
