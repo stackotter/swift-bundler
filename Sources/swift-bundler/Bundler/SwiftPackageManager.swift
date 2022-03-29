@@ -1,5 +1,6 @@
 import Foundation
 
+/// An error returned by ``SwiftPackageManager``.
 enum SwiftPackageManagerError: LocalizedError {
   case failedToRunSwiftBuild(ProcessError)
   case failedToGetTargetTriple(ProcessError)
@@ -12,6 +13,7 @@ enum SwiftPackageManagerError: LocalizedError {
 
 /// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
+  /// A Swift build configuration.
   enum BuildConfiguration: String {
     case debug
     case release
@@ -107,7 +109,7 @@ enum SwiftPackageManager {
   }
   
   /// Gets the device's target triple.
-  /// - Returns: The device's target triple.
+  /// - Returns: The device's target triple. If an error occurs, a failure is returned.
   static func getSwiftTargetTriple() -> Result<String, SwiftPackageManagerError> {
     let process = Process.create(
       "/usr/bin/swift",
@@ -144,7 +146,12 @@ enum SwiftPackageManager {
   ///   - packageDirectory: The package's root directory.
   ///   - buildConfiguration: The current build configuration.
   ///   - universal: Whether the build is universal or not.
-  static func getProductsDirectory(in packageDirectory: URL, buildConfiguration: BuildConfiguration, universal: Bool) -> Result<URL, SwiftPackageManagerError> {
+  /// - Returns: The default products directory. If ``getSwiftTargetTriple()`` fails, a failure is returned.
+  static func getProductsDirectory(
+    in packageDirectory: URL,
+    buildConfiguration: BuildConfiguration,
+    universal: Bool
+  ) -> Result<URL, SwiftPackageManagerError> {
     if !universal {
       return getSwiftTargetTriple()
         .map { targetTriple in

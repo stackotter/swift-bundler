@@ -1,7 +1,8 @@
 import Foundation
 import Parsing
 
-enum PlistError: LocalizedError {
+/// An error returned by ``PlistCreator``.
+enum PlistCreatorError: LocalizedError {
   case unknownPlistEntryType(String)
   case failedToWriteAppInfoPlist(URL, Error)
   case serializationFailed(Error)
@@ -16,8 +17,9 @@ enum PlistCreator {
   ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
   ///   - version: The app's version string.
   ///   - category: The app's category.
-  ///   - minMacOSVersion: The app's minimum macOS version.
+  ///   - minMacOSVersion: The minimum macOS version that the app should run on.
   ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
     appName: String,
@@ -26,7 +28,7 @@ enum PlistCreator {
     category: String,
     minMacOSVersion: String,
     extraPlistEntries: [String: String]
-  ) -> Result<Void, PlistError> {
+  ) -> Result<Void, PlistCreatorError> {
     createAppInfoPlistContents(
       appName: appName,
       bundleIdentifier: bundleIdentifier,
@@ -48,7 +50,9 @@ enum PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - bundleName: The bundle's name.
-  static func createResourceBundleInfoPlist(at file: URL, bundleName: String, minMacOSVersion: String) -> Result<Void, PlistError> {
+  ///   - minMacOSVersion: The minimum macOS version that the resource bundle should work on.
+  /// - Returns: If an error occurs, a failure is returned.
+  static func createResourceBundleInfoPlist(at file: URL, bundleName: String, minMacOSVersion: String) -> Result<Void, PlistCreatorError> {
     createResourceBundleInfoPlistContents(bundleName: bundleName, minMacOSVersion: minMacOSVersion)
       .flatMap { contents in
         do {
@@ -66,9 +70,9 @@ enum PlistCreator {
   ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
   ///   - version: The app's version string.
   ///   - category: The app's category.
-  ///   - minMacOSVersion: The app's minimum macOS version.
+  ///   - minMacOSVersion: The minimum macOS version that the app should run on.
   ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
-  /// - Returns: The generated contents for the `Info.plist` file.
+  /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
     bundleIdentifier: String,
@@ -76,7 +80,7 @@ enum PlistCreator {
     category: String,
     minMacOSVersion: String,
     extraPlistEntries: [String: String]
-  ) -> Result<Data, PlistError> {
+  ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any] = [
       "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
@@ -101,8 +105,9 @@ enum PlistCreator {
   /// Creates the contents of a resource bundle's `Info.plist` file.
   /// - Parameters:
   ///   - bundleName: The bundle's name.
-  /// - Returns: The generated contents for the `Info.plist` file.
-  static func createResourceBundleInfoPlistContents(bundleName: String, minMacOSVersion: String) -> Result<Data, PlistError> {
+  ///   - minMacOSVersion: The minimum macOS version that the resource bundle should work on.
+  /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
+  static func createResourceBundleInfoPlistContents(bundleName: String, minMacOSVersion: String) -> Result<Data, PlistCreatorError> {
     let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
     let entries: [String: Any] = [
       "CFBundleIdentifier": bundleIdentifier,
@@ -118,8 +123,8 @@ enum PlistCreator {
   
   /// Serializes a plist dictionary into an `xml` format.
   /// - Parameter entries: The dictionary of entries to serialize.
-  /// - Returns: The serialized plist file.
-  static func serialize(_ entries: [String: Any]) -> Result<Data, PlistError> {
+  /// - Returns: The plist dictionary serialized as a string containing xml. If an error occurs, a failure is returned.
+  static func serialize(_ entries: [String: Any]) -> Result<Data, PlistCreatorError> {
     do {
       let data = try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
       return .success(data)

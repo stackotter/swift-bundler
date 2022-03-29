@@ -1,11 +1,13 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for listing available templates.
 struct TemplatesListCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "list",
     abstract: "List available templates.")
   
+  /// The directory to search for templates in.
   @Option(
     name: .long,
     help: "An alternate directory to search for templates in.",

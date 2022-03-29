@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for creating app bundles for a package.
 struct BundleCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",

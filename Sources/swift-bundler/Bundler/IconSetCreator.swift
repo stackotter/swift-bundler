@@ -1,7 +1,7 @@
 import Foundation
 
-/// An error during icon set creation.
-enum IconError: LocalizedError {
+/// An error returned by ``IconSetCreator``.
+enum IconSetCreatorError: LocalizedError {
   case icnsCreationFailed(exitStatus: Int)
   case failedToScaleIcon(newDimension: Int, ProcessError)
   case notPNG
@@ -16,7 +16,8 @@ enum IconSetCreator {
   /// - Parameters:
   ///   - icon: The 1024x1024 input icon. Must be a png.
   ///   - outputDirectory: The output directory to put the generated `AppIcon.icns` in.
-  static func createIcns(from icon: URL, outputDirectory: URL) -> Result<Void, IconError> {
+  /// - Returns: If an error occurs, a failure is returned.
+  static func createIcns(from icon: URL, outputDirectory: URL) -> Result<Void, IconSetCreatorError> {
     guard icon.pathExtension == "png" else {
       return .failure(.notPNG)
     }
@@ -33,11 +34,11 @@ enum IconSetCreator {
       let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
       let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
       
-      var result = createScaledIcon(icon, size, output: regularScale)
+      var result = createScaledIcon(icon, dimension: size, output: regularScale)
       if case .failure(_) = result {
         return result
       }
-      result = createScaledIcon(icon, size * 2, output: doubleScale)
+      result = createScaledIcon(icon, dimension: size * 2, output: doubleScale)
       if case .failure(_) = result {
         return result
       }
@@ -61,13 +62,12 @@ enum IconSetCreator {
   }
   
   /// Creates a scaled copy of an icon.
-  ///
-  /// The output file name will be of the form `icon_{dimension}x{dimension}{fileSuffix}.png`.
   /// - Parameters:
   ///   - icon: The icon file to scale.
   ///   - dimension: The new dimension for the icon.
   ///   - output: The output file.
-  private static func createScaledIcon(_ icon: URL, _ dimension: Int, output: URL) -> Result<Void, IconError> {
+  /// - Returns: If an error occurs, a failure is returned.
+  private static func createScaledIcon(_ icon: URL, dimension: Int, output: URL) -> Result<Void, IconSetCreatorError> {
     let process = Process.create(
       "/usr/bin/sips",
       arguments: [

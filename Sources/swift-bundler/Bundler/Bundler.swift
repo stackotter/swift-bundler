@@ -1,14 +1,15 @@
 import Foundation
 
+/// An error returned by ``Bundler``.
 enum BundlerError: LocalizedError {
   case failedToRunPrebuildScript(ScriptRunnerError)
   case failedToBuild(SwiftPackageManagerError)
   case failedToRunPostbuildScript(ScriptRunnerError)
   case failedToCreateAppBundleDirectoryStructure(Error)
   case failedToCreatePkgInfo(Error)
-  case failedToCreateInfoPlist(PlistError)
+  case failedToCreateInfoPlist(PlistCreatorError)
   case failedToCopyExecutable(Error)
-  case failedToCreateIcon(IconError)
+  case failedToCreateIcon(IconSetCreatorError)
   case failedToCopyICNS(Error)
   case failedToCopyResourceBundles(ResourceBundlerError)
   case failedToCopyDynamicLibraries(DynamicLibraryBundlerError)
@@ -17,21 +18,8 @@ enum BundlerError: LocalizedError {
   case failedToCreateApplicationSupportDirectory(Error)
 }
 
+/// The core functionality of Swift Bundler.
 enum Bundler {
-  struct Context {
-    var appConfiguration: AppConfiguration
-    var buildConfiguration: SwiftPackageManager.BuildConfiguration
-    var packageDirectory: URL
-    var productsDirectory: URL
-    var outputDirectory: URL
-    var appName: String
-    var universal: Bool
-    
-    var appBundle: URL {
-      outputDirectory.appendingPathComponent("\(appName).app")
-    }
-  }
-  
   /// Runs the app's prebuild script.
   /// - Parameter packageDirectory: The package's root directory
   /// - Returns: Returns an error if the script exists and fails to run.
@@ -45,6 +33,12 @@ enum Bundler {
   }
   
   /// Builds the app's executable.
+  /// - Parameters:
+  ///   - product: The name of the product to build.
+  ///   - packageDirectory: The root directory of the package containing the product.
+  ///   - buildConfiguration: The configuration to build the product with.
+  ///   - universal: If `true`, a universal build is performed.
+  /// - Returns: If building fails, a failure is returned.
   static func build(
     product: String,
     in packageDirectory: URL,
@@ -61,9 +55,27 @@ enum Bundler {
     }
   }
   
-  /// Bundles the built executable into a macOS app.
+  /// Bundles the built executable and resources into a macOS app.
+  ///
+  /// ``build(product:in:buildConfiguration:universal:)`` should usually be called first.
+  /// - Parameters:
+  ///   - appName: The name to give the bundled app.
+  ///   - appConfiguration: The app's configuration.
+  ///   - packageDirectory: The root directory of the package containing the app.
+  ///   - productsDirectory: The directory containing the products from the build step.
+  ///   - outputDirectory: The directory to output the app into.
+  ///   - isXcodeBuild: Whether the build products were created by Xcode or not.
+  ///   - universal: Whether the build products were built as universal binaries or not.
   /// - Returns: If a failure occurs, it is returned.
-  static func bundle(appName: String, appConfiguration: AppConfiguration, packageDirectory: URL, productsDirectory: URL, outputDirectory: URL, isXcodeBuild: Bool, universal: Bool) -> Result<Void, BundlerError> {
+  static func bundle(
+    appName: String,
+    appConfiguration: AppConfiguration,
+    packageDirectory: URL,
+    productsDirectory: URL,
+    outputDirectory: URL,
+    isXcodeBuild: Bool,
+    universal: Bool
+  ) -> Result<Void, BundlerError> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
     
@@ -171,9 +183,12 @@ enum Bundler {
   ///     - `Resources`
   ///     - `Libraries`
   ///
+  /// If the app directory already exists, it is deleted before continuing.
+  ///
   /// - Parameters:
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
+  /// - Returns: A failure if directory creation fails.
   private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, BundlerError> {
     log.info("Creating '\(appName).app'")
     let fileManager = FileManager.default
@@ -201,6 +216,7 @@ enum Bundler {
   /// - Parameters:
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
+  /// - Returns: If an error occus, a failure is returned.
   private static func copyExecutable(at source: URL, to destination: URL) -> Result<Void, BundlerError> {
     log.info("Copying executable")
     do {
@@ -246,7 +262,9 @@ enum Bundler {
   /// Copies `AppIcon.icns` into the app bundle if present. Alternatively, it creates the app's `AppIcon.icns` from a png if an `Icon1024x1024.png` is present.
   ///
   /// `AppIcon.icns` takes precendence over `Icon1024x1024.png`.
-  /// - Parameter outputDirectory: Should be the app's `Resources` directory.
+  /// - Parameters:
+  ///   - packageDirectory: The root directory of the package to search for an app icon in.
+  ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If `Icon1024x1024.png` exists and there is an error while converting it to `icns`, a failure is returned.
   private static func createAppIcon(from packageDirectory: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
     // Copy `AppIcon.icns` if present

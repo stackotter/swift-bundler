@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for running an app from a package.
 struct RunCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "run",

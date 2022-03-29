@@ -1,11 +1,15 @@
 import Foundation
 
+/// An error returned by custom methods added to `Process`.
 enum ProcessError: LocalizedError {
   case invalidUTF8Output(output: Data)
   case nonZeroExitStatus(Int)
   case failedToRunProcess(Error)
 }
 
+/// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
+///
+/// If the program is killed, all processes in this array are terminated before the program exits.
 var processes: [Process] = []
 
 extension Process {
@@ -17,7 +21,7 @@ extension Process {
   }
   
   /// Gets the process's stdout and stderr as `Data`.
-  /// - Returns: The process's stdout and stderr.
+  /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
   func getOutputData() -> Result<Data, ProcessError> {
     let pipe = Pipe()
     setOutputPipe(pipe)
@@ -30,7 +34,7 @@ extension Process {
   }
   
   /// Gets the process's stdout and stderr as a string.
-  /// - Returns: The process's stdout and stderr.
+  /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
   func getOutput() -> Result<String, ProcessError> {
     return getOutputData()
       .flatMap { data in
@@ -43,7 +47,7 @@ extension Process {
   }
   
   /// Runs the process and waits for it to complete.
-  /// - Throws: Throws an error if the process has a non-zero exit status of fails to run.
+  /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() -> Result<Void, ProcessError> {
     do {
       try run()

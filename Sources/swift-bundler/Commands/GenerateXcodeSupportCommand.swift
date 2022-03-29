@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for generating Xcode related support files (i.e. Xcode schemes).
 struct GenerateXcodeSupportCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "generate-xcode-support",

@@ -1,10 +1,11 @@
 import Foundation
 
+/// An error returned by ``ResourceBundler``.
 enum ResourceBundlerError: LocalizedError {
   case failedToEnumerateBundles(Error)
   case failedToCopyBundle(Error)
   case failedToCreateBundleDirectory(Error)
-  case failedToCreateInfoPlist(PlistError)
+  case failedToCreateInfoPlist(PlistCreatorError)
   case failedToCopyResource(String, bundle: String)
   case failedToEnumerateBundleContents(Error)
   case failedToCompileMetalShaders(MetalCompilerError)
@@ -12,18 +13,14 @@ enum ResourceBundlerError: LocalizedError {
 
 /// A utility for handling resource bundles.
 enum ResourceBundler {
-  struct Context {
-    var isXcodeBuild: Bool
-    var minMacOSVersion: String
-  }
-  
-  /// Copies the resource bundles present in the products directory into ``appResources``. If the bundles
+  /// Copies the resource bundles present in a source directory into a destination directory. If the bundles
   /// were built by SwiftPM, they will get fixed up to be consistent with bundles built by Xcode.
   /// - Parameters:
   ///   - sourceDirectory: The directory containing generated bundles.
   ///   - destinationDirectory: The directory to copy the bundles to, fixing them if required.
   ///   - fixBundles: If `false`, bundles will be left alone when copying them.
-  ///   - minMacOSVersion: The app's minimum macOS version. Used to create the `Info.plist` for each bundle when `isXcodeBuild` is `false`.
+  ///   - minMacOSVersion: The minimum macOS version that the app should run on. Used to create the `Info.plist` for each bundle when `isXcodeBuild` is `false`.
+  /// - Returns: If an error occurs, a failure is returned.
   static func copyResourceBundles(
     from sourceDirectory: URL,
     to destinationDirectory: URL,
@@ -66,6 +63,7 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - bundle: The bundle to copy.
   ///   - destination: The directory to copy the bundle to.
+  /// - Returns: If an error occurs, a failure is returned.
   static func copyResourceBundle(_ bundle: URL, to destination: URL) -> Result<Void, ResourceBundlerError> {
     log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
     
@@ -87,7 +85,8 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - bundle: The bundle to fix and copy.
   ///   - destination: The directory to copy the bundle to.
-  ///   - minMacOSVersion: The app's minimum macOS version. Used to created the bundle's `Info.plist`.
+  ///   - minMacOSVersion: The minimum macOS version that the app should run on. Used to created the bundle's `Info.plist`.
+  /// - Returns: If an error occurs, a failure is returned.
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
@@ -123,6 +122,7 @@ enum ResourceBundler {
   ///   - `Info.plist`
   ///   - `Resources`
   /// - Parameter bundle: The bundle to create.
+  /// - Returns: If an error occurs, a failure is returned.
   private static func createResourceBundleDirectoryStructure(at bundle: URL) -> Result<Void, ResourceBundlerError> {
     let bundleContents = bundle.appendingPathComponent("Contents")
     let bundleResources = bundleContents.appendingPathComponent("Resources")
@@ -138,6 +138,8 @@ enum ResourceBundler {
   
   /// Creates the `Info.plist` file for a resource bundle.
   /// - Parameter bundle: The bundle to create the `Info.plist` file for.
+  /// - Parameter minMacOSVersion: The minimum macOS version that the resource bundle should work on.
+  /// - Returns: If an error occurs, a failure is returned.
   private static func createResourceBundleInfoPlist(in bundle: URL, minMacOSVersion: String) -> Result<Void, ResourceBundlerError> {
     let bundleName = bundle.deletingPathExtension().lastPathComponent
     let infoPlist = bundle
@@ -163,6 +165,7 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - source: The source directory.
   ///   - destination: The destination directory.
+  /// - Returns: If an error occurs, a failure is returned.
   private static func copyResources(from source: URL, to destination: URL) -> Result<Void, ResourceBundlerError> {
     let contents: [URL]
     do {

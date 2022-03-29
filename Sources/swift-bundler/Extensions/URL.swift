@@ -1,6 +1,9 @@
 import Foundation
 
 extension URL {
+  /// Gets the path of this URL relative to another URL.
+  /// - Parameter base: The base for the relative path.
+  /// - Returns: The relative path if both this URL and the base URL are file URLs.
   func relativePath(from base: URL) -> String? {
     // Ensure that both URLs represent files:
     guard self.isFileURL && base.isFileURL else {

@@ -1,5 +1,6 @@
 import Foundation
 
+/// An error returned by ``Templater``.
 enum TemplaterError: LocalizedError {
   case packageDirectoryAlreadyExists
   case failedToCloneTemplateRepository(ProcessError)

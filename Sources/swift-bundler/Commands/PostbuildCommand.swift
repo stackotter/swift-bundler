@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 
+/// The subcommand for running an app's postbuild script.
 struct PostbuildCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "postbuild",

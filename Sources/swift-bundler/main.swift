@@ -2,6 +2,7 @@ import Foundation
 import ArgumentParser
 import Darwin
 
+/// The root command of Swift Bundler.
 struct Command: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
