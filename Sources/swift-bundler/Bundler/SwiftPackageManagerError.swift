@@ -21,7 +21,7 @@ enum SwiftPackageManagerError: LocalizedError {
       case .invalidTargetInfoJSONFormat:
         return "Target platform info could not be parsed"
       case .failedToCreatePackageDirectory(let directory, _):
-        return "Failed to create package directory at '\(directory.relativePath)'"
+        return "Failed to create package directory at '\(directory)'"
       case .failedToRunSwiftInit(let command, let processError):
         return "Failed to run '\(command)': \(processError.localizedDescription)"
       case .failedToCreateConfigurationFile(let configurationError):

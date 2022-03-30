@@ -24,7 +24,7 @@ enum TemplaterError: LocalizedError {
   var errorDescription: String? {
     switch self {
       case .packageDirectoryAlreadyExists(let directory):
-        return "A directory already exists at '\(directory.relativePath)'"
+        return "A directory already exists at '\(directory)'"
       case .failedToCloneTemplateRepository(let processError):
         return "Failed to clone the default template repository from 'https://github.com/stackotter/swift-bundler-templates': \(processError.localizedDescription)"
       case .failedToGetApplicationSupportDirectory(_):
@@ -34,7 +34,7 @@ enum TemplaterError: LocalizedError {
       case let .noSuchTemplate(template):
         return "The '\(template)' template does not exist"
       case .failedToCreateOutputDirectory(let directory, _):
-        return "Failed to create package directory at '\(directory.relativePath)'"
+        return "Failed to create package directory at '\(directory)'"
       case .failedToDecodeTemplateManifest(let template, _, _):
         return "Failed to decode the manifest for the '\(template)' template"
       case .failedToReadTemplateManifest(let template, _, _):
@@ -46,9 +46,9 @@ enum TemplaterError: LocalizedError {
       case .failedToReadFile(let template, let file, _):
         return "Failed to read the file '\(file.lastPathComponent)' from the '\(template)' template"
       case .failedToGetRelativePath(let file, let base):
-        return "Failed to get relative path from '\(file.relativePath)' to '\(base.relativePath)'"
+        return "Failed to get relative path from '\(file)' to '\(base)'"
       case .failedToWriteToOutputFile(let file, _):
-        return "Failed to write to the output file at '\(file.relativePath)'"
+        return "Failed to write to the output file at '\(file)'"
       case .failedToCreateSkeletonPackage(let error):
         return "Failed to create the package from the 'Skeleton' template: \(error.localizedDescription)"
       case .failedToEnumerateTemplates(_):
@@ -58,7 +58,7 @@ enum TemplaterError: LocalizedError {
       case .failedToEnumerateOutputFiles:
         return "Failed to enumerate the files in the output directory"
       case .failedToUpdateIndentationStyle(let directory, _):
-        return "Failed to update the indentation style of the package in '\(directory.relativePath)'"
+        return "Failed to update the indentation style of the package in '\(directory)'"
     }
   }
 }
