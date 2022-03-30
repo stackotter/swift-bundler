@@ -1,15 +1,5 @@
 import Foundation
 
-/// An error returned by ``DynamicLibraryBundler``.
-enum DynamicLibraryBundlerError: LocalizedError {
-  case failedToEnumerateDynamicLibraries(Error)
-  case failedToCopyDynamicLibrary(Error)
-  case failedToUpdateLibraryInstallName(library: String, ProcessError)
-  case failedToGetRelativeOutputPath
-  case failedToGetRelativeOriginalPath
-  case failedToUpdateAppRPath(ProcessError)
-}
-
 /// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {
   /// Copies the dynamic libraries within a build's products directory to an output directory.
@@ -33,11 +23,13 @@ enum DynamicLibraryBundler {
     
     // Update the app's rpath
     if universal || isXcodeBuild {
+      let original = "@executable_path/../lib"
+      let new = "@executable_path"
       let process = Process.create(
         "/usr/bin/install_name_tool",
-        arguments: ["-rpath", "@executable_path/../lib", "@executable_path", appExecutable.path])
+        arguments: ["-rpath", new, original, appExecutable.path])
       if case let .failure(error) = process.runAndWait() {
-        return .failure(.failedToUpdateAppRPath(error))
+        return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
       }
     }
     
@@ -60,34 +52,37 @@ enum DynamicLibraryBundler {
     
     // Copy dynamic libraries
     guard let outputDirectoryRelativePath = outputDirectory.relativePath(from: appExecutable.deletingLastPathComponent()) else {
-      return .failure(.failedToGetRelativeOutputPath)
+      return .failure(.failedToGetOutputPathRelativeToExecutable(outputPath: outputDirectory, executable: appExecutable))
     }
     
     for (name, library) in libraries {
       log.info("Copying dynamic library '\(name)'")
       
       // Copy and rename the library
+      let outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib")
       do {
         try FileManager.default.copyItem(
           at: library,
-          to: outputDirectory.appendingPathComponent("lib\(name).dylib"))
+          to: outputLibrary)
       } catch {
-        return .failure(.failedToCopyDynamicLibrary(error))
+        return .failure(.failedToCopyDynamicLibrary(source: library, destination: outputLibrary, error))
       }
       
-      // Update the executable's rpath to reflect the change of the library's location relative to the executable
+      // Update the install name of the library to reflect the change of location relative to the executable
       guard let originalRelativePath = library.relativePath(from: searchDirectory) else {
-        return .failure(.failedToGetRelativeOriginalPath)
+        return .failure(.failedToGetOriginalPathRelativeToSearchDirectory(library: name, originalPath: library, searchDirectory: searchDirectory))
       }
       
+      let originalInstallName = "@rpath/\(originalRelativePath)"
+      let newInstallName = "@rpath/\(outputDirectoryRelativePath)/lib\(name).dylib"
       let process = Process.create(
         "/usr/bin/install_name_tool",
         arguments: [
-          "-change", "@rpath/\(originalRelativePath)", "@rpath/\(outputDirectoryRelativePath)/lib\(name).dylib",
+          "-change", originalInstallName, newInstallName,
           appExecutable.path
         ])
       if case let .failure(error) = process.runAndWait() {
-        return .failure(.failedToUpdateLibraryInstallName(library: name, error))
+        return .failure(.failedToUpdateLibraryInstallName(library: name, original: originalInstallName, new: newInstallName, error))
       }
     }
     
@@ -113,7 +108,7 @@ enum DynamicLibraryBundler {
         includingPropertiesForKeys: nil,
         options: [])
     } catch {
-      return .failure(.failedToEnumerateDynamicLibraries(error))
+      return .failure(.failedToEnumerateDynamicLibraries(directory: searchDirectory, error))
     }
     
     // Locate dylibs and parse library names from paths

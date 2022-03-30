@@ -386,7 +386,7 @@ enum Templater {
     
     // Get the file's relative path (compared to the template root directory)
     guard var relativePath = file.relativePath(from: templateDirectory) else {
-      return .failure(.failedToGetRelativePath(from: templateDirectory, to: file))
+      return .failure(.failedToGetRelativePath(file: file, base: templateDirectory))
     }
     
     // Compute the output directory, replacing occurrences of `{{PACKAGE}}` in the original path with the package's name
