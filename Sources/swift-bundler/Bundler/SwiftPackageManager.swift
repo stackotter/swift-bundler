@@ -1,18 +1,10 @@
 import Foundation
 
-/// An error returned by ``SwiftPackageManager``.
-enum SwiftPackageManagerError: LocalizedError {
-  case failedToRunSwiftBuild(ProcessError)
-  case failedToGetTargetTriple(ProcessError)
-  case failedToDeserializeTargetInfo(Error)
-  case invalidTargetInfoJSONFormat
-  case failedToCreatePackageDirectory(Error)
-  case failedToRunInitCommand(ProcessError)
-  case failedToCreateConfigurationFile(ConfigurationError)
-}
-
 /// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
+  /// The path to the swift executable.
+  static let swiftExecutable = "/usr/bin/swift"
+  
   /// A Swift build configuration.
   enum BuildConfiguration: String {
     case debug
@@ -34,7 +26,7 @@ enum SwiftPackageManager {
         do {
           try FileManager.default.createDirectory(at: directory)
         } catch {
-          return .failure(.failedToCreatePackageDirectory(error))
+          return .failure(.failedToCreatePackageDirectory(directory, error))
         }
       }
       return .success()
@@ -42,18 +34,20 @@ enum SwiftPackageManager {
     
     // Run the init command
     let runInitCommand: () -> Result<Void, SwiftPackageManagerError> = {
+      let arguments = [
+        "package", "init",
+        "--type=executable",
+        "--name=\(name)"
+      ]
+      
       let process = Process.create(
-        "/usr/bin/swift",
-        arguments: [
-          "package", "init",
-          "--type=executable",
-          "--name=\(name)"
-        ],
+        Self.swiftExecutable,
+        arguments: arguments,
         directory: directory)
       
       return process.runAndWait()
         .mapError { error in
-          .failedToRunInitCommand(error)
+          .failedToRunSwiftInit(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
         }
     }
     
@@ -61,7 +55,7 @@ enum SwiftPackageManager {
     let createConfigurationFile: () -> Result<Void, SwiftPackageManagerError> = {
       Configuration.createConfigurationFile(in: directory, app: name, product: name)
         .mapError { error in
-            .failedToCreateConfigurationFile(error)
+          .failedToCreateConfigurationFile(error)
         }
     }
     
@@ -98,13 +92,13 @@ enum SwiftPackageManager {
     }
     
     let process = Process.create(
-      "/usr/bin/swift",
+      Self.swiftExecutable,
       arguments: arguments,
       directory: packageDirectory)
     
     return process.runAndWait()
       .mapError { error in
-        .failedToRunSwiftBuild(error)
+        .failedToRunSwiftBuild(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
       }
   }
   
