@@ -11,21 +11,23 @@ struct TemplateManifest: Codable {
   var minimumSwiftVersion: String
   
   /// Loads a template's manifest file.
-  /// - Parameter file: The manifest file to load.
+  /// - Parameters:
+  ///   - file: The manifest file to load.
+  ///   - template: The name of the template that the manifest is for.
   /// - Returns: The loaded manifest, or a failure if the file could not be read or decoded.
-  static func load(from file: URL) -> Result<TemplateManifest, TemplaterError> {
+  static func load(from file: URL, template: String) -> Result<TemplateManifest, TemplaterError> {
     let contents: String
     do {
       contents = try String.init(contentsOf: file)
     } catch {
-      return .failure(.failedToReadTemplateManifest(error))
+      return .failure(.failedToReadTemplateManifest(template: template, manifest: file, error))
     }
     
     let manifest: TemplateManifest
     do {
       manifest = try TOMLDecoder().decode(TemplateManifest.self, from: contents)
     } catch {
-      return .failure(.failedToDecodeTemplateManifest(error))
+      return .failure(.failedToDecodeTemplateManifest(template: template, manifest: file, error))
     }
     
     return .success(manifest)
