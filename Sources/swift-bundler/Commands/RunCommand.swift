@@ -61,7 +61,7 @@ struct RunCommand: ParsableCommand {
     
     let buildCommand = try BundleCommand.parse(arguments)
     
-    let packageDirectory = buildCommand.packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let packageDirectory = buildCommand.packageDirectory ?? URL(fileURLWithPath: ".")
     
     if !skipBuild {
       try buildCommand.run()

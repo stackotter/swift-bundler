@@ -61,7 +61,7 @@ struct BundleCommand: ParsableCommand {
   var builtWithXcode = false
   
   func run() throws {
-    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
     
     // Validate parameters
     if !skipBuild {
