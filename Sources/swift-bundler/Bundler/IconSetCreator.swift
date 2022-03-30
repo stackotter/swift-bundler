@@ -1,32 +1,22 @@
 import Foundation
 
-/// An error returned by ``IconSetCreator``.
-enum IconSetCreatorError: LocalizedError {
-  case icnsCreationFailed(exitStatus: Int)
-  case failedToScaleIcon(newDimension: Int, ProcessError)
-  case notPNG
-  case failedToCreateIconSetDirectory(Error)
-  case failedToConvertToICNS(ProcessError)
-  case failedToRemoveIconSet(Error)
-}
-
 /// A utility for creating icon sets from an icon file.
 enum IconSetCreator {
   /// Creates an `AppIcon.icns` in the given directory from the given 1024x1024 input png.
   /// - Parameters:
-  ///   - icon: The 1024x1024 input icon. Must be a png.
+  ///   - icon: The 1024x1024 input icon. Must be a png. An error is returned if the icon's path extension is not `png` (case insensitive).
   ///   - outputDirectory: The output directory to put the generated `AppIcon.icns` in.
   /// - Returns: If an error occurs, a failure is returned.
   static func createIcns(from icon: URL, outputDirectory: URL) -> Result<Void, IconSetCreatorError> {
-    guard icon.pathExtension == "png" else {
-      return .failure(.notPNG)
+    guard icon.pathExtension.lowercased() == "png" else {
+      return .failure(.notPNG(icon))
     }
     
     let iconSet = outputDirectory.appendingPathComponent("AppIcon.iconset")
     do {
       try FileManager.default.createDirectory(at: iconSet)
     } catch {
-      return .failure(.failedToCreateIconSetDirectory(error))
+      return .failure(.failedToCreateIconSetDirectory(iconSet, error))
     }
     
     let sizes = [16, 32, 128, 256, 512]
@@ -55,7 +45,7 @@ enum IconSetCreator {
     do {
       try FileManager.default.removeItem(at: iconSet)
     } catch {
-      return .failure(.failedToRemoveIconSet(error))
+      return .failure(.failedToRemoveIconSetDirectory(iconSet, error))
     }
     
     return .success()
