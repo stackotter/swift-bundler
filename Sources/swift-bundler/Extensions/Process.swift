@@ -1,12 +1,5 @@
 import Foundation
 
-/// An error returned by custom methods added to `Process`.
-enum ProcessError: LocalizedError {
-  case invalidUTF8Output(output: Data)
-  case nonZeroExitStatus(Int)
-  case failedToRunProcess(Error)
-}
-
 /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
 ///
 /// If the program is killed, all processes in this array are terminated before the program exits.

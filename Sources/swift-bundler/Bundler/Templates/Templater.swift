@@ -1,29 +1,5 @@
 import Foundation
 
-/// An error returned by ``Templater``.
-enum TemplaterError: LocalizedError {
-  case packageDirectoryAlreadyExists(URL)
-  case failedToCloneTemplateRepository(ProcessError)
-  case failedToGetApplicationSupportDirectory(Error)
-  case cannotCreatePackageFromBaseTemplate
-  case noSuchTemplate(String)
-  case failedToCreateOutputDirectory(Error)
-  case failedToCopyBaseTemplate(Error)
-  case failedToDecodeTemplateManifest(Error)
-  case failedToReadTemplateManifest(Error)
-  case templateDoesNotSupportCurrentPlatform(template: String, platform: String, supportedPlatforms: [String])
-  case failedToEnumerateTemplateContents(template: String)
-  case failedToReadTemplateFile(URL, Error)
-  case fileNotInsideTemplateDirectory(URL)
-  case failedToGetRelativePath(from: URL, to: URL)
-  case failedToWriteToOutputFile(Error)
-  case failedToCreateSkeletonPackage(Error)
-  case failedToEnumerateTemplates(Error)
-  case failedToPullLatestTemplates(ProcessError)
-  case failedToEnumerateOutputFiles
-  case failedToUpdateIndentationStyle(Error)
-}
-
 /// A utility for creating packages from package templates.
 enum Templater {
   /// Creates a package from the specified template from the default template repository.
@@ -100,13 +76,13 @@ enum Templater {
     do {
       try FileManager.default.createDirectory(at: outputDirectory)
     } catch {
-      return .failure(.failedToCreateOutputDirectory(error))
+      return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
     }
     
     // Load the template manifest
     let manifestFile = templateDirectory.appendingPathComponent("Template.toml")
     let manifest: TemplateManifest
-    switch TemplateManifest.load(from: manifestFile) {
+    switch TemplateManifest.load(from: manifestFile, template: template) {
       case let .success(templateManifest):
         manifest = templateManifest
       case let .failure(error):
@@ -233,22 +209,24 @@ enum Templater {
           continue
         }
         
+        let templateName = directory.lastPathComponent
+        
         // Skip `Base` template and `.git` directory
-        guard directory.lastPathComponent != "Base" && directory.lastPathComponent != ".git" else {
+        guard templateName != "Base" && templateName != ".git" else {
           continue
         }
         
         // Load the template manifest file
         let manifestFile = directory.appendingPathComponent("Template.toml")
         let manifest: TemplateManifest
-        switch TemplateManifest.load(from: manifestFile) {
+        switch TemplateManifest.load(from: manifestFile, template: templateName) {
           case let .success(templateManifest):
             manifest = templateManifest
           case let .failure(error):
             return .failure(error)
         }
         
-        let template = Template(name: directory.lastPathComponent, manifest: manifest)
+        let template = Template(name: templateName, manifest: manifest)
         templates.append(template)
       }
       
@@ -294,7 +272,7 @@ enum Templater {
     }
     
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil) else {
-      return .failure(.failedToEnumerateOutputFiles)
+      return .failure(.failedToUpdateIndentationStyle(directory: directory, TemplaterError.failedToEnumerateOutputFiles))
     }
     
     do {
@@ -306,7 +284,7 @@ enum Templater {
         }
       }
     } catch {
-      return .failure(.failedToUpdateIndentationStyle(error))
+      return .failure(.failedToUpdateIndentationStyle(directory: directory, error))
     }
     
     return .success()
@@ -395,7 +373,7 @@ enum Templater {
     do {
       contents = try String(contentsOf: file)
     } catch {
-      return .failure(.failedToReadTemplateFile(file, error))
+      return .failure(.failedToReadFile(template: templateDirectory.lastPathComponent, file: file, error))
     }
     
     var file = file
@@ -421,7 +399,7 @@ enum Templater {
     do {
       try contents.write(to: outputFile, atomically: false, encoding: .utf8)
     } catch {
-      return .failure(.failedToWriteToOutputFile(error))
+      return .failure(.failedToWriteToOutputFile(file: file, error))
     }
     
     return .success()
