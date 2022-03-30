@@ -1,16 +1,5 @@
 import Foundation
 
-/// An error returned by ``ResourceBundler``.
-enum ResourceBundlerError: LocalizedError {
-  case failedToEnumerateBundles(Error)
-  case failedToCopyBundle(Error)
-  case failedToCreateBundleDirectory(Error)
-  case failedToCreateInfoPlist(PlistCreatorError)
-  case failedToCopyResource(String, bundle: String)
-  case failedToEnumerateBundleContents(Error)
-  case failedToCompileMetalShaders(MetalCompilerError)
-}
-
 /// A utility for handling resource bundles.
 enum ResourceBundler {
   /// Copies the resource bundles present in a source directory into a destination directory. If the bundles
@@ -31,7 +20,7 @@ enum ResourceBundler {
     do {
       contents = try FileManager.default.contentsOfDirectory(at: sourceDirectory, includingPropertiesForKeys: nil, options: [])
     } catch {
-      return .failure(.failedToEnumerateBundles(error))
+      return .failure(.failedToEnumerateBundles(directory: sourceDirectory, error))
     }
     
     for file in contents where file.pathExtension == "bundle" {
@@ -72,7 +61,7 @@ enum ResourceBundler {
     do {
       try FileManager.default.copyItem(at: bundle, to: destinationBundle)
     } catch {
-      return .failure(.failedToCopyBundle(error))
+      return .failure(.failedToCopyBundle(source: bundle, destination: destinationBundle, error))
     }
     
     return .success()
@@ -130,7 +119,7 @@ enum ResourceBundler {
     do {
       try FileManager.default.createDirectory(at: bundleResources)
     } catch {
-      return .failure(.failedToCreateBundleDirectory(error))
+      return .failure(.failedToCreateBundleDirectory(bundle, error))
     }
     
     return .success()
@@ -152,7 +141,7 @@ enum ResourceBundler {
       minimumMacOSVersion: minimumMacOSVersion)
     
     if case let .failure(error) = result {
-      return .failure(.failedToCreateInfoPlist(error))
+      return .failure(.failedToCreateInfoPlist(file: infoPlist, error))
     }
     
     return .success()
@@ -171,16 +160,17 @@ enum ResourceBundler {
     do {
       contents = try FileManager.default.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
     } catch {
-      return .failure(.failedToEnumerateBundleContents(error))
+      return .failure(.failedToEnumerateBundleContents(directory: source, error))
     }
     
     for file in contents {
+      let fileDestination = destination.appendingPathComponent(file.lastPathComponent)
       do {
         try FileManager.default.copyItem(
           at: file,
-          to: destination.appendingPathComponent(file.lastPathComponent))
+          to: fileDestination)
       } catch {
-        return .failure(.failedToCopyResource(file.lastPathComponent, bundle: source.lastPathComponent))
+        return .failure(.failedToCopyResource(source: file, destination: fileDestination))
       }
     }
     
