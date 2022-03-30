@@ -12,7 +12,7 @@ A Swift Package Manager wrapper that allows the creation of macOS apps with Swif
 
 ## Supporting Swift Bundler ❤️
 
-If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools.
+If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools for the community.
 
 ## Installation
 
@@ -44,7 +44,7 @@ swift bundler run
 
 ### Distributing the app
 
-Use the `bundle` command to create an app bundle that you can distribute to users. It is recommended to use the `-c release -u` options to create an optimized universal binary (for running on both Intel and Apple Silicon Macs).
+Use the `bundle` command to create an app bundle that you can distribute to users. It is recommended that you use the `-c release -u` options to create an optimized universal binary (for running on both Intel and Apple Silicon Macs).
 
 ```sh
 # Build the app and output it to the current directory.
@@ -53,18 +53,22 @@ swift bundler bundle -o . -c release -u
 
 ### Developing with Xcode
 
-If you want to use xcode as your IDE, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
+Run the `generate-xcode-support` command if you want to use Xcode as your IDE. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
 ```sh
 # Creates the files necessary to get xcode to run the package as an app
 swift bundler generate-xcode-support
 ```
 
+## Contributing
+
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
+
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
 ## Configuration
 
-Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration containing all fields;
+Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration containing all fields:
 
 ```toml
 [apps.HelloWorld]
@@ -160,10 +164,6 @@ swift bundler templates info SwiftUI
 ```sh
 swift bundler templates update
 ```
-
-## Contributing
-
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
 
 ## Advanced usage
 
