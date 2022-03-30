@@ -60,11 +60,11 @@ Run the `generate-xcode-support` command if you want to use Xcode as your IDE. T
 swift bundler generate-xcode-support
 ```
 
+To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
+
 ## Contributing
 
 Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
-
-To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
 ## Configuration
 
