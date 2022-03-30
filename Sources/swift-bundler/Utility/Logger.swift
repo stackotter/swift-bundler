@@ -1,4 +1,26 @@
 import Logging
+import Rainbow
+
+extension Logger.Level {
+  var colored: String {
+    switch self {
+      case .critical:
+        return rawValue.red.bold
+      case .error:
+        return rawValue.red
+      case .warning:
+        return rawValue.yellow
+      case .notice:
+        return rawValue.blue
+      case .info:
+        return rawValue.blue
+      case .debug:
+        return rawValue.lightWhite
+      case .trace:
+        return rawValue.lightWhite
+    }
+  }
+}
 
 /// Swift Bundler's basic log handler.
 struct Handler: LogHandler {
@@ -11,7 +33,7 @@ struct Handler: LogHandler {
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-    print("\(level): \(message)")
+    print("\(level.rawValue.blue): \(message)")
   }
 }
 

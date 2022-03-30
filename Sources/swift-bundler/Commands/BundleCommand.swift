@@ -61,55 +61,69 @@ struct BundleCommand: ParsableCommand {
   var builtWithXcode = false
   
   func run() throws {
-    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
+    var appBundle: URL? = nil
     
-    // Validate parameters
-    if !skipBuild {
-      guard productsDirectory == nil, !builtWithXcode else {
-        log.error("`--products-directory` and `--built-with-xcode` are only compatible with `--skip-build`")
-        Foundation.exit(1)
+    // Start timing
+    let elapsed = try Stopwatch.time {
+      // Validate parameters
+      if !skipBuild {
+        guard productsDirectory == nil, !builtWithXcode else {
+          log.error("`--products-directory` and `--built-with-xcode` are only compatible with `--skip-build`")
+          Foundation.exit(1)
+        }
       }
-    }
-    
-    let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
-    let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
-    
-    let productsDirectory = try productsDirectory ?? SwiftPackageManager.getProductsDirectory(
-      in: packageDirectory,
-      buildConfiguration: buildConfiguration,
-      universal: universal).unwrap()
-    
-    let build = {
-      Bundler.build(
-        product: appConfiguration.product,
+      
+      // Get relevant configuration
+      let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
+      let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
+      let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
+      
+      appBundle = outputDirectory.appendingPathComponent("\(appName).app")
+      
+      // Get build output directory
+      let productsDirectory = try productsDirectory ?? SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
         buildConfiguration: buildConfiguration,
-        universal: universal)
+        universal: universal
+      ).unwrap()
+      
+      // Create build job
+      let build = {
+        Bundler.build(
+          product: appConfiguration.product,
+          in: packageDirectory,
+          buildConfiguration: buildConfiguration,
+          universal: universal)
+      }
+      
+      // Create bundle job
+      let bundle = {
+        Bundler.bundle(
+          appName: appName,
+          appConfiguration: appConfiguration,
+          packageDirectory: packageDirectory,
+          productsDirectory: productsDirectory,
+          outputDirectory: outputDirectory,
+          isXcodeBuild: builtWithXcode,
+          universal: universal)
+      }
+      
+      // Build pipeline
+      let task: () -> Result<Void, BundlerError>
+      if skipBuild {
+        task = bundle
+      } else {
+        task = flatten(
+          build,
+          bundle)
+      }
+      
+      // Run pipeline
+      try task().unwrap()
     }
     
-    let bundle = {
-      Bundler.bundle(
-        appName: appName,
-        appConfiguration: appConfiguration,
-        packageDirectory: packageDirectory,
-        productsDirectory: productsDirectory,
-        outputDirectory: outputDirectory,
-        isXcodeBuild: builtWithXcode,
-        universal: universal)
-    }
-    
-    let task: () -> Result<Void, BundlerError>
-    if skipBuild {
-      task = bundle
-    } else {
-      task = flatten(
-        build,
-        bundle)
-    }
-    
-    try task().unwrap()
-
-    log.info("Done")
+    // Output the time elapsed and app bundle location
+    log.info("Done in \(elapsed.secondsString). App bundle located at '\(appBundle?.relativePath ?? "unknown")'")
   }
   
   /// Gets the configuration for the specified app. If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).

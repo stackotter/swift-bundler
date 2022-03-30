@@ -15,14 +15,16 @@ struct GenerateXcodeSupportCommand: ParsableCommand {
   var packageDirectory: URL?
   
   func run() throws {
-    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-    let configuration = try Configuration.load(fromDirectory: packageDirectory).unwrap()
-    
-    try XcodeSupportGenerator.generateXcodeSupport(
-      for: configuration,
-      in: packageDirectory
-    ).unwrap()
-
-    log.info("Done")
+    let elapsed = try Stopwatch.time {
+      let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
+      let configuration = try Configuration.load(fromDirectory: packageDirectory).unwrap()
+      
+      try XcodeSupportGenerator.generateXcodeSupport(
+        for: configuration,
+        in: packageDirectory
+      ).unwrap()
+    }
+      
+    log.info("Done in \(elapsed.secondsString).")
   }
 }
