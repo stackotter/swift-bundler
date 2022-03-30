@@ -25,7 +25,7 @@ enum ResourceBundler {
     from sourceDirectory: URL,
     to destinationDirectory: URL,
     fixBundles: Bool,
-    minimumMacOSVersion: String
+    minimumMacOSVersion: String?
   ) -> Result<Void, ResourceBundlerError> {
     let contents: [URL]
     do {
@@ -90,7 +90,7 @@ enum ResourceBundler {
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
-    minimumMacOSVersion: String
+    minimumMacOSVersion: String?
   ) -> Result<Void, ResourceBundlerError> {
     log.info("Fixing and copying resource bundle '\(bundle.lastPathComponent)'")
     
@@ -140,7 +140,7 @@ enum ResourceBundler {
   /// - Parameter bundle: The bundle to create the `Info.plist` file for.
   /// - Parameter minimumMacOSVersion: The minimum macOS version that the resource bundle should work on.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createResourceBundleInfoPlist(in bundle: URL, minimumMacOSVersion: String) -> Result<Void, ResourceBundlerError> {
+  private static func createResourceBundleInfoPlist(in bundle: URL, minimumMacOSVersion: String?) -> Result<Void, ResourceBundlerError> {
     let bundleName = bundle.deletingPathExtension().lastPathComponent
     let infoPlist = bundle
       .appendingPathComponent("Contents")

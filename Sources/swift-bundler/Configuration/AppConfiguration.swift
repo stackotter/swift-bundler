@@ -1,7 +1,7 @@
 import Foundation
 
-/// The configuration of an app.
-struct AppConfiguration {
+/// The configuration for an app.
+struct AppConfiguration: Codable {
   /// The name of the executable product.
   var product: String
   /// The app's current version.
@@ -9,23 +9,29 @@ struct AppConfiguration {
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
-  var bundleIdentifier: String
+  var bundleIdentifier: String?
   /// The minimum macOS version that the app can run on.
-  var minimumMacOSVersion: String
+  var minimumMacOSVersion: String?
   /// The path to the app's icon.
   var icon: String?
+  /// The path to the app's prebuild script.
+  var prebuildScript: String?
+  /// The path to the app's postbuild script.
+  var postbuildScript: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
-  var extraPlistEntries: [String: String]
+  var extraPlistEntries: [String: String]?
   
-  /// The default app configuration.
-  static var `default` = AppConfiguration(
-    product: "ExampleApp",
-    version: "0.1.0",
-    category: nil,
-    bundleIdentifier: "com.example.ExampleApp",
-    minimumMacOSVersion: "10.13",
-    icon: nil,
-    extraPlistEntries: [:])
+  private enum CodingKeys: String, CodingKey {
+    case product
+    case version
+    case category
+    case bundleIdentifier = "bundle_identifier"
+    case minimumMacOSVersion = "minimum_macos_version"
+    case icon
+    case prebuildScript
+    case postbuildScript
+    case extraPlistEntries = "extra_plist_entries"
+  }
   
   /// Evaluates the value expressions for each field that supports expressions.
   ///
@@ -39,14 +45,17 @@ struct AppConfiguration {
     var evaluator = evaluator
     
     // Evaluate expressions in the plist entry values
-    for (key, value) in config.extraPlistEntries {
-      let result = evaluator.evaluateExpression(value)
-      switch result {
-        case let .success(evaluatedValue):
-          config.extraPlistEntries[key] = evaluatedValue
-        case let .failure(error):
-          return .failure(.invalidPlistEntryValueExpression(key: key, value: value, error))
+    if var extraPlistEntries = config.extraPlistEntries {
+      for (key, value) in extraPlistEntries {
+        let result = evaluator.evaluateExpression(value)
+        switch result {
+          case let .success(evaluatedValue):
+            extraPlistEntries[key] = evaluatedValue
+          case let .failure(error):
+            return .failure(.invalidPlistEntryValueExpression(key: key, value: value, error))
+        }
       }
+      config.extraPlistEntries = extraPlistEntries
     }
     
     return .success(config)

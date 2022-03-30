@@ -258,8 +258,8 @@ enum Bundler {
     return PlistCreator.createAppInfoPlist(
       at: infoPlistFile,
       appName: appName,
-      bundleIdentifier: appConfiguration.bundleIdentifier,
       version: appConfiguration.version,
+      bundleIdentifier: appConfiguration.bundleIdentifier,
       category: appConfiguration.category,
       minimumMacOSVersion: appConfiguration.minimumMacOSVersion,
       extraPlistEntries: appConfiguration.extraPlistEntries

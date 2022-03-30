@@ -10,7 +10,7 @@ struct OldConfiguration: Codable {
   var versionString: String
   /// The app's build number.
   var buildNumber: Int
-  /// The app's category. See ``AppConfigurationDTO/category``.
+  /// The app's category. See ``AppConfiguration/category``.
   var category: String
   /// The minimum macOS version that the app should run on.
   var minOSVersion: String
