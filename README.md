@@ -73,10 +73,6 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
-### Custom build scripts
-
-Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the app bundle.
-
 ### App Icons
 
 To add an icon to your app, provide a value for the `icon` field of your app's configuration.
