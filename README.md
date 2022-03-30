@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create Swift apps for Windows, Linux and MacOS with a single codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create apps for Windows, Linux and MacOS with a single Swift codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
 ## Installation
 
@@ -20,34 +20,41 @@ sh ./install.sh
 
 ## Getting started
 
-To create your first app with Swift Bundler, run the following command.
+The following commands create a new package from the SwiftUI template and then run the package as an app:
 
 ```sh
 # Create a new swift package from the SwiftUI template and set it up for Swift Bundler.
 swift bundler create HelloWorld --template SwiftUI
+cd HelloWorld
+
+# Build and run the package as an app
+swift bundler run
 ```
 
 To learn more about package templates see [the package templates section](#package-templates).
 
-### Run the app
+### Run an app
 
 ```sh
 # Builds and runs the app. The build configuration can
 # be specified with the '-c' option (e.g. '-c debug').
+# The `--skip-build` flag can be provided to run the
+# app bundle from the previous build.
 swift bundler run
 ```
 
 ### Create an app bundle
 
 ```sh
-# Build and bundle the app. The default output directory is .build/bundler, but
-# it can be changed using the '-o' option.
+# Build and bundle an app. The default output directory
+# is .build/bundler, but it can be changed using the
+# '-o' option.
 swift bundler bundle
 ```
 
 ### Configuration
 
-Running `swift bundler create` creates a `Bundler.toml` file which contains the package's configuration. Below is an example configuration;
+Swift Bundler's configuration is stored in a `Bundler.toml` file in the root directory of the package. Below is an example configuration;
 
 ```toml
 [apps.HelloWorld]
@@ -76,7 +83,7 @@ To open the package in Xcode, just run `open Package.swift`, or use Finder to op
 
 ### Custom build scripts
 
-Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the `.app`.
+Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the app bundle.
 
 ### App Icons
 
@@ -89,7 +96,7 @@ If both are present, `AppIcon.icns` is used because it is more specific.
 
 ### Info.plist customization
 
-If you want to add extra key-value pairs to your app's `Info.plist`, you can specify them in the app's `extraPlistEntries` field. Here's an example configuration that appends the current commit hash to the version string displayed in the `About HelloWorld` screen:
+If you want to add extra key-value pairs to your app's `Info.plist`, you can specify them in the app's `extra_plist_entries` field. Here's an example configuration that appends the current commit hash to the version string displayed in the `About HelloWorld` screen:
 
 ```toml
 [apps.HelloWorld.extra_plist_entries]
@@ -180,6 +187,7 @@ Building a universal version of an app (x86_64 and arm64) can be performed by ad
    platforms = ["macOS", "Linux"] # Adjust according to your needs, valid values are `macOS` and `Linux`
    ```
 4. Create the template
+5. Test out the template (see [using a custom template](#using-a-custom-template))
 
 Any files within the template directory other than `Template.toml` are copied to create packages. Any occurrence of `{{PACKAGE}}` within the file path is replaced with the package's name. Any occurrence of `{{PACKAGE}}` within files ending with `.template` is replaced with the package's name and the `.template` file extension is removed.
 
@@ -189,7 +197,7 @@ You can also create a `Base` directory within the template repository. Whenever 
 
 See [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) for some example templates.
 
-#### Using a custom template
+### Using a custom template
 
 ```
 swift bundler create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
