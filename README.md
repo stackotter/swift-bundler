@@ -87,12 +87,13 @@ Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.s
 
 ### App Icons
 
-There are two ways to add custom app icons to a bundler package.
+To add an icon to your app, provide a value for the `icon` field of your app's configuration.
 
-1. The simplest way is to add a file called `Icon1024x1024.png` to the root directory of your package. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
-2. If you want to have different versions of your icon for different resolutions you can add an `AppIcon.icns` iconset in the root directory of your package.
+The value can either be a path to an `icns` file, or a png file with an alpha channel (which is ideally 1024x1024px). If you want to use the same logo for all screen resolutions, just provide the icon as a png file. If you want to have different levels of detail, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
 
-If both are present, `AppIcon.icns` is used because it is more specific.
+```sh
+/usr/bin/iconutil -c icns /path/to/AppIcon.iconset
+```
 
 ### Info.plist customization
 
@@ -122,19 +123,19 @@ To learn about creating custom templates, go to [the custom templates section](#
 
 #### List available templates
 
-```
+```sh
 swift bundler templates list
 ```
 
 #### Update available templates
 
-```
+```sh
 swift bundler templates update
 ```
 
 #### Get information about a template
 
-```
+```sh
 swift bundler templates info [template]
 ```
 
@@ -199,7 +200,7 @@ See [the swift-bundler-templates repository](https://github.com/stackotter/swift
 
 ### Using a custom template
 
-```
+```sh
 swift bundler create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
 ```
 

@@ -16,6 +16,7 @@ enum BundlerError: LocalizedError {
   case failedToRunExecutable(ProcessError)
   case failedToGetApplicationSupportDirectory(Error)
   case failedToCreateApplicationSupportDirectory(Error)
+  case invalidAppIconFile(URL)
 }
 
 /// The core functionality of Swift Bundler.
@@ -84,6 +85,14 @@ enum Bundler {
     let appExecutable = appContents.appendingPathComponent("MacOS/\(appName)")
     let appResources = appContents.appendingPathComponent("Resources")
     let appDynamicLibrariesDirectory = appContents.appendingPathComponent("Libraries")
+
+    let createAppIconIfPresent: () -> Result<Void, BundlerError> = {
+      if let path = appConfiguration.icon {
+        let icon = packageDirectory.appendingPathComponent(path)
+        return Self.createAppIcon(icon: icon, outputDirectory: appResources)
+      }
+      return .success()
+    }
     
     let copyResourcesBundles: () -> Result<Void, BundlerError> = {
       ResourceBundler.copyResourceBundles(
@@ -112,7 +121,7 @@ enum Bundler {
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration) },
-      { Self.createAppIcon(from: packageDirectory, outputDirectory: appResources) },
+      { createAppIconIfPresent() },
       { copyResourcesBundles() },
       { copyDynamicLibraries() })
     
@@ -259,36 +268,31 @@ enum Bundler {
     }
   }
   
-  /// Copies `AppIcon.icns` into the app bundle if present. Alternatively, it creates the app's `AppIcon.icns` from a png if an `Icon1024x1024.png` is present.
+  /// Copies an `icns` to the output directory if provided. Alternatively, it creates the app's `AppIcon.icns` from a png.
   ///
   /// `AppIcon.icns` takes precendence over `Icon1024x1024.png`.
   /// - Parameters:
-  ///   - packageDirectory: The root directory of the package to search for an app icon in.
+  ///   - icon: The app's icon. Should be either an `icns` file or a 1024x1024 png with an alpha channel. The png is not validated for those properties.
   ///   - outputDirectory: Should be the app's `Resources` directory.
-  /// - Returns: If `Icon1024x1024.png` exists and there is an error while converting it to `icns`, a failure is returned.
-  private static func createAppIcon(from packageDirectory: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
+  /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned. If the file is neither an `icns` or a `png`, a failure is also returned.
+  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
     // Copy `AppIcon.icns` if present
-    let icnsFile = packageDirectory.appendingPathComponent("AppIcon.icns")
-    if FileManager.default.itemExists(at: icnsFile, withType: .file) {
-      log.info("Copying 'AppIcon.icns'")
+    if icon.pathExtension == "icns" {
+      log.info("Copying '\(icon.lastPathComponent)'")
       do {
-        try FileManager.default.copyItem(at: icnsFile, to: outputDirectory.appendingPathComponent("AppIcon.icns"))
+        try FileManager.default.copyItem(at: icon, to: outputDirectory.appendingPathComponent("AppIcon.icns"))
         return .success()
       } catch {
         return .failure(.failedToCopyICNS(error))
       }
-    }
-    
-    // Create `AppIcon.icns` from `Icon1024x1024.png` if present
-    let iconFile = packageDirectory.appendingPathComponent("Icon1024x1024.png")
-    if FileManager.default.itemExists(at: iconFile, withType: .file) {
-      log.info("Creating 'AppIcon.icns' from 'Icon1024x1024.png'")
-      return IconSetCreator.createIcns(from: iconFile, outputDirectory: outputDirectory)
+    } else if icon.pathExtension == "png" {
+      log.info("Creating 'AppIcon.icns' from '\(icon.lastPathComponent)'")
+      return IconSetCreator.createIcns(from: icon, outputDirectory: outputDirectory)
         .mapError { error in
           .failedToCreateIcon(error)
         }
     }
     
-    return .success()
+    return .failure(.invalidAppIconFile(icon))
   }
 }
