@@ -45,34 +45,38 @@ struct CreateCommand: ParsableCommand {
   var indentation: IndentationStyle = .spaces(4)
   
   func run() throws {
-    guard Self.isValidAppName(appName) else {
-      log.error("Invalid app name: app names must only include uppercase and lowercase characters from the English alphabet.")
-      return
-    }
-    
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
-    if let templateRepository = templateRepository {
-      try Templater.createPackage(
-        in: packageDirectory,
-        from: template,
-        in: templateRepository,
-        packageName: appName,
-        forceCreation: force,
-        indentationStyle: indentation
-      ).unwrap()
-    } else {
-      try Templater.createPackage(
-        in: packageDirectory,
-        from: template,
-        packageName: appName,
-        forceCreation: force,
-        indentationStyle: indentation
-      ).unwrap()
+    let elapsed = try Stopwatch.time {
+      // Validate parameters
+      guard Self.isValidAppName(appName) else {
+        log.error("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
+        Foundation.exit(1)
+      }
+      
+      // Create package from template
+      if let templateRepository = templateRepository {
+        try Templater.createPackage(
+          in: packageDirectory,
+          from: template,
+          in: templateRepository,
+          packageName: appName,
+          forceCreation: force,
+          indentationStyle: indentation
+        ).unwrap()
+      } else {
+        try Templater.createPackage(
+          in: packageDirectory,
+          from: template,
+          packageName: appName,
+          forceCreation: force,
+          indentationStyle: indentation
+        ).unwrap()
+      }
     }
 
-    log.info("Done")
+    log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
   }
   
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).

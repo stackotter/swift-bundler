@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "Rainbow",
+        "repositoryURL": "https://github.com/onevcat/Rainbow",
+        "state": {
+          "branch": null,
+          "revision": "e0dada9cd44e3fa7ec3b867e49a8ddbf543e3df3",
+          "version": "4.0.1"
+        }
+      },
+      {
         "package": "swift-argument-parser",
         "repositoryURL": "https://github.com/apple/swift-argument-parser",
         "state": {
