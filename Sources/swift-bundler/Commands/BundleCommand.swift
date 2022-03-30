@@ -79,10 +79,6 @@ struct BundleCommand: ParsableCommand {
       buildConfiguration: buildConfiguration,
       universal: universal).unwrap()
     
-    let prebuild = {
-      Bundler.prebuild(packageDirectory)
-    }
-    
     let build = {
       Bundler.build(
         product: appConfiguration.product,
@@ -101,20 +97,14 @@ struct BundleCommand: ParsableCommand {
         isXcodeBuild: builtWithXcode,
         universal: universal)
     }
-
-    let postbuild = {
-      Bundler.postbuild(packageDirectory)
-    }
     
     let task: () -> Result<Void, BundlerError>
     if skipBuild {
       task = bundle
     } else {
       task = flatten(
-        prebuild,
         build,
-        bundle,
-        postbuild)
+        bundle)
     }
     
     try task().unwrap()

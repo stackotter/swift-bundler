@@ -2,9 +2,7 @@ import Foundation
 
 /// An error returned by ``Bundler``.
 enum BundlerError: LocalizedError {
-  case failedToRunPrebuildScript(ScriptRunnerError)
   case failedToBuild(SwiftPackageManagerError)
-  case failedToRunPostbuildScript(ScriptRunnerError)
   case failedToCreateAppBundleDirectoryStructure(Error)
   case failedToCreatePkgInfo(Error)
   case failedToCreateInfoPlist(PlistCreatorError)
@@ -21,18 +19,6 @@ enum BundlerError: LocalizedError {
 
 /// The core functionality of Swift Bundler.
 enum Bundler {
-  /// Runs the app's prebuild script.
-  /// - Parameter packageDirectory: The package's root directory
-  /// - Returns: Returns an error if the script exists and fails to run.
-  static func prebuild(_ packageDirectory: URL) -> Result<Void, BundlerError> {
-    log.info("Running prebuild script")
-    let scriptRunner = ScriptRunner(packageDirectory)
-    return scriptRunner.runPrebuildScriptIfPresent()
-      .mapError { error in
-        .failedToRunPrebuildScript(error)
-      }
-  }
-  
   /// Builds the app's executable.
   /// - Parameters:
   ///   - product: The name of the product to build.
@@ -126,18 +112,6 @@ enum Bundler {
       { copyDynamicLibraries() })
     
     return bundleApp()
-  }
-  
-  /// Runs the app's postbuild script.
-  /// - Parameter packageDirectory: The package's root directory
-  /// - Returns: Returns an error if the script exists and fails to run.
-  static func postbuild(_ packageDirectory: URL) -> Result<Void, BundlerError> {
-    log.info("Running postbuild script")
-    let scriptRunner = ScriptRunner(packageDirectory)
-    return scriptRunner.runPostbuildScriptIfPresent()
-      .mapError { error in
-        .failedToRunPostbuildScript(error)
-      }
   }
   
   /// Runs the app (without building or bundling first).

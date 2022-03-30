@@ -14,10 +14,6 @@ struct AppConfiguration: Codable {
   var minimumMacOSVersion: String?
   /// The path to the app's icon.
   var icon: String?
-  /// The path to the app's prebuild script.
-  var prebuildScript: String?
-  /// The path to the app's postbuild script.
-  var postbuildScript: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]?
   
@@ -28,8 +24,6 @@ struct AppConfiguration: Codable {
     case bundleIdentifier = "bundle_identifier"
     case minimumMacOSVersion = "minimum_macos_version"
     case icon
-    case prebuildScript
-    case postbuildScript
     case extraPlistEntries = "extra_plist_entries"
   }
   

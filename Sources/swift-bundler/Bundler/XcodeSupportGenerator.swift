@@ -106,9 +106,7 @@ enum XcodeSupportGenerator {
     let packagePath = "${WORKSPACE_PATH}/../../../"
     
     // Commands to put in the scheme
-    let runPrebuild = "/opt/swift-bundler/swift-bundler prebuild -d \(packagePath)"
     let createBundle = "/opt/swift-bundler/swift-bundler bundle \(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
-    let runPostbuild = "/opt/swift-bundler/swift-bundler postbuild -d \(packagePath)"
     
     // Create the scheme's contents from a massive template
     return .success("""
@@ -119,46 +117,12 @@ enum XcodeSupportGenerator {
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Prebuild Script"
-               scriptText = "\(runPrebuild)">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "\(product)"
-                     BuildableName = "\(product)"
-                     BlueprintName = "\(product)"
-                     ReferencedContainer = "container:">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
       <PostActions>
          <ExecutionAction
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Bundle executable"
                scriptText = "\(createBundle)">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "\(product)"
-                     BuildableName = "\(product)"
-                     BlueprintName = "\(product)"
-                     ReferencedContainer = "container:">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Postbuild Script"
-               scriptText = "\(runPostbuild)">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
