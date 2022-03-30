@@ -27,7 +27,7 @@ enum DynamicLibraryBundler {
       let new = "@executable_path"
       let process = Process.create(
         "/usr/bin/install_name_tool",
-        arguments: ["-rpath", new, original, appExecutable.path])
+        arguments: ["-rpath", original, new, appExecutable.path])
       if case let .failure(error) = process.runAndWait() {
         return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
       }
