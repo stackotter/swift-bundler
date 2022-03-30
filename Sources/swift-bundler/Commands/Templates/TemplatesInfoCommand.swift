@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import Rainbow
 
 /// The subcommand for getting info about a template.
 struct TemplatesInfoCommand: ParsableCommand {
@@ -31,10 +32,19 @@ struct TemplatesInfoCommand: ParsableCommand {
       log.error("Could not find template '\(self.template)'")
       Foundation.exit(1)
     }
-
-    print("* '\(template.name)':")
-    print("  * \(template.manifest.description)")
-    print("  * Minimum Swift version: \(template.manifest.minimumSwiftVersion)")
-    print("  * Platforms: [\(template.manifest.platforms.joined(separator: ", "))]")
+    
+    print("Template info\n".bold.underline)
+    print("* \("Name".bold): \(template.name)")
+    print("* \("Description".bold): \(template.manifest.description)")
+    print("* \("Minimum Swift version".bold): \(template.manifest.minimumSwiftVersion)")
+    print("* \("Platforms".bold): [\(template.manifest.platforms.joined(separator: ", "))]")
+    print("")
+    
+    var command = "swift bundler create MyApp --template \(template.name)"
+    if let templateRepository = templateRepository {
+      command += "--template-repository \(templateRepository.relativePath)"
+    }
+    print("Using this template\n".bold.underline)
+    print("$ " + command.cyan)
   }
 }

@@ -11,9 +11,9 @@ extension Logger.Level {
       case .warning:
         return rawValue.yellow
       case .notice:
-        return rawValue.blue
+        return rawValue.cyan
       case .info:
-        return rawValue.blue
+        return rawValue.cyan
       case .debug:
         return rawValue.lightWhite
       case .trace:
@@ -33,7 +33,7 @@ struct Handler: LogHandler {
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-    print("\(level.rawValue.blue): \(message)")
+    print("\(level.colored): \(message)")
   }
 }
 
