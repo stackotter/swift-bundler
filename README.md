@@ -131,7 +131,6 @@ swift bundler templates list
 
 ```sh
 swift bundler templates info SwiftUI
-
 # * 'SwiftUI':
 #   * A simple 'Hello, World!' SwiftUI app.
 #   * Minimum Swift version: 5.5
@@ -181,21 +180,21 @@ Building a universal version of an app (x86_64 and arm64) can be performed by ad
 ### Creating custom templates
 
 1. Create a new template 'repository' (a directory that will contain a collection of templates)
-2. Create a directory inside the template repository. The name of the directory is the name of your template. (`Base` and `Skeleton` are reserved names).
-3. Create a `Template.toml` file with the following contents inside the template directory:
+2. Create a directory inside the template repository. The name of the directory is the name of your template. (`Base` and `Skeleton` are reserved names)
+3. Create a `Template.toml` file (inside the template directory) with the following contents:
    
    ```toml
    description = "My first package template."
    platforms = ["macOS", "Linux"] # Adjust according to your needs, valid values are `macOS` and `Linux`
    ```
-4. Create the template
+4. Add files to the template (see below for details)
 5. Test out the template (see [using a custom template](#using-a-custom-template))
 
-Any files within the template directory other than `Template.toml` are copied to create packages. Any occurrence of `{{PACKAGE}}` within the file path is replaced with the package's name. Any occurrence of `{{PACKAGE}}` within files ending with `.template` is replaced with the package's name and the `.template` file extension is removed.
+Any files within the template directory (excluding `Template.toml`) are copied to the output directory when creating a package. Any occurrence of `{{PACKAGE}}` within the file's relative path is replaced with the package's name. Any occurrence of `{{PACKAGE}}` within the contents of files ending with `.template` is replaced with the package's name and the `.template` file extension is removed.
 
-**All indentation must be tabs (not spaces) so that the `create` command's `--indentation` option functions correctly**.
+**All indentation must be tabs (not spaces) so that the `create` command's `--indentation` option functions correctly.**
 
-You can also create a `Base` directory within the template repository. Whenever creating a new package, the `Base` directory is applied first and can contain files common between all templates, such as the `.gitignore` file. A template can overwrite files in the `Base` template by containing files of the same name.
+You can also create a `Base` directory within the template repository. Whenever creating a new package, the `Base` directory is applied first and should contain the common files between all templates, such as the `.gitignore` file. A template can override files in the `Base` template by containing files of the same name.
 
 See [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) for some example templates.
 
