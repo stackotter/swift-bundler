@@ -6,10 +6,10 @@ set -e
 swift build -c release
 
 # Create directory with correct permissions
+echo "Your password is required to copy the executable to /opt/swift-bundler"
 sudo mkdir -p -m755 /opt/swift-bundler
 
 # Copy executable
-echo "Your password is required to copy the executable to /opt/swift-bundler"
 sudo cp .build/release/swift-bundler /opt/swift-bundler
 
 # Add to PATH if it isn't in PATH already
