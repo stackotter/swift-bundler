@@ -10,6 +10,10 @@
 
 A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create apps for Windows, Linux and macOS with a single Swift codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
+## Supporting Swift Bundler ❤️
+
+If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools.
+
 ## Installation
 
 ```sh
@@ -57,10 +61,6 @@ swift bundler generate-xcode-support
 ```
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
-
-## Supporting Swift Bundler ❤️
-
-If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects and creating tools for the community, and every single sponsorship helps me focus more time on making high quality tools.
 
 ## Configuration
 
