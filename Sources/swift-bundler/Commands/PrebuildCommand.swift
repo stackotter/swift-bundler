@@ -15,7 +15,7 @@ struct PrebuildCommand: ParsableCommand {
   var packageDirectory: URL?
 
   func run() throws {
-    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
     try Bundler.prebuild(packageDirectory).unwrap()
 
     log.info("Done")

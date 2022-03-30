@@ -15,7 +15,7 @@ struct GenerateXcodeSupportCommand: ParsableCommand {
   var packageDirectory: URL?
   
   func run() throws {
-    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
     let configuration = try Configuration.load(fromDirectory: packageDirectory).unwrap()
     
     try XcodeSupportGenerator.generateXcodeSupport(

@@ -1,13 +1,6 @@
 import Foundation
 import Parsing
 
-/// An error returned by ``ExpressionEvaluator``.
-enum ExpressionEvaluatorError: LocalizedError {
-  case unknownVariable(String)
-  case invalidValueExpression(String, Error)
-  case failedToEvaluateExpressionVariable(String)
-}
-
 /// Evaluates strings that can contain any number of variable substitutions of the form `{VARIABLE_NAME}`.
 ///
 /// In `swift-bundler`, expressions can be entered in certain configuration fields to allow app configuration to access
@@ -18,10 +11,16 @@ struct ExpressionEvaluator {
   /// The parser used to parse expressions. See ``evaluateExpression(_:)``.
   static let expressionParser = Parse {
     Prefix { $0 != "{" }
-    Optionally {
-      "{"
-      Prefix { $0 != "}" }
-      "}"
+    OneOf {
+      Parse(Optional.some(_:)) {
+        "{"
+        Prefix { $0 != "}" }
+        "}"
+      }
+      
+      Parse(Optional<Substring>.none) {
+        End()
+      }
     }
   }
   
@@ -61,14 +60,14 @@ struct ExpressionEvaluator {
         output += result.0
         variable = result.1
       } catch {
-        return .failure(.invalidValueExpression(expression, error))
+        return .failure(.unmatchedBraces(expression, error))
       }
       
       guard let variable = variable else {
         break
       }
       
-      let result = evaluateExpressionVariable(String(variable))
+      let result = evaluateVariable(String(variable))
       switch result {
         case let .success(variableValue):
           output += variableValue
@@ -88,7 +87,7 @@ struct ExpressionEvaluator {
   /// - Parameters:
   ///   - variable: The name of the variable to evaluate the value of.
   /// - Returns: The value of the variable. If the variable doesn't exist or the evaluator fails to compute the value, a failure is returned.
-  mutating func evaluateExpressionVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
+  mutating func evaluateVariable(_ variable: String) -> Result<String, ExpressionEvaluatorError> {
     if let value = cache[variable] {
       return .success(value)
     }
@@ -100,7 +99,7 @@ struct ExpressionEvaluator {
         let result = process.getOutput()
         
         guard case let .success(string) = result else {
-          return .failure(.failedToEvaluateExpressionVariable("Failed to evaluate commit hash. Check that the package directory is a git repository and git is installed at `/usr/bin/git`."))
+          return .failure(.failedToEvaluateExpressionVariable(message: "Failed to evaluate commit hash. Check that the package directory is a git repository and git is installed at `/usr/bin/git`."))
         }
         
         output = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)

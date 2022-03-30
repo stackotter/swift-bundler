@@ -1,11 +1,5 @@
 import Foundation
 
-/// An error related to the configuration of a specific app.
-enum AppConfigurationError: LocalizedError {
-  case invalidValueExpression(key: String, value: String, ExpressionEvaluatorError)
-  case invalidPlistEntryValueExpression(key: String, value: String, ExpressionEvaluatorError)
-}
-
 /// The configuration of an app.
 struct AppConfiguration {
   /// The name of the executable product.

@@ -1,26 +1,12 @@
 import Foundation
 import TOMLKit
 
-/// An error related to package configuration.
-enum ConfigurationError: LocalizedError {
-  case invalidAppName(String)
-  case multipleAppsAndNoneSpecified
-  case failedToEvaluateExpressions(app: String, AppConfigurationError)
-  case failedToReadConfigurationFile(Error)
-  case failedToDeserializeConfiguration(Error)
-  case failedToSerializeConfiguration(Error)
-  case failedToWriteToConfigurationFile(Error)
-  
-  case failedToDeserializeOldConfiguration(Error)
-  case failedToReadContentsOfOldConfigurationFile(Error)
-  case failedToSerializeMigratedConfiguration(Error)
-  case failedToWriteToMigratedConfigurationFile(Error)
-}
-
 /// The configuration for a package.
 struct Configuration {
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
+  
+  // MARK: Instance methods
   
   /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.
   /// - Parameter name: The name of the app to get.
@@ -28,7 +14,7 @@ struct Configuration {
   func getAppConfiguration(_ name: String?) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
     if let name = name {
       guard let selected = apps[name] else {
-        return .failure(.invalidAppName(name))
+        return .failure(.noSuchApp(name))
       }
       return .success((name: name, app: selected))
     } else if let first = apps.first, apps.count == 1 {
@@ -59,6 +45,8 @@ struct Configuration {
     return .success(config)
   }
   
+  // MARK: Static methods
+  
   /// Loads configuration from the `Bundler.toml` file in the given directory.
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
@@ -78,7 +66,7 @@ struct Configuration {
     do {
       contents = try String(contentsOf: configurationFile)
     } catch {
-      return .failure(.failedToReadConfigurationFile(error))
+      return .failure(.failedToReadConfigurationFile(configurationFile, error))
     }
     
     let dto: ConfigurationDTO
@@ -101,7 +89,7 @@ struct Configuration {
   /// - Returns: The converted configuration.
   static func migrateOldConfiguration(from oldConfigurationFile: URL, to newConfigurationFile: URL) -> Result<Configuration, ConfigurationError> {
     log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
-    log.info("Migrating the 'Bundle.json' configuration to the new format")
+    log.info("Migrating 'Bundle.json' to the new configuration format")
     
     return OldConfiguration.load(from: oldConfigurationFile)
       .flatMap { oldConfiguration in
@@ -137,11 +125,11 @@ struct Configuration {
         do {
           try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
         } catch {
-          return .failure(.failedToWriteToMigratedConfigurationFile(error))
+          return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
         }
         
-        log.warning("Only the 'product' and 'version' fields are mandatory for apps in the new configuration format. You can delete any of the other fields that you don't need")
-        log.info("The old configuration file was successfully migrated, you can now safely delete 'Bundle.json'")
+        log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need.")
+        log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it.")
         
         return .success(Configuration(configuration))
       }
@@ -165,13 +153,14 @@ struct Configuration {
       return .failure(.failedToSerializeConfiguration(error))
     }
     
+    let file = directory.appendingPathComponent("Bundler.toml")
     do {
       try contents.write(
-        to: directory.appendingPathComponent("Bundler.toml"),
+        to: file,
         atomically: false,
         encoding: .utf8)
     } catch {
-      return .failure(.failedToWriteToConfigurationFile(error))
+      return .failure(.failedToWriteToConfigurationFile(file, error))
     }
     
     return .success()

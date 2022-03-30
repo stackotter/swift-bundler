@@ -50,7 +50,7 @@ struct CreateCommand: ParsableCommand {
       return
     }
     
-    let defaultPackageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(appName)
+    let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
     if let templateRepository = templateRepository {

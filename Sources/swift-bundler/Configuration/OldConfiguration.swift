@@ -30,7 +30,7 @@ struct OldConfiguration: Codable {
     do {
       data = try Data(contentsOf: file)
     } catch {
-      return .failure(.failedToReadContentsOfOldConfigurationFile(error))
+      return .failure(.failedToReadContentsOfOldConfigurationFile(file, error))
     }
     
     var configuration: OldConfiguration
