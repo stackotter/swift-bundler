@@ -1,15 +1,5 @@
 import Foundation
 
-/// An error returned by ``MetalCompiler``.
-enum MetalCompilerError: LocalizedError {
-  case failedToCreateMetalCompilationTempDirectory(Error)
-  case failedToCompileMetalShader(String, ProcessError)
-  case failedToCreateMetalArchive(ProcessError)
-  case failedToCreateMetalLibrary(ProcessError)
-  case failedToDeleteShaderSource(String, Error)
-  case failedToEnumerateMetalShaders
-}
-
 /// A utility for compiling metal shader source files.
 enum MetalCompiler {
   /// Compiles any metal shaders present in a directory into a `default.metallib` file (in the same directory).
@@ -19,7 +9,7 @@ enum MetalCompiler {
   /// - Returns: If an error occurs, a failure is returned.
   static func compileMetalShaders(in directory: URL, keepSources: Bool) -> Result<Void, MetalCompilerError> {
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
-      return .failure(.failedToEnumerateMetalShaders)
+      return .failure(.failedToEnumerateShaders(directory: directory))
     }
     
     var shaderSources: [URL] = []
@@ -44,7 +34,7 @@ enum MetalCompiler {
           do {
             try FileManager.default.removeItem(at: source)
           } catch {
-            return .failure(.failedToDeleteShaderSource(source.lastPathComponent, error))
+            return .failure(.failedToDeleteShaderSource(source, error))
           }
         }
         
@@ -64,7 +54,7 @@ enum MetalCompiler {
     do {
       try FileManager.default.createDirectory(at: tempDirectory)
     } catch {
-      return .failure(.failedToCreateMetalCompilationTempDirectory(error))
+      return .failure(.failedToCreateTemporaryCompilationDirectory(tempDirectory, error))
     }
     
     // Compile the shaders into `.air` files
@@ -82,7 +72,7 @@ enum MetalCompiler {
       
       let result = process.runAndWait()
       if case let .failure(error) = result {
-        return .failure(.failedToCompileMetalShader(shaderSource.lastPathComponent, error))
+        return .failure(.failedToCompileShader(shaderSource, error))
       }
     }
     
