@@ -21,7 +21,7 @@ struct BundleCommand: ParsableCommand {
 
   /// The build configuration to use
   @Option(
-    name: [.customShort("c"), .customLong("config")],
+    name: [.customShort("c"), .customLong("configuration")],
     help: "The build configuration to use (debug|release).",
     transform: {
       SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
