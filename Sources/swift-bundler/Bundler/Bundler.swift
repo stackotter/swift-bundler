@@ -1,22 +1,5 @@
 import Foundation
 
-/// An error returned by ``Bundler``.
-enum BundlerError: LocalizedError {
-  case failedToBuild(SwiftPackageManagerError)
-  case failedToCreateAppBundleDirectoryStructure(Error)
-  case failedToCreatePkgInfo(Error)
-  case failedToCreateInfoPlist(PlistCreatorError)
-  case failedToCopyExecutable(Error)
-  case failedToCreateIcon(IconSetCreatorError)
-  case failedToCopyICNS(Error)
-  case failedToCopyResourceBundles(ResourceBundlerError)
-  case failedToCopyDynamicLibraries(DynamicLibraryBundlerError)
-  case failedToRunExecutable(ProcessError)
-  case failedToGetApplicationSupportDirectory(Error)
-  case failedToCreateApplicationSupportDirectory(Error)
-  case invalidAppIconFile(URL)
-}
-
 /// The core functionality of Swift Bundler.
 enum Bundler {
   /// Builds the app's executable.
@@ -38,7 +21,7 @@ enum Bundler {
       configuration: buildConfiguration,
       universal: universal
     ).mapError { error in
-      .failedToBuild(error)
+      .failedToBuild(product: product, error)
     }
   }
   
@@ -191,7 +174,7 @@ enum Bundler {
       try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
-      return .failure(.failedToCreateAppBundleDirectoryStructure(error))
+      return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
     }
   }
   
@@ -206,7 +189,7 @@ enum Bundler {
       try FileManager.default.copyItem(at: source, to: destination)
       return .success()
     } catch {
-      return .failure(.failedToCopyExecutable(error))
+      return .failure(.failedToCopyExecutable(source: source, destination: destination, error))
     }
   }
   
@@ -218,13 +201,13 @@ enum Bundler {
   /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(at outputDirectory: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, BundlerError> {
     log.info("Creating 'PkgInfo'")
+    let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
     do {
-      let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
       var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
       let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
       try pkgInfoData.write(to: pkgInfoFile)
     } catch {
-      return .failure(.failedToCreatePkgInfo(error))
+      return .failure(.failedToCreatePkgInfo(file: pkgInfoFile, error))
     }
     
     log.info("Creating 'Info.plist'")
@@ -253,11 +236,12 @@ enum Bundler {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {
       log.info("Copying '\(icon.lastPathComponent)'")
+      let destination = outputDirectory.appendingPathComponent("AppIcon.icns")
       do {
-        try FileManager.default.copyItem(at: icon, to: outputDirectory.appendingPathComponent("AppIcon.icns"))
+        try FileManager.default.copyItem(at: icon, to: destination)
         return .success()
       } catch {
-        return .failure(.failedToCopyICNS(error))
+        return .failure(.failedToCopyICNS(source: icon, destination: destination, error))
       }
     } else if icon.pathExtension == "png" {
       log.info("Creating 'AppIcon.icns' from '\(icon.lastPathComponent)'")
