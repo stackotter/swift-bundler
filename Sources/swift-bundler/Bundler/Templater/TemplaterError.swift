@@ -13,7 +13,7 @@ enum TemplaterError: LocalizedError {
   case templateDoesNotSupportCurrentPlatform(template: String, platform: String, supportedPlatforms: [String])
   case failedToEnumerateTemplateContents(template: String)
   case failedToReadFile(template: String, file: URL, Error)
-  case failedToGetRelativePath(from: URL, to: URL)
+  case failedToGetRelativePath(file: URL, base: URL)
   case failedToWriteToOutputFile(file: URL, Error)
   case failedToCreateSkeletonPackage(SwiftPackageManagerError)
   case failedToEnumerateTemplates(Error)
@@ -45,8 +45,8 @@ enum TemplaterError: LocalizedError {
         return "Failed to enumerate the contents of the '\(template)' template"
       case .failedToReadFile(let template, let file, _):
         return "Failed to read the file '\(file.lastPathComponent)' from the '\(template)' template"
-      case .failedToGetRelativePath(let source, let destination):
-        return "Failed to get relative path from '\(source.relativePath)' to '\(destination.relativePath)'"
+      case .failedToGetRelativePath(let file, let base):
+        return "Failed to get relative path from '\(file.relativePath)' to '\(base.relativePath)'"
       case .failedToWriteToOutputFile(let file, _):
         return "Failed to write to the output file at '\(file.relativePath)'"
       case .failedToCreateSkeletonPackage(let error):
