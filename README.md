@@ -32,7 +32,7 @@ swift bundler create HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 
-To learn more about package templates see [the package templates section](#package-templates).
+To learn more about package templates, see [the package templates section](#package-templates).
 
 ### Running the app
 
@@ -44,7 +44,7 @@ swift bundler run
 
 ### Distributing the app
 
-Use the `bundle` command to create a `.app` file that you can distribute to users. It is recommended to use the `-c release` option to perform a release build and the `-u` option to create a universal app binary (which runs natively on both and Intel and Apple Silicon Macs).
+Use the `bundle` command to create an app bundle that you can distribute to users. It is recommended to use the `-c release -u` options to create an optimized universal binary (for running on both Intel and Apple Silicon Macs).
 
 ```sh
 # Build the app and output it to the current directory.
