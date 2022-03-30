@@ -68,7 +68,7 @@ struct Configuration: Codable {
           log.warning("Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings). These will have to be manually converted")
         }
         
-        log.warning("Discarding the build number because the new configuration format has no build number field")
+        log.warning("Discarding 'buildNumber' because the new format has no build number field")
         
         let appConfiguration = AppConfiguration(
           product: oldConfiguration.target,
@@ -92,8 +92,8 @@ struct Configuration: Codable {
           return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
         }
         
-        log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need.")
-        log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it.")
+        log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need")
+        log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it")
         
         return .success(configuration)
       }
