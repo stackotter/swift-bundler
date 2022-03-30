@@ -2,7 +2,7 @@ import Foundation
 
 /// An error returned by ``Templater``.
 enum TemplaterError: LocalizedError {
-  case packageDirectoryAlreadyExists
+  case packageDirectoryAlreadyExists(URL)
   case failedToCloneTemplateRepository(ProcessError)
   case failedToGetApplicationSupportDirectory(Error)
   case cannotCreatePackageFromBaseTemplate
@@ -44,7 +44,7 @@ enum Templater {
     indentationStyle: IndentationStyle
   ) -> Result<Void, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      return .failure(.packageDirectoryAlreadyExists)
+      return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
     
     if template == "Skeleton" {
@@ -82,7 +82,7 @@ enum Templater {
     indentationStyle: IndentationStyle
   ) -> Result<Void, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      return .failure(.packageDirectoryAlreadyExists)
+      return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
     
     // The `Base` template should not be used to create packages directly

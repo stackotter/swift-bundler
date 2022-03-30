@@ -79,7 +79,7 @@ extension Process {
       process.setOutputPipe(pipe)
     }
 
-    process.currentDirectoryURL = directory
+    process.currentDirectoryURL = directory?.standardizedFileURL.absoluteURL
     process.launchPath = tool
     process.arguments = arguments
     
