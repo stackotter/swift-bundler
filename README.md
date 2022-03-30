@@ -34,7 +34,7 @@ swift bundler run
 
 To learn more about package templates see [the package templates section](#package-templates).
 
-### Create an app bundle
+### Build and bundle the app
 
 ```sh
 # Build the app and create an app bundle. The default
@@ -73,10 +73,6 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
-### Universal builds
-
-Building a universal version of an app (x86_64 and arm64) can be performed by adding the `-u` to flag to the `run` or `bundle` command.
-
 ### Custom build scripts
 
 Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the app bundle.
@@ -85,7 +81,7 @@ Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.s
 
 To add an icon to your app, provide a value for the `icon` field of your app's configuration.
 
-The value can either be a path to an `icns` file, or a png file (which is ideally 1024x1024px, with an alpha channel). If you want to use the same icon for all screen resolutions, just provide the icon as a png file. If you want to have a different level of detail for each resolution, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
+The value can either be a path to an `icns` file, or a `png` file (which is ideally 1024x1024px, with an alpha channel). If you want to use the same icon for all screen resolutions, just provide the icon as a `png` file. If you want to have a different level of detail for each resolution, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
 
 ```sh
 /usr/bin/iconutil -c icns /path/to/AppIcon.iconset
@@ -112,33 +108,41 @@ Some configuration fields (currently only `extraPlistEntries`) support variable 
 - `VERSION`: The app's version
 - `COMMIT_HASH`: The commit hash of the git repository at the package's root directory. If there is no git repository, an error will be thrown.
 
-### Package templates
+### Help
+
+If you want to see all available options just use the `help` command (e.g. `swift bundler help run`).
+
+## Package templates
 
 The default package templates are located at `~/Library/Application Support/dev.stackotter.swift-bundler/templates` and are downloaded from [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) when the first command requiring the default templates is run.
 
 To learn about creating custom templates, go to [the custom templates section](#creating-custom-templates).
 
-#### List available templates
+### List available templates
 
 ```sh
 swift bundler templates list
+# * Skeleton: The bare minimum package with no default UI.
+# * SwiftUI: A simple 'Hello, World!' SwiftUI app.
+# * SwiftCrossUI: A simple 'Hello, World!' SwiftCrossUI app.
 ```
 
-#### Update available templates
+### Get information about a template
+
+```sh
+swift bundler templates info SwiftUI
+
+# * 'SwiftUI':
+#   * A simple 'Hello, World!' SwiftUI app.
+#   * Minimum Swift version: 5.5
+#   * Platforms: [macOS]
+```
+
+### Update available templates
 
 ```sh
 swift bundler templates update
 ```
-
-#### Get information about a template
-
-```sh
-swift bundler templates info [template]
-```
-
-### Help
-
-If you want to see all available options just use the `help` command (e.g. `swift bundler help run`).
 
 ## Advanced usage
 
@@ -169,6 +173,10 @@ version = "1.0.1" # The apps can specify separate versions
 ```
 
 Once multiple apps are defined, certain commands such as `run` and `bundle` require an app name to be provided in order to know which app to operate on.
+
+### Universal builds
+
+Building a universal version of an app (x86_64 and arm64) can be performed by adding the `-u` to flag to the `run` or `bundle` command.
 
 ### Creating custom templates
 
