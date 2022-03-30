@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create apps for Windows, Linux and MacOS with a single Swift codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create apps for Windows, Linux and macOS with a single Swift codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
 ## Installation
 
@@ -20,41 +20,32 @@ sh ./install.sh
 
 ## Getting started
 
-The following commands create a new package from the SwiftUI template and then run the package as an app:
+The following commands create a new app from the SwiftUI template and then run the app:
 
 ```sh
-# Create a new swift package from the SwiftUI template and set it up for Swift Bundler.
+# Create a new app from the SwiftUI template
 swift bundler create HelloWorld --template SwiftUI
 cd HelloWorld
 
-# Build and run the package as an app
+# Build and run the app. The build configuration can
+# be specified with the '-c' option (e.g. '-c debug').
 swift bundler run
 ```
 
 To learn more about package templates see [the package templates section](#package-templates).
 
-### Run an app
-
-```sh
-# Builds and runs the app. The build configuration can
-# be specified with the '-c' option (e.g. '-c debug').
-# The `--skip-build` flag can be provided to run the
-# app bundle from the previous build.
-swift bundler run
-```
-
 ### Create an app bundle
 
 ```sh
-# Build and bundle an app. The default output directory
-# is .build/bundler, but it can be changed using the
-# '-o' option.
+# Build the app and create an app bundle. The default
+# output directory is .build/bundler, but it can be
+# changed using the '-o' option.
 swift bundler bundle
 ```
 
 ### Configuration
 
-Swift Bundler's configuration is stored in a `Bundler.toml` file in the root directory of the package. Below is an example configuration;
+Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration;
 
 ```toml
 [apps.HelloWorld]
@@ -63,6 +54,7 @@ version = "0.1.0" # The app's version, displayed on macOS's automatic 'About Hel
 category = "public.app-category.education"
 bundle_identifier = "com.example.HelloWorld"
 minimum_macos_version = "11" # The minimum macOS version that the app should run on
+icon = "icon.png"
 
 [apps.HelloWorld.extra_plist_entries]
 commit = "{COMMIT}" # This could be any key-value pair, 'commit' is just an example
@@ -81,6 +73,10 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
+### Universal builds
+
+Building a universal version of an app (x86_64 and arm64) can be performed by adding the `-u` to flag to the `run` or `bundle` command.
+
 ### Custom build scripts
 
 Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the app bundle.
@@ -89,7 +85,7 @@ Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.s
 
 To add an icon to your app, provide a value for the `icon` field of your app's configuration.
 
-The value can either be a path to an `icns` file, or a png file with an alpha channel (which is ideally 1024x1024px). If you want to use the same logo for all screen resolutions, just provide the icon as a png file. If you want to have different levels of detail, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
+The value can either be a path to an `icns` file, or a png file (which is ideally 1024x1024px, with an alpha channel). If you want to use the same icon for all screen resolutions, just provide the icon as a png file. If you want to have a different level of detail for each resolution, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
 
 ```sh
 /usr/bin/iconutil -c icns /path/to/AppIcon.iconset
@@ -100,6 +96,7 @@ The value can either be a path to an `icns` file, or a png file with an alpha ch
 If you want to add extra key-value pairs to your app's `Info.plist`, you can specify them in the app's `extra_plist_entries` field. Here's an example configuration that appends the current commit hash to the version string displayed in the `About HelloWorld` screen:
 
 ```toml
+# ...
 [apps.HelloWorld.extra_plist_entries]
 CFBundleShortVersionString = "{VERSION}_{COMMIT_HASH}"
 ```
@@ -172,10 +169,6 @@ version = "1.0.1" # The apps can specify separate versions
 ```
 
 Once multiple apps are defined, certain commands such as `run` and `bundle` require an app name to be provided in order to know which app to operate on.
-
-### Universal builds
-
-Building a universal version of an app (x86_64 and arm64) can be performed by adding the `-u` to flag to the `run` or `bundle` command.
 
 ### Creating custom templates
 
