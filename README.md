@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My motivation is that I think Xcode projects are a lot more restrictive than Swift packages, and Swift packages are less convoluted. My end goal is to be able to create Swift apps for Windows, Linux and MacOS with a single codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create Swift apps for Windows, Linux and MacOS with a single codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
 ## Installation
 
@@ -37,7 +37,7 @@ To learn more about package templates see [the package templates section](#packa
 swift bundler run
 ```
 
-### Build a `.app` for the app
+### Create an app bundle
 
 ```sh
 # Build and bundle the app. The default output directory is .build/bundler, but
@@ -47,46 +47,40 @@ swift bundler bundle
 
 ### Configuration
 
-Running `swift bundler create` creates a `Bundler.toml` file which contains all that package's configuration. Below is an example configuration;
+Running `swift bundler create` creates a `Bundler.toml` file which contains the package's configuration. Below is an example configuration;
 
 ```toml
 [apps.HelloWorld]
-product = "HelloWorld"
-version = "0.1.0"
-```
-
-Here's an example of a configuration file containing example values for all fields:
-
-```toml
-[apps.HelloWorld]
-product = "HelloWorld"
-version = "0.1.0"
+product = "HelloWorld" # The package product to create the app from
+version = "0.1.0" # The app's version, displayed on macOS's automatic 'About HelloWorld' screen
 category = "public.app-category.education"
 bundle_identifier = "com.example.HelloWorld"
-minimum_macos_version = "11"
+minimum_macos_version = "11" # The minimum macOS version that the app should run on
 
 [apps.HelloWorld.extra_plist_entries]
-commit = "{COMMIT}"
+commit = "{COMMIT}" # This could be any key-value pair, 'commit' is just an example
 ```
+
+Only the `product` and `version` fields are required.
 
 ### Xcode support
 
-If you want to use xcode as your ide, run this in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
+If you want to use xcode as your ide, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
 ```sh
 # Creates the files necessary to get xcode to run the package as an app
 swift bundler generate-xcode-support
 ```
 
-To open the package in Xcode, just run `open Package.swift` or open `Package.swift` with Xcode through Finder.
+To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
 ### Custom build scripts
 
-Both prebuild and postbuild scripts are supported. Just create the `prebuild.sh` and/or `postbuild.sh` files in the root directory of your project and they will automatically be run with the next build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after bundling (creating the `.app`).
+Swift Bundler supports prebuild and postbuild scripts. Just create a `prebuild.sh` and/or `postbuild.sh` file in the root directory of your package and they will automatically be run with every build. No extra configuration required. `prebuild.sh` is run before building, and `postbuild.sh` is run after creating the `.app`.
 
 ### App Icons
 
-There are two ways to add custom app icons to a bundler project.
+There are two ways to add custom app icons to a bundler package.
 
 1. The simplest way is to add a file called `Icon1024x1024.png` to the root directory of your package. The png file must have an alpha channel and should be 1024x1024 but this isn't checked when building.
 2. If you want to have different versions of your icon for different resolutions you can add an `AppIcon.icns` iconset in the root directory of your package.
@@ -95,7 +89,7 @@ If both are present, `AppIcon.icns` is used because it is more specific.
 
 ### Info.plist customization
 
-If you want to add extra key-value pairs to your app's Info.plist, you can specify them in an app's `extraPlistEntries` field. Here's an example where the version displayed on the app's about screen is updated to include the current commit hash:
+If you want to add extra key-value pairs to your app's `Info.plist`, you can specify them in the app's `extraPlistEntries` field. Here's an example configuration that appends the current commit hash to the version string displayed in the `About HelloWorld` screen:
 
 ```toml
 [apps.HelloWorld.extra_plist_entries]
@@ -104,13 +98,13 @@ CFBundleShortVersionString = "{VERSION}_{COMMIT_HASH}"
 
 The `{VERSION}` and `{COMMIT_HASH}` variables get replaced at build time with their respective values. See [the variable substition section](#variable-substitions) for more information.
 
-If you provide a value for a key that is already present in the default Info.plist, the default value will be overidden with the value you provide.
+If you provide a value for a key that is already present in the default `Info.plist`, the default value will be overidden with the value you provide.
 
 ### Variable substitions
 
 Some configuration fields (currently only `extraPlistEntries`) support variable substitution. This means that anything of the form `{VARIABLE}` within the field's value will be replaced by the variable's value. Below is a list of all supported variables:
 
-- `VERSION`: The app's configured version
+- `VERSION`: The app's version
 - `COMMIT_HASH`: The commit hash of the git repository at the package's root directory. If there is no git repository, an error will be thrown.
 
 ### Package templates
@@ -145,7 +139,7 @@ If you want to see all available options just use the `help` command (e.g. `swif
 
 ### Metal shaders
 
-Swift Bundler supports Metal shaders, however all metal files must be siblings within a single directory and they cannot import any header files from the project. This limitation may be fixed in future versions of Swift Bundler, contributions are welcome! The folder containing the shaders must also be added to the app's target (in `Package.swift`) as resources to process, like so:
+Swift Bundler supports Metal shaders, however all metal files must be siblings within a single directory and they cannot import any header files from the project. This limitation may be fixed in future versions of Swift Bundler, contributions are welcome! The folder containing the shaders must also be added as resources to the app's target (in `Package.swift`), like so:
 
 ```swift
 // ...
@@ -194,6 +188,12 @@ Any files within the template directory other than `Template.toml` are copied to
 You can also create a `Base` directory within the template repository. Whenever creating a new package, the `Base` directory is applied first and can contain files common between all templates, such as the `.gitignore` file. A template can overwrite files in the `Base` template by containing files of the same name.
 
 See [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) for some example templates.
+
+#### Using a custom template
+
+```
+swift bundler create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
+```
 
 ## Contributing
 
