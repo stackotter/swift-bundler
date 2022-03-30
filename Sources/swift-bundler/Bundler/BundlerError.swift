@@ -27,11 +27,11 @@ enum BundlerError: LocalizedError {
       case .failedToCreateInfoPlist(let plistCreatorError):
         return "Failed to create 'Info.plist': \(plistCreatorError.localizedDescription)"
       case .failedToCopyExecutable(let source, let destination, _):
-        return "Failed to copy executable from '\(source)' to '\(destination)'"
+        return "Failed to copy executable from '\(source.relativePath)' to '\(destination.relativePath)'"
       case .failedToCreateIcon(let iconSetCreatorError):
         return "Failed to create app icon: \(iconSetCreatorError.localizedDescription)"
       case .failedToCopyICNS(let source, let destination, _):
-        return "Failed to copy 'icns' file from '\(source)' to '\(destination)'"
+        return "Failed to copy 'icns' file from '\(source.relativePath)' to '\(destination.relativePath)'"
       case .failedToCopyResourceBundles(let resourceBundlerError):
         return "Failed to copy resource bundles: \(resourceBundlerError.localizedDescription)"
       case .failedToCopyDynamicLibraries(let dynamicLibraryBundlerError):
@@ -43,7 +43,7 @@ enum BundlerError: LocalizedError {
       case .failedToCreateApplicationSupportDirectory:
         return "Failed to create application support directory"
       case .invalidAppIconFile(let file):
-        return "Invalid app icon file, must be 'png' or 'icns', got '\(file)'"
+        return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
     }
   }
 }

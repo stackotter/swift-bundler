@@ -24,21 +24,21 @@ enum ConfigurationError: LocalizedError {
       case .failedToEvaluateExpressions(let app, let appConfigurationError):
         return "Failed to evaluate the '\(app)' app's configuration: \(appConfigurationError.localizedDescription)"
       case .failedToReadConfigurationFile(let file, _):
-        return "Failed to read the configuration file at '\(file)'"
+        return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):
         return "Failed to deserialize configuration: \(error.localizedDescription)"
       case .failedToSerializeConfiguration(_):
         return "Failed to serialize configuration"
       case .failedToWriteToConfigurationFile(let file, _):
-        return "Failed to write to configuration file at '\(file)"
+        return "Failed to write to configuration file at '\(file.relativePath)"
       case .failedToDeserializeOldConfiguration(let error):
         return "Failed to deserialize old configuration: \(error.localizedDescription)"
       case .failedToReadContentsOfOldConfigurationFile(let file, _):
-        return "Failed to read contents of old configuration file at '\(file)'"
+        return "Failed to read contents of old configuration file at '\(file.relativePath)'"
       case .failedToSerializeMigratedConfiguration(_):
         return "Failed to serialize migrated configuration"
       case .failedToWriteToMigratedConfigurationFile(let file, _):
-        return "Failed to write migrated configuration to file at '\(file)'"
+        return "Failed to write migrated configuration to file at '\(file.relativePath)'"
     }
   }
 }

@@ -13,9 +13,9 @@ enum XcodeSupportGeneratorError: LocalizedError {
       case .failedToGetApplicationSupportDirectory(_):
         return "Failed to get application support directory"
       case .applicationSupportDirectoryCannotContainSingleQuote(let directory):
-        return "The build application support directory (\"\(directory)\") must not contain single quotes"
+        return "The build application support directory (\"\(directory.relativePath)\") must not contain single quotes"
       case .failedToCreateSchemesDirectory(let directory, _):
-        return "Failed to create schemes directory at '\(directory)'"
+        return "Failed to create schemes directory at '\(directory.relativePath)'"
       case .failedToWriteToAppScheme(let app, _):
         return "Failed to write app scheme for '\(app)' to output file"
       case .failedToCreateOutputBundle(_):
