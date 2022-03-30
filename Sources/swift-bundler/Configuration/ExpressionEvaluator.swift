@@ -99,7 +99,7 @@ struct ExpressionEvaluator {
         let result = process.getOutput()
         
         guard case let .success(string) = result else {
-          return .failure(.failedToEvaluateExpressionVariable(message: "Failed to evaluate commit hash. Check that the package directory is a git repository and git is installed at `/usr/bin/git`."))
+          return .failure(.failedToEvaluateExpressionVariable(message: "Failed to evaluate the 'COMMIT_HASH' variable. Ensure that the package directory is a git repository and that git is installed at `/usr/bin/git`."))
         }
         
         output = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)

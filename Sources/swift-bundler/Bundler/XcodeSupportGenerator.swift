@@ -1,14 +1,5 @@
 import Foundation
 
-/// An error returned by ``XcodeSupportGenerator``.
-enum XcodeSupportGeneratorError: LocalizedError {
-  case failedToGetOutputDirectory(Error)
-  case outputDirectoryCannotContainSingleQuote
-  case failedToCreateSchemesDirectory(Error)
-  case failedToWriteToAppScheme(app: String, Error)
-  case failedToCreateOutputBundle(Error)
-}
-
 /// A utility for creating Xcode related support files (i.e. Xcode schemes).
 enum XcodeSupportGenerator {
   /// Generates the schemes required for Xcode to build and run a package.
@@ -41,7 +32,7 @@ enum XcodeSupportGenerator {
     do {
       try FileManager.default.createDirectory(at: schemesDirectory)
     } catch {
-      return .failure(.failedToCreateSchemesDirectory(error))
+      return .failure(.failedToCreateSchemesDirectory(schemesDirectory, error))
     }
     
     return .success(schemesDirectory)
@@ -88,10 +79,15 @@ enum XcodeSupportGenerator {
     // Get the global output directory
     let outputDirectory: URL
     switch Bundler.getApplicationSupportDirectory() {
-      case let .success(directory):
-        outputDirectory = directory.appendingPathComponent("build")
+      case let .success(applicationSupport):
+        // This shouldn't be able to happen, but it would break stuff if it did
+        guard !applicationSupport.path.contains("'") else {
+          return .failure(.applicationSupportDirectoryCannotContainSingleQuote(applicationSupport))
+        }
+        
+        outputDirectory = applicationSupport.appendingPathComponent("build")
       case let .failure(error):
-        return .failure(.failedToGetOutputDirectory(error))
+        return .failure(.failedToGetApplicationSupportDirectory(error))
     }
     
     // Get the output app bundle location
@@ -100,11 +96,6 @@ enum XcodeSupportGenerator {
       try FileManager.default.createDirectory(at: outputAppBundle)
     } catch {
       return .failure(.failedToCreateOutputBundle(error))
-    }
-    
-    // This shouldn't be able to happen, but it would break stuff if it did
-    guard !outputDirectory.path.contains("'") else {
-      return .failure(.outputDirectoryCannotContainSingleQuote)
     }
     
     // The escaped strings required to fill in the template
@@ -116,7 +107,7 @@ enum XcodeSupportGenerator {
     
     // Commands to put in the scheme
     let runPrebuild = "/opt/swift-bundler/swift-bundler prebuild -d \(packagePath)"
-    let createBundle = "/opt/swift-bundler/swift-bundler bundle -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
+    let createBundle = "/opt/swift-bundler/swift-bundler bundle \(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
     let runPostbuild = "/opt/swift-bundler/swift-bundler postbuild -d \(packagePath)"
     
     // Create the scheme's contents from a massive template
