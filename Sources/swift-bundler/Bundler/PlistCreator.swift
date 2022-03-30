@@ -1,13 +1,6 @@
 import Foundation
 import Parsing
 
-/// An error returned by ``PlistCreator``.
-enum PlistCreatorError: LocalizedError {
-  case unknownPlistEntryType(String)
-  case failedToWriteAppInfoPlist(URL, Error)
-  case serializationFailed(Error)
-}
-
 /// A utility for creating the contents of plist files.
 enum PlistCreator {
   /// Creates an app's `Info.plist` file.
@@ -41,7 +34,7 @@ enum PlistCreator {
         try contents.write(to: file)
         return .success()
       } catch {
-        return .failure(.failedToWriteAppInfoPlist(file, error))
+        return .failure(.failedToWriteAppInfoPlist(file: file, error))
       }
     }
   }
@@ -59,7 +52,7 @@ enum PlistCreator {
           try contents.write(to: file)
           return .success()
         } catch {
-          return .failure(.failedToWriteAppInfoPlist(file, error))
+          return .failure(.failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error))
         }
       }
   }
