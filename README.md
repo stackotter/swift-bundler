@@ -47,9 +47,9 @@ Use the `bundle` command to create a `.app` file that you can distribute to user
 swift bundler bundle -o . -c release -u
 ```
 
-### Using with Xcode
+### Xcode support
 
-If you want to use xcode as your ide, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
+If you want to use xcode as your IDE, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
 ```sh
 # Creates the files necessary to get xcode to run the package as an app
@@ -58,15 +58,9 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
-## Contributing
+## Supporting Swift Bundler ❤️
 
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
-
-## Supporting Swift Bundler
-
-I spend most of my spare time working on open-source projects and creating tools for the community. If you find Swift Bundler useful, please consider supporting me by becoming a sponsor. Every single sponsorship helps me focus more of my time on what I love — working on open-source.
-
-Become a sponsor through [GitHub Sponsors](https://github.com/sponsors/stackotter) ❤️
+If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects and creating tools for the community, and every single sponsorship helps me focus more time on making high quality tools.
 
 ## Configuration
 
@@ -140,7 +134,7 @@ Some configuration fields (currently only `extra_plist_entries`) support variabl
 
 The default package templates are located at `~/Library/Application Support/dev.stackotter.swift-bundler/templates` and are downloaded from [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) when the first command requiring the default templates is run.
 
-To learn about creating custom templates, go to [the custom templates section](#creating-custom-templates).
+To learn about creating custom templates, see [the creating custom templates section](#creating-custom-templates).
 
 ### List available templates
 
@@ -166,6 +160,10 @@ swift bundler templates info SwiftUI
 ```sh
 swift bundler templates update
 ```
+
+## Contributing
+
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
 
 ## Advanced usage
 
