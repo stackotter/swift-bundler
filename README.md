@@ -38,7 +38,7 @@ To learn more about package templates see [the package templates section](#packa
 
 Use the `run` command to build and run the app.
 
-```
+```sh
 swift bundler run
 ```
 
@@ -51,7 +51,7 @@ Use the `bundle` command to create a `.app` file that you can distribute to user
 swift bundler bundle -o . -c release -u
 ```
 
-### Xcode support
+### Developing with Xcode
 
 If you want to use xcode as your IDE, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
