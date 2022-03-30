@@ -9,7 +9,6 @@ enum ConfigurationError: LocalizedError {
   case failedToDeserializeConfiguration(Error)
   case failedToSerializeConfiguration(Error)
   case failedToWriteToConfigurationFile(URL, Error)
-  
   case failedToReadContentsOfOldConfigurationFile(URL, Error)
   case failedToDeserializeOldConfiguration(Error)
   case failedToSerializeMigratedConfiguration(Error)

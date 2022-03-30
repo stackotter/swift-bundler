@@ -20,49 +20,34 @@ sh ./install.sh
 
 ## Getting started
 
-The following commands create a new app from the SwiftUI template and then run the app:
+Use the following commands to create a new app from the SwiftUI template:
 
 ```sh
 # Create a new app from the SwiftUI template
 swift bundler create HelloWorld --template SwiftUI
 cd HelloWorld
-
-# Build and run the app. The build configuration can
-# be specified with the '-c' option (e.g. '-c debug').
-swift bundler run
 ```
 
 To learn more about package templates see [the package templates section](#package-templates).
 
-### Build and bundle the app
+### Running the app
+
+Use the `run` command to build and run the app.
+
+```
+swift bundler run
+```
+
+### Distributing the app
+
+Use the `bundle` command to create a `.app` file that you can distribute to users. It is recommended to use the `-c release` option to perform a release build and the `-u` option to create a universal app binary (which runs natively on both and Intel and Apple Silicon Macs).
 
 ```sh
-# Build the app and create an app bundle. The default
-# output directory is .build/bundler, but it can be
-# changed using the '-o' option.
-swift bundler bundle
+# Build the app and output it to the current directory.
+swift bundler bundle -o . -c release -u
 ```
 
-### Configuration
-
-Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration;
-
-```toml
-[apps.HelloWorld]
-product = "HelloWorld" # The package product to create the app from
-version = "0.1.0" # The app's version, displayed on macOS's automatic 'About HelloWorld' screen
-category = "public.app-category.education"
-bundle_identifier = "com.example.HelloWorld"
-minimum_macos_version = "11" # The minimum macOS version that the app should run on
-icon = "icon.png"
-
-[apps.HelloWorld.extra_plist_entries]
-commit = "{COMMIT}" # This could be any key-value pair, 'commit' is just an example
-```
-
-Only the `product` and `version` fields are required.
-
-### Xcode support
+### Using with Xcode
 
 If you want to use xcode as your ide, run the following command in the package's root directory. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
@@ -73,11 +58,42 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
+## Contributing
+
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
+
+## Supporting Swift Bundler
+
+I spend most of my spare time working on open-source projects and creating tools for the community. If you find Swift Bundler useful, please consider supporting me by becoming a sponsor. Every single sponsorship helps me focus more of my time on what I love — working on open-source.
+
+Become a sponsor through [GitHub Sponsors](https://github.com/sponsors/stackotter) ❤️
+
+## Configuration
+
+Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration containing all fields;
+
+```toml
+[apps.HelloWorld]
+product = "HelloWorld" # The package product to create the app from
+version = "0.1.0" # The app's version, displayed on macOS's automatic 'About HelloWorld' screen
+category = "public.app-category.education"
+bundle_identifier = "com.example.HelloWorld"
+minimum_macos_version = "11" # The minimum macOS version that the app should run on
+icon = "icon.png"
+prebuild_script = "./utils/prebuild.sh"
+postbuild_script = "./utils/postbuild.sh"
+
+[apps.HelloWorld.extra_plist_entries]
+commit = "{COMMIT}" # This could be any key-value pair, 'commit' is just an example
+```
+
+Only the `product` and `version` fields are required.
+
 ### App Icons
 
 To add an icon to your app, provide a value for the `icon` field of your app's configuration.
 
-The value can either be a path to an `icns` file, or a `png` file (which is ideally 1024x1024px, with an alpha channel). If you want to use the same icon for all screen resolutions, just provide the icon as a `png` file. If you want to have a different level of detail for each resolution, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
+The value can either be a path to a `.icns` file, or a `.png` file (which is ideally 1024x1024px, with an alpha channel). If you want to use the same icon for all screen resolutions, just provide the icon as a `png` file. If you want to have a custom level of detail for each resolution, create an `icns` file. The easiest method for creating an `icns` file is to create an `iconset` using Xcode and then run the following command:
 
 ```sh
 /usr/bin/iconutil -c icns /path/to/AppIcon.iconset
@@ -97,16 +113,28 @@ The `{VERSION}` and `{COMMIT_HASH}` variables get replaced at build time with th
 
 If you provide a value for a key that is already present in the default `Info.plist`, the default value will be overidden with the value you provide.
 
+### Multi-app packages
+
+Swift Bundler makes it trivial to create multiple apps from one package. Here's an example configuration with a main app and an updater app:
+
+```toml
+[apps.Example]
+product = "Example"
+version = "0.1.0"
+
+[apps.Updater]
+product = "Updater"
+version = "1.0.1" # The apps can specify separate versions
+```
+
+Once multiple apps are defined, certain commands such as `run` and `bundle` require an app name to be provided in order to know which app to operate on.
+
 ### Variable substitions
 
-Some configuration fields (currently only `extraPlistEntries`) support variable substitution. This means that anything of the form `{VARIABLE}` within the field's value will be replaced by the variable's value. Below is a list of all supported variables:
+Some configuration fields (currently only `extra_plist_entries`) support variable substitution. This means that anything of the form `{VARIABLE}` within the field's value will be replaced by the variable's value. Below is a list of all supported variables:
 
 - `VERSION`: The app's version
 - `COMMIT_HASH`: The commit hash of the git repository at the package's root directory. If there is no git repository, an error will be thrown.
-
-### Help
-
-If you want to see all available options just use the `help` command (e.g. `swift bundler help run`).
 
 ## Package templates
 
@@ -153,26 +181,6 @@ resources: [
 // ...
 ```
 
-### Multi-app packages
-
-Swift Bundler makes it trivial to create multiple apps from one package. Here's an example configuration with a main app and an updater app:
-
-```toml
-[apps.Example]
-product = "Example"
-version = "0.1.0"
-
-[apps.Updater]
-product = "Updater"
-version = "1.0.1" # The apps can specify separate versions
-```
-
-Once multiple apps are defined, certain commands such as `run` and `bundle` require an app name to be provided in order to know which app to operate on.
-
-### Universal builds
-
-Building a universal version of an app (x86_64 and arm64) can be performed by adding the `-u` to flag to the `run` or `bundle` command.
-
 ### Creating custom templates
 
 1. Create a new template 'repository' (a directory that will contain a collection of templates)
@@ -199,7 +207,3 @@ See [the swift-bundler-templates repository](https://github.com/stackotter/swift
 ```sh
 swift bundler create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
 ```
-
-## Contributing
-
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
