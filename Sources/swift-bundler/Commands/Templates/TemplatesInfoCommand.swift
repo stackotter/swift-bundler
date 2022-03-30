@@ -12,7 +12,7 @@ struct TemplatesInfoCommand: ParsableCommand {
     name: .long,
     help: "An alternate directory to search for the template in.",
     transform: URL.init(fileURLWithPath:))
-  var templatesDirectory: URL?
+  var templateRepository: URL?
 
   /// The template to get info about.
   @Argument(
@@ -21,8 +21,8 @@ struct TemplatesInfoCommand: ParsableCommand {
   
   func run() throws {
     let templates: [Template]
-    if let templatesDirectory = templatesDirectory {
-      templates = try Templater.enumerateTemplates(in: templatesDirectory).unwrap()
+    if let templateRepository = templateRepository {
+      templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()
     } else {
       templates = try Templater.enumerateTemplates().unwrap()
     }

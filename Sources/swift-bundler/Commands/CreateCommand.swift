@@ -36,7 +36,7 @@ struct CreateCommand: ParsableCommand {
     name: .long,
     help: "An alternate directory to search for the template in instead.",
     transform: URL.init(fileURLWithPath:))
-  var templatesDirectory: URL?
+  var templateRepository: URL?
   
   /// The indentation style to create the package with.
   @Option(
@@ -53,11 +53,11 @@ struct CreateCommand: ParsableCommand {
     let defaultPackageDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
     
-    if let templatesDirectory = templatesDirectory {
+    if let templateRepository = templateRepository {
       try Templater.createPackage(
         in: packageDirectory,
         from: template,
-        in: templatesDirectory,
+        in: templateRepository,
         packageName: appName,
         forceCreation: force,
         indentationStyle: indentation
