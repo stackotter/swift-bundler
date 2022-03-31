@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for creating new app packages from templates.
-struct CreateCommand: ParsableCommand {
+struct CreateCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "create",
     abstract: "Create a new package.")
@@ -44,7 +44,7 @@ struct CreateCommand: ParsableCommand {
     help: "Force creation of the package even if the template does not support the current platform.")
   var force = false
 
-  func run() throws {
+  func wrappedRun() throws {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 

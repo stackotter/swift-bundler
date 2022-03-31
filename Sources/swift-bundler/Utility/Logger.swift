@@ -1,26 +1,9 @@
+import Foundation
 import Logging
 import Rainbow
 
-extension Logger.Level {
-  var colored: String {
-    switch self {
-      case .critical:
-        return rawValue.red.bold
-      case .error:
-        return rawValue.red.bold
-      case .warning:
-        return rawValue.yellow.bold
-      case .notice:
-        return rawValue.cyan
-      case .info:
-        return rawValue.cyan
-      case .debug:
-        return rawValue.lightWhite
-      case .trace:
-        return rawValue.lightWhite
-    }
-  }
-}
+/// The standard error stream used for logging errors.
+var standardError = FileHandle.standardError
 
 /// Swift Bundler's basic log handler.
 struct Handler: LogHandler {
@@ -33,7 +16,14 @@ struct Handler: LogHandler {
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-    print("\(level.colored): \(message)")
+    let output = "\(level.colored): \(message)"
+
+    switch level {
+      case .critical, .error:
+        print(output, to: &standardError)
+      default:
+        print(output)
+    }
   }
 }
 

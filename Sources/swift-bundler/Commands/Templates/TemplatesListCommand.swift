@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for listing available templates.
-struct TemplatesListCommand: ParsableCommand {
+struct TemplatesListCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "list",
     abstract: "List available templates.")
@@ -14,7 +14,7 @@ struct TemplatesListCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
-  func run() throws {
+  func wrappedRun() throws {
     let templates: [Template]
     if let templateRepository = templateRepository {
       templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()

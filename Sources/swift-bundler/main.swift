@@ -3,7 +3,7 @@ import ArgumentParser
 import Darwin
 
 /// The root command of Swift Bundler.
-struct Command: ParsableCommand {
+struct SwiftBundler: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
     abstract: "A tool for creating macOS apps from Swift packages.",
@@ -20,12 +20,14 @@ struct Command: ParsableCommand {
 
 // Kill all running processes on exit
 #if os(macOS)
-trap(.interrupt) { _ in
-  for process in processes {
-    process.terminate()
+for signal in Signal.allCases {
+  trap(signal) { _ in
+    for process in processes {
+      process.terminate()
+    }
+    exit(1)
   }
-  exit(1)
 }
 #endif
 
-Command.main()
+SwiftBundler.main()

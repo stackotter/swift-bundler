@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for creating app bundles for a package.
-struct BundleCommand: ParsableCommand {
+struct BundleCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Create an app bundle from a package.")
@@ -86,7 +86,7 @@ struct BundleCommand: ParsableCommand {
     ))
   var builtWithXcode = false
 
-  func run() throws { // swiftlint:disable:this function_body_length
+  func wrappedRun() throws { // swiftlint:disable:this function_body_length
     var appBundle: URL?
 
     // Start timing

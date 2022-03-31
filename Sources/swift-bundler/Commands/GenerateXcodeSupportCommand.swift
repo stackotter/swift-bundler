@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for generating Xcode related support files (i.e. Xcode schemes).
-struct GenerateXcodeSupportCommand: ParsableCommand {
+struct GenerateXcodeSupportCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "generate-xcode-support",
     abstract: "Generate the files required for Xcode to work nicely with a package.")
@@ -14,7 +14,7 @@ struct GenerateXcodeSupportCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
-  func run() throws {
+  func wrappedRun() throws {
     let elapsed = try Stopwatch.time {
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
       let configuration = try Configuration.load(fromDirectory: packageDirectory).unwrap()
