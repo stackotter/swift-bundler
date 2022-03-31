@@ -77,6 +77,16 @@ struct CreateCommand: ParsableCommand {
     }
 
     log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
+    
+    print(Sections {
+      ""
+      Section("Getting started") {
+        ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
+        ExampleCommand("swift bundler run")
+        ""
+        "Learn more at " + "https://github.com/stackotter/swift-bundler#getting-started".underline
+      }
+    })
   }
   
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
