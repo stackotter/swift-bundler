@@ -31,9 +31,9 @@ struct TemplatesListCommand: Command {
 
     print(Sections {
       Section("Templates") {
-        OutputDictionary {
+        KeyedList {
           for template in templates {
-            OutputDictionary.Entry(template.name, template.manifest.description)
+            KeyedList.Entry(template.name, template.manifest.description)
           }
         }
       }
