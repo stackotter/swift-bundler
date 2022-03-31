@@ -8,17 +8,17 @@ struct TemplatesInfoCommand: ParsableCommand {
     commandName: "info",
     abstract: "Get info about a template.")
   
+  /// The template to get info about.
+  @Argument(
+    help: "The template to get info about.")
+  var template: String
+  
   /// The directory to search for templates in.
   @Option(
     name: .long,
     help: "An alternate directory to search for the template in.",
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
-
-  /// The template to get info about.
-  @Argument(
-    help: "The template to get info about.")
-  var template: String
   
   func run() throws {
     let templates: [Template]
