@@ -3,7 +3,7 @@ import ArgumentParser
 import Rainbow
 
 /// The subcommand for getting info about a template.
-struct TemplatesInfoCommand: ParsableCommand {
+struct TemplatesInfoCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "info",
     abstract: "Get info about a template.")
@@ -20,7 +20,7 @@ struct TemplatesInfoCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
-  func run() throws {
+  func wrappedRun() throws {
     let templates: [Template]
     if let templateRepository = templateRepository {
       templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()

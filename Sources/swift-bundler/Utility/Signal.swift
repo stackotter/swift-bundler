@@ -7,7 +7,7 @@ import Darwin
 typealias SignalAction = sigaction
 
 /// A signal that can be caught.
-enum Signal: Int32 {
+enum Signal: Int32, CaseIterable {
   case hangUp = 1
   case interrupt = 2
   case quit = 3

@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for running an app from a package.
-struct RunCommand: ParsableCommand {
+struct RunCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "run",
     abstract: "Run a package as an app.")
@@ -80,7 +80,7 @@ struct RunCommand: ParsableCommand {
 
   // MARK: Methods
 
-  func run() throws {
+  func wrappedRun() throws {
     // Remove arguments already parsed by run command
     var arguments = Array(CommandLine.arguments.dropFirst(2))
     arguments.removeAll { $0 == "--skip-build" }
@@ -90,7 +90,7 @@ struct RunCommand: ParsableCommand {
     let packageDirectory = buildCommand.packageDirectory ?? URL(fileURLWithPath: ".")
 
     if !skipBuild {
-      try buildCommand.run()
+      buildCommand.run()
     }
 
     let (appName, _) = try BundleCommand.getAppConfiguration(
