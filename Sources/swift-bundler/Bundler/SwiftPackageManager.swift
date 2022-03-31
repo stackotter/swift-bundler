@@ -134,21 +134,21 @@ enum SwiftPackageManager {
         .failedToGetTargetTriple(error)
       }
       .flatMap { output in
-        let object: Any
-        do {
-          object = try JSONSerialization.jsonObject(
-            with: output,
-            options: [])
-        } catch {
-          return .failure(.failedToDeserializeTargetInfo(error))
+        // A local Codable struct to conveniently extract the target triple
+        struct TargetInfo: Codable {
+          struct Target: Codable {
+            var unversionedTriple: String
+          }
+
+          var target: Target
         }
 
-        guard
-          let dictionary = object as? [String: Any],
-          let targetDictionary = dictionary["target"] as? [String: Any],
-          let unversionedTriple = targetDictionary["unversionedTriple"] as? String
-        else {
-          return .failure(.invalidTargetInfoJSONFormat)
+        let unversionedTriple: String
+        do {
+          let targetInfo = try JSONDecoder().decode(TargetInfo.self, from: output)
+          unversionedTriple = targetInfo.target.unversionedTriple
+        } catch {
+          return .failure(.failedToDeserializeTargetInfo(output, error))
         }
 
         return .success(unversionedTriple)

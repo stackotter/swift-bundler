@@ -76,6 +76,13 @@ extension Process {
     process.launchPath = tool
     process.arguments = arguments
 
+    // Fix an issue to do with Xcode breaking SwiftPackageManager (https://stackoverflow.com/a/67613515)
+    if ProcessInfo.processInfo.environment.keys.contains("OS_ACTIVITY_DT_MODE") {
+      var env = ProcessInfo.processInfo.environment
+      env["OS_ACTIVITY_DT_MODE"] = nil
+      process.environment = env
+    }
+
     processes.append(process)
 
     return process

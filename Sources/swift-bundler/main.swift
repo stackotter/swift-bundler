@@ -1,7 +1,7 @@
 import Foundation
 
-// Kill all running processes on exit
 #if os(macOS)
+// Kill all running processes on exit
 for signal in Signal.allCases {
   trap(signal) { _ in
     for process in processes {

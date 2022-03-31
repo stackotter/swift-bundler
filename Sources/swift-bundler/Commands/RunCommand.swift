@@ -83,7 +83,7 @@ struct RunCommand: Command {
   func wrappedRun() throws {
     // Remove arguments already parsed by run command
     var arguments = Array(CommandLine.arguments.dropFirst(2))
-    arguments.removeAll { $0 == "--skip-build" }
+    arguments.removeAll { $0 == "--skip-build" || $0 == "-v" || $0 == "--verbose" }
 
     let buildCommand = try BundleCommand.parse(arguments)
 
