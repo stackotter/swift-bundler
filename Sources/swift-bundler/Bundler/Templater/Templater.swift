@@ -259,37 +259,6 @@ enum Templater {
       }
   }
   
-  // MARK: Private methods
-  
-  /// Updates the indentation style of all files within the given folder with another indentation style. The initial indentation style must be ``IndentationStyle/tab``.
-  /// - Parameters:
-  ///   - directory: The directory to update the indentation style in.
-  ///   - indentationStyle: The new indentation style.
-  /// - Returns: If an error occurs, a failure is returned.
-  private static func updateIndentationStyle(in directory: URL, to indentationStyle: IndentationStyle) -> Result<Void, TemplaterError> {
-    if indentationStyle == .tabs {
-      return .success()
-    }
-    
-    guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil) else {
-      return .failure(.failedToUpdateIndentationStyle(directory: directory, TemplaterError.failedToEnumerateOutputFiles))
-    }
-    
-    do {
-      for case let file as URL in enumerator {
-        if FileManager.default.itemExists(at: file, withType: .file) {
-          var contents = try String(contentsOf: file)
-          contents = contents.replacingOccurrences(of: "\t", with: indentationStyle.string)
-          try contents.write(to: file, atomically: false, encoding: .utf8)
-        }
-      }
-    } catch {
-      return .failure(.failedToUpdateIndentationStyle(directory: directory, error))
-    }
-    
-    return .success()
-  }
-  
   /// Creates a package for the 'Skeleton' template.
   ///
   /// It just generates a package using the SwiftPM cli and then adds a basic `Bundler.toml` configuration file.
@@ -298,7 +267,7 @@ enum Templater {
   ///   - packageName: The name of the package.
   ///   - indentationStyle: The style of indentation to use.
   /// - Returns: A failure if package creation fails.
-  private static func createSkeletonPackage(in directory: URL, packageName: String, indentationStyle: IndentationStyle) -> Result<Void, TemplaterError> {
+  static func createSkeletonPackage(in directory: URL, packageName: String, indentationStyle: IndentationStyle) -> Result<Void, TemplaterError> {
     log.info("Creating skeleton package")
     
     return SwiftPackageManager.createPackage(in: directory, name: packageName)
@@ -306,7 +275,8 @@ enum Templater {
         .failedToCreateSkeletonPackage(error)
       }
       .flatMap { _ in
-        updateIndentationStyle(in: directory, to: indentationStyle)
+        log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
+        return updateIndentationStyle(in: directory, from: IndentationStyle.spaces(4), to: indentationStyle)
       }
   }
   
@@ -317,7 +287,7 @@ enum Templater {
   ///   - packageName: The name of the package.
   ///   - indentationStyle: The style of indentation to use.
   /// - Returns: A failure if template application fails.
-  private static func applyTemplate(
+  static func applyTemplate(
     _ templateDirectory: URL,
     to outputDirectory: URL,
     packageName: String,
@@ -352,8 +322,42 @@ enum Templater {
     if templateDirectory.lastPathComponent != "Base" {
       log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
     }
-    return updateIndentationStyle(in: outputDirectory, to: indentationStyle)
+    return updateIndentationStyle(in: outputDirectory, from: .tabs, to: indentationStyle)
   }
+  
+  /// Updates the indentation style of all files within the given folder with another indentation style.
+  ///
+  /// This function may break code it touches if the original indentation sequence (``IndentationStyle/string``) occurs in any non-indentation
+  /// contexts. Therefore it is safest to use this function on directories whose original indentation style is ``IndentationStyle/tabs``.
+  /// - Parameters:
+  ///   - directory: The directory to update the indentation style in.
+  ///   - indentationStyle: The new indentation style.
+  /// - Returns: If an error occurs, a failure is returned.
+  static func updateIndentationStyle(in directory: URL, from originalStyle: IndentationStyle, to newStyle: IndentationStyle) -> Result<Void, TemplaterError> {
+    if originalStyle == newStyle {
+      return .success()
+    }
+    
+    guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil) else {
+      return .failure(.failedToUpdateIndentationStyle(directory: directory, TemplaterError.failedToEnumerateOutputFiles))
+    }
+    
+    do {
+      for case let file as URL in enumerator {
+        if FileManager.default.itemExists(at: file, withType: .file) {
+          var contents = try String(contentsOf: file)
+          contents = contents.replacingOccurrences(of: originalStyle.string, with: newStyle.string)
+          try contents.write(to: file, atomically: false, encoding: .utf8)
+        }
+      }
+    } catch {
+      return .failure(.failedToUpdateIndentationStyle(directory: directory, error))
+    }
+    
+    return .success()
+  }
+  
+  // MARK: Private methods
   
   /// Processes a template file (replacing occurences of `{{PACKAGE}}` with the package name) and then copies it to a destination directory.
   /// - Parameters:
