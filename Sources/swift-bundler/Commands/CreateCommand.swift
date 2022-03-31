@@ -5,43 +5,43 @@ import ArgumentParser
 struct CreateCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "create",
-    abstract: "Create a new package.")
+    abstract: "Create a new app package.")
 
-  /// The name of the app to create.
+  /// The app's name. Must only contain characters from the English alphabet.
   @Argument(
-    help: "The name of the app to create.")
+    help: "The app's name. Must only contain characters from the English alphabet.")
   var appName: String
 
-  /// The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there.
+  /// A custom directory to create the app in. Default: create a new directory at './[app-name]'.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory to create the app in. Defaults to creating a new directory matching the name of the app and creating it in there.",
+		help: "Directory to create the app in. Default: create a new directory at './[app-name]'.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
-  /// The template to create the app from.
+  /// Template to create the app from.
   @Option(
     name: .shortAndLong,
-		help: "The template to create the app from.")
+		help: "Template to create the app from.")
   var template: String?
 
-  /// An alternate directory to search for the template in instead.
+  /// A directory to search for the template in.
   @Option(
     name: .long,
-    help: "An alternate directory to search for the template in instead.",
+    help: "A directory to search for the template in.",
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
   /// The indentation style to create the package with.
   @Option(
-    name: .long,
-    help: "The indentation style to create the package with. The possible values are 'tabs' and 'spaces=[count]'.")
+    name: .shortAndLong,
+    help: "Custom indentation style: either 'tabs' or 'spaces=[count]'.")
   var indentation: IndentationStyle = .spaces(4)
 
-  /// If `true`, force creation of the package even if the template does not support the current platform.
+  /// If `true`, force creation of the package even if the template does not support the current OS and installed Swift version.
   @Flag(
     name: .shortAndLong,
-    help: "Force creation of the package even if the template does not support the current platform.")
+    help: "Force creation even if the template does not support the current OS and installed Swift version.")
   var force = false
 
 	func wrappedValidate() throws {
