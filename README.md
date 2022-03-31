@@ -14,13 +14,13 @@ A Swift Package Manager wrapper that allows the creation of macOS apps with Swif
 
 If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools for the community.
 
-## Installation
+## Installation 📦
 
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
 ```
 
-## Getting started
+## Getting started 🚦
 
 Use the following commands to create a new app from the SwiftUI template:
 
@@ -49,7 +49,7 @@ Use the `bundle` command to create an app bundle that you can distribute to user
 swift bundler bundle -o . -c release -u
 ```
 
-### Developing with Xcode
+### Running the app from Xcode
 
 Run the `generate-xcode-support` command if you want to use Xcode as your IDE. This command only needs to be run once unless you delete the `.swiftpm` directory.
 
@@ -58,19 +58,19 @@ Run the `generate-xcode-support` command if you want to use Xcode as your IDE. T
 swift bundler generate-xcode-support
 ```
 
-To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
+To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode. To run the app, just select the scheme with the same name as your app and then click run.
 
-## Apps made with Swift Bundler
+## Apps made with Swift Bundler 👨‍💻
 
-- [Delta Client](https://github.com/stackotter/delta-client) — A Minecraft: Java Edition compatible Minecraft client written from scratch in Swift
+If you have an app made with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
-If you have an app made with Swift Bundler, make a PR to add it to the list! I'd love to hear about it.
+- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
 
-## Contributing
+## Contributing 🛠
 
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
 
-## Configuration
+## Configuration ⚙️
 
 Swift Bundler's configuration is stored in the `Bundler.toml` file in the root directory of the package. Below is an example configuration containing all fields:
 
@@ -138,7 +138,7 @@ Some configuration fields (currently only `extra_plist_entries`) support variabl
 - `VERSION`: The app's version
 - `COMMIT_HASH`: The commit hash of the git repository at the package's root directory. If there is no git repository, an error will be thrown.
 
-## Package templates
+## Package templates 🖨
 
 The default package templates are located at `~/Library/Application Support/dev.stackotter.swift-bundler/templates` and are downloaded from [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) when the first command requiring the default templates is run.
 
@@ -162,7 +162,7 @@ swift bundler templates info SwiftUI
 swift bundler templates update
 ```
 
-## Advanced usage
+## Advanced usage 🤖
 
 ### Metal shaders
 
