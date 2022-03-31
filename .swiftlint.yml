@@ -7,4 +7,4 @@ type_body_length: 300
 function_parameter_count: 8
 file_length: 450
 identifier_name:
-  max_length: 50
+  max_length: 60

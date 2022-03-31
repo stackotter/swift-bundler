@@ -65,7 +65,11 @@ struct Configuration: Codable {
         }
 
         if extraPlistEntries.count != oldConfiguration.extraInfoPlistEntries.count {
-          log.warning("Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings). These will have to be manually converted")
+          log.warning(
+            .init(stringLiteral:
+              "Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings)." +
+              " These will have to be manually converted"
+            ))
         }
 
         log.warning("Discarding 'buildNumber' because the new format has no build number field")
