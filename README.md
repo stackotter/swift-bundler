@@ -17,6 +17,12 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 ## Installation
 
 ```sh
+sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
+```
+
+### Manual installation
+
+```sh
 git clone https://github.com/stackotter/swift-bundler
 cd swift-bundler
 sh ./install.sh
