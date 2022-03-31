@@ -49,7 +49,11 @@ struct BundleCommand: ParsableCommand {
   @Option(
     name: [.customShort("a"), .customLong("arch")],
     parsing: .singleValue,
-    help: "The architectures to build for \(SwiftPackageManager.Architecture.possibleValuesString). (default: [\(SwiftPackageManager.Architecture.current.rawValue)])",
+    help: {
+      let possibleValues = SwiftPackageManager.Architecture.possibleValuesString
+      let defaultValue = SwiftPackageManager.Architecture.current.rawValue
+      return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
+    }(),
     transform: {
       guard let arch = SwiftPackageManager.Architecture.init(rawValue: $0) else {
         throw BundlerError.invalidBuildConfiguration($0)
@@ -70,13 +74,19 @@ struct BundleCommand: ParsableCommand {
     help: "Skip the build step.")
   var skipBuild = false
 
-  /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM). Can only be `true` when ``skipBuild`` is `true`.
+  /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
+  ///
+  /// Can only be `true` when ``skipBuild`` is `true`.
   @Flag(
     name: .long,
-    help: "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM). Can only be set when `--skip-build` is supplied.")
+    help: .init(
+      stringLiteral:
+        "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)." +
+        " Can only be set when `--skip-build` is supplied."
+    ))
   var builtWithXcode = false
 
-  func run() throws {
+  func run() throws { // swiftlint:disable:this function_body_length
     var appBundle: URL?
 
     // Start timing
@@ -147,7 +157,9 @@ struct BundleCommand: ParsableCommand {
     log.info("Done in \(elapsed.secondsString). App bundle located at '\(appBundle?.relativePath ?? "unknown")'")
   }
 
-  /// Gets the configuration for the specified app. If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).
+  /// Gets the configuration for the specified app.
+  ///
+  /// If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.

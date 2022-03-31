@@ -6,6 +6,7 @@ struct AppConfiguration: Codable {
   var product: String
   /// The app's current version.
   var version: String
+  // swiftlint:disable:next line_length
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
@@ -14,7 +15,9 @@ struct AppConfiguration: Codable {
   var minimumMacOSVersion: String?
   /// The path to the app's icon.
   var icon: String?
-  /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
+  /// A dictionary containing extra entries to add to the app's `Info.plist` file.
+  ///
+  /// The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]?
 
   private enum CodingKeys: String, CodingKey {

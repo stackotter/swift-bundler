@@ -15,14 +15,18 @@ extension URL {
     let baseComponents = base.standardized.pathComponents
 
     // Find number of common path components:
-    var i = 0
-    while i < destComponents.count && i < baseComponents.count && destComponents[i] == baseComponents[i] {
-      i += 1
+    var commonComponentCount = 0
+    while
+      commonComponentCount < destComponents.count
+        && commonComponentCount < baseComponents.count
+        && destComponents[commonComponentCount] == baseComponents[commonComponentCount]
+    {
+      commonComponentCount += 1
     }
 
     // Build relative path:
-    var relComponents = Array(repeating: "..", count: baseComponents.count - i)
-    relComponents.append(contentsOf: destComponents[i...])
+    var relComponents = Array(repeating: "..", count: baseComponents.count - commonComponentCount)
+    relComponents.append(contentsOf: destComponents[commonComponentCount...])
     return relComponents.joined(separator: "/")
   }
 }

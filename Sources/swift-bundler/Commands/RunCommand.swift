@@ -8,11 +8,10 @@ struct RunCommand: ParsableCommand {
     abstract: "Run a package as an app.")
 
   // MARK: Build and bundle arguments (keep up-to-date with BundleCommand)
-  // TODO: Use an option bundle
 
   /// The name of the app to build.
   @Argument(
-    help: "The name of the app to build.")
+    help: "The name of the app to run.")
   var appName: String?
 
   /// The directory containing the package to build.
@@ -28,6 +27,13 @@ struct RunCommand: ParsableCommand {
     help: "The directory to output the bundled .app to.",
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
+
+  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
+  @Option(
+    name: .long,
+    help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
+    transform: URL.init(fileURLWithPath:))
+  var productsDirectory: URL?
 
   /// The build configuration to use.
   @Option(
@@ -45,7 +51,11 @@ struct RunCommand: ParsableCommand {
   @Option(
     name: [.customShort("a"), .customLong("arch")],
     parsing: .singleValue,
-    help: "The architectures to build for \(SwiftPackageManager.Architecture.possibleValuesString). (default: [\(SwiftPackageManager.Architecture.current.rawValue)])",
+    help: {
+      let possibleValues = SwiftPackageManager.Architecture.possibleValuesString
+      let defaultValue = SwiftPackageManager.Architecture.current.rawValue
+      return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
+    }(),
     transform: {
       guard let arch = SwiftPackageManager.Architecture.init(rawValue: $0) else {
         throw BundlerError.invalidBuildConfiguration($0)

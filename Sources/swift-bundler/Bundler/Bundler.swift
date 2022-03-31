@@ -235,7 +235,8 @@ enum Bundler {
   /// - Parameters:
   ///   - icon: The app's icon. Should be either an `icns` file or a 1024x1024 `png` with an alpha channel.
   ///   - outputDirectory: Should be the app's `Resources` directory.
-  /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned. If the file is neither an `icns` or a `png`, a failure is also returned.
+  /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
+  ///            If the file is neither an `icns` or a `png`, a failure is also returned.
   private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {
