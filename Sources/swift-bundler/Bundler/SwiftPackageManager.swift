@@ -1,4 +1,5 @@
 import Foundation
+import ArgumentParser
 
 /// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
@@ -6,9 +7,25 @@ enum SwiftPackageManager {
   static let swiftExecutable = "/usr/bin/swift"
   
   /// A Swift build configuration.
-  enum BuildConfiguration: String {
+  enum BuildConfiguration: String, CaseIterable {
     case debug
     case release
+  }
+  
+  /// An architecture to build for.
+  enum Architecture: String, CaseIterable, ExpressibleByArgument {
+    case x86_64
+    case arm64
+    
+    #if arch(x86_64)
+    static let current: Architecture = .x86_64
+    #elseif arch(arm64)
+    static let current: Architecture = .arm64
+    #endif
+    
+    var defaultValueDescription: String {
+      rawValue
+    }
   }
   
   /// Creates a new package using the given directory as the package's root directory.
@@ -74,22 +91,22 @@ enum SwiftPackageManager {
   ///   - product: The product to build.
   ///   - packageDirectory: The root directory of the package containing the product.
   ///   - configuration: The build configuration to use.
-  ///   - universal: If `true`, performs a universal build.
+  ///   - architectures: The set of architectures to build for.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
     packageDirectory: URL,
     configuration: SwiftPackageManager.BuildConfiguration,
-    universal: Bool
+    architectures: [Architecture]
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
     
-    var arguments = [
+    let arguments = [
       "build",
       "-c", configuration.rawValue,
-      "--product", product]
-    if universal {
-      arguments += ["--arch", "arm64", "--arch", "x86_64"]
+      "--product", product
+    ] + architectures.flatMap {
+      ["--arch", $0.rawValue]
     }
     
     let process = Process.create(
@@ -140,17 +157,19 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - packageDirectory: The package's root directory.
   ///   - buildConfiguration: The current build configuration.
-  ///   - universal: Whether the build is universal or not.
+  ///   - architectures: The architectures that the build was for.
   /// - Returns: The default products directory. If ``getSwiftTargetTriple()`` fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
     buildConfiguration: BuildConfiguration,
-    universal: Bool
+    architectures: [Architecture]
   ) -> Result<URL, SwiftPackageManagerError> {
-    if !universal {
+    if architectures.count == 1 {
+      let architecture = architectures[0]
       return getSwiftTargetTriple()
         .map { targetTriple in
-          packageDirectory
+          let targetTriple = targetTriple.replacingOccurrences(of: Architecture.current.rawValue, with: architecture.rawValue)
+          return packageDirectory
             .appendingPathComponent(".build")
             .appendingPathComponent(targetTriple)
             .appendingPathComponent(buildConfiguration.rawValue)
