@@ -142,19 +142,12 @@ To learn about creating custom templates, see [the creating custom templates sec
 
 ```sh
 swift bundler templates list
-# * Skeleton: The bare minimum package with no default UI.
-# * SwiftUI: A simple 'Hello, World!' SwiftUI app.
-# * SwiftCrossUI: A simple 'Hello, World!' SwiftCrossUI app.
 ```
 
 ### Get information about a template
 
 ```sh
 swift bundler templates info SwiftUI
-# * 'SwiftUI':
-#   * A simple 'Hello, World!' SwiftUI app.
-#   * Minimum Swift version: 5.5
-#   * Platforms: [macOS]
 ```
 
 ### Update available templates
