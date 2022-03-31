@@ -17,7 +17,7 @@ enum TemplaterError: LocalizedError {
   case failedToReadFile(template: String, file: URL, Error)
   case failedToGetRelativePath(file: URL, base: URL)
   case failedToWriteToOutputFile(file: URL, Error)
-  case failedToCreateSkeletonPackage(SwiftPackageManagerError)
+  case failedToCreateBareMinimumPackage(SwiftPackageManagerError)
   case failedToEnumerateTemplates(Error)
   case failedToPullLatestTemplates(ProcessError)
   case failedToEnumerateOutputFiles
@@ -59,8 +59,8 @@ enum TemplaterError: LocalizedError {
         return "Failed to get relative path from '\(file.relativePath)' to '\(base.relativePath)'"
       case .failedToWriteToOutputFile(let file, _):
         return "Failed to write to the output file at '\(file.relativePath)'"
-      case .failedToCreateSkeletonPackage(let error):
-        return "Failed to create the package from the 'Skeleton' template: \(error.localizedDescription)"
+      case .failedToCreateBareMinimumPackage(let error):
+        return "Failed to create package: \(error.localizedDescription)"
       case .failedToEnumerateTemplates:
         return "Failed to enumerate templates"
       case .failedToPullLatestTemplates(let processError):

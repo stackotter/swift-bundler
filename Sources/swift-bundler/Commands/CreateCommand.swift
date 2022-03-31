@@ -19,11 +19,11 @@ struct CreateCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
-  /// The template to create the app from. Defaults to 'Skeleton', the bare minimum template.
+  /// The template to create the app from.
   @Option(
     name: .shortAndLong,
-    help: "The template to create the app from. Defaults to 'Skeleton', the bare minimum template.")
-  var template: String = "Skeleton"
+		help: "The template to create the app from.")
+  var template: String?
 
   /// An alternate directory to search for the template in instead.
   @Option(
@@ -44,19 +44,23 @@ struct CreateCommand: Command {
     help: "Force creation of the package even if the template does not support the current platform.")
   var force = false
 
+	func wrappedValidate() throws {
+		guard Self.isValidAppName(appName) else {
+			throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
+		}
+
+		if template == nil && templateRepository != nil {
+			throw ValidationError("The '--template-repository' option can only be used with the '--template' option")
+		}
+	}
+
   func wrappedRun() throws {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
     let elapsed = try Stopwatch.time {
-      // Validate parameters
-      guard Self.isValidAppName(appName) else {
-        log.error("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
-        Foundation.exit(1)
-      }
-
       // Create package from template
-      if let templateRepository = templateRepository {
+      if let templateRepository = templateRepository, let template = template {
         try Templater.createPackage(
           in: packageDirectory,
           from: template,

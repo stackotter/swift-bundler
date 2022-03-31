@@ -179,7 +179,7 @@ resources: [
 ### Creating custom templates
 
 1. Create a new template 'repository' (a directory that will contain a collection of templates)
-2. Create a directory inside the template repository. The name of the directory is the name of your template. (`Base` and `Skeleton` are reserved names)
+2. Create a directory inside the template repository. The name of the directory is the name of your template. (`Base` is a reserved name, and the directory must not start with a `.`)
 3. Create a `Template.toml` file (inside the template directory) with the following contents:
    
    ```toml
