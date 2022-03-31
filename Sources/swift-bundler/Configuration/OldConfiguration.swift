@@ -14,14 +14,14 @@ struct OldConfiguration: Codable {
   var category: String
   /// The minimum macOS version that the app should run on.
   var minOSVersion: String
-  
+
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   var extraInfoPlistEntries: [String: Any] = [:]
-  
+
   private enum CodingKeys: String, CodingKey {
     case target, bundleIdentifier, versionString, buildNumber, category, minOSVersion
   }
-  
+
   /// Loads the configuration from a `Bundle.json` file.
   /// - Parameter file: The file to load the configuration from.
   /// - Returns: The configuration. If an error occurs, a failure is returned.
@@ -32,11 +32,11 @@ struct OldConfiguration: Codable {
     } catch {
       return .failure(.failedToReadContentsOfOldConfigurationFile(file, error))
     }
-    
+
     var configuration: OldConfiguration
     do {
       configuration = try JSONDecoder().decode(OldConfiguration.self, from: data)
-      
+
       // Load the `extraInfoPlistEntries` property if present
       let json = try JSONSerialization.jsonObject(with: data)
       if let json = json as? [String: Any], let extraEntries = json["extraInfoPlistEntries"] as? [String: Any] {
@@ -45,7 +45,7 @@ struct OldConfiguration: Codable {
     } catch {
       return .failure(.failedToDeserializeOldConfiguration(error))
     }
-    
+
     return .success(configuration)
   }
 }

@@ -1,0 +1,10 @@
+disabled_rules:
+- switch_case_alignment
+- opening_brace # Forced to disable because this misunderstands some syntax that I use
+
+line_length: 150
+type_body_length: 300
+function_parameter_count: 8
+file_length: 450
+identifier_name:
+  max_length: 50

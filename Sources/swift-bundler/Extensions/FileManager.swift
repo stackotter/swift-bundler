@@ -23,7 +23,7 @@ extension FileManager {
     }
     return false
   }
-  
+
   /// Creates a directory.
   /// - Parameter url: The directory to create.
   /// - Throws: An error if directory creation fails.

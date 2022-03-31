@@ -16,7 +16,7 @@ struct AppConfiguration: Codable {
   var icon: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file. The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var extraPlistEntries: [String: String]?
-  
+
   private enum CodingKeys: String, CodingKey {
     case product
     case version
@@ -26,7 +26,7 @@ struct AppConfiguration: Codable {
     case icon
     case extraPlistEntries = "extra_plist_entries"
   }
-  
+
   /// Evaluates the value expressions for each field that supports expressions.
   ///
   /// The currently supported fields are:
@@ -37,7 +37,7 @@ struct AppConfiguration: Codable {
   func withExpressionsEvaluated(_ evaluator: ExpressionEvaluator) -> Result<AppConfiguration, AppConfigurationError> {
     var config = self
     var evaluator = evaluator
-    
+
     // Evaluate expressions in the plist entry values
     if var extraPlistEntries = config.extraPlistEntries {
       for (key, value) in extraPlistEntries {
@@ -51,7 +51,7 @@ struct AppConfiguration: Codable {
       }
       config.extraPlistEntries = extraPlistEntries
     }
-    
+
     return .success(config)
   }
 }

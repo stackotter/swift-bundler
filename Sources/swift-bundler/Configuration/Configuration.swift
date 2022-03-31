@@ -5,13 +5,13 @@ import TOMLKit
 struct Configuration: Codable {
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
-  
+
   private enum CodingKeys: String, CodingKey {
     case apps
   }
-  
+
   // MARK: Static methods
-  
+
   /// Loads configuration from the `Bundler.toml` file in the given directory.
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
@@ -19,21 +19,21 @@ struct Configuration: Codable {
   static func load(fromDirectory packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
     let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
     let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
-    
+
     // Migrate old configuration if no new configuration exists
     let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
     let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
     if oldConfigurationExists && !configurationExists {
       return migrateOldConfiguration(from: oldConfigurationFile, to: configurationFile)
     }
-    
+
     let contents: String
     do {
       contents = try String(contentsOf: configurationFile)
     } catch {
       return .failure(.failedToReadConfigurationFile(configurationFile, error))
     }
-    
+
     let configuration: Configuration
     do {
       configuration = try TOMLDecoder().decode(
@@ -42,10 +42,10 @@ struct Configuration: Codable {
     } catch {
       return .failure(.failedToDeserializeConfiguration(error))
     }
-    
+
     return configuration.withExpressionsEvaluated(in: packageDirectory)
   }
-  
+
   /// Migrates a `Bundle.json` to a `Bundler.toml` file.
   /// - Parameters:
   ///   - oldConfigurationFile: The `Bundle.json` file to migrate.
@@ -54,7 +54,7 @@ struct Configuration: Codable {
   static func migrateOldConfiguration(from oldConfigurationFile: URL, to newConfigurationFile: URL) -> Result<Configuration, ConfigurationError> {
     log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     log.info("Migrating 'Bundle.json' to the new configuration format")
-    
+
     return OldConfiguration.load(from: oldConfigurationFile)
       .flatMap { oldConfiguration in
         var extraPlistEntries: [String: String] = [:]
@@ -63,13 +63,13 @@ struct Configuration: Codable {
             extraPlistEntries[key] = value
           }
         }
-        
+
         if extraPlistEntries.count != oldConfiguration.extraInfoPlistEntries.count {
           log.warning("Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings). These will have to be manually converted")
         }
-        
+
         log.warning("Discarding 'buildNumber' because the new format has no build number field")
-        
+
         let appConfiguration = AppConfiguration(
           product: oldConfiguration.target,
           version: oldConfiguration.versionString,
@@ -77,7 +77,7 @@ struct Configuration: Codable {
           bundleIdentifier: oldConfiguration.bundleIdentifier,
           minimumMacOSVersion: oldConfiguration.minOSVersion,
           extraPlistEntries: extraPlistEntries.isEmpty ? nil : extraPlistEntries)
-        
+
         let configuration = Configuration(apps: [oldConfiguration.target: appConfiguration])
         let newContents: String
         do {
@@ -85,20 +85,20 @@ struct Configuration: Codable {
         } catch {
           return .failure(.failedToSerializeMigratedConfiguration(error))
         }
-        
+
         do {
           try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
         } catch {
           return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
         }
-        
+
         log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need")
         log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it")
-        
+
         return .success(configuration)
       }
   }
-  
+
   /// Creates a configuration file for the specified app and product in the given directory.
   /// - Parameters:
   ///   - directory: The directory to create the configuration file in.
@@ -109,14 +109,14 @@ struct Configuration: Codable {
     let configuration = Configuration(apps: [
       app: AppConfiguration(product: product, version: "0.1.0")
     ])
-    
+
     let contents: String
     do {
       contents = try TOMLEncoder().encode(configuration)
     } catch {
       return .failure(.failedToSerializeConfiguration(error))
     }
-    
+
     let file = directory.appendingPathComponent("Bundler.toml")
     do {
       try contents.write(
@@ -126,12 +126,12 @@ struct Configuration: Codable {
     } catch {
       return .failure(.failedToWriteToConfigurationFile(file, error))
     }
-    
+
     return .success()
   }
-  
+
   // MARK: Instance methods
-  
+
   /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.
   /// - Parameter name: The name of the app to get.
   /// - Returns: The app's name and configuration. If no app is specified, and there is more than one app, a failure is returned.
@@ -147,7 +147,7 @@ struct Configuration: Codable {
       return .failure(.multipleAppsAndNoneSpecified)
     }
   }
-  
+
   /// Evaluates the expressions in all configuration field values that support expressions.
   /// - Parameter packageDirectory: The root directory of the package. Used to evaluate the `COMMIT` expression.
   /// - Returns: The evaluated configuration. If any of the expressions are invalid, a failure is returned.
@@ -165,7 +165,7 @@ struct Configuration: Codable {
           return .failure(.failedToEvaluateExpressions(app: appName, error))
       }
     }
-    
+
     return .success(config)
   }
 }

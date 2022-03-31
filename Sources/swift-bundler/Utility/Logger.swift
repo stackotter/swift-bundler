@@ -7,9 +7,9 @@ extension Logger.Level {
       case .critical:
         return rawValue.red.bold
       case .error:
-        return rawValue.red
+        return rawValue.red.bold
       case .warning:
-        return rawValue.yellow
+        return rawValue.yellow.bold
       case .notice:
         return rawValue.cyan
       case .info:
@@ -26,7 +26,7 @@ extension Logger.Level {
 struct Handler: LogHandler {
   var metadata: Logger.Metadata = [:]
   var logLevel: Logger.Level = .debug
-  
+
   subscript(metadataKey key: String) -> Logger.Metadata.Value? {
     get { nil }
     set(newValue) { }

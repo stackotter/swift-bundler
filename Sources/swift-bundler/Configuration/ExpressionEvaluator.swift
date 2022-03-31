@@ -17,18 +17,18 @@ struct ExpressionEvaluator {
         Prefix { $0 != "}" }
         "}"
       }
-      
-      Parse(Optional<Substring>.none) {
+
+      Parse(Substring?.none) {
         End()
       }
     }
   }
-  
+
   /// The context that expressions are evaluated within.
   var context: Context
   /// A cache holding the most recently computed value for each variable that has been evaluated.
   var cache: [String: String] = [:]
-  
+
   /// The contextual information required to evaluate value expressions. See ``evaluateExpression(_:)``.
   struct Context {
     /// The root directory of the package.
@@ -36,13 +36,13 @@ struct ExpressionEvaluator {
     /// The app's version.
     var version: String
   }
-  
+
   /// Creates a new evaluator.
   /// - Parameter context: The context to evaluate expressions within.
   init(context: Context) {
     self.context = context
   }
-  
+
   /// Evaluates the value of a value expression. See ``ExpressionEvaluator``.
   ///
   /// For the list of valid variables, see ``evaluateExpressionVariable(_:)``.
@@ -52,7 +52,7 @@ struct ExpressionEvaluator {
   mutating func evaluateExpression(_ expression: String) -> Result<String, ExpressionEvaluatorError> {
     var input = expression[...]
     var output = ""
-    
+
     while true {
       let variable: Substring?
       do {
@@ -62,23 +62,23 @@ struct ExpressionEvaluator {
       } catch {
         return .failure(.unmatchedBraces(expression, error))
       }
-      
+
       guard let variable = variable else {
         break
       }
-      
+
       let result = evaluateVariable(String(variable))
       switch result {
         case let .success(variableValue):
           output += variableValue
-        case .failure(_):
+        case .failure:
           return result
       }
     }
 
     return .success(output)
   }
-  
+
   /// Evaluates the value of a given variable.
   ///
   /// The currently supported variables are:
@@ -91,24 +91,24 @@ struct ExpressionEvaluator {
     if let value = cache[variable] {
       return .success(value)
     }
-    
+
     let output: String
     switch variable {
       case "COMMIT_HASH":
         let process = Process.create("/usr/bin/git", arguments: ["rev-parse", "HEAD"], directory: context.packageDirectory)
         let result = process.getOutput()
-        
+
         guard case let .success(string) = result else {
           return .failure(.failedToEvaluateExpressionVariable(message: "Failed to evaluate the 'COMMIT_HASH' variable. Ensure that the package directory is a git repository and that git is installed at `/usr/bin/git`."))
         }
-        
+
         output = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
       case "VERSION":
         output = context.version
       default:
         return .failure(.unknownVariable(variable))
     }
-    
+
     cache[variable] = output
     return .success(output)
   }

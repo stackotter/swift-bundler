@@ -29,7 +29,7 @@ func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> 
   return {
     for operation in operations {
       let result = operation()
-      if case .failure(_) = result {
+      if case .failure = result {
         return result
       }
     }

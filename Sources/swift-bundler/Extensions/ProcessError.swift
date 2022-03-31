@@ -5,7 +5,7 @@ enum ProcessError: LocalizedError {
   case invalidUTF8Output(output: Data)
   case nonZeroExitStatus(Int)
   case failedToRunProcess(Error)
-  
+
   var errorDescription: String? {
     switch self {
       case .invalidUTF8Output:

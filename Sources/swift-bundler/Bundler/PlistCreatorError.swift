@@ -5,7 +5,7 @@ enum PlistCreatorError: LocalizedError {
   case failedToWriteAppInfoPlist(file: URL, Error)
   case failedToWriteResourceBundleInfoPlist(bundle: String, file: URL, Error)
   case serializationFailed(Error)
-  
+
   var errorDescription: String? {
     switch self {
       case .failedToWriteAppInfoPlist(let file, _):

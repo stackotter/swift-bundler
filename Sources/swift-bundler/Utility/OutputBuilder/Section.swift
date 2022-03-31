@@ -4,14 +4,14 @@ struct Section: OutputComponent {
   var title: String?
   /// The section's content.
   var content: String
-  
+
   var body: String {
     if let title = title {
       title.bold.underline + "\n"
     }
     content + "\n"
   }
-  
+
   /// Creates a section of command-line output.
   /// - Parameters:
   ///   - title: The title for the section.

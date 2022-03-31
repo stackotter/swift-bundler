@@ -8,7 +8,7 @@ enum MetalCompilerError: LocalizedError {
   case failedToCreateMetalLibrary(ProcessError)
   case failedToDeleteShaderSource(URL, Error)
   case failedToEnumerateShaders(directory: URL)
-  
+
   var errorDescription: String? {
     switch self {
       case .failedToCreateTemporaryCompilationDirectory(let directory, _):

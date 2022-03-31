@@ -11,29 +11,29 @@ enum IconSetCreator {
     guard icon.pathExtension.lowercased() == "png" else {
       return .failure(.notPNG(icon))
     }
-    
+
     let iconSet = outputDirectory.appendingPathComponent("AppIcon.iconset")
     do {
       try FileManager.default.createDirectory(at: iconSet)
     } catch {
       return .failure(.failedToCreateIconSetDirectory(iconSet, error))
     }
-    
+
     let sizes = [16, 32, 128, 256, 512]
     for size in sizes {
       let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
       let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
-      
+
       var result = createScaledIcon(icon, dimension: size, output: regularScale)
-      if case .failure(_) = result {
+      if case .failure = result {
         return result
       }
       result = createScaledIcon(icon, dimension: size * 2, output: doubleScale)
-      if case .failure(_) = result {
+      if case .failure = result {
         return result
       }
     }
-    
+
     let process = Process.create(
       "/usr/bin/iconutil",
       arguments: ["-c", "icns", iconSet.path],
@@ -41,16 +41,16 @@ enum IconSetCreator {
     if case let .failure(error) = process.runAndWait() {
       return .failure(.failedToConvertToICNS(error))
     }
-    
+
     do {
       try FileManager.default.removeItem(at: iconSet)
     } catch {
       return .failure(.failedToRemoveIconSetDirectory(iconSet, error))
     }
-    
+
     return .success()
   }
-  
+
   /// Creates a scaled copy of an icon.
   /// - Parameters:
   ///   - icon: The icon file to scale.
@@ -66,7 +66,7 @@ enum IconSetCreator {
         "--out", output.path
       ],
       pipe: Pipe())
-    
+
     return process.runAndWait()
       .mapError { error in
         .failedToScaleIcon(newDimension: dimension, error)

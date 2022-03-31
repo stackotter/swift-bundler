@@ -9,7 +9,7 @@ struct TemplateManifest: Codable {
   var platforms: [String]
   /// The minimum Swift version required to use the template.
   var minimumSwiftVersion: String
-  
+
   /// Loads a template's manifest file.
   /// - Parameters:
   ///   - file: The manifest file to load.
@@ -22,14 +22,14 @@ struct TemplateManifest: Codable {
     } catch {
       return .failure(.failedToReadTemplateManifest(template: template, manifest: file, error))
     }
-    
+
     let manifest: TemplateManifest
     do {
       manifest = try TOMLDecoder().decode(TemplateManifest.self, from: contents)
     } catch {
       return .failure(.failedToDecodeTemplateManifest(template: template, manifest: file, error))
     }
-    
+
     return .success(manifest)
   }
 }

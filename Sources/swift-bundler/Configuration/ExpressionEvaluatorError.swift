@@ -5,7 +5,7 @@ enum ExpressionEvaluatorError: LocalizedError {
   case unknownVariable(String)
   case unmatchedBraces(String, Error)
   case failedToEvaluateExpressionVariable(message: String)
-  
+
   var errorDescription: String? {
     switch self {
       case .unknownVariable(let variable):
