@@ -33,18 +33,25 @@ struct TemplatesInfoCommand: ParsableCommand {
       Foundation.exit(1)
     }
     
-    print("Template info\n".bold.underline)
-    print("* \("Name".bold): \(template.name)")
-    print("* \("Description".bold): \(template.manifest.description)")
-    print("* \("Minimum Swift version".bold): \(template.manifest.minimumSwiftVersion)")
-    print("* \("Platforms".bold): [\(template.manifest.platforms.joined(separator: ", "))]")
-    print("")
-    
-    var command = "swift bundler create MyApp --template \(template.name)"
+    var exampleCommand = "swift bundler create MyApp --template \(template.name)"
     if let templateRepository = templateRepository {
-      command += "--template-repository \(templateRepository.relativePath)"
+      exampleCommand += "--template-repository \(templateRepository.relativePath)"
     }
-    print("Using this template\n".bold.underline)
-    print("$ " + command.cyan)
+    
+    print(Sections {
+      Section("Template info") {
+        OutputDictionary {
+          OutputDictionary.Entry("Name", template.name)
+          OutputDictionary.Entry("Description", template.manifest.description)
+          OutputDictionary.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion)
+          OutputDictionary.Entry("Platforms") {
+            InlineList(template.manifest.platforms)
+          }
+        }
+      }
+      Section("Using this template") {
+        ExampleCommand(exampleCommand)
+      }
+    })
   }
 }
