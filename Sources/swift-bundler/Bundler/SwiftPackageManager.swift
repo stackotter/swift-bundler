@@ -5,29 +5,29 @@ import ArgumentParser
 enum SwiftPackageManager {
   /// The path to the swift executable.
   static let swiftExecutable = "/usr/bin/swift"
-  
+
   /// A Swift build configuration.
   enum BuildConfiguration: String, CaseIterable {
     case debug
     case release
   }
-  
+
   /// An architecture to build for.
   enum Architecture: String, CaseIterable, ExpressibleByArgument {
-    case x86_64
+    case x86_64 // swiftlint:disable:this identifier_name
     case arm64
-    
+
     #if arch(x86_64)
     static let current: Architecture = .x86_64
     #elseif arch(arm64)
     static let current: Architecture = .arm64
     #endif
-    
+
     var defaultValueDescription: String {
       rawValue
     }
   }
-  
+
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
@@ -48,7 +48,7 @@ enum SwiftPackageManager {
       }
       return .success()
     }
-    
+
     // Run the init command
     let runInitCommand: () -> Result<Void, SwiftPackageManagerError> = {
       let arguments = [
@@ -56,19 +56,19 @@ enum SwiftPackageManager {
         "--type=executable",
         "--name=\(name)"
       ]
-      
+
       let process = Process.create(
         Self.swiftExecutable,
         arguments: arguments,
         directory: directory)
       process.setOutputPipe(Pipe())
-      
+
       return process.runAndWait()
         .mapError { error in
           .failedToRunSwiftInit(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
         }
     }
-    
+
     // Create the configuration file
     let createConfigurationFile: () -> Result<Void, SwiftPackageManagerError> = {
       Configuration.createConfigurationFile(in: directory, app: name, product: name)
@@ -76,16 +76,16 @@ enum SwiftPackageManager {
           .failedToCreateConfigurationFile(error)
         }
     }
-    
+
     // Compose the function
     let create = flatten(
       createPackageDirectory,
       runInitCommand,
       createConfigurationFile)
-    
+
     return create()
   }
-  
+
   /// Builds the specified product of a Swift package.
   /// - Parameters:
   ///   - product: The product to build.
@@ -100,7 +100,7 @@ enum SwiftPackageManager {
     architectures: [Architecture]
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
-    
+
     let arguments = [
       "build",
       "-c", configuration.rawValue,
@@ -108,25 +108,25 @@ enum SwiftPackageManager {
     ] + architectures.flatMap {
       ["--arch", $0.rawValue]
     }
-    
+
     let process = Process.create(
       Self.swiftExecutable,
       arguments: arguments,
       directory: packageDirectory)
-    
+
     return process.runAndWait()
       .mapError { error in
         .failedToRunSwiftBuild(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
       }
   }
-  
+
   /// Gets the device's target triple.
   /// - Returns: The device's target triple. If an error occurs, a failure is returned.
   static func getSwiftTargetTriple() -> Result<String, SwiftPackageManagerError> {
     let process = Process.create(
       "/usr/bin/swift",
       arguments: ["-print-target-info"])
-    
+
     return process.getOutputData()
       .mapError { error in
         .failedToGetTargetTriple(error)
@@ -140,7 +140,7 @@ enum SwiftPackageManager {
         } catch {
           return .failure(.failedToDeserializeTargetInfo(error))
         }
-        
+
         guard
           let dictionary = object as? [String: Any],
           let targetDictionary = dictionary["target"] as? [String: Any],
@@ -148,11 +148,11 @@ enum SwiftPackageManager {
         else {
           return .failure(.invalidTargetInfoJSONFormat)
         }
-        
+
         return .success(unversionedTriple)
       }
   }
-  
+
   /// Gets the default products directory for the specified package and configuration.
   /// - Parameters:
   ///   - packageDirectory: The package's root directory.

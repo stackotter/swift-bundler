@@ -20,14 +20,14 @@ enum TemplaterError: LocalizedError {
   case failedToPullLatestTemplates(ProcessError)
   case failedToEnumerateOutputFiles
   case failedToUpdateIndentationStyle(directory: URL, Error)
-  
+
   var errorDescription: String? {
     switch self {
       case .packageDirectoryAlreadyExists(let directory):
         return "A directory already exists at '\(directory.relativePath)'"
       case .failedToCloneTemplateRepository(let processError):
-        return "Failed to clone the default template repository from 'https://github.com/stackotter/swift-bundler-templates': \(processError.localizedDescription)"
-      case .failedToGetApplicationSupportDirectory(_):
+        return "Failed to clone the default template repository from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
+      case .failedToGetApplicationSupportDirectory:
         return "Failed to get Swift Bundler's application support directory"
       case .cannotCreatePackageFromBaseTemplate:
         return "Cannot create a package from the 'Base' template"
@@ -40,7 +40,9 @@ enum TemplaterError: LocalizedError {
       case .failedToReadTemplateManifest(let template, _, _):
         return "Failed to read the contents of the manifest for the '\(template)' template"
       case .templateDoesNotSupportCurrentPlatform(let template, let platform, let supportedPlatforms):
-        return "The '\(template)' template does not support the current platform ('\(platform)'). Supported platforms: [\(supportedPlatforms.joined(separator: ", "))]. Provide the '-f' flag to create package anyway"
+        let tip = "Provide the '-f' flag to create package anyway"
+        let supportedPlatforms = "Supported platforms: [\(supportedPlatforms.joined(separator: ", "))]"
+        return "The '\(template)' template does not support the current platform ('\(platform)'). \(supportedPlatforms). \(tip)"
       case .failedToEnumerateTemplateContents(let template):
         return "Failed to enumerate the contents of the '\(template)' template"
       case .failedToReadFile(let template, let file, _):
@@ -51,10 +53,10 @@ enum TemplaterError: LocalizedError {
         return "Failed to write to the output file at '\(file.relativePath)'"
       case .failedToCreateSkeletonPackage(let error):
         return "Failed to create the package from the 'Skeleton' template: \(error.localizedDescription)"
-      case .failedToEnumerateTemplates(_):
+      case .failedToEnumerateTemplates:
         return "Failed to enumerate templates"
       case .failedToPullLatestTemplates(let processError):
-        return "Failed to pull the latest templates from 'https://github.com/stackotter/swift-bundler-templates': \(processError.localizedDescription)"
+        return "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
       case .failedToEnumerateOutputFiles:
         return "Failed to enumerate the files in the output directory"
       case .failedToUpdateIndentationStyle(let directory, _):

@@ -11,25 +11,25 @@ enum MetalCompiler {
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
       return .failure(.failedToEnumerateShaders(directory: directory))
     }
-    
+
     var shaderSources: [URL] = []
     for case let file as URL in enumerator where file.pathExtension == "metal" {
       shaderSources.append(file)
     }
-    
+
     guard !shaderSources.isEmpty else {
       return .success()
     }
-    
+
     log.info("Compiling metal shaders")
-    
+
     // Compile metal shaders, and if successful, delete all shader sources
     return compileMetalShaders(shaderSources, destination: directory)
       .flatMap { _ in
         if keepSources {
           return .success()
         }
-        
+
         for source in shaderSources {
           do {
             try FileManager.default.removeItem(at: source)
@@ -37,11 +37,11 @@ enum MetalCompiler {
             return .failure(.failedToDeleteShaderSource(source, error))
           }
         }
-        
+
         return .success()
       }
   }
-  
+
   /// Compiles a list of metal source files.
   /// - Parameters:
   ///   - sources: The source files to comile.
@@ -56,11 +56,11 @@ enum MetalCompiler {
     } catch {
       return .failure(.failedToCreateTemporaryCompilationDirectory(tempDirectory, error))
     }
-    
+
     // Compile the shaders into `.air` files
     for shaderSource in sources {
       let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air").lastPathComponent
-      
+
       let process = Process.create(
         "/usr/bin/xcrun",
         arguments: [
@@ -69,33 +69,33 @@ enum MetalCompiler {
           "-c", shaderSource.path
         ],
         directory: tempDirectory)
-      
+
       let result = process.runAndWait()
       if case let .failure(error) = result {
         return .failure(.failedToCompileShader(shaderSource, error))
       }
     }
-    
+
     // Combine the compiled shaders into a `.metal-ar` archive
     let airFiles = sources
       .map { $0.deletingPathExtension().appendingPathExtension("air") }
       .map { tempDirectory.appendingPathComponent($0.lastPathComponent).path }
-    
+
     var arguments = [
       "-sdk", "macosx", "metal-ar",
       "rcs", "default.metal-ar"]
     arguments.append(contentsOf: airFiles)
-    
+
     let compilationProcess = Process.create(
       "/usr/bin/xcrun",
       arguments: arguments,
       directory: tempDirectory)
-    
+
     let compilationResult = compilationProcess.runAndWait()
     if case let .failure(error) = compilationResult {
       return .failure(.failedToCreateMetalArchive(error))
     }
-    
+
     // Convert the `metal-ar` archive into a `metallib` library
     let libraryCreationProcess = Process.create(
       "/usr/bin/xcrun",
@@ -105,12 +105,12 @@ enum MetalCompiler {
         "-o", destination.appendingPathComponent("default.metallib").path
       ],
       directory: tempDirectory)
-    
+
     let libraryCreationResult = libraryCreationProcess.runAndWait()
     if case let .failure(error) = libraryCreationResult {
       return .failure(.failedToCreateMetalLibrary(error))
     }
-    
+
     return .success()
   }
 }

@@ -18,7 +18,7 @@ enum Signal: Int32 {
 }
 
 /// Sets a trap for the specified signal.
-func trap(_ signal: Signal, action: @escaping @convention(c) (Int32) -> ()) {
+func trap(_ signal: Signal, action: @escaping @convention(c) (Int32) -> Void) {
   var signalAction = SignalAction(__sigaction_u: unsafeBitCast(action, to: __sigaction_u.self), sa_mask: 0, sa_flags: 0)
   sigaction(signal.rawValue, &signalAction, nil)
 }

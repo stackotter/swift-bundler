@@ -6,11 +6,11 @@ struct OutputDictionary: OutputComponent {
     var key: String
     /// The value.
     var value: String
-    
+
     var body: String {
       "* " + key.bold + ": " + value
     }
-    
+
     /// Creates a dictionary entry.
     /// - Parameters:
     ///   - key: The key.
@@ -19,7 +19,7 @@ struct OutputDictionary: OutputComponent {
       self.key = key
       self.value = value.body
     }
-    
+
     /// Creates a dictionary entry.
     /// - Parameters:
     ///   - key: The key
@@ -29,24 +29,23 @@ struct OutputDictionary: OutputComponent {
       self.value = value()
     }
   }
-  
+
   /// The contents of the dictionary.
   var contents: [Entry]
 
   var body: String {
     contents.map(\.body).joined(separator: "\n")
   }
-  
+
   /// Creates a dictionary component.
   /// - Parameter contents: The dictionary's entries.
   init(@OutputDictionaryBuilder _ contents: () -> [Entry]) {
     self.contents = contents()
   }
-  
+
   /// Creates a dictionary component.
   /// - Parameter contents: The dictionary's entries.
   init(_ contents: [Entry]) {
     self.contents = contents
   }
 }
-

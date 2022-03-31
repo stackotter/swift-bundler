@@ -19,11 +19,11 @@ enum XcodeSupportGenerator {
             return result
           }
         }
-        
+
         return .success()
       }
   }
-  
+
   /// Gets the location to create Xcode schemes for a given package.
   /// - Parameter packageDirectory: The root directory of the package.
   /// - Returns: The package's schemes directory. If an error occurs, a failure is returned.
@@ -34,10 +34,10 @@ enum XcodeSupportGenerator {
     } catch {
       return .failure(.failedToCreateSchemesDirectory(schemesDirectory, error))
     }
-    
+
     return .success(schemesDirectory)
   }
-  
+
   /// Generates the Xcode schemes for an app.
   /// - Parameters:
   ///   - app: The name of the app.
@@ -62,7 +62,8 @@ enum XcodeSupportGenerator {
         }
       }
   }
-  
+
+  // swiftlint:disable function_body_length
   /// Generates the contents of the Xcode scheme for an app.
   /// - Parameters:
   ///   - app: The name of the app.
@@ -73,9 +74,9 @@ enum XcodeSupportGenerator {
     with configuration: AppConfiguration
   ) -> Result<String, XcodeSupportGeneratorError> {
     log.info("Generating scheme for '\(app).app'")
-    
+
     let product = configuration.product
-    
+
     // Get the global output directory
     let outputDirectory: URL
     switch Bundler.getApplicationSupportDirectory() {
@@ -84,12 +85,12 @@ enum XcodeSupportGenerator {
         guard !applicationSupport.path.contains("'") else {
           return .failure(.applicationSupportDirectoryCannotContainSingleQuote(applicationSupport))
         }
-        
+
         outputDirectory = applicationSupport.appendingPathComponent("build")
       case let .failure(error):
         return .failure(.failedToGetApplicationSupportDirectory(error))
     }
-    
+
     // Get the output app bundle location
     let outputAppBundle = outputDirectory.appendingPathComponent("\(product).app")
     do {
@@ -97,17 +98,19 @@ enum XcodeSupportGenerator {
     } catch {
       return .failure(.failedToCreateOutputBundle(error))
     }
-    
+
     // The escaped strings required to fill in the template
     let escapedOutputPath = outputDirectory.path
       .replacingOccurrences(of: "\"", with: "\\\"")
     let escapedOutputBundlePath = outputAppBundle.path
       .replacingOccurrences(of: "\"", with: "")
     let packagePath = "${WORKSPACE_PATH}/../../../"
-    
+
     // Commands to put in the scheme
-    let createBundle = "/opt/swift-bundler/swift-bundler bundle \(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
-    
+    let command = "/opt/swift-bundler/swift-bundler bundle"
+    let arguments = "\(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
+    let createBundle = "\(command) \(arguments)"
+
     // Create the scheme's contents from a massive template
     return .success("""
 <?xml version="1.0" encoding="UTF-8"?>
@@ -211,4 +214,5 @@ enum XcodeSupportGenerator {
 </Scheme>
 """)
   }
+  // swiftlint:enable function_body_length
 }

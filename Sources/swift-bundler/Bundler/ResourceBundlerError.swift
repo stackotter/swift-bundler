@@ -9,7 +9,7 @@ enum ResourceBundlerError: LocalizedError {
   case failedToCopyResource(source: URL, destination: URL)
   case failedToEnumerateBundleContents(directory: URL, Error)
   case failedToCompileMetalShaders(MetalCompilerError)
-  
+
   var errorDescription: String? {
     switch self {
       case .failedToEnumerateBundles(let directory, _):

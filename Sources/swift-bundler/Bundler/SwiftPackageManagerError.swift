@@ -9,14 +9,14 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToCreatePackageDirectory(URL, Error)
   case failedToRunSwiftInit(command: String, ProcessError)
   case failedToCreateConfigurationFile(ConfigurationError)
-  
+
   var errorDescription: String? {
     switch self {
       case .failedToRunSwiftBuild(let command, let processError):
         return "Failed to run '\(command)': \(processError.localizedDescription)"
       case .failedToGetTargetTriple(let processError):
         return "Failed to get target triple through swift cli: \(processError.localizedDescription)"
-      case .failedToDeserializeTargetInfo(_):
+      case .failedToDeserializeTargetInfo:
         return "Failed to deserialize target platform info from swift cli"
       case .invalidTargetInfoJSONFormat:
         return "Target platform info could not be parsed"

@@ -7,7 +7,7 @@ enum IconSetCreatorError: LocalizedError {
   case failedToCreateIconSetDirectory(URL, Error)
   case failedToConvertToICNS(ProcessError)
   case failedToRemoveIconSetDirectory(URL, Error)
-  
+
   var errorDescription: String? {
     switch self {
       case .notPNG(let file):

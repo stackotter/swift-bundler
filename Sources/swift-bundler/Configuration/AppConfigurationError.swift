@@ -4,7 +4,7 @@ import Foundation
 enum AppConfigurationError: LocalizedError {
   case invalidValueExpression(key: String, value: String, ExpressionEvaluatorError)
   case invalidPlistEntryValueExpression(key: String, value: String, ExpressionEvaluatorError)
-  
+
   var errorDescription: String? {
     switch self {
       case .invalidValueExpression(_, _, let expressionEvaluatorError):

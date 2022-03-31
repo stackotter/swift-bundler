@@ -7,7 +7,7 @@ enum IndentationStyle: Equatable {
   case tabs
   /// Use a specific number of spaces for each indent.
   case spaces(Int)
-  
+
   /// The string representation of a single indent.
   var string: String {
     switch self {
@@ -28,25 +28,25 @@ extension IndentationStyle: ExpressibleByArgument {
         return "spaces=\(count)"
     }
   }
-  
+
   init?(argument: String) {
     let parser = Parse {
       OneOf {
         Parse(IndentationStyle.tabs) {
           "tabs"
         }
-        
+
         Parse(IndentationStyle.spaces) {
           "spaces="
           Int.parser()
         }
       }
     }
-    
+
     guard let style = try? parser.parse(argument) else {
       return nil
     }
-    
+
     self = style
   }
 }

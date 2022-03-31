@@ -24,7 +24,7 @@ enum Bundler {
       .failedToBuild(product: product, error)
     }
   }
-  
+
   /// Bundles the built executable and resources into a macOS app.
   ///
   /// ``build(product:in:buildConfiguration:universal:)`` should usually be called first.
@@ -48,7 +48,7 @@ enum Bundler {
   ) -> Result<Void, BundlerError> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
-    
+
     let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
     let appContents = appBundle.appendingPathComponent("Contents")
     let appExecutable = appContents.appendingPathComponent("MacOS/\(appName)")
@@ -62,7 +62,7 @@ enum Bundler {
       }
       return .success()
     }
-    
+
     let copyResourcesBundles: () -> Result<Void, BundlerError> = {
       ResourceBundler.copyResourceBundles(
         from: productsDirectory,
@@ -73,7 +73,7 @@ enum Bundler {
         .failedToCopyResourceBundles(error)
       }
     }
-    
+
     let copyDynamicLibraries: () -> Result<Void, BundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
         from: productsDirectory,
@@ -85,7 +85,7 @@ enum Bundler {
         .failedToCopyDynamicLibraries(error)
       }
     }
-    
+
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
@@ -93,10 +93,10 @@ enum Bundler {
       { createAppIconIfPresent() },
       { copyResourcesBundles() },
       { copyDynamicLibraries() })
-    
+
     return bundleApp()
   }
-  
+
   /// Runs the app (without building or bundling first).
   /// - Parameters:
   ///   - appName: The app's name.
@@ -112,7 +112,7 @@ enum Bundler {
         .failedToRunExecutable(error)
       }
   }
-  
+
   /// Gets the application support directory for Swift Bundler.
   /// - Returns: The application support directory, or a failure if the directory couldn't be found or created.
   static func getApplicationSupportDirectory() -> Result<URL, BundlerError> {
@@ -127,18 +127,18 @@ enum Bundler {
     } catch {
       return .failure(.failedToGetApplicationSupportDirectory(error))
     }
-    
+
     do {
       try FileManager.default.createDirectory(at: directory)
     } catch {
       return .failure(.failedToCreateApplicationSupportDirectory(error))
     }
-    
+
     return .success(directory)
   }
-  
+
   // MARK: Private methods
-  
+
   /// Creates the directory structure for an app.
   ///
   /// Creates the following structure:
@@ -158,13 +158,13 @@ enum Bundler {
   private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, BundlerError> {
     log.info("Creating '\(appName).app'")
     let fileManager = FileManager.default
-    
+
     let appBundleDirectory = outputDirectory.appendingPathComponent("\(appName).app")
     let appContents = appBundleDirectory.appendingPathComponent("Contents")
     let appResources = appContents.appendingPathComponent("Resources")
     let appMacOS = appContents.appendingPathComponent("MacOS")
     let appDynamicLibrariesDirectory = appContents.appendingPathComponent("Libraries")
-    
+
     do {
       if fileManager.itemExists(at: appBundleDirectory, withType: .directory) {
         try fileManager.removeItem(at: appBundleDirectory)
@@ -177,7 +177,7 @@ enum Bundler {
       return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
     }
   }
-  
+
   /// Copies the built executable into the app bundle.
   /// - Parameters:
   ///   - source: The location of the built executable.
@@ -192,14 +192,18 @@ enum Bundler {
       return .failure(.failedToCopyExecutable(source: source, destination: destination, error))
     }
   }
-  
+
   /// Creates an app's `PkgInfo` and `Info.plist` files.
   /// - Parameters:
   ///   - outputDirectory: Should be the app's `Contents` directory.
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createMetadataFiles(at outputDirectory: URL, appName: String, appConfiguration: AppConfiguration) -> Result<Void, BundlerError> {
+  private static func createMetadataFiles(
+    at outputDirectory: URL,
+    appName: String,
+    appConfiguration: AppConfiguration
+  ) -> Result<Void, BundlerError> {
     log.info("Creating 'PkgInfo'")
     let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
     do {
@@ -209,7 +213,7 @@ enum Bundler {
     } catch {
       return .failure(.failedToCreatePkgInfo(file: pkgInfoFile, error))
     }
-    
+
     log.info("Creating 'Info.plist'")
     let infoPlistFile = outputDirectory.appendingPathComponent("Info.plist")
     return PlistCreator.createAppInfoPlist(
@@ -224,12 +228,12 @@ enum Bundler {
       .failedToCreateInfoPlist(error)
     }
   }
-  
-  /// Copies an `icns` to the output directory if provided. Alternatively, it creates the app's `AppIcon.icns` from a png.
+
+  /// If given an `icns`, the `icns` gets copied to the output directory. If given a `png`, an `AppIcon.icns` is created from the `png`.
   ///
-  /// `AppIcon.icns` takes precendence over `Icon1024x1024.png`.
+  /// The files are not validated any further than checking their file extensions.
   /// - Parameters:
-  ///   - icon: The app's icon. Should be either an `icns` file or a 1024x1024 png with an alpha channel. The png is not validated for those properties.
+  ///   - icon: The app's icon. Should be either an `icns` file or a 1024x1024 `png` with an alpha channel.
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned. If the file is neither an `icns` or a `png`, a failure is also returned.
   private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, BundlerError> {
@@ -250,7 +254,7 @@ enum Bundler {
           .failedToCreateIcon(error)
         }
     }
-    
+
     return .failure(.invalidAppIconFile(icon))
   }
 }

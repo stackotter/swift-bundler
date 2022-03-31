@@ -38,7 +38,7 @@ enum PlistCreator {
       }
     }
   }
-  
+
   /// Creates the `Info.plist` file for a resource bundle.
   /// - Parameters:
   ///   - file: The URL of the file to create.
@@ -62,7 +62,7 @@ enum PlistCreator {
       }
     }
   }
-  
+
   /// Creates the contents of an app's `Info.plist` file.
   /// - Parameters:
   ///   - appName: The app's name.
@@ -93,14 +93,14 @@ enum PlistCreator {
       "LSMinimumSystemVersion": minimumMacOSVersion,
       "LSApplicationCategoryType": category
     ]
-    
+
     for (key, value) in extraPlistEntries ?? [:] {
       entries[key] = value
     }
-    
+
     return Self.serialize(entries.compactMapValues { $0 })
   }
-  
+
   /// Creates the contents of a resource bundle's `Info.plist` file.
   /// - Parameters:
   ///   - bundleName: The bundle's name.
@@ -117,12 +117,12 @@ enum PlistCreator {
       "CFBundleName": bundleName,
       "CFBundlePackageType": "BNDL",
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSMinimumSystemVersion": minimumMacOSVersion,
+      "LSMinimumSystemVersion": minimumMacOSVersion
     ]
-    
+
     return Self.serialize(entries.compactMapValues { $0 })
   }
-  
+
   /// Serializes a plist dictionary into an `xml` format.
   /// - Parameter entries: The dictionary of entries to serialize.
   /// - Returns: The plist dictionary serialized as a string containing xml. If an error occurs, a failure is returned.

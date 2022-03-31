@@ -7,19 +7,19 @@ struct TemplatesInfoCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "info",
     abstract: "Get info about a template.")
-  
+
   /// The template to get info about.
   @Argument(
     help: "The template to get info about.")
   var template: String
-  
+
   /// The directory to search for templates in.
   @Option(
     name: .long,
     help: "An alternate directory to search for the template in.",
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
-  
+
   func run() throws {
     let templates: [Template]
     if let templateRepository = templateRepository {
@@ -27,17 +27,17 @@ struct TemplatesInfoCommand: ParsableCommand {
     } else {
       templates = try Templater.enumerateTemplates().unwrap()
     }
-    
+
     guard let template = templates.first(where: { $0.name == self.template }) else {
       log.error("Could not find template '\(self.template)'")
       Foundation.exit(1)
     }
-    
+
     var exampleCommand = "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
       exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }
-    
+
     print(Sections {
       Section("Template info") {
         OutputDictionary {
