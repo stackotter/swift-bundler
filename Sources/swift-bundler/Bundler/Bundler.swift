@@ -7,19 +7,19 @@ enum Bundler {
   ///   - product: The name of the product to build.
   ///   - packageDirectory: The root directory of the package containing the product.
   ///   - buildConfiguration: The configuration to build the product with.
-  ///   - universal: If `true`, a universal build is performed.
+  ///   - architectures: The architectures to build for.
   /// - Returns: If building fails, a failure is returned.
   static func build(
     product: String,
     in packageDirectory: URL,
     buildConfiguration: SwiftPackageManager.BuildConfiguration,
-    universal: Bool
+    architectures: [SwiftPackageManager.Architecture]
   ) -> Result<Void, BundlerError> {
     return SwiftPackageManager.build(
       product: product,
       packageDirectory: packageDirectory,
       configuration: buildConfiguration,
-      universal: universal
+      architectures: architectures
     ).mapError { error in
       .failedToBuild(product: product, error)
     }

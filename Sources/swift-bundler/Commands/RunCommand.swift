@@ -22,15 +22,6 @@ struct RunCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
   
-  /// The build configuration to use
-  @Option(
-    name: [.customShort("c"), .customLong("configuration")],
-    help: "The build configuration to use (debug|release).",
-    transform: {
-      SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
-    })
-  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
-  
   /// The directory to output the bundled .app to.
   @Option(
     name: .shortAndLong,
@@ -38,10 +29,35 @@ struct RunCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
   
-  /// If `true` a universal application will be created (arm64 and x64).
+  /// The build configuration to use.
+  @Option(
+    name: [.customShort("c"), .customLong("configuration")],
+    help: "The build configuration to use \(SwiftPackageManager.BuildConfiguration.possibleValuesString).",
+    transform: {
+      guard let configuration = SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) else {
+        throw BundlerError.invalidBuildConfiguration($0)
+      }
+      return configuration
+    })
+  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
+  
+  /// The architectures to build for.
+  @Option(
+    name: [.customShort("a"), .customLong("arch")],
+    parsing: .singleValue,
+    help: "The architectures to build for \(SwiftPackageManager.Architecture.possibleValuesString). (default: [\(SwiftPackageManager.Architecture.current.rawValue)])",
+    transform: {
+      guard let arch = SwiftPackageManager.Architecture.init(rawValue: $0) else {
+        throw BundlerError.invalidBuildConfiguration($0)
+      }
+      return arch
+    })
+  var architectures: [SwiftPackageManager.Architecture] = []
+  
+  /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
     name: .shortAndLong,
-    help: "Build a universal application (arm64 and x64).")
+    help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
   var universal = false
   
   // MARK: Run arguments

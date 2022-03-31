@@ -15,6 +15,8 @@ enum BundlerError: LocalizedError {
   case failedToGetApplicationSupportDirectory(Error)
   case failedToCreateApplicationSupportDirectory(Error)
   case invalidAppIconFile(URL)
+  case invalidArchitecture(String)
+  case invalidBuildConfiguration(String)
   
   var errorDescription: String? {
     switch self {
@@ -44,6 +46,10 @@ enum BundlerError: LocalizedError {
         return "Failed to create application support directory"
       case .invalidAppIconFile(let file):
         return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
+      case .invalidArchitecture(let arch):
+        return "'\(arch)' is not a valid architecture. Valid architectures: [\(SwiftPackageManager.Architecture.allCases.map(\.rawValue).joined(separator: ", "))]"
+      case .invalidBuildConfiguration(let configuration):
+        return "'\(configuration)' is not a valid configuration. Valid configurations: [\(SwiftPackageManager.BuildConfiguration.allCases.map(\.rawValue).joined(separator: ", "))]"
     }
   }
 }

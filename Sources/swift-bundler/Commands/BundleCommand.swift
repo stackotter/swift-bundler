@@ -18,16 +18,7 @@ struct BundleCommand: ParsableCommand {
     help: "The directory containing the package to build.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
-
-  /// The build configuration to use
-  @Option(
-    name: [.customShort("c"), .customLong("configuration")],
-    help: "The build configuration to use (debug|release).",
-    transform: {
-      SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) ?? .debug
-    })
-  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
-
+  
   /// The directory to output the bundled .app to.
   @Option(
     name: .shortAndLong,
@@ -35,10 +26,42 @@ struct BundleCommand: ParsableCommand {
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
   
-  /// If `true` a universal application will be created (arm64 and x64).
+  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
+  @Option(
+    name: .long,
+    help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
+    transform: URL.init(fileURLWithPath:))
+  var productsDirectory: URL?
+
+  /// The build configuration to use.
+  @Option(
+    name: [.customShort("c"), .customLong("configuration")],
+    help: "The build configuration to use \(SwiftPackageManager.BuildConfiguration.possibleValuesString).",
+    transform: {
+      guard let configuration = SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) else {
+        throw BundlerError.invalidBuildConfiguration($0)
+      }
+      return configuration
+    })
+  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
+  
+  /// The architectures to build for.
+  @Option(
+    name: [.customShort("a"), .customLong("arch")],
+    parsing: .singleValue,
+    help: "The architectures to build for \(SwiftPackageManager.Architecture.possibleValuesString). (default: [\(SwiftPackageManager.Architecture.current.rawValue)])",
+    transform: {
+      guard let arch = SwiftPackageManager.Architecture.init(rawValue: $0) else {
+        throw BundlerError.invalidBuildConfiguration($0)
+      }
+      return arch
+    })
+  var architectures: [SwiftPackageManager.Architecture] = []
+  
+  /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
     name: .shortAndLong,
-    help: "Build a universal application (arm64 and x64).")
+    help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
   var universal = false
   
   /// Whether to skip the build step or not.
@@ -46,13 +69,6 @@ struct BundleCommand: ParsableCommand {
     name: .long,
     help: "Skip the build step.")
   var skipBuild = false
-  
-  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
-  @Option(
-    name: .long,
-    help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
-    transform: URL.init(fileURLWithPath:))
-  var productsDirectory: URL?
   
   /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM). Can only be `true` when ``skipBuild`` is `true`.
   @Flag(
@@ -74,6 +90,11 @@ struct BundleCommand: ParsableCommand {
       }
       
       // Get relevant configuration
+      let universal = universal || architectures.count > 1
+      let architectures = universal
+        ? SwiftPackageManager.Architecture.allCases
+        : (!architectures.isEmpty ? architectures : [SwiftPackageManager.Architecture.current])
+      
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
       let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
       let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
@@ -84,7 +105,7 @@ struct BundleCommand: ParsableCommand {
       let productsDirectory = try productsDirectory ?? SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
         buildConfiguration: buildConfiguration,
-        universal: universal
+        architectures: architectures
       ).unwrap()
       
       // Create build job
@@ -93,7 +114,7 @@ struct BundleCommand: ParsableCommand {
           product: appConfiguration.product,
           in: packageDirectory,
           buildConfiguration: buildConfiguration,
-          universal: universal)
+          architectures: architectures)
       }
       
       // Create bundle job
