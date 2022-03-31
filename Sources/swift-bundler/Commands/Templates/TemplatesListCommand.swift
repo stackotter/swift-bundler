@@ -37,9 +37,6 @@ struct TemplatesListCommand: Command {
           }
         }
       }
-      Section("Getting more details") {
-        ExampleCommand("swift bundler templates info [template]" + repositoryOption)
-      }
       Section("Using a template") {
         ExampleCommand("swift bundler create [app-name] --template [template]" + repositoryOption)
       }
