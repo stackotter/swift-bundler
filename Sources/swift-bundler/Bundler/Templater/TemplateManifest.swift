@@ -1,5 +1,6 @@
 import Foundation
 import TOMLKit
+import Version
 
 /// The contents of a template's manifest file.
 struct TemplateManifest: Codable {
@@ -8,7 +9,7 @@ struct TemplateManifest: Codable {
   /// The list of supported platforms.
   var platforms: [String]
   /// The minimum Swift version required to use the template.
-  var minimumSwiftVersion: String
+  var minimumSwiftVersion: Version
 
   /// Loads a template's manifest file.
   /// - Parameters:
@@ -25,7 +26,12 @@ struct TemplateManifest: Codable {
 
     let manifest: TemplateManifest
     do {
-      manifest = try TOMLDecoder().decode(TemplateManifest.self, from: contents)
+      var decoder = TOMLDecoder()
+
+      // Set the Version decoding method to tolerant
+      decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
+
+      manifest = try decoder.decode(TemplateManifest.self, from: contents)
     } catch {
       return .failure(.failedToDecodeTemplateManifest(template: template, manifest: file, error))
     }

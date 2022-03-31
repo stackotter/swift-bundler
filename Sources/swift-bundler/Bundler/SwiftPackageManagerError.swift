@@ -9,13 +9,15 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToCreatePackageDirectory(URL, Error)
   case failedToRunSwiftInit(command: String, ProcessError)
   case failedToCreateConfigurationFile(ConfigurationError)
+  case failedToGetSwiftVersion(ProcessError)
+  case invalidSwiftVersionOutput(String, Error)
 
   var errorDescription: String? {
     switch self {
       case .failedToRunSwiftBuild(let command, let processError):
         return "Failed to run '\(command)': \(processError.localizedDescription)"
       case .failedToGetTargetTriple(let processError):
-        return "Failed to get target triple through swift cli: \(processError.localizedDescription)"
+        return "Failed to get target triple: \(processError.localizedDescription)"
       case .failedToDeserializeTargetInfo:
         return "Failed to deserialize target platform info from swift cli"
       case .invalidTargetInfoJSONFormat:
@@ -26,6 +28,10 @@ enum SwiftPackageManagerError: LocalizedError {
         return "Failed to run '\(command)': \(processError.localizedDescription)"
       case .failedToCreateConfigurationFile(let configurationError):
         return "Failed to create configuration file: \(configurationError.localizedDescription)"
+      case .failedToGetSwiftVersion(let processError):
+        return "Failed to get Swift version: \(processError.localizedDescription)"
+      case .invalidSwiftVersionOutput(let output, _):
+        return "The output of 'swift --version' could not be parser: '\(output)'"
     }
   }
 }

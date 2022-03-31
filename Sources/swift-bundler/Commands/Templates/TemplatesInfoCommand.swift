@@ -43,7 +43,7 @@ struct TemplatesInfoCommand: Command {
         KeyedList {
           KeyedList.Entry("Name", template.name)
           KeyedList.Entry("Description", template.manifest.description)
-          KeyedList.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion)
+          KeyedList.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion.description)
           KeyedList.Entry("Platforms") {
             InlineList(template.manifest.platforms)
           }
