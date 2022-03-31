@@ -44,6 +44,7 @@ enum SwiftPackageManager {
         Self.swiftExecutable,
         arguments: arguments,
         directory: directory)
+      process.setOutputPipe(Pipe())
       
       return process.runAndWait()
         .mapError { error in
