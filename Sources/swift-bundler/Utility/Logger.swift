@@ -8,7 +8,7 @@ var standardError = FileHandle.standardError
 /// Swift Bundler's basic log handler.
 struct Handler: LogHandler {
   var metadata: Logger.Metadata = [:]
-  var logLevel: Logger.Level = .debug
+  var logLevel: Logger.Level = .info
 
   subscript(metadataKey key: String) -> Logger.Metadata.Value? {
     get { nil }
