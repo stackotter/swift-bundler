@@ -25,7 +25,7 @@ enum ConfigurationError: LocalizedError {
       case .failedToReadConfigurationFile(let file, _):
         return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):
-        return "Failed to deserialize configuration: \(error.localizedDescription)"
+        return "Failed to deserialize configuration: \(error)"
       case .failedToSerializeConfiguration:
         return "Failed to serialize configuration"
       case .failedToWriteToConfigurationFile(let file, _):
