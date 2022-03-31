@@ -25,12 +25,6 @@ struct CreateCommand: ParsableCommand {
     help: "The template to create the app from. Defaults to 'Skeleton', the bare minimum template.")
   var template: String = "Skeleton"
   
-  /// If `true`, force creation of the package even if the template does not support the current platform.
-  @Flag(
-    name: .shortAndLong,
-    help: "Force creation of the package even if the template does not support the current platform.")
-  var force = false
-  
   /// An alternate directory to search for the template in instead.
   @Option(
     name: .long,
@@ -43,6 +37,12 @@ struct CreateCommand: ParsableCommand {
     name: .long,
     help: "The indentation style to create the package with. The possible values are 'tabs' and 'spaces=[count]'.")
   var indentation: IndentationStyle = .spaces(4)
+  
+  /// If `true`, force creation of the package even if the template does not support the current platform.
+  @Flag(
+    name: .shortAndLong,
+    help: "Force creation of the package even if the template does not support the current platform.")
+  var force = false
   
   func run() throws {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
