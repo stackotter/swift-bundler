@@ -3,7 +3,7 @@
 set -e
 
 # Ensure that xcode command-line tools are installed
-echo "Ensuring that Xcode CLTs are installed"
+echo "Ensuring that the Xcode CLTs are installed"
 xcode-select --install 2>/dev/null || true
 
 # Build
