@@ -16,22 +16,8 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 
 ## Installation
 
-### One-liner
-
-This simplest way to install Swift Bundler is to use the install script:
-
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
-```
-
-### Manual installation
-
-If you prefer to do things manually, use these commands:
-
-```sh
-git clone https://github.com/stackotter/swift-bundler
-cd swift-bundler
-sh ./install.sh
 ```
 
 ## Getting started
