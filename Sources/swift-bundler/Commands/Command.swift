@@ -13,6 +13,7 @@ extension Command {
       try wrappedRun()
     } catch {
       log.error("\(error.localizedDescription)")
+      log.debug("Error details: \(error)")
       Foundation.exit(1)
     }
   }
