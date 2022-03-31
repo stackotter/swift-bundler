@@ -40,11 +40,11 @@ struct TemplatesInfoCommand: Command {
 
     print(Sections {
       Section("Template info") {
-        OutputDictionary {
-          OutputDictionary.Entry("Name", template.name)
-          OutputDictionary.Entry("Description", template.manifest.description)
-          OutputDictionary.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion)
-          OutputDictionary.Entry("Platforms") {
+        KeyedList {
+          KeyedList.Entry("Name", template.name)
+          KeyedList.Entry("Description", template.manifest.description)
+          KeyedList.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion)
+          KeyedList.Entry("Platforms") {
             InlineList(template.manifest.platforms)
           }
         }

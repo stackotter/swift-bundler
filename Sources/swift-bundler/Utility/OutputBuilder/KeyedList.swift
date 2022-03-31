@@ -1,6 +1,6 @@
 /// A component that displays a series of ordered key value pairs.
-struct OutputDictionary: OutputComponent {
-  /// An entry in an ordered dictionary.
+struct KeyedList: OutputComponent {
+  /// An entry in a keyed list.
   struct Entry: OutputComponent {
     /// The key.
     var key: String
@@ -11,7 +11,7 @@ struct OutputDictionary: OutputComponent {
       "* " + key.bold + ": " + value
     }
 
-    /// Creates a dictionary entry.
+    /// Creates a keyed list entry.
     /// - Parameters:
     ///   - key: The key.
     ///   - value: The value.
@@ -20,7 +20,7 @@ struct OutputDictionary: OutputComponent {
       self.value = value.body
     }
 
-    /// Creates a dictionary entry.
+    /// Creates a keyed list entry.
     /// - Parameters:
     ///   - key: The key
     ///   - value: The component to render as the value.
@@ -37,14 +37,14 @@ struct OutputDictionary: OutputComponent {
     contents.map(\.body).joined(separator: "\n")
   }
 
-  /// Creates a dictionary component.
-  /// - Parameter contents: The dictionary's entries.
-  init(@OutputDictionaryBuilder _ contents: () -> [Entry]) {
+  /// Creates a keyed list component.
+  /// - Parameter contents: The list's entries.
+  init(@KeyedListBuilder _ contents: () -> [Entry]) {
     self.contents = contents()
   }
 
-  /// Creates a dictionary component.
-  /// - Parameter contents: The dictionary's entries.
+  /// Creates a keyed list component.
+  /// - Parameter contents: The list's entries.
   init(_ contents: [Entry]) {
     self.contents = contents
   }
