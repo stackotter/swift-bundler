@@ -12,7 +12,7 @@ enum TemplaterError: LocalizedError {
   case failedToDecodeTemplateManifest(template: String, manifest: URL, Error)
   case failedToReadTemplateManifest(template: String, manifest: URL, Error)
   case templateDoesNotSupportCurrentPlatform(template: String, platform: String, supportedPlatforms: [String])
-  case templateDoesNotSupportSwiftVersion(template: String, version: Version, minimumSupportedVersion: Version)
+  case templateDoesNotSupportInstalledSwiftVersion(template: String, version: Version, minimumSupportedVersion: Version)
   case failedToEnumerateTemplateContents(template: String)
   case failedToReadFile(template: String, file: URL, Error)
   case failedToGetRelativePath(file: URL, base: URL)
@@ -46,7 +46,7 @@ enum TemplaterError: LocalizedError {
         let tip = "Provide the '-f' flag to create the package anyway"
         let supportedPlatforms = "Supported platforms: [\(supportedPlatforms.joined(separator: ", "))]"
         return "The '\(template)' template does not support the current platform ('\(platform)'). \(supportedPlatforms). \(tip)"
-      case .templateDoesNotSupportSwiftVersion(let template, let version, let minimumSupportedVersion):
+      case .templateDoesNotSupportInstalledSwiftVersion(let template, let version, let minimumSupportedVersion):
         let tip = "Provide the '-f' flag to create the package anyway"
         let version = version.description
         let minimumVersion = minimumSupportedVersion.description

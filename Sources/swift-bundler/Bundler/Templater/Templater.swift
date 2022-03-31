@@ -86,23 +86,10 @@ enum Templater {
         return .failure(error)
     }
 
-    // Verify that the current OS and Swift version are supported
     if !forceCreation {
-      #if os(macOS)
-      if !manifest.platforms.contains("macOS") {
-        return .failure(.templateDoesNotSupportCurrentPlatform(template: template, platform: "macOS", supportedPlatforms: manifest.platforms))
-      }
-      #else
-      return .failure(.templateDoesNotSupportCurrentPlatform(template: template, platform: "unknown", supportedPlatforms: manifest.platforms))
-      #endif
-
-      switch SwiftPackageManager.getSwiftVersion() {
-        case .success(let version):
-          if version < manifest.minimumSwiftVersion {
-            return .failure(.templateDoesNotSupportSwiftVersion(template: template, version: version, minimumSupportedVersion: manifest.minimumSwiftVersion))
-          }
-        case .failure(let error):
-          return .failure(.failedToCheckSwiftVersion(error))
+      // Verify that the current OS and Swift version are supported
+      if case let .failure(error) = verifyTemplateIsSupported(template, manifest) {
+        return .failure(error)
       }
     }
 
@@ -139,6 +126,43 @@ enum Templater {
       attemptCleanup(outputDirectory)
       return error
     }
+  }
+
+  /// Verifies that the given template supports the current OS and Swift version.
+  /// - Returns: An error if the current OS and Swift version are not supported by the template.
+  static func verifyTemplateIsSupported(_ name: String, _ manifest: TemplateManifest) -> Result<Void, TemplaterError> {
+    #if os(macOS)
+    if !manifest.platforms.contains("macOS") {
+      return .failure(.templateDoesNotSupportCurrentPlatform(
+        template: name,
+        platform: "macOS",
+        supportedPlatforms: manifest.platforms
+      ))
+    }
+    #else
+    // Unknown platforms are always unsupported
+    return .failure(.templateDoesNotSupportCurrentPlatform(
+      template: name,
+      platform: "unknown",
+      supportedPlatforms: manifest.platforms
+    ))
+    #endif
+
+    // Verify that the installed Swift version is supported
+    switch SwiftPackageManager.getSwiftVersion() {
+      case .success(let version):
+        if version < manifest.minimumSwiftVersion {
+          return .failure(.templateDoesNotSupportInstalledSwiftVersion(
+            template: name,
+            version: version,
+            minimumSupportedVersion: manifest.minimumSwiftVersion
+          ))
+        }
+      case .failure(let error):
+        return .failure(.failedToCheckSwiftVersion(error))
+    }
+
+    return .success()
   }
 
   /// Gets the default templates directory.
