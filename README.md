@@ -60,6 +60,12 @@ swift bundler generate-xcode-support
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode.
 
+## Apps made with Swift Bundler
+
+- [Delta Client](https://github.com/stackotter/delta-client) — A Minecraft: Java Edition compatible Minecraft client written from scratch in Swift
+
+If you have an app made with Swift Bundler, make a PR to add it to the list! I'd love to hear about it.
+
 ## Contributing
 
 Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started.
