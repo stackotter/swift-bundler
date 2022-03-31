@@ -1,5 +1,7 @@
 import Foundation
 import ArgumentParser
+import Version
+import Parsing
 
 /// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
@@ -150,6 +152,43 @@ enum SwiftPackageManager {
         }
 
         return .success(unversionedTriple)
+      }
+  }
+
+  /// Gets the version of the current Swift installation.
+  /// - Returns: The swift version, or a failure if an error occurs.
+  static func getSwiftVersion() -> Result<Version, SwiftPackageManagerError> {
+    let process = Process.create(
+      "/usr/bin/swift",
+      arguments: ["--version"])
+
+    return process.getOutput()
+      .mapError { error in
+        .failedToGetSwiftVersion(error)
+      }
+      .flatMap { output in
+        // Sample: "swift-driver version: 1.45.2 Apple Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
+        let parser = Parse {
+          Prefix { $0 != "(" }
+          "(swiftlang-"
+          Parse({ Version.init(major: $0, minor: $1, patch: $2) }) {
+            Int.parser()
+            "."
+            Int.parser()
+            "."
+            Int.parser()
+          }
+          Rest()
+        }.map { _, version, _ in
+          version
+        }
+
+        do {
+          let version = try parser.parse(output)
+          return .success(version)
+        } catch {
+          return .failure(.invalidSwiftVersionOutput(output, error))
+        }
       }
   }
 

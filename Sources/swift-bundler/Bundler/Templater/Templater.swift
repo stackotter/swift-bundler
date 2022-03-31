@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
@@ -75,13 +76,6 @@ enum Templater {
       return .failure(.noSuchTemplate(template))
     }
 
-    // Create the output directory
-    do {
-      try FileManager.default.createDirectory(at: outputDirectory)
-    } catch {
-      return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
-    }
-
     // Load the template manifest
     let manifestFile = templateDirectory.appendingPathComponent("Template.toml")
     let manifest: TemplateManifest
@@ -92,7 +86,7 @@ enum Templater {
         return .failure(error)
     }
 
-    // Verify that the current OS is supported
+    // Verify that the current OS and Swift version are supported
     if !forceCreation {
       #if os(macOS)
       if !manifest.platforms.contains("macOS") {
@@ -101,6 +95,22 @@ enum Templater {
       #else
       return .failure(.templateDoesNotSupportCurrentPlatform(template: template, platform: "unknown", supportedPlatforms: manifest.platforms))
       #endif
+
+      switch SwiftPackageManager.getSwiftVersion() {
+        case .success(let version):
+          if version < manifest.minimumSwiftVersion {
+            return .failure(.templateDoesNotSupportSwiftVersion(template: template, version: version, minimumSupportedVersion: manifest.minimumSwiftVersion))
+          }
+        case .failure(let error):
+          return .failure(.failedToCheckSwiftVersion(error))
+      }
+    }
+
+    // Create the output directory
+    do {
+      try FileManager.default.createDirectory(at: outputDirectory)
+    } catch {
+      return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
     }
 
     // Apply the base template first if it exists
@@ -114,6 +124,7 @@ enum Templater {
         packageName: packageName,
         indentationStyle: .tabs)
       if case .failure = result {
+        attemptCleanup(outputDirectory)
         return result
       }
     }
@@ -123,7 +134,11 @@ enum Templater {
       templateDirectory,
       to: outputDirectory,
       packageName: packageName,
-      indentationStyle: indentationStyle)
+      indentationStyle: indentationStyle
+    ).mapError { error in
+      attemptCleanup(outputDirectory)
+      return error
+    }
   }
 
   /// Gets the default templates directory.
@@ -186,7 +201,7 @@ enum Templater {
           manifest: TemplateManifest(
             description: "The bare minimum package with no default UI.",
             platforms: ["macOS", "Linux"],
-            minimumSwiftVersion: "5"
+            minimumSwiftVersion: Version(3, 0, 0)
           )
         ), at: 0)
 
@@ -270,12 +285,16 @@ enum Templater {
     log.info("Creating skeleton package")
 
     return SwiftPackageManager.createPackage(in: directory, name: packageName)
-      .mapError { error in
+      .mapError { error -> TemplaterError in
         .failedToCreateSkeletonPackage(error)
       }
       .flatMap { _ in
         log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
         return updateIndentationStyle(in: directory, from: IndentationStyle.spaces(4), to: indentationStyle)
+      }
+      .mapError { error -> TemplaterError in
+        attemptCleanup(directory)
+        return error
       }
   }
 
@@ -361,6 +380,12 @@ enum Templater {
   }
 
   // MARK: Private methods
+
+  /// Attempts to delete the output directory after a failed attempt to create a package.
+  /// - Parameter outputDirectory: The output directory to remove.
+  private static func attemptCleanup(_ outputDirectory: URL) {
+    try? FileManager.default.removeItem(at: outputDirectory)
+  }
 
   /// Processes a template file (replacing occurences of `{{PACKAGE}}` with the package name) and then copies it to a destination directory.
   /// - Parameters:

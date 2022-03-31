@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// An error returned by ``Templater``.
 enum TemplaterError: LocalizedError {
@@ -11,6 +12,7 @@ enum TemplaterError: LocalizedError {
   case failedToDecodeTemplateManifest(template: String, manifest: URL, Error)
   case failedToReadTemplateManifest(template: String, manifest: URL, Error)
   case templateDoesNotSupportCurrentPlatform(template: String, platform: String, supportedPlatforms: [String])
+  case templateDoesNotSupportSwiftVersion(template: String, version: Version, minimumSupportedVersion: Version)
   case failedToEnumerateTemplateContents(template: String)
   case failedToReadFile(template: String, file: URL, Error)
   case failedToGetRelativePath(file: URL, base: URL)
@@ -20,6 +22,7 @@ enum TemplaterError: LocalizedError {
   case failedToPullLatestTemplates(ProcessError)
   case failedToEnumerateOutputFiles
   case failedToUpdateIndentationStyle(directory: URL, Error)
+  case failedToCheckSwiftVersion(SwiftPackageManagerError)
 
   var errorDescription: String? {
     switch self {
@@ -40,9 +43,14 @@ enum TemplaterError: LocalizedError {
       case .failedToReadTemplateManifest(let template, _, _):
         return "Failed to read the contents of the manifest for the '\(template)' template"
       case .templateDoesNotSupportCurrentPlatform(let template, let platform, let supportedPlatforms):
-        let tip = "Provide the '-f' flag to create package anyway"
+        let tip = "Provide the '-f' flag to create the package anyway"
         let supportedPlatforms = "Supported platforms: [\(supportedPlatforms.joined(separator: ", "))]"
         return "The '\(template)' template does not support the current platform ('\(platform)'). \(supportedPlatforms). \(tip)"
+      case .templateDoesNotSupportSwiftVersion(let template, let version, let minimumSupportedVersion):
+        let tip = "Provide the '-f' flag to create the package anyway"
+        let version = version.description
+        let minimumVersion = minimumSupportedVersion.description
+        return "The '\(template)' template supports a minimum Swift version of \(minimumVersion) but \(version) is installed. \(tip)"
       case .failedToEnumerateTemplateContents(let template):
         return "Failed to enumerate the contents of the '\(template)' template"
       case .failedToReadFile(let template, let file, _):
@@ -61,6 +69,8 @@ enum TemplaterError: LocalizedError {
         return "Failed to enumerate the files in the output directory"
       case .failedToUpdateIndentationStyle(let directory, _):
         return "Failed to update the indentation style of the package in '\(directory.relativePath)'"
+      case .failedToCheckSwiftVersion(let swiftPackageManagerError):
+        return "Failed to check Swift version: \(swiftPackageManagerError.localizedDescription)"
     }
   }
 }
