@@ -22,8 +22,27 @@ struct TemplatesListCommand: ParsableCommand {
       templates = try Templater.enumerateTemplates().unwrap()
     }
     
-    for template in templates {
-      print("* \(template.name): \(template.manifest.description)")
+    let repositoryOption: String
+    if let templateRepository = templateRepository {
+      repositoryOption = " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
+    } else {
+      repositoryOption = ""
     }
+    
+    print(Sections {
+      Section("Templates") {
+        OutputDictionary {
+          for template in templates {
+            OutputDictionary.Entry(template.name, template.manifest.description)
+          }
+        }
+      }
+      Section("Getting more details") {
+        ExampleCommand("swift bundler templates info [template]" + repositoryOption)
+      }
+      Section("Using a template") {
+        ExampleCommand("swift bundler create [app-name] --template [template]" + repositoryOption)
+      }
+    })
   }
 }

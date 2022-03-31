@@ -33,9 +33,9 @@ struct TemplatesInfoCommand: ParsableCommand {
       Foundation.exit(1)
     }
     
-    var exampleCommand = "swift bundler create MyApp --template \(template.name)"
+    var exampleCommand = "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
-      exampleCommand += "--template-repository \(templateRepository.relativePath)"
+      exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }
     
     print(Sections {
