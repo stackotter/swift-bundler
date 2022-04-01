@@ -15,14 +15,14 @@ enum Templater {
   ///   - packageName: The name of the package.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
-  /// - Returns: A failure if package creation fails.
+  /// - Returns: The template that the package was created from (or nil if none were used), or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
     from template: String?,
     packageName: String,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
-  ) -> Result<Void, TemplaterError> {
+  ) -> Result<Template?, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
@@ -33,15 +33,18 @@ enum Templater {
 
 			return SwiftPackageManager.createPackage(in: outputDirectory, name: packageName)
 				.mapError { error -> TemplaterError in
-						.failedToCreateBareMinimumPackage(error)
+					.failedToCreateBareMinimumPackage(error)
 				}
 				.flatMap { _ in
 					log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
-					return updateIndentationStyle(in: outputDirectory, from: IndentationStyle.spaces(4), to: indentationStyle)
+					return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
 				}
 				.mapError { error -> TemplaterError in
 					attemptCleanup(outputDirectory)
 					return error
+				}
+				.map { (_: Void) -> Template? in
+					return nil // No template was used
 				}
     }
 
@@ -56,6 +59,9 @@ enum Templater {
           forceCreation: forceCreation,
           indentationStyle: indentationStyle)
       }
+			.map { template in
+				return .some(template)
+			}
   }
 
   /// Creates a package from the specified template from the specified template repository.
@@ -66,7 +72,7 @@ enum Templater {
   ///   - packageName: The name of the package.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
-  /// - Returns: A failure if package creation fails.
+  /// - Returns: The template that the package was created from, or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
     from template: String,
@@ -74,7 +80,7 @@ enum Templater {
     packageName: String,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
-  ) -> Result<Void, TemplaterError> {
+  ) -> Result<Template, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
@@ -126,9 +132,9 @@ enum Templater {
         to: outputDirectory,
         packageName: packageName,
         indentationStyle: .tabs)
-      if case .failure = result {
+      if case let .failure(error) = result {
         attemptCleanup(outputDirectory)
-        return result
+				return .failure(error)
       }
     }
 
@@ -141,7 +147,9 @@ enum Templater {
     ).mapError { error in
       attemptCleanup(outputDirectory)
       return error
-    }
+		}.map { _ in
+			return Template(name: template, manifest: manifest)
+		}
   }
 
   /// Verifies that the given template supports the current OS and Swift version.

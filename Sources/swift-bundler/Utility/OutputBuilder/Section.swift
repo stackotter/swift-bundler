@@ -7,7 +7,7 @@ struct Section: OutputComponent {
 
   var body: String {
     if let title = title {
-      title.bold.underline + "\n"
+			title.bold.underline + "\n"
     }
     content + "\n"
   }
@@ -16,7 +16,7 @@ struct Section: OutputComponent {
   /// - Parameters:
   ///   - title: The title for the section.
   ///   - content: The section's content.
-  init(_ title: String?, @OutputBuilder _ content: () -> String) {
+  init(_ title: String? = nil, @OutputBuilder _ content: () -> String) {
     self.title = title
     self.content = content()
   }

@@ -21,9 +21,9 @@ struct CreateCommand: Command {
 
   /// Template to create the app from.
   @Option(
-    name: .shortAndLong,
+		name: [.customShort("t"), .customLong("template")],
 		help: "Template to create the app from.")
-  var template: String?
+  var templateName: String?
 
   /// A directory to search for the template in.
   @Option(
@@ -49,7 +49,7 @@ struct CreateCommand: Command {
 			throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
 		}
 
-		if template == nil && templateRepository != nil {
+		if templateName == nil && templateRepository != nil {
 			throw ValidationError("The '--template-repository' option can only be used with the '--template' option")
 		}
 	}
@@ -58,21 +58,22 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
+		var template: Template? = nil
     let elapsed = try Stopwatch.time {
       // Create package from template
-      if let templateRepository = templateRepository, let template = template {
-        try Templater.createPackage(
+      if let templateRepository = templateRepository, let templateName = templateName {
+        template = try Templater.createPackage(
           in: packageDirectory,
-          from: template,
+          from: templateName,
           in: templateRepository,
           packageName: appName,
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()
       } else {
-        try Templater.createPackage(
+        template = try Templater.createPackage(
           in: packageDirectory,
-          from: template,
+          from: templateName,
           packageName: appName,
           forceCreation: force,
           indentationStyle: indentation
@@ -82,13 +83,32 @@ struct CreateCommand: Command {
 
     log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
 
-    print(Sections {
+    print(Output {
       ""
+			if let template = template, let dependencies = template.manifest.systemDependencies {
+				Section("System dependencies") {
+					"The '\(template.name)' template requires the following system dependencies to be installed:"
+					""
+					KeyedList {
+						for (key, value) in dependencies {
+							KeyedList.Entry(key) {
+								Line {
+									if let packages = value.brew {
+										"Can be installed via '"
+										ExampleCommand("brew install \(packages)", withPrompt: false)
+										"'"
+									} else {
+										"Must be manually installed"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
       Section("Getting started") {
         ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
         ExampleCommand("swift bundler run")
-        ""
-        "Learn more at " + "https://github.com/stackotter/swift-bundler#getting-started".underline
       }
     })
   }

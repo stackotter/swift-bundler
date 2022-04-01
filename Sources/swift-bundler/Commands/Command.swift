@@ -20,11 +20,7 @@ extension Command {
       try wrappedRun()
     } catch {
       log.error("\(error.localizedDescription)")
-			if log.logLevel > .debug {
-				log.info("Use the '-v' flag to get more detailed errors")
-			} else {
-				log.debug("Error details: \(error)")
-			}
+			log.debug("Error details: \(error)")
       Foundation.exit(1)
     }
   }
