@@ -2,9 +2,9 @@
 
 Installing Swift Bundler on your system.
 
-## Overview
+## Recommended
 
-The easiest to install Swift Bundler is using the hosted installation script.
+Install the latest version of Swift Bundler from the main branch.
 
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
@@ -12,13 +12,15 @@ sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
 
 ### Installing from a specific branch
 
-The installation script also supports installing Swift Bundler from a specific branch (default is `main`).
+Install the latest version of Swift Bundler from a specific branch.
 
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh) [branch]
 ```
 
 ### Manual installation
+
+Install any version of Swift Bundler that you want by doing it manually.
 
 ```sh
 git clone https://github.com/stackotter/swift-bundler

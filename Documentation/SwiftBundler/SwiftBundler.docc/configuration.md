@@ -1,6 +1,6 @@
 # Configuration
 
-Learn about the important parts of Swift Bundler's configuration file.
+Configuring your app.
 
 ## Overview
 

@@ -28,6 +28,10 @@ Once you have decided which template you want to use, you can create a package f
 swift bundler create [app-name] --template [template]
 ```
 
+## Custom templates
+
+It's relatively easy to create custom templates for Swift Bundler. See <doc:custom-templates> to learn more.
+
 ## Troubleshooting
 
 If you run into issues relating to templates, you may want to try updating the default templates:
@@ -35,9 +39,3 @@ If you run into issues relating to templates, you may want to try updating the d
 ```sh
 swift bundler templates update
 ```
-
-## Topics
-
-### Custom templates
-
-- <doc:custom-templates>
