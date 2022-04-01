@@ -48,11 +48,11 @@
       },
       {
         "package": "TOMLKit",
-        "repositoryURL": "https://github.com/stackotter/TOMLKit",
+        "repositoryURL": "https://github.com/LebJe/TOMLKit",
         "state": {
-          "branch": "main",
-          "revision": "00de25703c71d965e62dec711660c96482c9e1db",
-          "version": null
+          "branch": null,
+          "revision": "7e9120d439ca994d4deb27afb4ff1f4d760c93ce",
+          "version": "0.5.1"
         }
       },
       {

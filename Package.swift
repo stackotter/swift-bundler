@@ -6,7 +6,7 @@ var dependencies: [Package.Dependency] = [
   .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
   .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
   .package(url: "https://github.com/pointfreeco/swift-parsing.git", from: "0.7.1"),
-  .package(url: "https://github.com/stackotter/TOMLKit", branch: "main"),
+  .package(url: "https://github.com/LebJe/TOMLKit", from: "0.5.1"),
   .package(url: "https://github.com/onevcat/Rainbow", .upToNextMajor(from: "4.0.0")),
   .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0")
 ]
