@@ -21,7 +21,7 @@ extension Command {
     } catch {
       log.error("\(error.localizedDescription)")
 			if log.logLevel > .debug {
-				log.info("Use the '-v' flag to get more error details")
+				log.info("Use the '-v' flag to get more detailed errors")
 			} else {
 				log.debug("Error details: \(error)")
 			}
