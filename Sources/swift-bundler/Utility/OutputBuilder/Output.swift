@@ -1,13 +1,13 @@
-/// A component that renders its children one after another with newlines separating them.
-struct Sections: OutputComponent {
-  /// The sections.
+/// A component that combines multiple components.
+struct Output: OutputComponent {
+  /// The child components.
   var content: [String]
 
   var body: String {
     content.joined(separator: "\n")
   }
 
-  /// Creates a group of sections separated by newlines.
+  /// Combines multiple components.
   /// - Parameter content: The child components.
   init(@OutputBuilder _ content: () -> [String]) {
     self.content = content()

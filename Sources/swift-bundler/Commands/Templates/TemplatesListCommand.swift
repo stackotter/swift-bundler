@@ -29,7 +29,7 @@ struct TemplatesListCommand: Command {
       repositoryOption = ""
     }
 
-    print(Sections {
+    print(Output {
       Section("Templates") {
         KeyedList {
           for template in templates {

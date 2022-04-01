@@ -38,7 +38,7 @@ struct TemplatesInfoCommand: Command {
       exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }
 
-    print(Sections {
+    print(Output {
       Section("Template info") {
         KeyedList {
           KeyedList.Entry("Name", template.name)

@@ -1,3 +1,4 @@
+import Foundation
 import ArgumentParser
 
 extension Array: ExpressibleByArgument where Element: ExpressibleByArgument {
