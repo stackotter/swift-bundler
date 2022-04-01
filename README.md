@@ -14,6 +14,14 @@ A Swift Package Manager wrapper that allows the creation of macOS apps with Swif
 
 If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools for the community.
 
+## Contributing 🛠
+
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
+
+## Documentation 📚
+
+The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
+
 ## Installation 📦
 
 ```sh
@@ -22,40 +30,35 @@ sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
 
 ## Getting started 🚦
 
-Use the following command to create a new app from the SwiftUI template.
+### Creating a SwiftUI app
 
 ```sh
-# Create a new app from the SwiftUI template
+# Create a new app from the SwiftUI template.
 swift bundler create HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 
 ### Running the app
 
-Use the `run` command to build and run the app.
-
 ```sh
+# Build and run the app.
 swift bundler run
 ```
 
 ### Using Xcode as your IDE
 
-Run the `generate-xcode-support` command if you want to use Xcode as your IDE. This command only needs to be run once unless you delete the `.swiftpm` directory.
-
 ```sh
-# Creates the files necessary to get xcode to run the package as an app
+# Creates the files necessary to get xcode to run the package as an app.
+# Only needs to be run once unless you delete the `.swiftpm` directory.
 swift bundler generate-xcode-support
+
+# Open the package in Xcode
+open Package.swift
 ```
 
-To open the package in Xcode, just run `open Package.swift`, or use Finder to open `Package.swift` with Xcode. To run the app, just select the scheme with the same name as your app and then click run.
+### Learning more
 
-## Documentation 📚
-
-The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
-
-## Contributing 🛠
-
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
+The [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler) contains everything you need to know about Swift Bundler.
 
 ## Apps made with Swift Bundler 👨‍💻
 
