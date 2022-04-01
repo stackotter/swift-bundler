@@ -13,6 +13,9 @@ A Swift Package Manager wrapper that allows the creation of macOS apps with Swif
 - <doc:installation>
 - <doc:creating-an-app>
 - <doc:configuration>
+
+### Concepts
+
 - <doc:package-templates>
 
 ### Advanced usage

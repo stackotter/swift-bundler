@@ -1,6 +1,6 @@
 # Custom templates
 
-Custom templates are a great way to tailor Swift Bundler to your workflow
+Custom templates are a great way to tailor Swift Bundler to your workflow.
 
 ## Overview
 

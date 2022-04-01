@@ -1,6 +1,6 @@
 # Creating an app
 
-Creating a hello world app using Swift Bundler.
+Creating a hello world app.
 
 ## Overview
 
