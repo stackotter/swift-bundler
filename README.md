@@ -51,7 +51,7 @@ To open the package in Xcode, just run `open Package.swift`, or use Finder to op
 
 ## Documentation 📚
 
-The documentation is hosted on [GitHub pages](https://stackotter.github.io/documentation/swiftbundler).
+The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
 
 ## Contributing 🛠
 
