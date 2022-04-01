@@ -9,3 +9,4 @@ function_parameter_count: 8
 file_length: 500
 identifier_name:
   max_length: 60
+function_body_length: 45

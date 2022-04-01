@@ -58,7 +58,7 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
-		var template: Template? = nil
+		var template: Template?
     let elapsed = try Stopwatch.time {
       // Create package from template
       if let templateRepository = templateRepository, let templateName = templateName {
@@ -83,7 +83,15 @@ struct CreateCommand: Command {
 
     log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
 
-    print(Output {
+		Self.printNextSteps(packageDirectory: packageDirectory, template: template)
+  }
+
+	/// Prints a helpful message telling the user what to try next. Also notifies them of any required system dependencies.
+	/// - Parameters:
+	///   - packageDirectory: The package's root directory.
+	///   - template: The template that the package was created from.
+	static func printNextSteps(packageDirectory: URL, template: Template?) {
+		print(Output {
 			if let template = template, let dependencies = template.manifest.systemDependencies {
 				""
 				Section("System dependencies") {
@@ -108,12 +116,12 @@ struct CreateCommand: Command {
 			} else {
 				""
 			}
-      Section("Getting started") {
-        ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
-        ExampleCommand("swift bundler run")
-      }
-    })
-  }
+			Section("Getting started") {
+				ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
+				ExampleCommand("swift bundler run")
+			}
+		})
+	}
 
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
   /// - Parameter name: The name to verify.

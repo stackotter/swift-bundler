@@ -47,10 +47,10 @@ enum BundlerError: LocalizedError {
       case .invalidAppIconFile(let file):
         return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
       case .invalidArchitecture(let arch):
-        let validArchitectures = SwiftPackageManager.Architecture.allCases.map(\.rawValue).joined(separator: ", ")
+        let validArchitectures = BuildArchitecture.allCases.map(\.rawValue).joined(separator: ", ")
         return "'\(arch)' is not a valid architecture. Valid architectures: [\(validArchitectures)]"
       case .invalidBuildConfiguration(let configuration):
-        let validConfigurations = SwiftPackageManager.BuildConfiguration.allCases.map(\.rawValue).joined(separator: ", ")
+        let validConfigurations = BuildConfiguration.allCases.map(\.rawValue).joined(separator: ", ")
         return "'\(configuration)' is not a valid configuration. Valid configurations: [\(validConfigurations)]"
     }
   }

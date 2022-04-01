@@ -12,8 +12,8 @@ enum Bundler {
   static func build(
     product: String,
     in packageDirectory: URL,
-    buildConfiguration: SwiftPackageManager.BuildConfiguration,
-    architectures: [SwiftPackageManager.Architecture]
+    buildConfiguration: BuildConfiguration,
+    architectures: [BuildArchitecture]
   ) -> Result<Void, BundlerError> {
     return SwiftPackageManager.build(
       product: product,

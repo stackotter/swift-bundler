@@ -8,28 +8,6 @@ enum SwiftPackageManager {
   /// The path to the swift executable.
   static let swiftExecutable = "/usr/bin/swift"
 
-  /// A Swift build configuration.
-  enum BuildConfiguration: String, CaseIterable {
-    case debug
-    case release
-  }
-
-  /// An architecture to build for.
-  enum Architecture: String, CaseIterable, ExpressibleByArgument {
-    case x86_64 // swiftlint:disable:this identifier_name
-    case arm64
-
-    #if arch(x86_64)
-    static let current: Architecture = .x86_64
-    #elseif arch(arm64)
-    static let current: Architecture = .arm64
-    #endif
-
-    var defaultValueDescription: String {
-      rawValue
-    }
-  }
-
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
@@ -98,8 +76,8 @@ enum SwiftPackageManager {
   static func build(
     product: String,
     packageDirectory: URL,
-    configuration: SwiftPackageManager.BuildConfiguration,
-    architectures: [Architecture]
+    configuration: BuildConfiguration,
+    architectures: [BuildArchitecture]
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
 
@@ -134,18 +112,9 @@ enum SwiftPackageManager {
         .failedToGetTargetTriple(error)
       }
       .flatMap { output in
-        // A local Codable struct to conveniently extract the target triple
-        struct TargetInfo: Codable {
-          struct Target: Codable {
-            var unversionedTriple: String
-          }
-
-          var target: Target
-        }
-
         let unversionedTriple: String
         do {
-          let targetInfo = try JSONDecoder().decode(TargetInfo.self, from: output)
+          let targetInfo = try JSONDecoder().decode(SwiftTargetInfo.self, from: output)
           unversionedTriple = targetInfo.target.unversionedTriple
         } catch {
           return .failure(.failedToDeserializeTargetInfo(output, error))
@@ -201,13 +170,13 @@ enum SwiftPackageManager {
   static func getProductsDirectory(
     in packageDirectory: URL,
     buildConfiguration: BuildConfiguration,
-    architectures: [Architecture]
+    architectures: [BuildArchitecture]
   ) -> Result<URL, SwiftPackageManagerError> {
     if architectures.count == 1 {
       let architecture = architectures[0]
       return getSwiftTargetTriple()
         .map { targetTriple in
-          let targetTriple = targetTriple.replacingOccurrences(of: Architecture.current.rawValue, with: architecture.rawValue)
+          let targetTriple = targetTriple.replacingOccurrences(of: BuildArchitecture.current.rawValue, with: architecture.rawValue)
           return packageDirectory
             .appendingPathComponent(".build")
             .appendingPathComponent(targetTriple)
