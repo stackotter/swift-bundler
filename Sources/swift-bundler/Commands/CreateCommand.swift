@@ -84,8 +84,8 @@ struct CreateCommand: Command {
     log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
 
     print(Output {
-      ""
 			if let template = template, let dependencies = template.manifest.systemDependencies {
+				""
 				Section("System dependencies") {
 					"The '\(template.name)' template requires the following system dependencies to be installed:"
 					""
@@ -105,6 +105,8 @@ struct CreateCommand: Command {
 						}
 					}
 				}
+			} else {
+				""
 			}
       Section("Getting started") {
         ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
