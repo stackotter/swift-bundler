@@ -36,31 +36,31 @@ struct BundleCommand: Command {
   /// The build configuration to use.
   @Option(
     name: [.customShort("c"), .customLong("configuration")],
-    help: "The build configuration to use \(SwiftPackageManager.BuildConfiguration.possibleValuesString).",
+    help: "The build configuration to use \(BuildConfiguration.possibleValuesString).",
     transform: {
-      guard let configuration = SwiftPackageManager.BuildConfiguration.init(rawValue: $0.lowercased()) else {
+      guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
         throw BundlerError.invalidBuildConfiguration($0)
       }
       return configuration
     })
-  var buildConfiguration = SwiftPackageManager.BuildConfiguration.debug
+  var buildConfiguration = BuildConfiguration.debug
 
   /// The architectures to build for.
   @Option(
     name: [.customShort("a"), .customLong("arch")],
     parsing: .singleValue,
     help: {
-      let possibleValues = SwiftPackageManager.Architecture.possibleValuesString
-      let defaultValue = SwiftPackageManager.Architecture.current.rawValue
+      let possibleValues = BuildArchitecture.possibleValuesString
+      let defaultValue = BuildArchitecture.current.rawValue
       return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
     }(),
     transform: {
-      guard let arch = SwiftPackageManager.Architecture.init(rawValue: $0) else {
+      guard let arch = BuildArchitecture.init(rawValue: $0) else {
         throw BundlerError.invalidBuildConfiguration($0)
       }
       return arch
     })
-  var architectures: [SwiftPackageManager.Architecture] = []
+  var architectures: [BuildArchitecture] = []
 
   /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
@@ -86,7 +86,7 @@ struct BundleCommand: Command {
     ))
   var builtWithXcode = false
 
-  func wrappedRun() throws { // swiftlint:disable:this function_body_length
+  func wrappedRun() throws {
     var appBundle: URL?
 
     // Start timing
@@ -102,8 +102,8 @@ struct BundleCommand: Command {
       // Get relevant configuration
       let universal = universal || architectures.count > 1
       let architectures = universal
-        ? SwiftPackageManager.Architecture.allCases
-        : (!architectures.isEmpty ? architectures : [SwiftPackageManager.Architecture.current])
+        ? BuildArchitecture.allCases
+        : (!architectures.isEmpty ? architectures : [BuildArchitecture.current])
 
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
       let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
