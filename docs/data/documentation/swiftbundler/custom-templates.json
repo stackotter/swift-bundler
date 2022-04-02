@@ -1,1 +1,391 @@
-{"primaryContentSections":[{"kind":"content","content":[{"anchor":"Overview","level":2,"type":"heading","text":"Overview"},{"type":"paragraph","inlineContent":[{"type":"text","text":"Making custom templates isn’t too complicated, and after reading this page you should be able to easily create templates for all your needs. If you create a template that you think many users would find useful, feel free to open a PR at "},{"type":"reference","isActive":true,"identifier":"https:\/\/github.com\/stackotter\/swift-bundler-templates"},{"type":"text","text":" to add it to the default set of templates."}]},{"anchor":"Creating-a-custom-template","level":2,"type":"heading","text":"Creating a custom template"},{"type":"orderedList","items":[{"content":[{"type":"paragraph","inlineContent":[{"type":"text","text":"Create a new template ‘repository’ (a directory that will contain a collection of templates)"}]}]},{"content":[{"type":"paragraph","inlineContent":[{"type":"text","text":"Create a directory inside the template repository. The name of the directory is the name of your template. ("},{"type":"codeVoice","code":"Base"},{"type":"text","text":" is a reserved name, and the directory must not start with a "},{"type":"codeVoice","code":"."},{"type":"text","text":")"}]}]},{"content":[{"type":"paragraph","inlineContent":[{"type":"text","text":"Create a "},{"type":"codeVoice","code":"Template.toml"},{"type":"text","text":" file (inside the template directory) with the following contents:"}]}]}]},{"type":"codeListing","syntax":"toml","code":["description = \"My first package template.\"","platforms = [\"macOS\", \"Linux\"] # Adjust according to your needs, valid values are `macOS` and `Linux` (for the future)"]},{"type":"orderedList","items":[{"content":[{"type":"paragraph","inlineContent":[{"type":"text","text":"Add files to the template (see below for details)"}]}]}]},{"type":"paragraph","inlineContent":[{"type":"text","text":"Any files within the template directory (excluding "},{"type":"codeVoice","code":"Template.toml"},{"type":"text","text":") are copied to the output directory when creating a package. Any occurrence of "},{"type":"codeVoice","code":"{{PACKAGE}}"},{"type":"text","text":" within the file’s relative path is replaced with the package’s name. Any occurrence of "},{"type":"codeVoice","code":"{{PACKAGE}}"},{"type":"text","text":" within the contents of files ending with "},{"type":"codeVoice","code":".template"},{"type":"text","text":" is replaced with the package’s name and the "},{"type":"codeVoice","code":".template"},{"type":"text","text":" file extension is removed."}]},{"type":"paragraph","inlineContent":[{"type":"strong","inlineContent":[{"type":"text","text":"All indentation must be tabs (not spaces) so that the "},{"type":"codeVoice","code":"create"},{"type":"text","text":" command’s "},{"type":"codeVoice","code":"--indentation"},{"type":"text","text":" option functions correctly."}]}]},{"type":"paragraph","inlineContent":[{"type":"text","text":"You can also create a "},{"type":"codeVoice","code":"Base"},{"type":"text","text":" directory within the template repository. Whenever creating a new package, the "},{"type":"codeVoice","code":"Base"},{"type":"text","text":" directory is applied first and should contain the common files between all templates, such as the "},{"type":"codeVoice","code":".gitignore"},{"type":"text","text":" file. A template can override files in the "},{"type":"codeVoice","code":"Base"},{"type":"text","text":" template by containing files of the same name."}]},{"type":"paragraph","inlineContent":[{"type":"text","text":"See "},{"overridingTitleInlineContent":[{"type":"text","text":"the swift-bundler-templates repository"}],"isActive":true,"type":"reference","identifier":"https:\/\/github.com\/stackotter\/swift-bundler-templates","overridingTitle":"the swift-bundler-templates repository"},{"type":"text","text":" for some example templates."}]},{"anchor":"Using-a-custom-template","level":2,"type":"heading","text":"Using a custom template"},{"type":"codeListing","syntax":"sh","code":["swift bundler create MyApp --template MyTemplate --template-repository \/path\/to\/TemplateRepository"]}]}],"schemaVersion":{"major":0,"minor":2,"patch":0},"sections":[],"variants":[{"paths":["\/documentation\/swiftbundler\/custom-templates"],"traits":[{"interfaceLanguage":"swift"}]}],"identifier":{"url":"doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates","interfaceLanguage":"swift"},"abstract":[{"type":"text","text":"Custom templates are a great way to tailor Swift Bundler to your workflow."}],"kind":"article","metadata":{"roleHeading":"Article","title":"Custom templates","role":"article","modules":[{"name":"SwiftBundler"}]},"hierarchy":{"paths":[["doc:\/\/SwiftBundler\/documentation\/SwiftBundler"]]},"seeAlsoSections":[{"title":"Advanced usage","identifiers":["doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"],"generated":true}],"references":{"https://github.com/stackotter/swift-bundler-templates":{"title":"the swift-bundler-templates repository","titleInlineContent":[{"type":"text","text":"the swift-bundler-templates repository"}],"type":"link","identifier":"https:\/\/github.com\/stackotter\/swift-bundler-templates","url":"https:\/\/github.com\/stackotter\/swift-bundler-templates"},"doc://SwiftBundler/documentation/SwiftBundler":{"role":"collection","title":"SwiftBundler","abstract":[{"type":"text","text":"Create macOS apps with Swift packages instead of Xcode projects."}],"identifier":"doc:\/\/SwiftBundler\/documentation\/SwiftBundler","kind":"symbol","type":"topic","url":"\/documentation\/swiftbundler"},"doc://SwiftBundler/documentation/SwiftBundler/metal-shaders":{"role":"article","title":"Metal shaders","abstract":[{"type":"text","text":"Using Metal shaders with Swift Bundler."}],"identifier":"doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders","kind":"article","type":"topic","url":"\/documentation\/swiftbundler\/metal-shaders"}}}
+{
+  "abstract" : [
+    {
+      "text" : "Custom templates are a great way to tailor Swift Bundler to your workflow.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "SwiftBundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Custom templates"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Making custom templates isn’t too complicated, and after reading this page you should be able to easily create templates for all your needs. If you create a template that you think many users would find useful, feel free to open a PR at ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : " to add it to the default set of templates.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Creating-a-custom-template",
+          "level" : 2,
+          "text" : "Creating a custom template",
+          "type" : "heading"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Create a new template ‘repository’ (a directory that will contain a collection of templates)",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Create a directory inside the template repository. The name of the directory is the name of your template. (",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "Base",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " is a reserved name, and the directory must not start with a ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : ".",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ")",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Create a ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "Template.toml",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " file (inside the template directory) with the following contents:",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "orderedList"
+        },
+        {
+          "code" : [
+            "description = \"My first package template.\"",
+            "platforms = [\"macOS\", \"Linux\"] # Adjust according to your needs, valid values are `macOS` and `Linux` (for the future)"
+          ],
+          "syntax" : "toml",
+          "type" : "codeListing"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Add files to the template (see below for details)",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "orderedList"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Any files within the template directory (excluding ",
+              "type" : "text"
+            },
+            {
+              "code" : "Template.toml",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ") are copied to the output directory when creating a package. Any occurrence of ",
+              "type" : "text"
+            },
+            {
+              "code" : "{{PACKAGE}}",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " within the file’s relative path is replaced with the package’s name. Any occurrence of ",
+              "type" : "text"
+            },
+            {
+              "code" : "{{PACKAGE}}",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " within the contents of files ending with ",
+              "type" : "text"
+            },
+            {
+              "code" : ".template",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " is replaced with the package’s name and the ",
+              "type" : "text"
+            },
+            {
+              "code" : ".template",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " file extension is removed.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "All indentation must be tabs (not spaces) so that the ",
+                  "type" : "text"
+                },
+                {
+                  "code" : "create",
+                  "type" : "codeVoice"
+                },
+                {
+                  "text" : " command’s ",
+                  "type" : "text"
+                },
+                {
+                  "code" : "--indentation",
+                  "type" : "codeVoice"
+                },
+                {
+                  "text" : " option functions correctly.",
+                  "type" : "text"
+                }
+              ],
+              "type" : "strong"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "You can also create a ",
+              "type" : "text"
+            },
+            {
+              "code" : "Base",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " directory within the template repository. Whenever creating a new package, the ",
+              "type" : "text"
+            },
+            {
+              "code" : "Base",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " directory is applied first and should contain the common files between all templates, such as the ",
+              "type" : "text"
+            },
+            {
+              "code" : ".gitignore",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " file. A template can override files in the ",
+              "type" : "text"
+            },
+            {
+              "code" : "Base",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " template by containing files of the same name.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "See ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",
+              "isActive" : true,
+              "overridingTitle" : "the swift-bundler-templates repository",
+              "overridingTitleInlineContent" : [
+                {
+                  "text" : "the swift-bundler-templates repository",
+                  "type" : "text"
+                }
+              ],
+              "type" : "reference"
+            },
+            {
+              "text" : " for some example templates.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Using-a-custom-template",
+          "level" : 2,
+          "text" : "Using a custom template",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift bundler create MyApp --template MyTemplate --template-repository \/path\/to\/TemplateRepository"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 2,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"
+      ],
+      "title" : "Advanced usage"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swiftbundler\/custom-templates"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://SwiftBundler/documentation/SwiftBundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "SwiftBundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler"
+},
+"doc://SwiftBundler/documentation/SwiftBundler/metal-shaders": {
+  "abstract" : [
+    {
+      "text" : "Using Metal shaders with Swift Bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Metal shaders",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler\/metal-shaders"
+},
+"https://github.com/stackotter/swift-bundler-templates": {
+  "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",
+  "title" : "the swift-bundler-templates repository",
+  "titleInlineContent" : [
+    {
+      "text" : "the swift-bundler-templates repository",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/github.com\/stackotter\/swift-bundler-templates"
+}
+}
+}
