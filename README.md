@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A tool to create macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
+A tool for creating macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
 
 You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
