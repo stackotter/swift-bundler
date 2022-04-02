@@ -107,7 +107,7 @@ enum XcodeSupportGenerator {
     let packagePath = "${WORKSPACE_PATH}/../../../"
 
     // Commands to put in the scheme
-    let command = "/opt/swift-bundler/swift-bundler bundle"
+    let command = "swift-bundler bundle"
     let arguments = "\(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
     let createBundle = "\(command) \(arguments)"
 
