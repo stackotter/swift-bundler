@@ -7,7 +7,7 @@ struct SwiftBundler: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
     abstract: "A tool for creating macOS apps from Swift packages.",
-    version: "v2.0.0-rc.1",
+    version: "v2.0.0",
     shouldDisplay: true,
     subcommands: [
       BundleCommand.self,
