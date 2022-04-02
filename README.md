@@ -22,6 +22,8 @@ The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift
 
 ## Installation 📦
 
+Install the latest version of Swift Bundler with a single command:
+
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
 ```
@@ -58,7 +60,7 @@ open Package.swift
 
 ### Learning more
 
-The [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler) contains everything you need to know about Swift Bundler.
+To learn more about Swift Bundler refer to the [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
 
 ## Contributing 🛠
 
