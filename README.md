@@ -8,15 +8,13 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. My end goal is to be able to create apps for Windows, Linux and macOS with a single Swift codebase. You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+A tool to create macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
+
+You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
 ## Supporting Swift Bundler ❤️
 
-If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and every single sponsorship helps me focus more time on making high quality tools for the community.
-
-## Contributing 🛠
-
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
+If you find Swift Bundler useful, please consider supporting me by [becoming a sponsor](https://github.com/sponsors/stackotter). I spend most of my spare time working on open-source projects, and each sponsorship helps me focus more time on making high quality tools for the community.
 
 ## Documentation 📚
 
@@ -29,6 +27,8 @@ sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
 ```
 
 ## Getting started 🚦
+
+After installing Swift Bundler, package templates make it quick to get started. The following sections walk you through creating and running a simple 'Hello, World!' SwiftUI app.
 
 ### Creating a SwiftUI app
 
@@ -59,6 +59,10 @@ open Package.swift
 ### Learning more
 
 The [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler) contains everything you need to know about Swift Bundler.
+
+## Contributing 🛠
+
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
 
 ## Apps made with Swift Bundler 👨‍💻
 
