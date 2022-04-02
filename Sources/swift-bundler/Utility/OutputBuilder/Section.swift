@@ -7,7 +7,7 @@ struct Section: OutputComponent {
 
   var body: String {
     if let title = title {
-			title.bold.underline + "\n"
+      title.bold.underline + "\n"
     }
     content + "\n"
   }

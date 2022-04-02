@@ -22,7 +22,7 @@ prebuild_script = "./utils/prebuild.sh"
 postbuild_script = "./utils/postbuild.sh"
 
 [apps.HelloWorld.extra_plist_entries]
-commit = "{COMMIT}" # This could be any key-value pair, 'commit' is just an example
+commit = "{COMMIT_HASH}" # This could be any key-value pair, 'commit' is just an example
 ```
 
 > Note: Only the `product` and `version` fields are required.

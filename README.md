@@ -8,7 +8,7 @@
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A tool to create macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
+A tool for creating macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
 
 You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
 
@@ -21,6 +21,8 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
 
 ## Installation 📦
+
+Install the latest version of Swift Bundler with a single command:
 
 ```sh
 sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
@@ -58,7 +60,7 @@ open Package.swift
 
 ### Learning more
 
-The [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler) contains everything you need to know about Swift Bundler.
+To learn more about Swift Bundler refer to the [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
 
 ## Contributing 🛠
 

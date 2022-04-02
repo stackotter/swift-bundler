@@ -27,25 +27,25 @@ enum Templater {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
-		// If no template is specified, create the most basic package that just prints 'Hello, World!'
+    // If no template is specified, create the most basic package that just prints 'Hello, World!'
     guard let template = template else {
-			log.info("Creating package")
+      log.info("Creating package")
 
-			return SwiftPackageManager.createPackage(in: outputDirectory, name: packageName)
-				.mapError { error -> TemplaterError in
-					.failedToCreateBareMinimumPackage(error)
-				}
-				.flatMap { _ in
-					log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
-					return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
-				}
-				.mapError { error -> TemplaterError in
-					attemptCleanup(outputDirectory)
-					return error
-				}
-				.map { (_: Void) -> Template? in
-					return nil // No template was used
-				}
+      return SwiftPackageManager.createPackage(in: outputDirectory, name: packageName)
+        .mapError { error -> TemplaterError in
+          .failedToCreateBareMinimumPackage(error)
+        }
+        .flatMap { _ in
+          log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
+          return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
+        }
+        .mapError { error -> TemplaterError in
+          attemptCleanup(outputDirectory)
+          return error
+        }
+        .map { (_: Void) -> Template? in
+          return nil // No template was used
+        }
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
@@ -59,9 +59,9 @@ enum Templater {
           forceCreation: forceCreation,
           indentationStyle: indentationStyle)
       }
-			.map { template in
-				return .some(template)
-			}
+      .map { template in
+        return .some(template)
+      }
   }
 
   /// Creates a package from the specified template from the specified template repository.
@@ -90,7 +90,7 @@ enum Templater {
       return .failure(.cannotCreatePackageFromBaseTemplate)
     }
 
-		log.info("Creating package from the '\(template)' template")
+    log.info("Creating package from the '\(template)' template")
 
     // Check that the template exists
     let templateDirectory = templatesDirectory.appendingPathComponent(template)
@@ -134,7 +134,7 @@ enum Templater {
         indentationStyle: .tabs)
       if case let .failure(error) = result {
         attemptCleanup(outputDirectory)
-				return .failure(error)
+        return .failure(error)
       }
     }
 
@@ -147,9 +147,9 @@ enum Templater {
     ).mapError { error in
       attemptCleanup(outputDirectory)
       return error
-		}.map { _ in
-			return Template(name: template, manifest: manifest)
-		}
+    }.map { _ in
+      return Template(name: template, manifest: manifest)
+    }
   }
 
   /// Verifies that the given template supports the current OS and Swift version.
@@ -259,7 +259,7 @@ enum Templater {
         let templateName = directory.lastPathComponent
 
         // Skip `Base` template and `.git` directory
-				guard templateName != "Base" && !templateName.starts(with: ".") else {
+        guard templateName != "Base" && !templateName.starts(with: ".") else {
           continue
         }
 
