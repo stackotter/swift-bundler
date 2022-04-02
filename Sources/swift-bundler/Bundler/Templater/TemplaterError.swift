@@ -39,14 +39,14 @@ enum TemplaterError: LocalizedError {
       case .failedToCreateOutputDirectory(let directory, _):
         return "Failed to create package directory at '\(directory.relativePath)'"
       case .failedToDecodeTemplateManifest(let template, _, _):
-				return Output {
-					"Failed to decode the manifest for the '\(template)' template"
-					""
-					Section("Troubleshooting") {
-						"Have you updated your templates recently?"
-						ExampleCommand("swift bundler templates update")
-					}
-				}.description
+        return Output {
+          "Failed to decode the manifest for the '\(template)' template"
+          ""
+          Section("Troubleshooting") {
+            "Have you updated your templates recently?"
+            ExampleCommand("swift bundler templates update")
+          }
+        }.description
       case .failedToReadTemplateManifest(let template, _, _):
         return "Failed to read the contents of the manifest for the '\(template)' template"
       case .templateDoesNotSupportCurrentPlatform(let template, let platform, let supportedPlatforms):

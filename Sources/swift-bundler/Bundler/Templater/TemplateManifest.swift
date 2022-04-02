@@ -10,15 +10,15 @@ struct TemplateManifest: Codable {
   var platforms: [String]
   /// The minimum Swift version required to use the template.
   var minimumSwiftVersion: Version
-	/// The system dependencies required by this template (keyed by the user-facing dependency name).
-	var systemDependencies: [String: SystemDependency]?
+  /// The system dependencies required by this template (keyed by the user-facing dependency name).
+  var systemDependencies: [String: SystemDependency]?
 
-	private enum CodingKeys: String, CodingKey {
-		case description
-		case platforms
-		case minimumSwiftVersion = "minimum_swift_version"
-		case systemDependencies = "system_dependencies"
-	}
+  private enum CodingKeys: String, CodingKey {
+    case description
+    case platforms
+    case minimumSwiftVersion = "minimum_swift_version"
+    case systemDependencies = "system_dependencies"
+  }
 
   /// Loads a template's manifest file.
   /// - Parameters:

@@ -15,14 +15,14 @@ struct CreateCommand: Command {
   /// A custom directory to create the app in. Default: create a new directory at './[app-name]'.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-		help: "Directory to create the app in. Default: create a new directory at './[app-name]'.",
+    help: "Directory to create the app in. Default: create a new directory at './[app-name]'.",
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
   /// Template to create the app from.
   @Option(
-		name: [.customShort("t"), .customLong("template")],
-		help: "Template to create the app from.")
+    name: [.customShort("t"), .customLong("template")],
+    help: "Template to create the app from.")
   var templateName: String?
 
   /// A directory to search for the template in.
@@ -44,21 +44,21 @@ struct CreateCommand: Command {
     help: "Force creation even if the template does not support the current OS and installed Swift version.")
   var force = false
 
-	func wrappedValidate() throws {
-		guard Self.isValidAppName(appName) else {
-			throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
-		}
+  func wrappedValidate() throws {
+    guard Self.isValidAppName(appName) else {
+      throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
+    }
 
-		if templateName == nil && templateRepository != nil {
-			throw ValidationError("The '--template-repository' option can only be used with the '--template' option")
-		}
-	}
+    if templateName == nil && templateRepository != nil {
+      throw ValidationError("The '--template-repository' option can only be used with the '--template' option")
+    }
+  }
 
   func wrappedRun() throws {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
-		var template: Template?
+    var template: Template?
     let elapsed = try Stopwatch.time {
       // Create package from template
       if let templateRepository = templateRepository, let templateName = templateName {
@@ -83,45 +83,45 @@ struct CreateCommand: Command {
 
     log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
 
-		Self.printNextSteps(packageDirectory: packageDirectory, template: template)
+    Self.printNextSteps(packageDirectory: packageDirectory, template: template)
   }
 
-	/// Prints a helpful message telling the user what to try next. Also notifies them of any required system dependencies.
-	/// - Parameters:
-	///   - packageDirectory: The package's root directory.
-	///   - template: The template that the package was created from.
-	static func printNextSteps(packageDirectory: URL, template: Template?) {
-		print(Output {
-			if let template = template, let dependencies = template.manifest.systemDependencies {
-				""
-				Section("System dependencies") {
-					"The '\(template.name)' template requires the following system dependencies to be installed:"
-					""
-					KeyedList {
-						for (key, value) in dependencies {
-							KeyedList.Entry(key) {
-								Line {
-									if let packages = value.brew {
-										"Can be installed via '"
-										ExampleCommand("brew install \(packages)", withPrompt: false)
-										"'"
-									} else {
-										"Must be manually installed"
-									}
-								}
-							}
-						}
-					}
-				}
-			} else {
-				""
-			}
-			Section("Getting started") {
-				ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
-				ExampleCommand("swift bundler run")
-			}
-		})
-	}
+  /// Prints a helpful message telling the user what to try next. Also notifies them of any required system dependencies.
+  /// - Parameters:
+  ///   - packageDirectory: The package's root directory.
+  ///   - template: The template that the package was created from.
+  static func printNextSteps(packageDirectory: URL, template: Template?) {
+    print(Output {
+      if let template = template, let dependencies = template.manifest.systemDependencies {
+        ""
+        Section("System dependencies") {
+          "The '\(template.name)' template requires the following system dependencies to be installed:"
+          ""
+          KeyedList {
+            for (key, value) in dependencies {
+              KeyedList.Entry(key) {
+                Line {
+                  if let packages = value.brew {
+                    "Can be installed via '"
+                    ExampleCommand("brew install \(packages)", withPrompt: false)
+                    "'"
+                  } else {
+                    "Must be manually installed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        ""
+      }
+      Section("Getting started") {
+        ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
+        ExampleCommand("swift bundler run")
+      }
+    })
+  }
 
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
   /// - Parameter name: The name to verify.
