@@ -28,9 +28,9 @@ Install the latest version of Swift Bundler with [mint](https://github.com/yonas
 mint install stackotter/swift-bundler
 ```
 
-For more installation methods, see [the documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler/installation).
+If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
 
-If you have previously installed Swift Bundler with the installation script method, remove `/opt/swift-bundler`.
+For more installation methods, see [the documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler/installation).
 
 ## Getting started 🚦
 
