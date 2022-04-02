@@ -22,11 +22,15 @@ The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift
 
 ## Installation 📦
 
-Install the latest version of Swift Bundler with a single command:
+Install the latest version of Swift Bundler with [mint](https://github.com/yonaskolb/Mint):
 
 ```sh
-sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
+mint install stackotter/swift-bundler
 ```
+
+For more installation methods, see [the documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler/installation).
+
+If you have previously installed Swift Bundler with the installation script method, remove `/opt/swift-bundler`.
 
 ## Getting started 🚦
 

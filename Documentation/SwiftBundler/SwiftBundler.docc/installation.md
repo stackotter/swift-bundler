@@ -4,34 +4,22 @@ Installing Swift Bundler on your system.
 
 ## Recommended
 
-Install the latest release of Swift Bundler.
+Install the latest release of Swift Bundler using [mint](https://github.com/yonaskolb/Mint).
 
 ```sh
-sh <(curl -L https://stackotter.dev/swift-bundler/install.sh)
+mint install stackotter/swift-bundler
 ```
 
-### Installing from a specific branch
+> NOTE: If you have previously installed Swift Bundler with the installation script method, remove `/opt/swift-bundler`.
 
-Install Swift Bundler from the latest commit of a specific branch.
+## Manual installation
 
-```sh
-sh <(curl -L https://stackotter.dev/swift-bundler/install.sh) [branch]
-```
-
-### Installing from a specific commit
-
-Install Swift Bundler from a specific commit.
-
-```sh
-sh <(curl -L https://stackotter.dev/swift-bundler/install.sh) [commit]
-```
-
-### Manual installation
-
-Install Swift Bundler however you want by doing it manually.
+Alternatively, you can install Swift Bundler manually for maximum control.
 
 ```sh
 git clone https://github.com/stackotter/swift-bundler
 cd swift-bundler
-./install.sh
+
+swift build -c release
+cp .build/release/swift-bundler /path/to/bin/
 ```
