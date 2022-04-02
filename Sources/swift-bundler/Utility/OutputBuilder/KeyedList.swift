@@ -8,7 +8,7 @@ struct KeyedList: OutputComponent {
     var value: String
 
     var body: String {
-      "* " + key.bold + ": " + value
+      "* " + key + ": " + value
     }
 
     /// Creates a keyed list entry.
