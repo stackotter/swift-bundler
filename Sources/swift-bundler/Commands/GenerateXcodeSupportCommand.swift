@@ -27,5 +27,14 @@ struct GenerateXcodeSupportCommand: Command {
     }
 
     log.info("Done in \(elapsed.secondsString).")
+
+    print(Output {
+      ""
+      Section("Opening your project in Xcode") {
+        ExampleCommand("open Package.swift -a /Applications/Xcode.app")
+        ""
+        "The '-a /Applications/Xcode.app' option is only required if your default app isn't Xcode"
+      }
+    })
   }
 }
