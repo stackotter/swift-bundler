@@ -35,6 +35,11 @@ let package = Package(
         "TOMLKit",
         "Rainbow",
         "Version"
-      ])
+      ]),
+    // The target containing documentation
+    .target(
+      name: "SwiftBundler",
+      path: "Documentation",
+      exclude: ["preview_docs.sh"])
   ]
 )
