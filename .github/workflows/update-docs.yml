@@ -15,7 +15,6 @@ jobs:
     - name: Compile Docs
       run: |
         set -eux
-        cd /home/runner/work/swift-bundler/swift-bundler/Documentation
         git config user.email "stackotter@stackotter.dev"
         git config user.name "stackotter"
         git fetch
