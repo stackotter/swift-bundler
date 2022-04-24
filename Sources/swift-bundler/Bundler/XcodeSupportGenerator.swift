@@ -107,9 +107,11 @@ enum XcodeSupportGenerator {
     let packagePath = "${WORKSPACE_PATH}/../../../"
 
     // Commands to put in the scheme
+    let fixPath = "export PATH=`zsh --login -c '[ -f /etc/zshrc ] && . /etc/zshrc; [ -f ~/.zshrc ] && . ~/.zshrc; echo $PATH'`"
     let command = "swift-bundler bundle"
     let arguments = "\(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode"
-    let createBundle = "\(command) \(arguments)"
+    let createBundle = "\(fixPath); \(command) \(arguments)"
+      .replacingOccurrences(of: "&", with: "&amp;")
 
     // Create the scheme's contents from a massive template
     return .success("""
