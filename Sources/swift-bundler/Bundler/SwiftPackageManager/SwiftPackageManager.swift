@@ -100,30 +100,6 @@ enum SwiftPackageManager {
       }
   }
 
-  /// Gets the device's target triple.
-  /// - Returns: The device's target triple. If an error occurs, a failure is returned.
-  static func getSwiftTargetTriple() -> Result<String, SwiftPackageManagerError> {
-    let process = Process.create(
-      "/usr/bin/swift",
-      arguments: ["-print-target-info"])
-
-    return process.getOutputData()
-      .mapError { error in
-        .failedToGetTargetTriple(error)
-      }
-      .flatMap { output in
-        let unversionedTriple: String
-        do {
-          let targetInfo = try JSONDecoder().decode(SwiftTargetInfo.self, from: output)
-          unversionedTriple = targetInfo.target.unversionedTriple
-        } catch {
-          return .failure(.failedToDeserializeTargetInfo(output, error))
-        }
-
-        return .success(unversionedTriple)
-      }
-  }
-
   /// Gets the version of the current Swift installation.
   /// - Returns: The swift version, or a failure if an error occurs.
   static func getSwiftVersion() -> Result<Version, SwiftPackageManagerError> {
@@ -166,26 +142,34 @@ enum SwiftPackageManager {
   ///   - packageDirectory: The package's root directory.
   ///   - buildConfiguration: The current build configuration.
   ///   - architectures: The architectures that the build was for.
-  /// - Returns: The default products directory. If ``getSwiftTargetTriple()`` fails, a failure is returned.
+  /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args` fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
     buildConfiguration: BuildConfiguration,
     architectures: [BuildArchitecture]
   ) -> Result<URL, SwiftPackageManagerError> {
-    if architectures.count == 1 {
-      let architecture = architectures[0]
-      return getSwiftTargetTriple()
-        .map { targetTriple in
-          let targetTriple = targetTriple.replacingOccurrences(of: BuildArchitecture.current.rawValue, with: architecture.rawValue)
-          return packageDirectory
-            .appendingPathComponent(".build")
-            .appendingPathComponent(targetTriple)
-            .appendingPathComponent(buildConfiguration.rawValue)
-        }
-    } else {
-      return .success(packageDirectory
-        .appendingPathComponent(".build/apple/Products")
-        .appendingPathComponent(buildConfiguration.rawValue.capitalized))
+    let architectureArguments = architectures.flatMap {
+      ["--arch", $0.rawValue]
     }
+    let arguments = [
+      "build", "--show-bin-path",
+      "-c", buildConfiguration.rawValue
+    ] + architectureArguments
+
+    let process = Process.create(
+      "/usr/bin/swift",
+      arguments: arguments,
+      directory: packageDirectory
+    )
+
+    return process.getOutput()
+      .flatMap { output in
+        let path = output.trimmingCharacters(in: .newlines)
+        return .success(URL(fileURLWithPath: path))
+      }
+      .mapError { error in
+        let command = "/usr/bin/swift " + arguments.joined(separator: " ")
+        return .failedToGetProductsDirectory(command: command, error)
+      }
   }
 }
