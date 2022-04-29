@@ -5,7 +5,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToRunSwiftBuild(command: String, ProcessError)
   case failedToCreatePackageDirectory(URL, Error)
   case failedToRunSwiftInit(command: String, ProcessError)
-  case failedToCreateConfigurationFile(ConfigurationError)
+  case failedToCreateConfigurationFile(PackageConfigurationError)
   case failedToGetSwiftVersion(ProcessError)
   case invalidSwiftVersionOutput(String, Error)
   case failedToGetProductsDirectory(command: String, ProcessError)

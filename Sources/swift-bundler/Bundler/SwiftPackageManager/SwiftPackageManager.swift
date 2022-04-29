@@ -51,7 +51,7 @@ enum SwiftPackageManager {
 
     // Create the configuration file
     let createConfigurationFile: () -> Result<Void, SwiftPackageManagerError> = {
-      Configuration.createConfigurationFile(in: directory, app: name, product: name)
+      PackageConfiguration.createConfigurationFile(in: directory, app: name, product: name)
         .mapError { error in
           .failedToCreateConfigurationFile(error)
         }

@@ -2,7 +2,7 @@ import Foundation
 import TOMLKit
 
 /// The configuration for a package.
-struct Configuration: Codable {
+struct PackageConfiguration: Codable {
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
 
@@ -16,7 +16,7 @@ struct Configuration: Codable {
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
   /// - Returns: The configuration.
-  static func load(fromDirectory packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
+  static func load(fromDirectory packageDirectory: URL) -> Result<PackageConfiguration, PackageConfigurationError> {
     let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
     let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
 
@@ -34,10 +34,10 @@ struct Configuration: Codable {
       return .failure(.failedToReadConfigurationFile(configurationFile, error))
     }
 
-    let configuration: Configuration
+    let configuration: PackageConfiguration
     do {
       configuration = try TOMLDecoder().decode(
-        Configuration.self,
+        PackageConfiguration.self,
         from: contents)
     } catch {
       return .failure(.failedToDeserializeConfiguration(error))
@@ -51,11 +51,11 @@ struct Configuration: Codable {
   ///   - oldConfigurationFile: The `Bundle.json` file to migrate.
   ///   - newConfigurationFile: The `Bundler.toml` file to output to.
   /// - Returns: The converted configuration.
-  static func migrateOldConfiguration(from oldConfigurationFile: URL, to newConfigurationFile: URL) -> Result<Configuration, ConfigurationError> {
+  static func migrateOldConfiguration(from oldConfigurationFile: URL, to newConfigurationFile: URL) -> Result<PackageConfiguration, PackageConfigurationError> {
     log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     log.info("Migrating 'Bundle.json' to the new configuration format")
 
-    return OldConfiguration.load(from: oldConfigurationFile)
+    return OldPackageConfiguration.load(from: oldConfigurationFile)
       .flatMap { oldConfiguration in
         var extraPlistEntries: [String: String] = [:]
         for (key, value) in oldConfiguration.extraInfoPlistEntries {
@@ -82,7 +82,7 @@ struct Configuration: Codable {
           minimumMacOSVersion: oldConfiguration.minOSVersion,
           extraPlistEntries: extraPlistEntries.isEmpty ? nil : extraPlistEntries)
 
-        let configuration = Configuration(apps: [oldConfiguration.target: appConfiguration])
+        let configuration = PackageConfiguration(apps: [oldConfiguration.target: appConfiguration])
         let newContents: String
         do {
           newContents = try TOMLEncoder().encode(configuration)
@@ -109,8 +109,8 @@ struct Configuration: Codable {
   ///   - app: The name of the app.
   ///   - product: The name of the product.
   /// - Returns: If an error occurs, a failure is returned.
-  static func createConfigurationFile(in directory: URL, app: String, product: String) -> Result<Void, ConfigurationError> {
-    let configuration = Configuration(apps: [
+  static func createConfigurationFile(in directory: URL, app: String, product: String) -> Result<Void, PackageConfigurationError> {
+    let configuration = PackageConfiguration(apps: [
       app: AppConfiguration(product: product, version: "0.1.0")
     ])
 
@@ -139,7 +139,7 @@ struct Configuration: Codable {
   /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.
   /// - Parameter name: The name of the app to get.
   /// - Returns: The app's name and configuration. If no app is specified, and there is more than one app, a failure is returned.
-  func getAppConfiguration(_ name: String?) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
+  func getAppConfiguration(_ name: String?) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
     if let name = name {
       guard let selected = apps[name] else {
         return .failure(.noSuchApp(name))
@@ -155,7 +155,7 @@ struct Configuration: Codable {
   /// Evaluates the expressions in all configuration field values that support expressions.
   /// - Parameter packageDirectory: The root directory of the package. Used to evaluate the `COMMIT` expression.
   /// - Returns: The evaluated configuration. If any of the expressions are invalid, a failure is returned.
-  func withExpressionsEvaluated(in packageDirectory: URL) -> Result<Configuration, ConfigurationError> {
+  func withExpressionsEvaluated(in packageDirectory: URL) -> Result<PackageConfiguration, PackageConfigurationError> {
     var config = self
     for (appName, app) in config.apps {
       let evaluator = ExpressionEvaluator(context: .init(

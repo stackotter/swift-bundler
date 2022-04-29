@@ -4,4 +4,5 @@ import Foundation
 enum CodeSignerError: LocalizedError {
   case failedToEnumerateIdentities(ProcessError)
   case failedToParseIdentityList(Error)
+  case failedToRunCodesignTool(ProcessError)
 }

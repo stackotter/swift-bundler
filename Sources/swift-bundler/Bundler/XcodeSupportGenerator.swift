@@ -8,7 +8,7 @@ enum XcodeSupportGenerator {
   ///   - packageDirectory: The package's root directory.
   /// - Returns: If an error occurs, a failure is returned.
   static func generateXcodeSupport(
-    for configuration: Configuration,
+    for configuration: PackageConfiguration,
     in packageDirectory: URL
   ) -> Result<Void, XcodeSupportGeneratorError> {
     return getSchemesDirectory(in: packageDirectory)

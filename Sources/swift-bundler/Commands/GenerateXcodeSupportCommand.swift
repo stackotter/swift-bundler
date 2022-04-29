@@ -18,7 +18,7 @@ struct GenerateXcodeSupportCommand: Command {
   func wrappedRun() throws {
     let elapsed = try Stopwatch.time {
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let configuration = try Configuration.load(fromDirectory: packageDirectory).unwrap()
+      let configuration = try PackageConfiguration.load(fromDirectory: packageDirectory).unwrap()
 
       try XcodeSupportGenerator.generateXcodeSupport(
         for: configuration,

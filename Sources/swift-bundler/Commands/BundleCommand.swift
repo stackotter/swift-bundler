@@ -201,8 +201,11 @@ struct BundleCommand: Command {
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
   /// - Returns: The app's configuration if successful.
-  static func getAppConfiguration(_ appName: String?, packageDirectory: URL) -> Result<(name: String, app: AppConfiguration), ConfigurationError> {
-    return Configuration.load(fromDirectory: packageDirectory)
+  static func getAppConfiguration(
+    _ appName: String?,
+    packageDirectory: URL
+  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+    return PackageConfiguration.load(fromDirectory: packageDirectory)
       .flatMap { configuration in
         configuration.getAppConfiguration(appName)
       }

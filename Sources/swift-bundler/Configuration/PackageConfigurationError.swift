@@ -1,7 +1,7 @@
 import Foundation
 
 /// An error related to package configuration.
-enum ConfigurationError: LocalizedError {
+enum PackageConfigurationError: LocalizedError {
   case noSuchApp(String)
   case multipleAppsAndNoneSpecified
   case failedToEvaluateExpressions(app: String, AppConfigurationError)
