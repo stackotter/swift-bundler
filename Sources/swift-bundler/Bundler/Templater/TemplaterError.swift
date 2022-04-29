@@ -5,7 +5,7 @@ import Version
 enum TemplaterError: LocalizedError {
   case packageDirectoryAlreadyExists(URL)
   case failedToCloneTemplateRepository(ProcessError)
-  case failedToGetApplicationSupportDirectory(Error)
+  case failedToGetApplicationSupportDirectory(SystemError)
   case cannotCreatePackageFromBaseTemplate
   case noSuchTemplate(String)
   case failedToCreateOutputDirectory(URL, Error)
@@ -30,8 +30,8 @@ enum TemplaterError: LocalizedError {
         return "A directory already exists at '\(directory.relativePath)'"
       case .failedToCloneTemplateRepository(let processError):
         return "Failed to clone the default template repository from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
-      case .failedToGetApplicationSupportDirectory:
-        return "Failed to get Swift Bundler's application support directory"
+      case .failedToGetApplicationSupportDirectory(let error):
+        return error.localizedDescription
       case .cannotCreatePackageFromBaseTemplate:
         return "Cannot create a package from the 'Base' template"
       case let .noSuchTemplate(template):

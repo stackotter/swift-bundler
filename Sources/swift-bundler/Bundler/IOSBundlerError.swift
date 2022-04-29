@@ -1,7 +1,7 @@
 import Foundation
 
-/// An error returned by ``Bundler``.
-enum BundlerError: LocalizedError {
+/// An error returned by ``IOSBundler``.
+enum IOSBundlerError: LocalizedError {
   case failedToBuild(product: String, SwiftPackageManagerError)
   case failedToCreateAppBundleDirectoryStructure(bundleDirectory: URL, Error)
   case failedToCreatePkgInfo(file: URL, Error)
@@ -12,11 +12,10 @@ enum BundlerError: LocalizedError {
   case failedToCopyResourceBundles(ResourceBundlerError)
   case failedToCopyDynamicLibraries(DynamicLibraryBundlerError)
   case failedToRunExecutable(ProcessError)
-  case failedToGetApplicationSupportDirectory(Error)
-  case failedToCreateApplicationSupportDirectory(Error)
   case invalidAppIconFile(URL)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
+  case invalidPlatform(String)
 
   var errorDescription: String? {
     switch self {
@@ -40,18 +39,17 @@ enum BundlerError: LocalizedError {
         return "Failed to copy dynamic libraries: \(dynamicLibraryBundlerError.localizedDescription)"
       case .failedToRunExecutable(let processError):
         return "Failed to run app executable: \(processError.localizedDescription)"
-      case .failedToGetApplicationSupportDirectory:
-        return "Failed to get application support directory"
-      case .failedToCreateApplicationSupportDirectory:
-        return "Failed to create application support directory"
       case .invalidAppIconFile(let file):
         return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
       case .invalidArchitecture(let arch):
-        let validArchitectures = BuildArchitecture.allCases.map(\.rawValue).joined(separator: ", ")
-        return "'\(arch)' is not a valid architecture. Valid architectures: [\(validArchitectures)]"
+        let validArchitectures = BuildArchitecture.possibleValuesString
+        return "'\(arch)' is not a valid architecture. Should be in \(validArchitectures)"
       case .invalidBuildConfiguration(let configuration):
-        let validConfigurations = BuildConfiguration.allCases.map(\.rawValue).joined(separator: ", ")
-        return "'\(configuration)' is not a valid configuration. Valid configurations: [\(validConfigurations)]"
+        let validConfigurations = BuildConfiguration.possibleValuesString
+        return "'\(configuration)' is not a valid configuration. Should be in \(validConfigurations)"
+      case .invalidPlatform(let platform):
+        let validPlatforms = Platform.possibleValuesString
+        return "'\(platform)' is not a valid platform. Should be in \(validPlatforms)"
     }
   }
 }

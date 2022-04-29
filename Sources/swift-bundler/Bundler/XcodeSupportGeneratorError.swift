@@ -2,7 +2,7 @@ import Foundation
 
 /// An error returned by ``XcodeSupportGenerator``.
 enum XcodeSupportGeneratorError: LocalizedError {
-  case failedToGetApplicationSupportDirectory(Error)
+  case failedToGetApplicationSupportDirectory(SystemError)
   case applicationSupportDirectoryCannotContainSingleQuote(URL)
   case failedToCreateSchemesDirectory(URL, Error)
   case failedToWriteToAppScheme(app: String, Error)
@@ -10,8 +10,8 @@ enum XcodeSupportGeneratorError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
-      case .failedToGetApplicationSupportDirectory:
-        return "Failed to get application support directory"
+      case .failedToGetApplicationSupportDirectory(let error):
+        return error.localizedDescription
       case .applicationSupportDirectoryCannotContainSingleQuote(let directory):
         return "The build application support directory (\"\(directory.relativePath)\") must not contain single quotes"
       case .failedToCreateSchemesDirectory(let directory, _):

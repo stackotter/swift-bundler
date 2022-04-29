@@ -10,8 +10,9 @@ enum PlistCreator {
   ///   - version: The app's version string.
   ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
   ///   - category: The app's category.
-  ///   - minimumMacOSVersion: The minimum macOS version that the app should run on.
+  ///   - minimumOSVersion: The minimum OS version that the app should run on.
   ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  ///   - platform: The platform the app is for.
   /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
@@ -19,16 +20,18 @@ enum PlistCreator {
     version: String,
     bundleIdentifier: String?,
     category: String?,
-    minimumMacOSVersion: String?,
-    extraPlistEntries: [String: String]?
+    minimumOSVersion: String?,
+    extraPlistEntries: [String: String]?,
+    platform: Platform
   ) -> Result<Void, PlistCreatorError> {
     createAppInfoPlistContents(
       appName: appName,
       version: version,
       bundleIdentifier: bundleIdentifier,
       category: category,
-      minimumMacOSVersion: minimumMacOSVersion,
-      extraPlistEntries: extraPlistEntries
+      minimumOSVersion: minimumOSVersion,
+      extraPlistEntries: extraPlistEntries,
+      platform: platform
     ).flatMap { contents in
       do {
         try contents.write(to: file)
@@ -43,16 +46,19 @@ enum PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - bundleName: The bundle's name.
-  ///   - minimumMacOSVersion: The minimum macOS version that the resource bundle should work on.
+  ///   - minimumOSVersion: The minimum OS version that the resource bundle should work on.
+  ///   - platform: The platform the bundle is for.
   /// - Returns: If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlist(
     at file: URL,
     bundleName: String,
-    minimumMacOSVersion: String?
+    minimumOSVersion: String?,
+    platform: Platform
   ) -> Result<Void, PlistCreatorError> {
     createResourceBundleInfoPlistContents(
       bundleName: bundleName,
-      minimumMacOSVersion: minimumMacOSVersion
+      minimumOSVersion: minimumOSVersion,
+      platform: platform
     ).flatMap { contents in
       do {
         try contents.write(to: file)
@@ -69,16 +75,18 @@ enum PlistCreator {
   ///   - version: The app's version string.
   ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
   ///   - category: The app's category.
-  ///   - minimumMacOSVersion: The minimum macOS version that the app should run on.
+  ///   - minimumOSVersion: The minimum OS version that the app should run on.
   ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  ///   - platform: The platform the app is for.
   /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
     version: String,
     bundleIdentifier: String?,
     category: String?,
-    minimumMacOSVersion: String?,
-    extraPlistEntries: [String: String]?
+    minimumOSVersion: String?,
+    extraPlistEntries: [String: String]?,
+    platform: Platform
   ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any?] = [
       "CFBundleExecutable": appName,
@@ -90,9 +98,16 @@ enum PlistCreator {
       "CFBundlePackageType": "APPL",
       "CFBundleShortVersionString": version,
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSMinimumSystemVersion": minimumMacOSVersion,
       "LSApplicationCategoryType": category
     ]
+
+    switch platform {
+    case .macOS:
+      entries["LSMinimumSystemVersion"] = minimumOSVersion
+    case .iOS:
+      // TODO: Make the produced Info.plist for iOS identical to Xcode's
+      entries["MinimumOSVersion"] = minimumOSVersion
+    }
 
     for (key, value) in extraPlistEntries ?? [:] {
       entries[key] = value
@@ -104,21 +119,31 @@ enum PlistCreator {
   /// Creates the contents of a resource bundle's `Info.plist` file.
   /// - Parameters:
   ///   - bundleName: The bundle's name.
-  ///   - minimumMacOSVersion: The minimum macOS version that the resource bundle should work on.
+  ///   - minimumOSVersion: The minimum OS version that the resource bundle should work on.
+  ///   - platform: The platform the bundle is for.
   /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlistContents(
     bundleName: String,
-    minimumMacOSVersion: String?
+    minimumOSVersion: String?,
+    platform: Platform
   ) -> Result<Data, PlistCreatorError> {
     let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
-    let entries: [String: Any?] = [
+    var entries: [String: Any?] = [
       "CFBundleIdentifier": bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": bundleName,
       "CFBundlePackageType": "BNDL",
       "CFBundleSupportedPlatforms": ["MacOSX"],
-      "LSMinimumSystemVersion": minimumMacOSVersion
+      "LSMinimumSystemVersion": minimumOSVersion
     ]
+
+    switch platform {
+    case .macOS:
+      entries["LSMinimumSystemVersion"] = minimumOSVersion
+    case .iOS:
+      // TODO: Make the produced Info.plist for iOS identical to Xcode's
+      entries["MinimumOSVersion"] = minimumOSVersion
+    }
 
     return Self.serialize(entries.compactMapValues { $0 })
   }

@@ -195,7 +195,7 @@ enum Templater {
   static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError> {
     // Get the templates directory
     let templatesDirectory: URL
-    switch Bundler.getApplicationSupportDirectory() {
+    switch System.getApplicationSupportDirectory() {
       case let .success(applicationSupport):
         templatesDirectory = applicationSupport.appendingPathComponent("templates")
       case let .failure(error):

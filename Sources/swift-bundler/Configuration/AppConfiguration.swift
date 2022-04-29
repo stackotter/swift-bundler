@@ -13,6 +13,8 @@ struct AppConfiguration: Codable {
   var bundleIdentifier: String?
   /// The minimum macOS version that the app can run on.
   var minimumMacOSVersion: String?
+  /// The minimum iOS version that the app can run on.
+  var minimumIOSVersion: String?
   /// The path to the app's icon.
   var icon: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
@@ -26,6 +28,7 @@ struct AppConfiguration: Codable {
     case category
     case bundleIdentifier = "bundle_identifier"
     case minimumMacOSVersion = "minimum_macos_version"
+    case minimumIOSVersion = "minimum_ios_version"
     case icon
     case extraPlistEntries = "extra_plist_entries"
   }

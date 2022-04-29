@@ -39,7 +39,7 @@ struct BundleCommand: Command {
     help: "The build configuration to use \(BuildConfiguration.possibleValuesString).",
     transform: {
       guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
-        throw BundlerError.invalidBuildConfiguration($0)
+        throw CLIError.invalidBuildConfiguration($0)
       }
       return configuration
     })
@@ -56,11 +56,26 @@ struct BundleCommand: Command {
     }(),
     transform: {
       guard let arch = BuildArchitecture.init(rawValue: $0) else {
-        throw BundlerError.invalidBuildConfiguration($0)
+        throw CLIError.invalidArchitecture($0)
       }
       return arch
     })
   var architectures: [BuildArchitecture] = []
+
+  /// The platform to build for (incompatible with `--arch`).
+  @Option(
+    name: .shortAndLong,
+    help: {
+      let possibleValues = Platform.possibleValuesString
+      return "The platform to build for \(possibleValues). Incompatible with `--arch`."
+    }(),
+    transform: {
+      guard let platform = Platform.init(rawValue: $0) else {
+        throw CLIError.invalidPlatform($0)
+      }
+      return platform
+    })
+  var platform = Platform.macOS
 
   /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
@@ -94,19 +109,33 @@ struct BundleCommand: Command {
       // Validate parameters
       if !skipBuild {
         guard productsDirectory == nil, !builtWithXcode else {
-          log.error("`--products-directory` and `--built-with-xcode` are only compatible with `--skip-build`")
+          log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
           Foundation.exit(1)
         }
       }
 
+      if platform == .iOS && (builtWithXcode || universal || !architectures.isEmpty) {
+        log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
+        Foundation.exit(1)
+      }
+
       // Get relevant configuration
       let universal = universal || architectures.count > 1
-      let architectures = universal
-        ? BuildArchitecture.allCases
-        : (!architectures.isEmpty ? architectures : [BuildArchitecture.current])
+      let architectures: [BuildArchitecture]
+      switch platform {
+      case .macOS:
+        architectures = universal
+          ? [.arm64, .x86_64]
+          : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
+      case .iOS:
+        architectures = [.arm64]
+      }
 
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let (appName, appConfiguration) = try Self.getAppConfiguration(appName, packageDirectory: packageDirectory).unwrap()
+      let (appName, appConfiguration) = try Self.getAppConfiguration(
+        appName,
+        packageDirectory: packageDirectory
+      ).unwrap()
       let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
@@ -114,39 +143,47 @@ struct BundleCommand: Command {
       // Get build output directory
       let productsDirectory = try productsDirectory ?? SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
-        buildConfiguration: buildConfiguration,
-        architectures: architectures
+        configuration: buildConfiguration,
+        architectures: architectures,
+        platform: platform
       ).unwrap()
 
       // Create build job
-      let build = {
-        Bundler.build(
+      let build: () -> Result<Void, Error> = {
+        SwiftPackageManager.build(
           product: appConfiguration.product,
-          in: packageDirectory,
-          buildConfiguration: buildConfiguration,
-          architectures: architectures)
+          packageDirectory: packageDirectory,
+          configuration: buildConfiguration,
+          architectures: architectures,
+          platform: platform
+        ).mapError { error in
+          return error
+        }
       }
 
       // Create bundle job
+      let bundler = getBundler(for: platform)
       let bundle = {
-        Bundler.bundle(
+        bundler.bundle(
           appName: appName,
           appConfiguration: appConfiguration,
           packageDirectory: packageDirectory,
           productsDirectory: productsDirectory,
           outputDirectory: outputDirectory,
           isXcodeBuild: builtWithXcode,
-          universal: universal)
+          universal: universal
+        )
       }
 
       // Build pipeline
-      let task: () -> Result<Void, BundlerError>
+      let task: () -> Result<Void, Error>
       if skipBuild {
         task = bundle
       } else {
         task = flatten(
           build,
-          bundle)
+          bundle
+        )
       }
 
       // Run pipeline

@@ -79,7 +79,7 @@ enum XcodeSupportGenerator {
 
     // Get the global output directory
     let outputDirectory: URL
-    switch Bundler.getApplicationSupportDirectory() {
+    switch System.getApplicationSupportDirectory() {
       case let .success(applicationSupport):
         // This shouldn't be able to happen, but it would break stuff if it did
         guard !applicationSupport.path.contains("'") else {

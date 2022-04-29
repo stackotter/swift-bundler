@@ -72,39 +72,78 @@ enum SwiftPackageManager {
   ///   - packageDirectory: The root directory of the package containing the product.
   ///   - configuration: The build configuration to use.
   ///   - architectures: The set of architectures to build for.
+  ///   - platform: The platform to build for.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
     packageDirectory: URL,
     configuration: BuildConfiguration,
-    architectures: [BuildArchitecture]
+    architectures: [BuildArchitecture],
+    platform: Platform
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
 
-    let arguments = [
-      "build",
-      "-c", configuration.rawValue,
-      "--product", product
-    ] + architectures.flatMap {
-      ["--arch", $0.rawValue]
-    }
+    let arguments = createBuildArguments(
+      product: product,
+      packageDirectory: packageDirectory,
+      configuration: configuration,
+      architectures: architectures,
+      platform: platform
+    )
 
     let process = Process.create(
-      Self.swiftExecutable,
+      swiftExecutable,
       arguments: arguments,
-      directory: packageDirectory)
+      directory: packageDirectory
+    )
 
     return process.runAndWait()
       .mapError { error in
-        .failedToRunSwiftBuild(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
+        .failedToRunSwiftBuild(command: "\(swiftExecutable) \(arguments.joined(separator: " "))", error)
       }
+  }
+
+  static func createBuildArguments(
+    product: String?,
+    packageDirectory: URL,
+    configuration: BuildConfiguration,
+    architectures: [BuildArchitecture],
+    platform: Platform
+  ) -> [String] {
+    let platformArguments: [String]
+    if platform == .iOS {
+      platformArguments = [
+        "-sdk", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.4.sdk",
+        "-target", "arm64-apple-ios14.0"
+      ].flatMap { ["-Xswiftc", $0] }
+    } else {
+      platformArguments = []
+    }
+
+    let architectureArguments = architectures.flatMap {
+      ["--arch", $0.rawValue]
+    }
+
+    let productArguments: [String]
+    if let product = product {
+      productArguments = ["--product", product]
+    } else {
+      productArguments = []
+    }
+
+    let arguments = [
+      "build",
+      "-c", configuration.rawValue
+    ] + productArguments + architectureArguments + platformArguments
+
+    return arguments
   }
 
   /// Gets the version of the current Swift installation.
   /// - Returns: The swift version, or a failure if an error occurs.
   static func getSwiftVersion() -> Result<Version, SwiftPackageManagerError> {
     let process = Process.create(
-      "/usr/bin/swift",
+      swiftExecutable,
       arguments: ["--version"])
 
     return process.getOutput()
@@ -140,21 +179,22 @@ enum SwiftPackageManager {
   /// Gets the default products directory for the specified package and configuration.
   /// - Parameters:
   ///   - packageDirectory: The package's root directory.
-  ///   - buildConfiguration: The current build configuration.
+  ///   - configuration: The current build configuration.
   ///   - architectures: The architectures that the build was for.
   /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args` fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
-    buildConfiguration: BuildConfiguration,
-    architectures: [BuildArchitecture]
+    configuration: BuildConfiguration,
+    architectures: [BuildArchitecture],
+    platform: Platform
   ) -> Result<URL, SwiftPackageManagerError> {
-    let architectureArguments = architectures.flatMap {
-      ["--arch", $0.rawValue]
-    }
-    let arguments = [
-      "build", "--show-bin-path",
-      "-c", buildConfiguration.rawValue
-    ] + architectureArguments
+    let arguments = createBuildArguments(
+      product: nil,
+      packageDirectory: packageDirectory,
+      configuration: configuration,
+      architectures: architectures,
+      platform: platform
+    ) + ["--show-bin-path"]
 
     let process = Process.create(
       "/usr/bin/swift",

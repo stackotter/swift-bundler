@@ -41,7 +41,7 @@ struct RunCommand: Command {
     help: "The build configuration to use \(BuildConfiguration.possibleValuesString).",
     transform: {
       guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
-        throw BundlerError.invalidBuildConfiguration($0)
+        throw CLIError.invalidBuildConfiguration($0)
       }
       return configuration
     })
@@ -58,11 +58,26 @@ struct RunCommand: Command {
     }(),
     transform: {
       guard let arch = BuildArchitecture.init(rawValue: $0) else {
-        throw BundlerError.invalidBuildConfiguration($0)
+        throw CLIError.invalidBuildConfiguration($0)
       }
       return arch
     })
   var architectures: [BuildArchitecture] = []
+
+  /// The platform to build for (incompatible with `--arch`).
+  @Option(
+    name: .shortAndLong,
+    help: {
+      let possibleValues = Platform.possibleValuesString
+      return "The platform to build for \(possibleValues). Incompatible with `--arch`."
+    }(),
+    transform: {
+      guard let platform = Platform.init(rawValue: $0) else {
+        throw CLIError.invalidPlatform($0)
+      }
+      return platform
+    })
+  var platform = Platform.macOS
 
   /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
@@ -102,6 +117,9 @@ struct RunCommand: Command {
       buildCommand.outputDirectory,
       packageDirectory: packageDirectory)
 
-    try Bundler.run(appName: appName, outputDirectory: outputDirectory).unwrap()
+    try Runner.run(
+      bundle: outputDirectory.appendingPathComponent("\(appName).app"),
+      platform: platform
+    ).unwrap()
   }
 }
