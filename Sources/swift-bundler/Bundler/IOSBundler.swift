@@ -69,7 +69,8 @@ enum IOSBundler: Bundler {
       { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration) },
       { createAppIconIfPresent() },
       { copyResourcesBundles() },
-      { copyDynamicLibraries() }
+      { copyDynamicLibraries() },
+      { Self.embedProvisioningProfile(in: appBundle) }
     )
 
     return bundleApp().mapError { (error: IOSBundlerError) -> Error in
@@ -195,5 +196,36 @@ enum IOSBundler: Bundler {
     }
 
     return .failure(.invalidAppIconFile(icon))
+  }
+
+  private static func embedProvisioningProfile(in bundle: URL) -> Result<Void, IOSBundlerError> {
+    let provisioningProfileDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/MobileDevice/Provisioning Profiles")
+    
+    let contents: [URL]
+    do {
+      contents = try FileManager.default.contentsOfDirectory(at: provisioningProfileDirectory, includingPropertiesForKeys: nil)
+    } catch {
+      return .failure(.failedToEnumerateProvisioningProfiles(error))
+    }
+
+    var profile: URL? = nil
+    for file in contents where file.pathExtension == "mobileprovision" {
+      profile = file
+      break
+    }
+    
+    guard let profile = profile else {
+      return .failure(.failedToLocateProvisioningProfile)
+    }
+
+    log.info("Embedding provisioning profile '\(profile.lastPathComponent)'")
+
+    do {
+      try FileManager.default.copyItem(at: profile, to: bundle.appendingPathComponent("embedded.mobileprovision"))
+    } catch {
+      return .failure(.failedToCopyProvisioningProfile(error))
+    }
+
+    return .success()
   }
 }

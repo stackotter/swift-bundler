@@ -16,6 +16,9 @@ enum IOSBundlerError: LocalizedError {
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
   case invalidPlatform(String)
+  case failedToEnumerateProvisioningProfiles(Error)
+  case failedToLocateProvisioningProfile
+  case failedToCopyProvisioningProfile(Error)
 
   var errorDescription: String? {
     switch self {
@@ -50,6 +53,12 @@ enum IOSBundlerError: LocalizedError {
       case .invalidPlatform(let platform):
         let validPlatforms = Platform.possibleValuesString
         return "'\(platform)' is not a valid platform. Should be in \(validPlatforms)"
+      case .failedToEnumerateProvisioningProfiles:
+        return "Failed to enumerate provisioning profiles"
+      case .failedToLocateProvisioningProfile:
+        return "Failed to locate valid provisioning profile"
+      case .failedToCopyProvisioningProfile:
+        return "Failed to copy provisioning profile to output bundle"
     }
   }
 }
