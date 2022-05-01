@@ -5,6 +5,7 @@ enum MetalCompiler {
   /// Compiles any metal shaders present in a directory into a `default.metallib` file (in the same directory).
   /// - Parameters:
   ///   - directory: The directory to compile shaders from.
+  ///   - minimumMacOSVersion: The macOS version that the built shaders should target.
   ///   - keepSources: If `false`, the sources will get deleted after compilation.
   ///   - platform: The platform to compile for.
   /// - Returns: If an error occurs, a failure is returned.
@@ -109,6 +110,7 @@ enum MetalCompiler {
       "/usr/bin/xcrun",
       arguments: [
         "-sdk", platform.sdkName, "metal",
+        // "-mmacosx-version-min=\(minimumMacOSVersion)", // TODO: re-enable this code and get it working with the new platform versioning system
         "-o", outputFile.path,
         "-c", shader.path
       ]
