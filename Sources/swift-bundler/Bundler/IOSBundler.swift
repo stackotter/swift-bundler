@@ -13,6 +13,7 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app into.
   ///   - isXcodeBuild: Does nothing for iOS.
   ///   - universal: Does nothing for iOS.
+  ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -21,45 +22,57 @@ enum IOSBundler: Bundler {
     productsDirectory: URL,
     outputDirectory: URL,
     isXcodeBuild: Bool,
-    universal: Bool
+    universal: Bool,
+    codesigningIdentity: String?
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
 
     let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
     let appExecutable = appBundle.appendingPathComponent(appName)
-    let appResources = appBundle.appendingPathComponent("Resources")
-    let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
+    // let appResources = appBundle.appendingPathComponent("Resources")
+    // let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
 
-    let createAppIconIfPresent: () -> Result<Void, IOSBundlerError> = {
-      if let path = appConfiguration.icon {
-        let icon = packageDirectory.appendingPathComponent(path)
-        return Self.createAppIcon(icon: icon, outputDirectory: appResources)
-      }
-      return .success()
-    }
+    // let createAppIconIfPresent: () -> Result<Void, IOSBundlerError> = {
+    //   if let path = appConfiguration.icon {
+    //     let icon = packageDirectory.appendingPathComponent(path)
+    //     return Self.createAppIcon(icon: icon, outputDirectory: appResources)
+    //   }
+    //   return .success()
+    // }
 
-    let copyResourcesBundles: () -> Result<Void, IOSBundlerError> = {
-      ResourceBundler.copyResourceBundles(
-        from: productsDirectory,
-        to: appResources,
-        fixBundles: true,
-        minimumOSVersion: appConfiguration.minimumIOSVersion,
-        platform: .iOS
-      ).mapError { error in
-        .failedToCopyResourceBundles(error)
-      }
-    }
+    // let copyResourcesBundles: () -> Result<Void, IOSBundlerError> = {
+    //   ResourceBundler.copyResourceBundles(
+    //     from: productsDirectory,
+    //     to: appResources,
+    //     fixBundles: true,
+    //     minimumOSVersion: appConfiguration.minimumIOSVersion,
+    //     platform: .iOS
+    //   ).mapError { error in
+    //     .failedToCopyResourceBundles(error)
+    //   }
+    // }
 
-    let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
-      DynamicLibraryBundler.copyDynamicLibraries(
-        from: productsDirectory,
-        to: appDynamicLibrariesDirectory,
-        appExecutable: appExecutable,
-        isXcodeBuild: false,
-        universal: false
-      ).mapError { error in
-        .failedToCopyDynamicLibraries(error)
+    // let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
+    //   DynamicLibraryBundler.copyDynamicLibraries(
+    //     from: productsDirectory,
+    //     to: appDynamicLibrariesDirectory,
+    //     appExecutable: appExecutable,
+    //     isXcodeBuild: false,
+    //     universal: false
+    //   ).mapError { error in
+    //     .failedToCopyDynamicLibraries(error)
+    //   }
+    // }
+
+    let codesign: () -> Result<Void, IOSBundlerError> = {
+      if let identity = codesigningIdentity {
+        return CodeSigner.sign(bundle: appBundle, identityId: identity)
+          .mapError { error in
+            return .failedToCodesign(error)
+          }
+      } else {
+        return .success()
       }
     }
 
@@ -67,10 +80,11 @@ enum IOSBundler: Bundler {
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration) },
-      { createAppIconIfPresent() },
-      { copyResourcesBundles() },
-      { copyDynamicLibraries() },
-      { Self.embedProvisioningProfile(in: appBundle) }
+      // { createAppIconIfPresent() },
+      // { copyResourcesBundles() },
+      // { copyDynamicLibraries() },
+      { Self.embedProvisioningProfile(in: appBundle) },
+      { codesign() }
     )
 
     return bundleApp().mapError { (error: IOSBundlerError) -> Error in
@@ -101,15 +115,18 @@ enum IOSBundler: Bundler {
     let fileManager = FileManager.default
 
     let appBundleDirectory = outputDirectory.appendingPathComponent("\(appName).app")
-    let appResources = appBundleDirectory.appendingPathComponent("Resources")
-    let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
+    // let appResources = appBundleDirectory.appendingPathComponent("Resources")
+    // let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
 
     do {
       if fileManager.itemExists(at: appBundleDirectory, withType: .directory) {
         try fileManager.removeItem(at: appBundleDirectory)
       }
-      try fileManager.createDirectory(at: appResources)
-      try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
+      try fileManager.createDirectory(at: appBundleDirectory)
+      // TODO: support resources on ios
+      // try fileManager.createDirectory(at: appResources)
+      // TODO: support dynamic libraries on ios
+      // try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
       return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
@@ -160,7 +177,7 @@ enum IOSBundler: Bundler {
       version: appConfiguration.version,
       bundleIdentifier: appConfiguration.bundleIdentifier,
       category: appConfiguration.category,
-      minimumOSVersion: appConfiguration.minimumMacOSVersion,
+      minimumOSVersion: appConfiguration.minimumIOSVersion,
       extraPlistEntries: appConfiguration.extraPlistEntries,
       platform: .iOS
     ).mapError { error in

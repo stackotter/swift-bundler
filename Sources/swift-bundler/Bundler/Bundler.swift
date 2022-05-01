@@ -8,7 +8,8 @@ protocol Bundler {
     productsDirectory: URL,
     outputDirectory: URL,
     isXcodeBuild: Bool,
-    universal: Bool
+    universal: Bool,
+    codesigningIdentity: String?
   ) -> Result<Void, Error>
 }
 

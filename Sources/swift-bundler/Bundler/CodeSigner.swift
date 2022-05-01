@@ -3,27 +3,38 @@ import Parsing
 
 /// A utility for codesigning Darwin application bundles
 enum CodeSigner {
+  /// An identity that can be used to codesign a bundle.
   struct Identity {
+    /// The identity's id.
     var id: String
+    /// The identity's display name.
     var name: String
   }
-
-  static func sign(bundle: URL, identity: Identity) -> Result<Void, CodeSignerError> {
+  
+  /// Signs a Darwin app bundle.
+  /// - Parameters:
+  ///   - bundle: The bundle to sign.
+  ///   - identityId: The id of the codesigning identity to use.
+  /// - Returns: A failure if the `codesign` command fails to run.
+  static func sign(bundle: URL, identityId: String) -> Result<Void, CodeSignerError> {
+    log.info("Codesigning executable")
     let process = Process.create(
       "/usr/bin/codesign",
       arguments: [
         "--force", "--deep",
-        "--sign", identity.id,
+        "--sign", identityId,
         bundle.path
       ]
     )
 
     return process.runAndWait()
       .mapError { error in
-        .failedToRunCodesignTool(error)
+        return .failedToRunCodesignTool(error)
       }
   }
-
+  
+  /// Enumerates the user's available codesigning identities.
+  /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
   static func enumerateIdentities() -> Result<[Identity], CodeSignerError> {
     let process = Process.create(
       "/usr/bin/security",

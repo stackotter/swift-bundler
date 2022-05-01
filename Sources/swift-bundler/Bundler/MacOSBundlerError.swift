@@ -16,6 +16,7 @@ enum MacOSBundlerError: LocalizedError {
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
   case invalidPlatform(String)
+  case failedToCodesign(CodeSignerError)
 
   var errorDescription: String? {
     switch self {
@@ -50,6 +51,8 @@ enum MacOSBundlerError: LocalizedError {
       case .invalidPlatform(let platform):
         let validPlatforms = Platform.possibleValuesString
         return "'\(platform)' is not a valid platform. Should be in \(validPlatforms)"
+      case .failedToCodesign(let error):
+        return error.localizedDescription
     }
   }
 }

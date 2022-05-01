@@ -19,6 +19,7 @@ enum IOSBundlerError: LocalizedError {
   case failedToEnumerateProvisioningProfiles(Error)
   case failedToLocateProvisioningProfile
   case failedToCopyProvisioningProfile(Error)
+  case failedToCodesign(CodeSignerError)
 
   var errorDescription: String? {
     switch self {
@@ -59,6 +60,8 @@ enum IOSBundlerError: LocalizedError {
         return "Failed to locate valid provisioning profile"
       case .failedToCopyProvisioningProfile:
         return "Failed to copy provisioning profile to output bundle"
+      case .failedToCodesign(let error):
+        return error.localizedDescription
     }
   }
 }

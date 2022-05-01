@@ -77,6 +77,18 @@ struct BundleCommand: Command {
     })
   var platform = Platform.macOS
 
+  /// A codesigning identity to use.
+  @Option(
+    name: .customLong("identity"),
+    help: "The identity to use for codesigning")
+  var identity: String?
+
+  /// If `true`, the application will be codesigned.
+  @Flag(
+    name: .customLong("codesign"),
+    help: "Codesign the application (use `--identity` to select the identity).")
+  var shouldCodesign = false
+
   /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
     name: .shortAndLong,
@@ -116,6 +128,16 @@ struct BundleCommand: Command {
 
       if platform == .iOS && (builtWithXcode || universal || !architectures.isEmpty) {
         log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
+        Foundation.exit(1)
+      }
+
+      if shouldCodesign && identity == nil {
+        log.error("Please provide a codesigning identity with `--identity`")
+        Foundation.exit(1)
+      }
+
+      if identity != nil && !shouldCodesign {
+        log.error("`--identity` can only be used with `--codesign`")
         Foundation.exit(1)
       }
 
@@ -171,7 +193,8 @@ struct BundleCommand: Command {
           productsDirectory: productsDirectory,
           outputDirectory: outputDirectory,
           isXcodeBuild: builtWithXcode,
-          universal: universal
+          universal: universal,
+          codesigningIdentity: identity
         )
       }
 

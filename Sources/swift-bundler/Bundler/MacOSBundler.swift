@@ -13,6 +13,7 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app into.
   ///   - isXcodeBuild: Whether the build products were created by Xcode or not.
   ///   - universal: Whether the build products were built as universal binaries or not.
+  ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -21,7 +22,8 @@ enum MacOSBundler: Bundler {
     productsDirectory: URL,
     outputDirectory: URL,
     isXcodeBuild: Bool,
-    universal: Bool
+    universal: Bool,
+    codesigningIdentity: String?
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
@@ -64,13 +66,25 @@ enum MacOSBundler: Bundler {
       }
     }
 
+    let codesign: () -> Result<Void, MacOSBundlerError> = {
+      if let identity = codesigningIdentity {
+        return CodeSigner.sign(bundle: appBundle, identityId: identity)
+          .mapError { error in
+            return .failedToCodesign(error)
+          }
+      } else {
+        return .success()
+      }
+    }
+
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration) },
       { createAppIconIfPresent() },
       { copyResourcesBundles() },
-      { copyDynamicLibraries() }
+      { copyDynamicLibraries() },
+      { codesign() }
     )
 
     return bundleApp().mapError { (error: MacOSBundlerError) -> Error in
