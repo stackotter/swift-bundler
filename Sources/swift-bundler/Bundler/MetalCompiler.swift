@@ -5,9 +5,10 @@ enum MetalCompiler {
   /// Compiles any metal shaders present in a directory into a `default.metallib` file (in the same directory).
   /// - Parameters:
   ///   - directory: The directory to compile shaders from.
+  ///   - minimumMacOSVersion: The macOS version that the built shaders should target.
   ///   - keepSources: If `false`, the sources will get deleted after compilation.
   /// - Returns: If an error occurs, a failure is returned.
-  static func compileMetalShaders(in directory: URL, keepSources: Bool) -> Result<Void, MetalCompilerError> {
+  static func compileMetalShaders(in directory: URL, minimumMacOSVersion: String, keepSources: Bool) -> Result<Void, MetalCompilerError> {
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
       return .failure(.failedToEnumerateShaders(directory: directory))
     }
@@ -24,7 +25,7 @@ enum MetalCompiler {
     log.info("Compiling metal shaders")
 
     // Compile metal shaders, and if successful, delete all shader sources
-    return compileMetalShaders(shaderSources, destination: directory)
+    return compileMetalShaders(shaderSources, destination: directory, minimumMacOSVersion: minimumMacOSVersion)
       .flatMap { _ in
         if keepSources {
           return .success()
@@ -46,8 +47,9 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - sources: The source files to comile.
   ///   - destination: The directory to output `default.metallib` to.
+  ///   - minimumMacOSVersion: The macOS version that the built shaders should target.
   /// - Returns: Returns the location of the resulting `metallib`. If an error occurs, a failure is returned.
-  static func compileMetalShaders(_ sources: [URL], destination: URL) -> Result<URL, MetalCompilerError> {
+  static func compileMetalShaders(_ sources: [URL], destination: URL, minimumMacOSVersion: String) -> Result<URL, MetalCompilerError> {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("metal_compilation-\(UUID().uuidString)")
@@ -62,7 +64,7 @@ enum MetalCompiler {
     for shaderSource in sources {
       let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air").lastPathComponent
       let outputFile = tempDirectory.appendingPathComponent(outputFileName)
-      if case let .failure(error) = compileShader(shaderSource, to: outputFile) {
+      if case let .failure(error) = compileShader(shaderSource, to: outputFile, minimumMacOSVersion: minimumMacOSVersion) {
         return .failure(error)
       }
       airFiles.append(outputFile)
@@ -89,12 +91,14 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - shader: The shader file to compile.
   ///   - outputFile: The resulting `air` file.
+  ///   - minimumMacOSVersion: The macOS version that the built shader should target.
   /// - Returns: If an error occurs, a failure is returned.
-  static func compileShader(_ shader: URL, to outputFile: URL) -> Result<Void, MetalCompilerError> {
+  static func compileShader(_ shader: URL, to outputFile: URL, minimumMacOSVersion: String) -> Result<Void, MetalCompilerError> {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "-sdk", "macosx", "metal",
+        "-mmacosx-version-min=\(minimumMacOSVersion)",
         "-o", outputFile.path,
         "-c", shader.path
       ])

@@ -83,13 +83,17 @@ enum ResourceBundler {
   ) -> Result<Void, ResourceBundlerError> {
     log.info("Fixing and copying resource bundle '\(bundle.lastPathComponent)'")
 
+    guard let minimumMacOSVersion = minimumMacOSVersion else {
+      return .failure(.mustProvideMinimimMacOSVersion)
+    }
+
     let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
     let destinationBundleResources = destinationBundle
       .appendingPathComponent("Contents")
       .appendingPathComponent("Resources")
 
     let compileMetalShaders: () -> Result<Void, ResourceBundlerError> = {
-      MetalCompiler.compileMetalShaders(in: destinationBundleResources, keepSources: false)
+      MetalCompiler.compileMetalShaders(in: destinationBundleResources, minimumMacOSVersion: minimumMacOSVersion, keepSources: false)
         .mapError { error in
           .failedToCompileMetalShaders(error)
         }
