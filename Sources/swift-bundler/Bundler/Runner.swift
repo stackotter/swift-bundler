@@ -28,7 +28,18 @@ enum Runner {
   }
 
   static func runIOSApp(bundle: URL) -> Result<Void, RunnerError> {
-    // TODO: Implement running iOS apps
-    return .success()
+    return Process.locate("ios-deploy").mapError { error in
+      return .failedToLocateIOSDeploy(error)
+    }.flatMap { iosDeployExecutable in
+      Process.create(
+        iosDeployExecutable,
+        arguments: [
+          "--justlaunch",
+          "--bundle", bundle.path
+        ]
+      ).runAndWait().mapError { error in
+        return .failedToRunIOSDeploy(error)
+      }
+    }
   }
 }

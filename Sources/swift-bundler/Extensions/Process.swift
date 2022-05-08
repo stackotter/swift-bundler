@@ -92,4 +92,19 @@ extension Process {
 
     return process
   }
+
+  /// Gets the full path to the specified tool (using the `which` shell command).
+  /// - Parameter tool: The tool to expand into a full path.
+  /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
+  static func locate(_ tool: String) -> Result<String, ProcessError> {
+    Process.create(
+      "/bin/zsh",
+      arguments: [
+        "-c",
+        "which \(tool)"
+      ]
+    ).getOutput().map { path in
+      return path.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+  }
 }
