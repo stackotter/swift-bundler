@@ -14,7 +14,8 @@ struct SwiftBundler: ParsableCommand {
       RunCommand.self,
       CreateCommand.self,
       TemplatesCommand.self,
-      GenerateXcodeSupportCommand.self
+      GenerateXcodeSupportCommand.self,
+      ListIdentitiesCommand.self
     ])
 
   @Flag(

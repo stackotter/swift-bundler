@@ -140,6 +140,12 @@ struct BundleCommand: Command {
 
       if shouldCodesign && identity == nil {
         log.error("Please provide a codesigning identity with `--identity`")
+        print(Output {
+          ""
+          Section("Tip: Listing available identities") {
+            ExampleCommand("swift bundler list-identities")
+          }
+        })
         Foundation.exit(1)
       }
 
@@ -150,6 +156,14 @@ struct BundleCommand: Command {
 
       if platform == .iOS && (!shouldCodesign || identity == nil || provisioningProfile == nil) {
         log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
+        if identity == nil {
+          print(Output {
+            ""
+            Section("Tip: Listing available identities") {
+              ExampleCommand("swift bundler list-identities")
+            }
+          })
+        }
         Foundation.exit(1)
       }
 

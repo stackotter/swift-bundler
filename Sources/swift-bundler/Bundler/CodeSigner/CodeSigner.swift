@@ -101,8 +101,13 @@ enum CodeSigner {
           return Identity(id: id, name: name)
         }
 
-        let identityListParser = Many {
-          identityParser
+        let identityListParser = Parse {
+          Many {
+            identityParser
+          }
+          Rest()
+        }.map { identities, _ in
+          return identities
         }
 
         let identities: [Identity]
@@ -127,18 +132,12 @@ enum CodeSigner {
     ).getOutput(excludeStdError: true).mapError { error in
       return .failedToVerifyProvisioningProfile(error)
     }.flatMap { plistContent in
-      struct Profile: Codable {
-        let teamIdentifierArray: [String]
+      
 
-        enum CodingKeys: String, CodingKey {
-          case teamIdentifierArray = "TeamIdentifier"
-        }
-      }
-
-      let profile: Profile
+      let profile: ProvisioningProfile
       do {
         profile = try PropertyListDecoder().decode(
-          Profile.self,
+          ProvisioningProfile.self,
           from: plistContent.data(using: .utf8) ?? Data()
         )
       } catch {
