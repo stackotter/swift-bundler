@@ -83,6 +83,13 @@ struct BundleCommand: Command {
     help: "The identity to use for codesigning")
   var identity: String?
 
+  /// A provisioing profile to use.
+  @Option(
+    name: .customLong("provisioning-profile"),
+    help: "The provisioning profile to embed in the app (only applicable to iOS).",
+    transform: URL.init(fileURLWithPath:))
+  var provisioningProfile: URL?
+
   /// If `true`, the application will be codesigned.
   @Flag(
     name: .customLong("codesign"),
@@ -141,6 +148,11 @@ struct BundleCommand: Command {
         Foundation.exit(1)
       }
 
+      if platform == .iOS && (!shouldCodesign || identity == nil || provisioningProfile == nil) {
+        log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
+        Foundation.exit(1)
+      }
+
       // Get relevant configuration
       let universal = universal || architectures.count > 1
       let architectures: [BuildArchitecture]
@@ -194,7 +206,8 @@ struct BundleCommand: Command {
           outputDirectory: outputDirectory,
           isXcodeBuild: builtWithXcode,
           universal: universal,
-          codesigningIdentity: identity
+          codesigningIdentity: identity,
+          provisioningProfile: provisioningProfile
         )
       }
 

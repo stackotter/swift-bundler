@@ -20,6 +20,7 @@ enum IOSBundlerError: LocalizedError {
   case failedToLocateProvisioningProfile
   case failedToCopyProvisioningProfile(Error)
   case failedToCodesign(CodeSignerError)
+  case mustSpecifyBundleIdentifier
 
   var errorDescription: String? {
     switch self {
@@ -62,6 +63,8 @@ enum IOSBundlerError: LocalizedError {
         return "Failed to copy provisioning profile to output bundle"
       case .failedToCodesign(let error):
         return error.localizedDescription
+      case .mustSpecifyBundleIdentifier:
+        return "Bundle identifier must be specified for iOS apps"
     }
   }
 }

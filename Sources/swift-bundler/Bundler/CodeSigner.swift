@@ -11,20 +11,58 @@ enum CodeSigner {
     var name: String
   }
   
+  /// Signs an iOS app bundle and generates entitlements file.
+  /// - Parameters:
+  ///   - bundle: The app bundle to sign.
+  ///   - identityId: The id of the codesigning identity to use.
+  ///   - bundleIdentifier: The identifier of the app bundle.
+  /// - Returns: A failure if the `codesign` command fails to run.
+  static func signWithGeneratedEntitlements(bundle: URL, identityId: String, bundleIdentifier: String) -> Result<Void, CodeSignerError> {
+    log.info("Codesigning executable")
+    let entitlements = bundle.deletingLastPathComponent().appendingPathComponent("entitlements.xcent")
+
+    return getTeamIdentifier(from: bundle).map { teamIdentifier -> String in
+      generateEntitlementsContent(
+        teamIdentifier: teamIdentifier,
+        bundleIdentifier: bundleIdentifier
+      )
+    }.flatMap { entitlementsContent in
+      do {
+        try entitlementsContent.write(to: entitlements, atomically: false, encoding: .utf8)
+      } catch {
+        return .failure(.failedToWriteEntitlements(error))
+      }
+
+      return sign(bundle: bundle, identityId: identityId, entitlements: entitlements)    
+    }
+  }
+
   /// Signs a Darwin app bundle.
   /// - Parameters:
-  ///   - bundle: The bundle to sign.
+  ///   - bundle: The app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
+  ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func sign(bundle: URL, identityId: String) -> Result<Void, CodeSignerError> {
-    log.info("Codesigning executable")
+  static func sign(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
+    let entitlementArguments: [String]
+    if let entitlements = entitlements {
+      entitlementArguments = [
+        "--entitlements", entitlements.path,
+        "--generate-entitlement-der"
+      ]
+    } else {
+      entitlementArguments = []
+    }
+
+    let arguments = entitlementArguments + [
+      "--force", "--deep",
+      "--sign", identityId,
+      bundle.path
+    ]
+
     let process = Process.create(
       "/usr/bin/codesign",
-      arguments: [
-        "--force", "--deep",
-        "--sign", identityId,
-        bundle.path
-      ]
+      arguments: arguments
     )
 
     return process.runAndWait()
@@ -32,6 +70,7 @@ enum CodeSigner {
         return .failedToRunCodesignTool(error)
       }
   }
+
   
   /// Enumerates the user's available codesigning identities.
   /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
@@ -75,5 +114,60 @@ enum CodeSigner {
 
         return .success(identities)
       }
+  }
+
+  static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
+    Process.create(
+      "/usr/bin/openssl",
+      arguments: [
+        "smime", "-verify",
+        "-in", bundle.appendingPathComponent("embedded.mobileprovision").path,
+        "-inform", "der"
+      ]
+    ).getOutput(excludeStdError: true).mapError { error in
+      return .failedToVerifyProvisioningProfile(error)
+    }.flatMap { plistContent in
+      struct Profile: Codable {
+        let teamIdentifierArray: [String]
+
+        enum CodingKeys: String, CodingKey {
+          case teamIdentifierArray = "TeamIdentifier"
+        }
+      }
+
+      let profile: Profile
+      do {
+        profile = try PropertyListDecoder().decode(
+          Profile.self,
+          from: plistContent.data(using: .utf8) ?? Data()
+        )
+      } catch {
+        return .failure(.failedToDeserializeProvisioningProfile(error))
+      }
+
+      guard let identifier = profile.teamIdentifierArray.first else {
+        return .failure(.provisioningProfileMissingTeamIdentifier)
+      }
+      
+      return .success(identifier)
+    }
+  }
+
+  /// Generates the contents of an entitlements file.
+  static func generateEntitlementsContent(teamIdentifier: String, bundleIdentifier: String) -> String {
+    return """
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>application-identifier</key>
+	<string>\(teamIdentifier).\(bundleIdentifier)</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>\(teamIdentifier)</string>
+	<key>get-task-allow</key>
+	<true/>
+</dict>
+</plist>
+"""
   }
 }

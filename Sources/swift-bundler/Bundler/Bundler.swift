@@ -9,7 +9,8 @@ protocol Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
-    codesigningIdentity: String?
+    codesigningIdentity: String?,
+    provisioningProfile: URL?
   ) -> Result<Void, Error>
 }
 

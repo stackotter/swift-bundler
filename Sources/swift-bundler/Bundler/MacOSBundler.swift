@@ -14,6 +14,7 @@ enum MacOSBundler: Bundler {
   ///   - isXcodeBuild: Whether the build products were created by Xcode or not.
   ///   - universal: Whether the build products were built as universal binaries or not.
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
+  ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -23,7 +24,8 @@ enum MacOSBundler: Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
-    codesigningIdentity: String?
+    codesigningIdentity: String?,
+    provisioningProfile: URL?
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)

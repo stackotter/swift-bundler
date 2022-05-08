@@ -79,6 +79,25 @@ struct RunCommand: Command {
     })
   var platform = Platform.macOS
 
+  /// A codesigning identity to use.
+  @Option(
+    name: .customLong("identity"),
+    help: "The identity to use for codesigning")
+  var identity: String?
+
+  /// A provisioing profile to use.
+  @Option(
+    name: .customLong("provisioning-profile"),
+    help: "The provisioning profile to embed in the app (only applicable to iOS).",
+    transform: URL.init(fileURLWithPath:))
+  var provisioningProfile: URL?
+
+  /// If `true`, the application will be codesigned.
+  @Flag(
+    name: .customLong("codesign"),
+    help: "Codesign the application (use `--identity` to select the identity).")
+  var shouldCodesign = false
+
   /// If `true` a universal application will be created (arm64 and x86_64).
   @Flag(
     name: .shortAndLong,

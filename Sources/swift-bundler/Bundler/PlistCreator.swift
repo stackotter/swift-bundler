@@ -97,16 +97,17 @@ enum PlistCreator {
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
       "CFBundleShortVersionString": version,
-      "CFBundleSupportedPlatforms": ["MacOSX"],
       "LSApplicationCategoryType": category
     ]
 
     switch platform {
     case .macOS:
       entries["LSMinimumSystemVersion"] = minimumOSVersion
+      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
     case .iOS:
       // TODO: Make the produced Info.plist for iOS identical to Xcode's
       entries["MinimumOSVersion"] = minimumOSVersion
+      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
     }
 
     for (key, value) in extraPlistEntries ?? [:] {
@@ -133,16 +134,17 @@ enum PlistCreator {
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": bundleName,
       "CFBundlePackageType": "BNDL",
-      "CFBundleSupportedPlatforms": ["MacOSX"],
       "LSMinimumSystemVersion": minimumOSVersion
     ]
 
     switch platform {
     case .macOS:
       entries["LSMinimumSystemVersion"] = minimumOSVersion
+      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
     case .iOS:
       // TODO: Make the produced Info.plist for iOS identical to Xcode's
       entries["MinimumOSVersion"] = minimumOSVersion
+      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
     }
 
     return Self.serialize(entries.compactMapValues { $0 })

@@ -7,17 +7,21 @@ var processes: [Process] = []
 
 extension Process {
   /// Sets the pipe for the process's stdout and stderr.
+  /// - Parameter excludeStdError: If `true`, only stdout is piped.
   /// - Parameter pipe: The pipe.
-  func setOutputPipe(_ pipe: Pipe) {
+  func setOutputPipe(_ pipe: Pipe, excludeStdError: Bool = false) {
     standardOutput = pipe
-    standardError = pipe
+    if !excludeStdError {
+      standardError = pipe
+    }
   }
 
   /// Gets the process's stdout and stderr as `Data`.
+  /// - Parameter excludeStdError: If `true`, only stdout is returned.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutputData() -> Result<Data, ProcessError> {
+  func getOutputData(excludeStdError: Bool = false) -> Result<Data, ProcessError> {
     let pipe = Pipe()
-    setOutputPipe(pipe)
+    setOutputPipe(pipe, excludeStdError: excludeStdError)
 
     return runAndWait()
       .map { _ in
@@ -27,9 +31,10 @@ extension Process {
   }
 
   /// Gets the process's stdout and stderr as a string.
+  /// - Parameter excludeStdError: If `true`, only stdout is returned.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutput() -> Result<String, ProcessError> {
-    return getOutputData()
+  func getOutput(excludeStdError: Bool = false) -> Result<String, ProcessError> {
+    return getOutputData(excludeStdError: excludeStdError)
       .flatMap { data in
         guard let output = String(data: data, encoding: .utf8) else {
           return .failure(.invalidUTF8Output(output: data))

@@ -14,6 +14,7 @@ enum IOSBundler: Bundler {
   ///   - isXcodeBuild: Does nothing for iOS.
   ///   - universal: Does nothing for iOS.
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
+  ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -23,7 +24,8 @@ enum IOSBundler: Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
-    codesigningIdentity: String?
+    codesigningIdentity: String?,
+    provisioningProfile: URL?
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
@@ -65,12 +67,27 @@ enum IOSBundler: Bundler {
     //   }
     // }
 
+    let embedProfile: () -> Result<Void, IOSBundlerError> = {
+      if let provisioningProfile = provisioningProfile {
+        return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
+      } else {
+        return .success()
+      }
+    }
+
     let codesign: () -> Result<Void, IOSBundlerError> = {
+      guard let bundleIdentifier = appConfiguration.bundleIdentifier else {
+        return .failure(.mustSpecifyBundleIdentifier)
+      }
+
       if let identity = codesigningIdentity {
-        return CodeSigner.sign(bundle: appBundle, identityId: identity)
-          .mapError { error in
-            return .failedToCodesign(error)
-          }
+        return CodeSigner.signWithGeneratedEntitlements(
+          bundle: appBundle,
+          identityId: identity,
+          bundleIdentifier: bundleIdentifier
+        ).mapError { error in
+          return .failedToCodesign(error)
+        }
       } else {
         return .success()
       }
@@ -83,7 +100,7 @@ enum IOSBundler: Bundler {
       // { createAppIconIfPresent() },
       // { copyResourcesBundles() },
       // { copyDynamicLibraries() },
-      { Self.embedProvisioningProfile(in: appBundle) },
+      { embedProfile() },
       { codesign() }
     )
 
@@ -215,30 +232,11 @@ enum IOSBundler: Bundler {
     return .failure(.invalidAppIconFile(icon))
   }
 
-  private static func embedProvisioningProfile(in bundle: URL) -> Result<Void, IOSBundlerError> {
-    let provisioningProfileDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/MobileDevice/Provisioning Profiles")
-    
-    let contents: [URL]
-    do {
-      contents = try FileManager.default.contentsOfDirectory(at: provisioningProfileDirectory, includingPropertiesForKeys: nil)
-    } catch {
-      return .failure(.failedToEnumerateProvisioningProfiles(error))
-    }
-
-    var profile: URL? = nil
-    for file in contents where file.pathExtension == "mobileprovision" {
-      profile = file
-      break
-    }
-    
-    guard let profile = profile else {
-      return .failure(.failedToLocateProvisioningProfile)
-    }
-
-    log.info("Embedding provisioning profile '\(profile.lastPathComponent)'")
+  private static func embedProvisioningProfile(_ provisioningProfile: URL, in bundle: URL) -> Result<Void, IOSBundlerError> {
+    log.info("Embedding provisioning profile")
 
     do {
-      try FileManager.default.copyItem(at: profile, to: bundle.appendingPathComponent("embedded.mobileprovision"))
+      try FileManager.default.copyItem(at: provisioningProfile, to: bundle.appendingPathComponent("embedded.mobileprovision"))
     } catch {
       return .failure(.failedToCopyProvisioningProfile(error))
     }
