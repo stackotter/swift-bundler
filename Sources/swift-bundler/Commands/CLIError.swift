@@ -5,4 +5,21 @@ enum CLIError: LocalizedError {
   case invalidPlatform(String)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
+  case missingMinimumMacOSVersion
+  case missingMinimumIOSVersion
+
+  var errorDescription: String? {
+    switch self {
+    case .invalidPlatform(let platform):
+      return "Invalid platform '\(platform)'. Must be one of (macOS|iOS)"
+    case .invalidArchitecture(let architecture):
+      return "Invalid architecture '\(architecture)'. Must be one of \(BuildArchitecture.possibleValuesString)"
+    case .invalidBuildConfiguration(let buildConfiguration):
+      return "Invalid build configuration '\(buildConfiguration)'. Must be one of \(BuildConfiguration.possibleValuesString)"
+    case .missingMinimumMacOSVersion:
+      return "'minimum_macos_version' must be specified in Bundler.toml to build for platform 'macOS'"
+    case .missingMinimumIOSVersion:
+      return "'minimum_ios_version' must be specified in Bundler.toml to build for platform 'iOS'"
+    }
+  }
 }

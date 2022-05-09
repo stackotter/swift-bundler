@@ -66,16 +66,9 @@ struct BundleCommand: Command {
   @Option(
     name: .shortAndLong,
     help: {
-      let possibleValues = Platform.possibleValuesString
-      return "The platform to build for \(possibleValues). Incompatible with `--arch`."
-    }(),
-    transform: {
-      guard let platform = Platform.init(rawValue: $0) else {
-        throw CLIError.invalidPlatform($0)
-      }
-      return platform
-    })
-  var platform = Platform.macOS
+      return "The platform to build for (macOS|iOS). Incompatible with `--arch`."
+    }())
+  var platform: String = "macOS"
 
   /// A codesigning identity to use.
   @Option(
@@ -125,6 +118,15 @@ struct BundleCommand: Command {
 
     // Start timing
     let elapsed = try Stopwatch.time {
+      // Load configuration
+      let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
+      let (appName, appConfiguration) = try Self.getAppConfiguration(
+        appName,
+        packageDirectory: packageDirectory
+      ).unwrap()
+
+      let platform = try Self.parsePlatform(platform, appConfiguration: appConfiguration)
+
       // Validate parameters
       if !skipBuild {
         guard productsDirectory == nil, !builtWithXcode else {
@@ -133,7 +135,7 @@ struct BundleCommand: Command {
         }
       }
 
-      if platform == .iOS && (builtWithXcode || universal || !architectures.isEmpty) {
+      if case .iOS = platform, builtWithXcode || universal || !architectures.isEmpty {
         log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
         Foundation.exit(1)
       }
@@ -154,7 +156,7 @@ struct BundleCommand: Command {
         Foundation.exit(1)
       }
 
-      if platform == .iOS && (!shouldCodesign || identity == nil || provisioningProfile == nil) {
+      if case .iOS = platform, !shouldCodesign || identity == nil || provisioningProfile == nil {
         log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
         if identity == nil {
           print(Output {
@@ -179,11 +181,6 @@ struct BundleCommand: Command {
         architectures = [.arm64]
       }
 
-      let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let (appName, appConfiguration) = try Self.getAppConfiguration(
-        appName,
-        packageDirectory: packageDirectory
-      ).unwrap()
       let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
@@ -221,7 +218,8 @@ struct BundleCommand: Command {
           isXcodeBuild: builtWithXcode,
           universal: universal,
           codesigningIdentity: identity,
-          provisioningProfile: provisioningProfile
+          provisioningProfile: provisioningProfile,
+          platformVersion: platform.version
         )
       }
 
@@ -268,5 +266,30 @@ struct BundleCommand: Command {
   /// - Returns: The output directory to use.
   static func getOutputDirectory(_ outputDirectory: URL?, packageDirectory: URL) -> URL {
     return outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
+  }
+
+  /// Parses the platform argument in combination with the app's configuration.
+  ///
+  /// The app's configuration is required to populate the iOS platform's version if chosen.
+  /// - Parameters:
+  ///   - platform: The platform string (macOS|iOS).
+  ///   - appConfiguration: The app's configuration.
+  /// - Returns: The parsed platform.
+  /// - Throws: ``CLIError/missingMinimumIOSVersion`` if `platform` is iOS and the app's configuration doesn't contain a minimum iOS version.
+  static func parsePlatform(_ platform: String, appConfiguration: AppConfiguration) throws -> Platform {
+    switch platform {
+    case "macOS":
+      guard let macOSVersion = appConfiguration.minimumMacOSVersion else {
+        throw CLIError.missingMinimumMacOSVersion
+      }
+      return .macOS(version: macOSVersion)
+    case "iOS":
+      guard let iOSVersion = appConfiguration.minimumIOSVersion else {
+        throw CLIError.missingMinimumIOSVersion
+      }
+      return .iOS(version: iOSVersion)
+    default:
+      throw CLIError.invalidPlatform(platform)
+    }
   }
 }

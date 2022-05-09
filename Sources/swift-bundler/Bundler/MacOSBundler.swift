@@ -15,6 +15,7 @@ enum MacOSBundler: Bundler {
   ///   - universal: Whether the build products were built as universal binaries or not.
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
+  ///   - platformVersion: The platform version to target.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -25,7 +26,8 @@ enum MacOSBundler: Bundler {
     isXcodeBuild: Bool,
     universal: Bool,
     codesigningIdentity: String?,
-    provisioningProfile: URL?
+    provisioningProfile: URL?,
+    platformVersion: String
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
@@ -49,8 +51,7 @@ enum MacOSBundler: Bundler {
         from: productsDirectory,
         to: appResources,
         fixBundles: !isXcodeBuild && !universal,
-        minimumOSVersion: appConfiguration.minimumMacOSVersion,
-        platform: .macOS
+        platform: .macOS(version: platformVersion)
       ).mapError { error in
         .failedToCopyResourceBundles(error)
       }
@@ -82,7 +83,7 @@ enum MacOSBundler: Bundler {
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration) },
+      { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration, macOSVersion: platformVersion) },
       { createAppIconIfPresent() },
       { copyResourcesBundles() },
       { copyDynamicLibraries() },
@@ -155,11 +156,13 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Contents` directory.
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
+  ///   - macOSVersion: The macOS version to target.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(
     at outputDirectory: URL,
     appName: String,
-    appConfiguration: AppConfiguration
+    appConfiguration: AppConfiguration,
+    macOSVersion: String
   ) -> Result<Void, MacOSBundlerError> {
     log.info("Creating 'PkgInfo'")
     let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
@@ -179,9 +182,8 @@ enum MacOSBundler: Bundler {
       version: appConfiguration.version,
       bundleIdentifier: appConfiguration.bundleIdentifier,
       category: appConfiguration.category,
-      minimumOSVersion: appConfiguration.minimumMacOSVersion,
       extraPlistEntries: appConfiguration.extraPlistEntries,
-      platform: .macOS
+      platform: .macOS(version: macOSVersion)
     ).mapError { error in
       .failedToCreateInfoPlist(error)
     }

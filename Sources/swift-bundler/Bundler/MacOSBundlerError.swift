@@ -13,9 +13,6 @@ enum MacOSBundlerError: LocalizedError {
   case failedToCopyDynamicLibraries(DynamicLibraryBundlerError)
   case failedToRunExecutable(ProcessError)
   case invalidAppIconFile(URL)
-  case invalidArchitecture(String)
-  case invalidBuildConfiguration(String)
-  case invalidPlatform(String)
   case failedToCodesign(CodeSignerError)
 
   var errorDescription: String? {
@@ -42,15 +39,6 @@ enum MacOSBundlerError: LocalizedError {
         return "Failed to run app executable: \(processError.localizedDescription)"
       case .invalidAppIconFile(let file):
         return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
-      case .invalidArchitecture(let arch):
-        let validArchitectures = BuildArchitecture.possibleValuesString
-        return "'\(arch)' is not a valid architecture. Should be in \(validArchitectures)"
-      case .invalidBuildConfiguration(let configuration):
-        let validConfigurations = BuildConfiguration.possibleValuesString
-        return "'\(configuration)' is not a valid configuration. Should be in \(validConfigurations)"
-      case .invalidPlatform(let platform):
-        let validPlatforms = Platform.possibleValuesString
-        return "'\(platform)' is not a valid platform. Should be in \(validPlatforms)"
       case .failedToCodesign(let error):
         return error.localizedDescription
     }

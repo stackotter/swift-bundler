@@ -15,6 +15,7 @@ enum IOSBundler: Bundler {
   ///   - universal: Does nothing for iOS.
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
+  ///   - platformVersion: The platform version to target.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -25,7 +26,8 @@ enum IOSBundler: Bundler {
     isXcodeBuild: Bool,
     universal: Bool,
     codesigningIdentity: String?,
-    provisioningProfile: URL?
+    provisioningProfile: URL?,
+    platformVersion: String
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
@@ -96,7 +98,7 @@ enum IOSBundler: Bundler {
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration) },
+      { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion) },
       // { createAppIconIfPresent() },
       // { copyResourcesBundles() },
       // { copyDynamicLibraries() },
@@ -170,11 +172,13 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Contents` directory.
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
+  ///   - iOSVersion: The iOS version to target.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(
     at outputDirectory: URL,
     appName: String,
-    appConfiguration: AppConfiguration
+    appConfiguration: AppConfiguration,
+    iOSVersion: String
   ) -> Result<Void, IOSBundlerError> {
     log.info("Creating 'PkgInfo'")
     let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
@@ -194,9 +198,8 @@ enum IOSBundler: Bundler {
       version: appConfiguration.version,
       bundleIdentifier: appConfiguration.bundleIdentifier,
       category: appConfiguration.category,
-      minimumOSVersion: appConfiguration.minimumIOSVersion,
       extraPlistEntries: appConfiguration.extraPlistEntries,
-      platform: .iOS
+      platform: .iOS(version: iOSVersion)
     ).mapError { error in
       .failedToCreateInfoPlist(error)
     }

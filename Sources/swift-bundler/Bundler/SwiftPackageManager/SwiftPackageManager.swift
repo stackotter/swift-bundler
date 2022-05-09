@@ -83,24 +83,23 @@ enum SwiftPackageManager {
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
 
-    let arguments = createBuildArguments(
+    return createBuildArguments(
       product: product,
       packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform
-    )
+    ).flatMap { arguments in
+      let process = Process.create(
+        swiftExecutable,
+        arguments: arguments,
+        directory: packageDirectory
+      )
 
-    let process = Process.create(
-      swiftExecutable,
-      arguments: arguments,
-      directory: packageDirectory
-    )
-
-    return process.runAndWait()
-      .mapError { error in
-        .failedToRunSwiftBuild(command: "\(swiftExecutable) \(arguments.joined(separator: " "))", error)
+      return process.runAndWait().mapError { error in
+        return .failedToRunSwiftBuild(command: "\(swiftExecutable) \(arguments.joined(separator: " "))", error)
       }
+    }
   }
 
   static func createBuildArguments(
@@ -109,14 +108,23 @@ enum SwiftPackageManager {
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform
-  ) -> [String] {
+  ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
-    if platform == .iOS {
+    switch platform {
+    case .iOS(let version):
+      let sdkPath: String
+      switch getLatestIOSSDKPath() {
+      case .success(let path):
+        sdkPath = path
+      case .failure(let error):
+        return .failure(error)
+      }
+
       platformArguments = [
-        "-sdk", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.4.sdk",
-        "-target", "arm64-apple-ios14.0"
+        "-sdk", sdkPath,
+        "-target", "arm64-apple-ios\(version)"
       ].flatMap { ["-Xswiftc", $0] }
-    } else {
+    case .macOS:
       platformArguments = []
     }
 
@@ -136,7 +144,23 @@ enum SwiftPackageManager {
       "-c", configuration.rawValue
     ] + productArguments + architectureArguments + platformArguments
 
-    return arguments
+    return .success(arguments)
+  }
+
+  /// Gets the path to the latest iOS SDK.
+  /// - Returns: The SDK's path, or a failure if an error occurs.
+  static func getLatestIOSSDKPath() -> Result<String, SwiftPackageManagerError> {
+    return Process.create(
+      "/usr/bin/xcrun",
+      arguments: [
+        "--sdk", "iphoneos",
+        "--show-sdk-path"
+      ]
+    ).getOutput().map { output in
+      return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }.mapError { error in
+      return .failedToGetIOSSDKPath(error)
+    }
   }
 
   /// Gets the version of the current Swift installation.
@@ -188,28 +212,26 @@ enum SwiftPackageManager {
     architectures: [BuildArchitecture],
     platform: Platform
   ) -> Result<URL, SwiftPackageManagerError> {
-    let arguments = createBuildArguments(
+    return createBuildArguments(
       product: nil,
       packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform
-    ) + ["--show-bin-path"]
+    ).flatMap { arguments in
+      let process = Process.create(
+        "/usr/bin/swift",
+        arguments: arguments + ["--show-bin-path"],
+        directory: packageDirectory
+      )
 
-    let process = Process.create(
-      "/usr/bin/swift",
-      arguments: arguments,
-      directory: packageDirectory
-    )
-
-    return process.getOutput()
-      .flatMap { output in
+      return process.getOutput().flatMap { output in
         let path = output.trimmingCharacters(in: .newlines)
         return .success(URL(fileURLWithPath: path))
-      }
-      .mapError { error in
+      }.mapError { error in
         let command = "/usr/bin/swift " + arguments.joined(separator: " ")
         return .failedToGetProductsDirectory(command: command, error)
       }
+    }
   }
 }

@@ -10,7 +10,8 @@ protocol Bundler {
     isXcodeBuild: Bool,
     universal: Bool,
     codesigningIdentity: String?,
-    provisioningProfile: URL?
+    provisioningProfile: URL?,
+    platformVersion: String
   ) -> Result<Void, Error>
 }
 

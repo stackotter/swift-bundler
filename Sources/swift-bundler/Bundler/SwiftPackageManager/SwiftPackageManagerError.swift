@@ -9,6 +9,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToGetSwiftVersion(ProcessError)
   case invalidSwiftVersionOutput(String, Error)
   case failedToGetProductsDirectory(command: String, ProcessError)
+  case failedToGetIOSSDKPath(ProcessError)
 
   var errorDescription: String? {
     switch self {
@@ -26,6 +27,8 @@ enum SwiftPackageManagerError: LocalizedError {
         return "The output of 'swift --version' could not be parsed: '\(output)'"
       case .failedToGetProductsDirectory(let command, let error):
         return "Failed to get products directory via '\(command)': \(error.localizedDescription)"
+      case .failedToGetIOSSDKPath(let error):
+        return "Failed to get iOS SDK path: \(error.localizedDescription)"
     }
   }
 }

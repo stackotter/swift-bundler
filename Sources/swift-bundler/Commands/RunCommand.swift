@@ -68,16 +68,9 @@ struct RunCommand: Command {
   @Option(
     name: .shortAndLong,
     help: {
-      let possibleValues = Platform.possibleValuesString
-      return "The platform to build for \(possibleValues). Incompatible with `--arch`."
-    }(),
-    transform: {
-      guard let platform = Platform.init(rawValue: $0) else {
-        throw CLIError.invalidPlatform($0)
-      }
-      return platform
-    })
-  var platform = Platform.macOS
+      return "The platform to build for (macOS|iOS). Incompatible with `--arch`."
+    }())
+  var platform: String = "macOS"
 
   /// A codesigning identity to use.
   @Option(
@@ -127,14 +120,16 @@ struct RunCommand: Command {
       buildCommand.run()
     }
 
-    let (appName, _) = try BundleCommand.getAppConfiguration(
+    let (appName, appConfiguration) = try BundleCommand.getAppConfiguration(
       buildCommand.appName,
       packageDirectory: packageDirectory
     ).unwrap()
+    let platform = try BundleCommand.parsePlatform(platform, appConfiguration: appConfiguration)
 
     let outputDirectory = BundleCommand.getOutputDirectory(
       buildCommand.outputDirectory,
-      packageDirectory: packageDirectory)
+      packageDirectory: packageDirectory
+    )
 
     try Runner.run(
       bundle: outputDirectory.appendingPathComponent("\(appName).app"),
