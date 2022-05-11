@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  An Xcodeless tool for creating cross-platform Swift apps.
+  An Xcodeproj-less tool for creating cross-platform Swift apps.
 </p>
 
 ## Important!!
