@@ -80,4 +80,4 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 
 If you have an app made with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
-- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swiftr
+- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
