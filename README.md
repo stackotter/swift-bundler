@@ -13,13 +13,11 @@
 
 ## Important!!
 
-> ***Swift Bundler has gone sponsor-only to support its development. This public version only supports creating macOS apps and will stay that way until Swift Bundler is ready to come out of its sponsor-only phase.***
+> ***Swift Bundler has gone sponsor-only to support its development. This public version only supports creating macOS apps.***
 >
-> **To use Swift Bundler to create apps for iOS (and other platforms as they are added), [become a monthly sponsor of stackotter](https://github.com/sponsors/stackotter). If you have a particular interest in a not-yet supported platform, I will prioritise supporting that platform.**
+> **To create iOS apps with Swift Bundler, [become a monthly sponsor of stackotter](https://github.com/sponsors/stackotter). If you have a particular interest in a not-yet supported platform, I will prioritise supporting that platform.**
 >
-> **This public repository will be frozen until Swift Bundler comes out of sponsor-only development.**
->
-> More information is available on [the Swift Bundler website](https://swiftbundler.dev).
+> **More information is available on [the Swift Bundler website](https://swiftbundler.dev).**
 
 ## Supporting Swift Bundler ❤️
 
