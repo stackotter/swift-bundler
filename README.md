@@ -4,13 +4,12 @@
 
 <p align="center">
   <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dswift-versions"></a>
-  <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dplatforms"></a>
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A tool for creating macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
-
-You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+<p align="center">
+  An Xcodeproj-less tool for creating cross-platform Swift apps.
+</p>
 
 ## Supporting Swift Bundler ❤️
 
@@ -19,6 +18,13 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 ## Documentation 📚
 
 The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
+
+## Branches 🛠
+
+Swift Bundler's development is organized into branches. When a non-main branch's feature is mature enough, it is merged into main.
+
+- **main**: Currently only creates macOS apps.
+- **ios**: Creates macOS and iOS apps.
 
 ## Installation 📦
 
@@ -74,7 +80,4 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 
 If you have an app made with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
-- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
-
-
-
+- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swiftr
