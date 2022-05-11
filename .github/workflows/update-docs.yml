@@ -27,7 +27,7 @@ jobs:
           --target SwiftBundler \
           --disable-indexing \
           --transform-for-static-hosting \
-          --hosting-base-path swift-bundler \
+          --hosting-base-path swift-bundler-early-access \
           --output-path gh-pages/docs
         CURRENT_COMMIT_HASH=`git rev-parse --short HEAD`
         cd gh-pages
