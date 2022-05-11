@@ -4,13 +4,22 @@
 
 <p align="center">
   <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dswift-versions"></a>
-  <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dplatforms"></a>
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
 </p>
 
-A tool for creating macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for all desktop platforms with a single Swift codebase.
+<p align="center">
+  An Xcodeless tool for creating cross-platform Swift apps.
+</p>
 
-You may also be interested in [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui), a UI framework with a similar goal.
+## Important!!
+
+> ***Swift Bundler has gone sponsor-only to support its development. This public version only supports creating macOS apps and will stay that way until Swift Bundler is ready to come out of its sponsor-only phase.***
+>
+> **To use Swift Bundler to create apps for iOS (and other platforms as they are added), [become a monthly sponsor of stackotter](https://github.com/sponsors/stackotter). If you have a particular interest in a not-yet supported platform, I will prioritise supporting that platform.**
+>
+> **This public repository will be frozen until Swift Bundler comes out of sponsor-only development.**
+>
+> More information is available on [the Swift Bundler website](https://swiftbundler.dev).
 
 ## Supporting Swift Bundler ❤️
 
@@ -75,6 +84,3 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 If you have an app made with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
 - [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
-
-
-
