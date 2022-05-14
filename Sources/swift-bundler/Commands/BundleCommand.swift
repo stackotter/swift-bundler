@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 /// The subcommand for creating app bundles for a package.
-struct BundleCommand: Command {
+struct BundleCommand: AsyncCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Create an app bundle from a package.")
@@ -113,11 +113,11 @@ struct BundleCommand: Command {
     ))
   var builtWithXcode = false
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     var appBundle: URL?
 
     // Start timing
-    let elapsed = try Stopwatch.time {
+    let elapsed = try await Stopwatch.time {
       // Load configuration
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
       let (appName, appConfiguration) = try Self.getAppConfiguration(
@@ -173,12 +173,12 @@ struct BundleCommand: Command {
       let universal = universal || architectures.count > 1
       let architectures: [BuildArchitecture]
       switch platform {
-      case .macOS:
-        architectures = universal
-          ? [.arm64, .x86_64]
-          : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
-      case .iOS:
-        architectures = [.arm64]
+        case .macOS:
+          architectures = universal
+            ? [.arm64, .x86_64]
+            : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
+        case .iOS:
+          architectures = [.arm64]
       }
 
       let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
@@ -194,7 +194,7 @@ struct BundleCommand: Command {
       ).unwrap()
 
       // Create build job
-      let build: () -> Result<Void, Error> = {
+      let build: () async -> Result<Void, Error> = {
         SwiftPackageManager.build(
           product: appConfiguration.product,
           packageDirectory: packageDirectory,
@@ -209,7 +209,7 @@ struct BundleCommand: Command {
       // Create bundle job
       let bundler = getBundler(for: platform)
       let bundle = {
-        bundler.bundle(
+        await bundler.bundle(
           appName: appName,
           appConfiguration: appConfiguration,
           packageDirectory: packageDirectory,
@@ -224,7 +224,7 @@ struct BundleCommand: Command {
       }
 
       // Build pipeline
-      let task: () -> Result<Void, Error>
+      let task: () async -> Result<Void, Error>
       if skipBuild {
         task = bundle
       } else {
@@ -235,7 +235,7 @@ struct BundleCommand: Command {
       }
 
       // Run pipeline
-      try task().unwrap()
+      try await task().unwrap()
     }
 
     // Output the time elapsed and app bundle location

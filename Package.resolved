@@ -1,88 +1,212 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "Rainbow",
-        "repositoryURL": "https://github.com/onevcat/Rainbow",
-        "state": {
-          "branch": null,
-          "revision": "e0dada9cd44e3fa7ec3b867e49a8ddbf543e3df3",
-          "version": "4.0.1"
-        }
-      },
-      {
-        "package": "swift-argument-parser",
-        "repositoryURL": "https://github.com/stackotter/swift-argument-parser",
-        "state": {
-          "branch": "main",
-          "revision": "36f73bea370315e7a5af1f450fa013180ba2c584",
-          "version": null
-        }
-      },
-      {
-        "package": "swift-case-paths",
-        "repositoryURL": "https://github.com/pointfreeco/swift-case-paths",
-        "state": {
-          "branch": null,
-          "revision": "ce9c0d897db8a840c39de64caaa9b60119cf4be8",
-          "version": "0.8.1"
-        }
-      },
-      {
-        "package": "SwiftDocCPlugin",
-        "repositoryURL": "https://github.com/apple/swift-docc-plugin",
-        "state": {
-          "branch": null,
-          "revision": "3303b164430d9a7055ba484c8ead67a52f7b74f6",
-          "version": "1.0.0"
-        }
-      },
-      {
-        "package": "swift-log",
-        "repositoryURL": "https://github.com/apple/swift-log",
-        "state": {
-          "branch": null,
-          "revision": "5d66f7ba25daf4f94100e7022febf3c75e37a6c7",
-          "version": "1.4.2"
-        }
-      },
-      {
-        "package": "swift-parsing",
-        "repositoryURL": "https://github.com/pointfreeco/swift-parsing.git",
-        "state": {
-          "branch": null,
-          "revision": "28d32e9ace1c4c43f5e5a177be837a202494c2d5",
-          "version": "0.9.2"
-        }
-      },
-      {
-        "package": "TOMLKit",
-        "repositoryURL": "https://github.com/LebJe/TOMLKit",
-        "state": {
-          "branch": null,
-          "revision": "5c09c078507dc5627e8b6d48927be10e50332484",
-          "version": "0.5.3"
-        }
-      },
-      {
-        "package": "Version",
-        "repositoryURL": "https://github.com/mxcl/Version.git",
-        "state": {
-          "branch": null,
-          "revision": "1fe824b80d89201652e7eca7c9252269a1d85e25",
-          "version": "2.0.1"
-        }
-      },
-      {
-        "package": "xctest-dynamic-overlay",
-        "repositoryURL": "https://github.com/pointfreeco/xctest-dynamic-overlay",
-        "state": {
-          "branch": null,
-          "revision": "50a70a9d3583fe228ce672e8923010c8df2deddd",
-          "version": "0.2.1"
-        }
+  "pins" : [
+    {
+      "identity" : "aexml",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tadija/AEXML.git",
+      "state" : {
+        "revision" : "38f7d00b23ecd891e1ee656fa6aeebd6ba04ecc3",
+        "version" : "4.6.1"
       }
-    ]
-  },
-  "version": 1
+    },
+    {
+      "identity" : "graphviz",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftDocOrg/GraphViz.git",
+      "state" : {
+        "revision" : "70bebcf4597b9ce33e19816d6bbd4ba9b7bdf038",
+        "version" : "0.2.0"
+      }
+    },
+    {
+      "identity" : "jsonutilities",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/yonaskolb/JSONUtilities.git",
+      "state" : {
+        "revision" : "128d2ffc22467f69569ef8ff971683e2393191a0",
+        "version" : "4.2.0"
+      }
+    },
+    {
+      "identity" : "pathkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kylef/PathKit.git",
+      "state" : {
+        "revision" : "3bfd2737b700b9a36565a8c94f4ad2b050a5e574",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "rainbow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onevcat/Rainbow",
+      "state" : {
+        "revision" : "626c3d4b6b55354b4af3aa309f998fae9b31a3d9",
+        "version" : "3.2.0"
+      }
+    },
+    {
+      "identity" : "spectre",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kylef/Spectre.git",
+      "state" : {
+        "revision" : "26cc5e9ae0947092c7139ef7ba612e34646086c7",
+        "version" : "0.10.1"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/swift-argument-parser",
+      "state" : {
+        "branch" : "main",
+        "revision" : "36f73bea370315e7a5af1f450fa013180ba2c584"
+      }
+    },
+    {
+      "identity" : "swift-case-paths",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-case-paths",
+      "state" : {
+        "revision" : "ce9c0d897db8a840c39de64caaa9b60119cf4be8",
+        "version" : "0.8.1"
+      }
+    },
+    {
+      "identity" : "swift-crypto",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-crypto.git",
+      "state" : {
+        "revision" : "ddb07e896a2a8af79512543b1c7eb9797f8898a5",
+        "version" : "1.1.7"
+      }
+    },
+    {
+      "identity" : "swift-docc-plugin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-docc-plugin",
+      "state" : {
+        "revision" : "3303b164430d9a7055ba484c8ead67a52f7b74f6",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "swift-driver",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-driver.git",
+      "state" : {
+        "branch" : "release/5.6",
+        "revision" : "9982f32f96a2e0e597d1b4a0af4a7e997dc471be"
+      }
+    },
+    {
+      "identity" : "swift-llbuild",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-llbuild.git",
+      "state" : {
+        "branch" : "release/5.6",
+        "revision" : "acd686530e56122d916acd49a166beb9198e9b87"
+      }
+    },
+    {
+      "identity" : "swift-log",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-log",
+      "state" : {
+        "revision" : "5d66f7ba25daf4f94100e7022febf3c75e37a6c7",
+        "version" : "1.4.2"
+      }
+    },
+    {
+      "identity" : "swift-package-manager",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-package-manager",
+      "state" : {
+        "branch" : "release/5.6",
+        "revision" : "e399e87bd4a2984947e15edc3f6750d1f6fa5d6e"
+      }
+    },
+    {
+      "identity" : "swift-parsing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-parsing.git",
+      "state" : {
+        "revision" : "28d32e9ace1c4c43f5e5a177be837a202494c2d5",
+        "version" : "0.9.2"
+      }
+    },
+    {
+      "identity" : "swift-tools-support-core",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-tools-support-core.git",
+      "state" : {
+        "branch" : "release/5.6",
+        "revision" : "f6c8048a76e280d0f14cc378b8b5c3cfb77c61fb"
+      }
+    },
+    {
+      "identity" : "swiftcli",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jakeheis/SwiftCLI.git",
+      "state" : {
+        "revision" : "2e949055d9797c1a6bddcda0e58dada16cc8e970",
+        "version" : "6.0.3"
+      }
+    },
+    {
+      "identity" : "swiftxcodeproj",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/SwiftXcodeProj.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "b1aaf2fb0f7754bc274a5b539d5fe94a9e92fa77"
+      }
+    },
+    {
+      "identity" : "tomlkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/LebJe/TOMLKit",
+      "state" : {
+        "revision" : "5c09c078507dc5627e8b6d48927be10e50332484",
+        "version" : "0.5.3"
+      }
+    },
+    {
+      "identity" : "version",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mxcl/Version.git",
+      "state" : {
+        "revision" : "1fe824b80d89201652e7eca7c9252269a1d85e25",
+        "version" : "2.0.1"
+      }
+    },
+    {
+      "identity" : "xcodegen",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/XcodeGen",
+      "state" : {
+        "branch" : "renamed",
+        "revision" : "aafcc23bdb92dfd02444729bfdb58e340fdb6f6a"
+      }
+    },
+    {
+      "identity" : "xctest-dynamic-overlay",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
+      "state" : {
+        "revision" : "50a70a9d3583fe228ce672e8923010c8df2deddd",
+        "version" : "0.2.1"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams.git",
+      "state" : {
+        "revision" : "9ff1cc9327586db4e0c8f46f064b6a82ec1566fa",
+        "version" : "4.0.6"
+      }
+    }
+  ],
+  "version" : 2
 }

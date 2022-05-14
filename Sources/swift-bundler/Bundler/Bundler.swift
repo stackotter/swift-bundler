@@ -12,7 +12,7 @@ protocol Bundler {
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String
-  ) -> Result<Void, Error>
+  ) async -> Result<Void, Error>
 }
 
 func getBundler(for platform: Platform) -> any Bundler.Type {

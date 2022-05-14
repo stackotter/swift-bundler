@@ -1,4 +1,5 @@
 import Foundation
+import PackageModel
 
 /// The bundler for creating macOS apps.
 enum MacOSBundler: Bundler {
@@ -28,8 +29,17 @@ enum MacOSBundler: Bundler {
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String
-  ) -> Result<Void, Error> {
+  ) async -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
+
+    let manifest: Manifest
+    switch await SwiftPackageManager.loadPackageManifest(from: packageDirectory) {
+      case .success(let value):
+        manifest = value
+      case .failure(let error):
+        return .failure(MacOSBundlerError.failedToLoadManifest(error))
+    }
+
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
 
     let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
@@ -47,11 +57,13 @@ enum MacOSBundler: Bundler {
     }
 
     let copyResourcesBundles: () -> Result<Void, MacOSBundlerError> = {
-      ResourceBundler.copyResourceBundles(
+      ResourceBundler.copyResources(
         from: productsDirectory,
         to: appResources,
         fixBundles: !isXcodeBuild && !universal,
-        platform: .macOS(version: platformVersion)
+        platform: .macOS(version: platformVersion),
+        packageName: manifest.displayName,
+        productName: appConfiguration.product
       ).mapError { error in
         .failedToCopyResourceBundles(error)
       }

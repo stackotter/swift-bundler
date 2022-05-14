@@ -30,4 +30,12 @@ enum Stopwatch {
     let elapsed = CFAbsoluteTimeGetCurrent() - start
     return Measurement(seconds: elapsed)
   }
+
+  /// Times how long an action takes to run.
+  static func time(_ action: () async throws -> Void) async rethrows -> Measurement {
+    let start = CFAbsoluteTimeGetCurrent()
+    try await action()
+    let elapsed = CFAbsoluteTimeGetCurrent() - start
+    return Measurement(seconds: elapsed)
+  }
 }

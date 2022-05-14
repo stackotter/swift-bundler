@@ -3,6 +3,12 @@ import ArgumentParser
 import Version
 import Parsing
 
+import class PackageModel.Manifest
+import class Workspace.Workspace
+import struct TSCBasic.AbsolutePath
+import class Basics.ObservabilitySystem
+import struct Basics.Diagnostic
+
 /// A utility for interacting with the Swift package manager and performing some other package related operations.
 enum SwiftPackageManager {
   /// The path to the swift executable.
@@ -179,7 +185,7 @@ enum SwiftPackageManager {
         let parser = Parse {
           Prefix { $0 != "(" }
           "(swiftlang-"
-          Parse({ Version.init(major: $0, minor: $1, patch: $2) }) {
+          Parse({ Version(major: $0, minor: $1, patch: $2) }) {
             Int.parser()
             "."
             Int.parser()
@@ -232,6 +238,46 @@ enum SwiftPackageManager {
         let command = "/usr/bin/swift " + arguments.joined(separator: " ")
         return .failedToGetProductsDirectory(command: command, error)
       }
+    }
+  }
+
+  /// Loads a root package manifest from a package's root directory.
+  /// - Parameter packageDirectory: The package's root directory.
+  /// - Returns: The loaded manifest, or a failure if an error occurs.
+  static func loadPackageManifest(
+    from packageDirectory: URL
+  ) async -> Result<Manifest, SwiftPackageManagerError> {
+    var diagnostics: [Basics.Diagnostic] = []
+    let result: Result<Manifest, Error>
+    do {
+      let packagePath = try AbsolutePath(validating: packageDirectory.path)
+      let scope = ObservabilitySystem({ _, diagnostic in
+        diagnostics.append(diagnostic)
+      }).topScope
+
+      let workspace = try Workspace(forRootPackage: packagePath)
+      result = await Task { () -> Manifest in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Manifest, Error>) in
+          workspace.loadRootManifest(
+            at: packagePath,
+            observabilityScope: scope,
+            completion: { result in
+              switch result {
+                case .success(let value):
+                  continuation.resume(returning: value)
+                case .failure(let error):
+                  continuation.resume(throwing: error)
+              }
+            }
+          )
+        }
+      }.result
+    } catch {
+      return .failure(.failedToLoadPackageManifest(directory: packageDirectory, [], error))
+    }
+
+    return result.mapError { error in
+      return .failedToLoadPackageManifest(directory: packageDirectory, diagnostics, error)
     }
   }
 }

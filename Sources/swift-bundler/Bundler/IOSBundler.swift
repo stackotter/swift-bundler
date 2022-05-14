@@ -1,4 +1,5 @@
 import Foundation
+import PackageModel
 
 /// The bundler for creating iOS apps.
 enum IOSBundler: Bundler {
@@ -28,34 +29,43 @@ enum IOSBundler: Bundler {
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String
-  ) -> Result<Void, Error> {
+  ) async -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
+
+    let manifest: Manifest
+    switch await SwiftPackageManager.loadPackageManifest(from: packageDirectory) {
+      case .success(let value):
+        manifest = value
+      case .failure(let error):
+        return .failure(IOSBundlerError.failedToLoadManifest(error))
+    }
+
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
 
     let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
     let appExecutable = appBundle.appendingPathComponent(appName)
-    // let appResources = appBundle.appendingPathComponent("Resources")
     // let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
 
     // let createAppIconIfPresent: () -> Result<Void, IOSBundlerError> = {
     //   if let path = appConfiguration.icon {
     //     let icon = packageDirectory.appendingPathComponent(path)
-    //     return Self.createAppIcon(icon: icon, outputDirectory: appResources)
+    //     return Self.createAppIcon(icon: icon, outputDirectory: appAssets)
     //   }
     //   return .success()
     // }
 
-    // let copyResourcesBundles: () -> Result<Void, IOSBundlerError> = {
-    //   ResourceBundler.copyResourceBundles(
-    //     from: productsDirectory,
-    //     to: appResources,
-    //     fixBundles: true,
-    //     minimumOSVersion: appConfiguration.minimumIOSVersion,
-    //     platform: .iOS
-    //   ).mapError { error in
-    //     .failedToCopyResourceBundles(error)
-    //   }
-    // }
+    let copyResourcesBundles: () -> Result<Void, IOSBundlerError> = {
+      ResourceBundler.copyResources(
+        from: productsDirectory,
+        to: appBundle,
+        fixBundles: !isXcodeBuild && !universal,
+        platform: .iOS(version: platformVersion),
+        packageName: manifest.displayName,
+        productName: appConfiguration.product
+      ).mapError { error in
+        .failedToCopyResourceBundles(error)
+      }
+    }
 
     // let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
     //   DynamicLibraryBundler.copyDynamicLibraries(
@@ -100,7 +110,7 @@ enum IOSBundler: Bundler {
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion) },
       // { createAppIconIfPresent() },
-      // { copyResourcesBundles() },
+      { copyResourcesBundles() },
       // { copyDynamicLibraries() },
       { embedProfile() },
       { codesign() }
@@ -134,7 +144,7 @@ enum IOSBundler: Bundler {
     let fileManager = FileManager.default
 
     let appBundleDirectory = outputDirectory.appendingPathComponent("\(appName).app")
-    // let appResources = appBundleDirectory.appendingPathComponent("Resources")
+    let appResources = appBundleDirectory.appendingPathComponent("Assets.xcassets")
     // let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
 
     do {
@@ -142,8 +152,7 @@ enum IOSBundler: Bundler {
         try fileManager.removeItem(at: appBundleDirectory)
       }
       try fileManager.createDirectory(at: appBundleDirectory)
-      // TODO: support resources on ios
-      // try fileManager.createDirectory(at: appResources)
+      try fileManager.createDirectory(at: appResources)
       // TODO: support dynamic libraries on ios
       // try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()

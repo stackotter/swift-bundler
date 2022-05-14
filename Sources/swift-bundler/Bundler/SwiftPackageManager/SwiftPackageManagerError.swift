@@ -1,4 +1,5 @@
 import Foundation
+import Basics
 
 /// An error returned by ``SwiftPackageManager``.
 enum SwiftPackageManagerError: LocalizedError {
@@ -10,6 +11,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case invalidSwiftVersionOutput(String, Error)
   case failedToGetProductsDirectory(command: String, ProcessError)
   case failedToGetIOSSDKPath(ProcessError)
+  case failedToLoadPackageManifest(directory: URL, [Diagnostic], Error)
 
   var errorDescription: String? {
     switch self {
@@ -29,6 +31,9 @@ enum SwiftPackageManagerError: LocalizedError {
         return "Failed to get products directory via '\(command)': \(error.localizedDescription)"
       case .failedToGetIOSSDKPath(let error):
         return "Failed to get iOS SDK path: \(error.localizedDescription)"
+      case .failedToLoadPackageManifest(let directory, let diagnostics, _):
+        let diagnosticsString = diagnostics.map(\.description).map({ $0 + "\n" }).joined(separator: "")
+        return "\(diagnosticsString)Failed to load package manifest from '\(directory)'"
     }
   }
 }

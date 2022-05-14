@@ -9,6 +9,7 @@ enum ResourceBundlerError: LocalizedError {
   case failedToCopyResource(source: URL, destination: URL)
   case failedToEnumerateBundleContents(directory: URL, Error)
   case failedToCompileMetalShaders(MetalCompilerError)
+  case failedToCompileXCAssets(ProcessError)
 
   var errorDescription: String? {
     switch self {
@@ -26,6 +27,8 @@ enum ResourceBundlerError: LocalizedError {
         return "Failed to enumerate bundle contents at '\(directory.relativePath)'"
       case .failedToCompileMetalShaders(let metalCompilerError):
         return "Failed to compile Metal shaders: \(metalCompilerError.localizedDescription)"
+      case .failedToCompileXCAssets(let error):
+        return "Failed to compile XCAssets with 'actool': \(error)"
     }
   }
 }

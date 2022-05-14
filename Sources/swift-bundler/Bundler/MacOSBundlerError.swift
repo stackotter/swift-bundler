@@ -14,6 +14,7 @@ enum MacOSBundlerError: LocalizedError {
   case failedToRunExecutable(ProcessError)
   case invalidAppIconFile(URL)
   case failedToCodesign(CodeSignerError)
+  case failedToLoadManifest(SwiftPackageManagerError)
 
   var errorDescription: String? {
     switch self {
@@ -40,6 +41,8 @@ enum MacOSBundlerError: LocalizedError {
       case .invalidAppIconFile(let file):
         return "Invalid app icon file, must be 'png' or 'icns', got '\(file.relativePath)'"
       case .failedToCodesign(let error):
+        return error.localizedDescription
+      case .failedToLoadManifest(let error):
         return error.localizedDescription
     }
   }

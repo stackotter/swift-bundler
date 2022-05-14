@@ -3,7 +3,7 @@ import ArgumentParser
 import Darwin
 
 /// The root command of Swift Bundler.
-struct SwiftBundler: ParsableCommand {
+struct SwiftBundler: AsyncParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
     abstract: "A tool for creating macOS apps from Swift packages.",
