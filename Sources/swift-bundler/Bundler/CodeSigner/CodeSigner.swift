@@ -10,7 +10,7 @@ enum CodeSigner {
     /// The identity's display name.
     var name: String
   }
-  
+
   /// Signs an iOS app bundle and generates entitlements file.
   /// - Parameters:
   ///   - bundle: The app bundle to sign.
@@ -18,7 +18,6 @@ enum CodeSigner {
   ///   - bundleIdentifier: The identifier of the app bundle.
   /// - Returns: A failure if the `codesign` command fails to run.
   static func signWithGeneratedEntitlements(bundle: URL, identityId: String, bundleIdentifier: String) -> Result<Void, CodeSignerError> {
-    log.info("Codesigning executable")
     let entitlements = bundle.deletingLastPathComponent().appendingPathComponent("entitlements.xcent")
 
     return getTeamIdentifier(from: bundle).map { teamIdentifier -> String in
@@ -33,7 +32,7 @@ enum CodeSigner {
         return .failure(.failedToWriteEntitlements(error))
       }
 
-      return sign(bundle: bundle, identityId: identityId, entitlements: entitlements)    
+      return sign(bundle: bundle, identityId: identityId, entitlements: entitlements)
     }
   }
 
@@ -44,6 +43,7 @@ enum CodeSigner {
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
   static func sign(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
+    log.info("Codesigning executable")
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
@@ -71,7 +71,6 @@ enum CodeSigner {
       }
   }
 
-  
   /// Enumerates the user's available codesigning identities.
   /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
   static func enumerateIdentities() -> Result<[Identity], CodeSignerError> {
@@ -132,8 +131,6 @@ enum CodeSigner {
     ).getOutput(excludeStdError: true).mapError { error in
       return .failedToVerifyProvisioningProfile(error)
     }.flatMap { plistContent in
-      
-
       let profile: ProvisioningProfile
       do {
         profile = try PropertyListDecoder().decode(
@@ -147,7 +144,7 @@ enum CodeSigner {
       guard let identifier = profile.teamIdentifierArray.first else {
         return .failure(.provisioningProfileMissingTeamIdentifier)
       }
-      
+
       return .success(identifier)
     }
   }

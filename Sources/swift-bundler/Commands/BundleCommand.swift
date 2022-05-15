@@ -169,6 +169,16 @@ struct BundleCommand: AsyncCommand {
         Foundation.exit(1)
       }
 
+      switch platform {
+        case .iOS:
+          break
+        default:
+          if provisioningProfile != nil {
+            log.error("`--provisioning-profile` is only available when building iOS apps")
+            Foundation.exit(1)
+          }
+      }
+
       // Get relevant configuration
       let universal = universal || architectures.count > 1
       let architectures: [BuildArchitecture]
