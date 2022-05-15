@@ -40,7 +40,7 @@ After installing Swift Bundler, package templates make it quick to get started. 
 
 ```sh
 # Create a new app from the SwiftUI template.
-swift bundler create HelloWorld --template SwiftUI
+swift bundler create HelloWorld --identifier com.example.HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 

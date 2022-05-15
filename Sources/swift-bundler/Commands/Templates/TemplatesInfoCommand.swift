@@ -33,7 +33,7 @@ struct TemplatesInfoCommand: Command {
       Foundation.exit(1)
     }
 
-    var exampleCommand = "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
+    var exampleCommand = "swift bundler create [app-name] --identifier [app-identifier] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
       exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }

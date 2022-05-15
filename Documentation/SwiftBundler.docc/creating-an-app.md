@@ -8,7 +8,7 @@ Use the following command to create a new app from the SwiftUI template.
 
 ```sh
 # Create a new app from the SwiftUI template
-swift bundler create HelloWorld --template SwiftUI
+swift bundler create HelloWorld --identifier com.example.HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 

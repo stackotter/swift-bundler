@@ -12,6 +12,12 @@ struct CreateCommand: Command {
     help: "The app's name. Must only contain characters from the English alphabet.")
   var appName: String
 
+  /// The app's identifier. Should use reverse domain name notation.
+  @Option(
+    name: .shortAndLong,
+    help: "The app's identifier. (e.g. 'com.example.ExampleApp')")
+  var identifier: String
+
   /// A custom directory to create the app in. Default: create a new directory at './[app-name]'.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
@@ -34,7 +40,7 @@ struct CreateCommand: Command {
 
   /// The indentation style to create the package with.
   @Option(
-    name: .shortAndLong,
+    name: .long,
     help: "Custom indentation style: either 'tabs' or 'spaces=[count]'.")
   var indentation: IndentationStyle = .spaces(4)
 
@@ -79,6 +85,7 @@ struct CreateCommand: Command {
           from: templateName,
           in: templateRepository,
           packageName: appName,
+          identifier: identifier,
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()
@@ -87,6 +94,7 @@ struct CreateCommand: Command {
           in: packageDirectory,
           from: templateName,
           packageName: appName,
+          identifier: identifier,
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()

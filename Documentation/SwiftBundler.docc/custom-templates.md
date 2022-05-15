@@ -14,11 +14,11 @@ Making custom templates isn't too complicated, and after reading this page you s
 
 ```toml
 description = "My first package template."
-platforms = ["macOS", "Linux"] # Adjust according to your needs, valid values are `macOS` and `Linux` (for the future)
+platforms = ["macOS", "iOS"] # Adjust according to your needs, valid values are currently `macOS` and `iOS`
 ```
 4. Add files to the template (see below for details)
 
-Any files within the template directory (excluding `Template.toml`) are copied to the output directory when creating a package. Any occurrence of `{{PACKAGE}}` within the file's relative path is replaced with the package's name. Any occurrence of `{{PACKAGE}}` within the contents of files ending with `.template` is replaced with the package's name and the `.template` file extension is removed.
+Any files within the template directory (excluding `Template.toml`) are copied to the output directory when creating a package. Any occurrence of `{{VARIABLE}}` within the file's relative path is replaced with the corresponding variable's value. Any occurrence of `{{VARIABLE}}` within the contents of files ending with `.template` is replaced with the corresponding variable's value and the `.template` file extension is removed. The available variables are `PACKAGE` (the package's name) and `IDENTIFIER` (the package's identifier).
 
 **All indentation must be tabs (not spaces) so that the `create` command's `--indentation` option functions correctly.**
 
@@ -29,5 +29,5 @@ See [the swift-bundler-templates repository](https://github.com/stackotter/swift
 ## Using a custom template
 
 ```sh
-swift bundler create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
+swift bundler create MyApp --identifier com.example.MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
 ```

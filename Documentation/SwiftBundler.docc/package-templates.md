@@ -25,7 +25,7 @@ swift bundler templates info [template]
 Once you have decided which template you want to use, you can create a package from the template:
 
 ```sh
-swift bundler create [app-name] --template [template]
+swift bundler create [app-name] --identifier [app-identifier] --template [template]
 ```
 
 ## Custom templates

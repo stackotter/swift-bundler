@@ -13,6 +13,7 @@ enum Templater {
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
   ///   - packageName: The name of the package.
+  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
   /// - Returns: The template that the package was created from (or nil if none were used), or a failure if package creation failed.
@@ -20,6 +21,7 @@ enum Templater {
     in outputDirectory: URL,
     from template: String?,
     packageName: String,
+    identifier: String,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
   ) -> Result<Template?, TemplaterError> {
@@ -55,6 +57,7 @@ enum Templater {
           from: template,
           in: templatesDirectory,
           packageName: packageName,
+          identifier: identifier,
           forceCreation: forceCreation,
           indentationStyle: indentationStyle
         )
@@ -70,6 +73,7 @@ enum Templater {
   ///   - template: The template to use to create the package.
   ///   - templatesDirectory: The directory containing the template to use.
   ///   - packageName: The name of the package.
+  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
   /// - Returns: The template that the package was created from, or a failure if package creation failed.
@@ -78,6 +82,7 @@ enum Templater {
     from template: String,
     in templatesDirectory: URL,
     packageName: String,
+    identifier: String,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
   ) -> Result<Template, TemplaterError> {
@@ -131,6 +136,7 @@ enum Templater {
         baseTemplate,
         to: outputDirectory,
         packageName: packageName,
+        identifier: identifier,
         indentationStyle: .tabs)
       if case let .failure(error) = result {
         attemptCleanup(outputDirectory)
@@ -143,6 +149,7 @@ enum Templater {
       templateDirectory,
       to: outputDirectory,
       packageName: packageName,
+      identifier: identifier,
       indentationStyle: indentationStyle
     ).mapError { error in
       attemptCleanup(outputDirectory)
@@ -317,12 +324,14 @@ enum Templater {
   ///   - templateDirectory: The template's directory.
   ///   - outputDirectory: The directory to copy the resulting files to.
   ///   - packageName: The name of the package.
+  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
   ///   - indentationStyle: The style of indentation to use.
   /// - Returns: A failure if template application fails.
   static func applyTemplate(
     _ templateDirectory: URL,
     to outputDirectory: URL,
     packageName: String,
+    identifier: String,
     indentationStyle: IndentationStyle
   ) -> Result<Void, TemplaterError> {
     log.info("Applying '\(templateDirectory.lastPathComponent)' template")
@@ -344,7 +353,9 @@ enum Templater {
         file,
         from: templateDirectory,
         to: outputDirectory,
-        packageName: packageName)
+        packageName: packageName,
+        identifier: identifier
+      )
 
       if case .failure = result {
         return result
@@ -401,19 +412,28 @@ enum Templater {
     try? FileManager.default.removeItem(at: outputDirectory)
   }
 
-  /// Processes a template file (replacing occurences of `{{PACKAGE}}` with the package name) and then copies it to a destination directory.
+  /// Processes a template file (replacing occurences of `{{variable}}` with the variable's values) and then copies it to a destination directory.
+  ///
+  /// Currently only the `PACKAGE` and `IDENTIFIER` variables are available.
   /// - Parameters:
   ///   - file: The template file.
   ///   - templateDirectory: The directory of the template that the file is from.
   ///   - outputDirectory: The directory to output the file to (the file gets copied to the same relative location as in `templateDirectory`).
   ///   - packageName: The name of the package.
+  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
   /// - Returns: A failure if file processing or copying fails.
   private static func processAndCopyFile(
     _ file: URL,
     from templateDirectory: URL,
     to outputDirectory: URL,
-    packageName: String
+    packageName: String,
+    identifier: String
   ) -> Result<Void, TemplaterError> {
+    let variables: [String: String] = [
+      "PACKAGE": packageName,
+      "IDENTIFIER": identifier
+    ]
+
     // Read the file's contents
     var contents: String
     do {
@@ -424,9 +444,11 @@ enum Templater {
 
     var file = file
 
-    // If the file is a template, replace all instances of `{{PACKAGE}}` with the package's name
+    // If the file is a template, replace all instances of `{{variable}}` with the variable's value
     if file.pathExtension == "template" {
-      contents = contents.replacingOccurrences(of: "{{PACKAGE}}", with: packageName)
+      for (variable, value) in variables {
+        contents = contents.replacingOccurrences(of: "{{\(variable)}}", with: value)
+      }
       file = file.deletingPathExtension()
     }
 
@@ -435,9 +457,11 @@ enum Templater {
       return .failure(.failedToGetRelativePath(file: file, base: templateDirectory))
     }
 
-    // Compute the output directory, replacing occurrences of `{{PACKAGE}}` in the original path with the package's name
-    relativePath = relativePath
-      .replacingOccurrences(of: "{{PACKAGE}}", with: packageName)
+    // Compute the output directory, replacing occurrences of `{{variable}}` in the original path with the variable's value
+    for (variable, value) in variables {
+      relativePath = relativePath.replacingOccurrences(of: "{{\(variable)}}", with: value)
+    }
+
     let outputFile = outputDirectory.appendingPathComponent(relativePath)
 
     // Write to the output file
