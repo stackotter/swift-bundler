@@ -13,9 +13,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '13.2'
+      - name: Force Xcode 13.2
+        run: sudo xcode-select -switch /Applications/Xcode_13.2.app
 
       - name: Build
         run: swift build -c release --arch arm64 --arch x86_64
