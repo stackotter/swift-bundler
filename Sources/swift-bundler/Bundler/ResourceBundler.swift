@@ -8,6 +8,7 @@ enum ResourceBundler {
     to destinationDirectory: URL,
     for platform: Platform
   ) -> Result<Void, ResourceBundlerError> {
+    log.info("Compiling asset catalog")
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -112,7 +113,7 @@ enum ResourceBundler {
     platform: Platform,
     isMainBundle: Bool
   ) -> Result<Void, ResourceBundlerError> {
-    log.info("Fixing and copying resource bundle '\(bundle.lastPathComponent)'")
+    log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
 
     let destinationBundle: URL
     let destinationBundleResources: URL

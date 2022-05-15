@@ -47,6 +47,8 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() -> Result<Void, ProcessError> {
+    log.debug("Running command: '\(launchPath ?? "")' with arguments: \(arguments ?? [])")
+
     do {
       try run()
     } catch {
@@ -69,12 +71,23 @@ extension Process {
   ///   - arguments: The tool's arguments.
   ///   - directory: The directory to run the command in. Defaults to the current directory.
   ///   - pipe: The pipe for the process's stdout and stderr. Defaults to `nil`.
+  ///   - runSilentlyWhenNotVerbose: If `true`, output is captured even when no pipe is provided id Swift Bundler wasn't run with `-v`.
+  ///                                Defaults to `true`.
   /// - Returns: The new process.
-  static func create(_ tool: String, arguments: [String] = [], directory: URL? = nil, pipe: Pipe? = nil) -> Process {
+  static func create(
+    _ tool: String,
+    arguments: [String] = [],
+    directory: URL? = nil,
+    pipe: Pipe? = nil,
+    runSilentlyWhenNotVerbose: Bool = true
+  ) -> Process {
     let process = Process()
 
     if let pipe = pipe {
       process.setOutputPipe(pipe)
+    } else if log.logLevel == .info && runSilentlyWhenNotVerbose {
+      // Silence output by default when not verbose.
+      process.setOutputPipe(Pipe())
     }
 
     process.currentDirectoryURL = directory?.standardizedFileURL.absoluteURL

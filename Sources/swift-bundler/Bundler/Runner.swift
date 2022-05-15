@@ -36,7 +36,8 @@ enum Runner {
         arguments: [
           "--justlaunch",
           "--bundle", bundle.path
-        ]
+        ],
+        runSilentlyWhenNotVerbose: false
       ).runAndWait().mapError { error in
         return .failedToRunIOSDeploy(error)
       }
