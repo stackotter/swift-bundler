@@ -72,12 +72,16 @@ enum Runner {
   ) -> Result<Void, RunnerError> {
     let appName = bundle.deletingPathExtension().lastPathComponent
     let executable = bundle.appendingPathComponent("Contents/MacOS/\(appName)")
-    let process = Process.create(executable.path, runSilentlyWhenNotVerbose: false)
+
+    let process = Process.create(
+      executable.path,
+      runSilentlyWhenNotVerbose: false
+    )
     process.addEnvironmentVariables(environmentVariables)
-    return process.runAndWait()
-      .mapError { error in
-        .failedToRunExecutable(error)
-      }
+    
+    return process.runAndWait().mapError { error in
+      return .failedToRunExecutable(error)
+    }
   }
 
   static func runIOSApp(
@@ -87,12 +91,23 @@ enum Runner {
     return Process.locate("ios-deploy").mapError { error in
       return .failedToLocateIOSDeploy(error)
     }.flatMap { iosDeployExecutable in
-      Process.create(
+      let environmentArguments: [String]
+      if !environmentVariables.isEmpty {
+        // TODO: correctly escape keys and values
+        let value = environmentVariables.map { key, value in
+          return "\(key)=\(value)"
+        }.joined(separator: " ")
+        environmentArguments = ["--envs", "\(value)"]
+      } else {
+        environmentArguments = []
+      }
+
+      return Process.create(
         iosDeployExecutable,
         arguments: [
           "--justlaunch",
           "--bundle", bundle.path
-        ],
+        ] + environmentArguments,
         runSilentlyWhenNotVerbose: false
       ).runAndWait().mapError { error in
         return .failedToRunIOSDeploy(error)
