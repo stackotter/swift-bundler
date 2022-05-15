@@ -10,6 +10,7 @@ enum ResourceBundlerError: LocalizedError {
   case failedToEnumerateBundleContents(directory: URL, Error)
   case failedToCompileMetalShaders(MetalCompilerError)
   case failedToCompileXCAssets(ProcessError)
+  case failedToDeleteAssetCatalog(Error)
 
   var errorDescription: String? {
     switch self {
@@ -29,6 +30,8 @@ enum ResourceBundlerError: LocalizedError {
         return "Failed to compile Metal shaders: \(metalCompilerError.localizedDescription)"
       case .failedToCompileXCAssets(let error):
         return "Failed to compile XCAssets with 'actool': \(error)"
+      case .failedToDeleteAssetCatalog:
+        return "Failed to delete asset catalog after compilation"
     }
   }
 }

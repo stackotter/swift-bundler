@@ -24,4 +24,14 @@ enum Platform {
         return "iOS"
     }
   }
+
+  /// The platform's sdk name (e.g. for `iOS` it's `iphoneos`).
+  var sdkName: String {
+    switch self {
+      case .macOS:
+        return "macosx"
+      case .iOS:
+        return "iphoneos"
+    }
+  }
 }
