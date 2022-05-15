@@ -13,6 +13,8 @@ enum PackageConfigurationError: LocalizedError {
   case failedToDeserializeOldConfiguration(Error)
   case failedToSerializeMigratedConfiguration(Error)
   case failedToWriteToMigratedConfigurationFile(URL, Error)
+  case failedToCreateConfigurationBackup(Error)
+  case failedToDeserializeV2Configuration(Error)
 
   var errorDescription: String? {
     switch self {
@@ -25,7 +27,15 @@ enum PackageConfigurationError: LocalizedError {
       case .failedToReadConfigurationFile(let file, _):
         return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):
-        return "Failed to deserialize configuration: \(error)"
+        let deserializationError: String
+        switch error {
+          case DecodingError.keyNotFound(_, let context):
+            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+            deserializationError = "Expected a value at '\(path)'"
+          default:
+            deserializationError = "Unknown cause"
+        }
+        return "Failed to deserialize configuration: \(deserializationError)"
       case .failedToSerializeConfiguration:
         return "Failed to serialize configuration"
       case .failedToWriteToConfigurationFile(let file, _):
@@ -38,6 +48,22 @@ enum PackageConfigurationError: LocalizedError {
         return "Failed to serialize migrated configuration"
       case .failedToWriteToMigratedConfigurationFile(let file, _):
         return "Failed to write migrated configuration to file at '\(file.relativePath)'"
+      case .failedToCreateConfigurationBackup:
+        return "Failed to backup configuration file"
+      case .failedToDeserializeV2Configuration(let error):
+        let deserializationError: String
+        switch error {
+          case DecodingError.keyNotFound(let codingKey, let context):
+            if codingKey.stringValue == "bundle_identifier" {
+              deserializationError = "'bundle_identifier' is required for app configuration to be migrated"
+            } else {
+              let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+              deserializationError = "Expected a value at '\(path)'"
+            }
+          default:
+            deserializationError = "Unknown cause"
+        }
+        return "Failed to deserialize configuration for migration: \(deserializationError)"
     }
   }
 }

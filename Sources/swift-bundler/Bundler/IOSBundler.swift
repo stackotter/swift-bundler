@@ -88,15 +88,11 @@ enum IOSBundler: Bundler {
     }
 
     let codesign: () -> Result<Void, IOSBundlerError> = {
-      guard let bundleIdentifier = appConfiguration.bundleIdentifier else {
-        return .failure(.mustSpecifyBundleIdentifier)
-      }
-
       if let identity = codesigningIdentity {
         return CodeSigner.signWithGeneratedEntitlements(
           bundle: appBundle,
           identityId: identity,
-          bundleIdentifier: bundleIdentifier
+          bundleIdentifier: appConfiguration.identifier
         ).mapError { error in
           return .failedToCodesign(error)
         }
@@ -205,7 +201,7 @@ enum IOSBundler: Bundler {
       at: infoPlistFile,
       appName: appName,
       version: appConfiguration.version,
-      bundleIdentifier: appConfiguration.bundleIdentifier,
+      bundleIdentifier: appConfiguration.identifier,
       category: appConfiguration.category,
       extraPlistEntries: appConfiguration.extraPlistEntries,
       platform: .iOS(version: iOSVersion)

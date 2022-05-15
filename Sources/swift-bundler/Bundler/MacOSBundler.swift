@@ -192,7 +192,7 @@ enum MacOSBundler: Bundler {
       at: infoPlistFile,
       appName: appName,
       version: appConfiguration.version,
-      bundleIdentifier: appConfiguration.bundleIdentifier,
+      bundleIdentifier: appConfiguration.identifier,
       category: appConfiguration.category,
       extraPlistEntries: appConfiguration.extraPlistEntries,
       platform: .macOS(version: macOSVersion)

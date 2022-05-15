@@ -2,6 +2,8 @@ import Foundation
 
 /// The configuration for an app.
 struct AppConfiguration: Codable {
+  /// The app's identifier (e.g. `com.example.ExampleApp`).
+  var identifier: String
   /// The name of the executable product.
   var product: String
   /// The app's current version.
@@ -9,8 +11,6 @@ struct AppConfiguration: Codable {
   // swiftlint:disable:next line_length
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
-  /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
-  var bundleIdentifier: String?
   /// The minimum macOS version that the app can run on.
   var minimumMacOSVersion: String?
   /// The minimum iOS version that the app can run on.
@@ -26,7 +26,7 @@ struct AppConfiguration: Codable {
     case product
     case version
     case category
-    case bundleIdentifier = "bundle_identifier"
+    case identifier = "identifier"
     case minimumMacOSVersion = "minimum_macos_version"
     case minimumIOSVersion = "minimum_ios_version"
     case icon
