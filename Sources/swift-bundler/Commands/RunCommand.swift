@@ -99,6 +99,13 @@ struct RunCommand: AsyncCommand {
 
   // MARK: Run arguments
 
+  /// A file containing environment variables to pass to the app.
+  @Option(
+    name: [.customLong("env")],
+    help: "A file containing environment variables to pass to the app.",
+    transform: URL.init(fileURLWithPath:))
+  var environmentFile: URL?
+
   /// If `true`, the building and bundling step is skipped.
   @Flag(
     name: .long,
@@ -110,7 +117,18 @@ struct RunCommand: AsyncCommand {
   func wrappedRun() async throws {
     // Remove arguments already parsed by run command
     var arguments = Array(CommandLine.arguments.dropFirst(2))
-    arguments.removeAll { $0 == "--skip-build" || $0 == "-v" || $0 == "--verbose" }
+    var previousWasEnv = false
+    arguments.removeAll {
+      let shouldRemove = $0 == "--skip-build" || $0 == "-v" || $0 == "--verbose" || $0 == "--env" || previousWasEnv
+
+      if $0 == "--env" {
+        previousWasEnv = true
+      } else {
+        previousWasEnv = false
+      }
+
+      return shouldRemove
+    }
 
     let buildCommand = try BundleCommand.parse(arguments)
 
@@ -133,7 +151,8 @@ struct RunCommand: AsyncCommand {
 
     try Runner.run(
       bundle: outputDirectory.appendingPathComponent("\(appName).app"),
-      platform: platform
+      platform: platform,
+      environmentFile: environmentFile
     ).unwrap()
   }
 }

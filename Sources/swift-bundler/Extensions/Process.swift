@@ -65,6 +65,19 @@ extension Process {
     return .success()
   }
 
+  /// Adds environment variables to the process's environment.
+  /// - Parameter variables: The key value pairs to add.
+  func addEnvironmentVariables(_ variables: [String: String]) {
+    if var environment = environment {
+      for (key, value) in variables {
+        environment[key] = value
+      }
+      self.environment = environment
+    } else {
+      environment = variables
+    }
+  }
+
   /// Creates a new process (but doesn't run it).
   /// - Parameters:
   ///   - tool: The tool.
