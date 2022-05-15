@@ -5,7 +5,8 @@ import ArgumentParser
 struct TemplatesUpdateCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "update",
-    abstract: "Update the default templates to the latest version.")
+    abstract: "Update the default templates to the latest version."
+  )
 
   func wrappedRun() throws {
     let elapsed = try Stopwatch.time {

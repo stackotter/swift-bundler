@@ -1,13 +1,16 @@
 import Foundation
 import ArgumentParser
 import Darwin
+import Version
 
 /// The root command of Swift Bundler.
 struct SwiftBundler: AsyncParsableCommand {
+  static let version = Version(3, 0, 0)
+
   static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
     abstract: "A tool for creating macOS apps from Swift packages.",
-    version: "v2.0.3",
+    version: "v" + version.description,
     shouldDisplay: true,
     subcommands: [
       BundleCommand.self,
@@ -16,7 +19,8 @@ struct SwiftBundler: AsyncParsableCommand {
       TemplatesCommand.self,
       GenerateXcodeSupportCommand.self,
       ListIdentitiesCommand.self
-    ])
+    ]
+  )
 
   @Flag(
     name: .shortAndLong,

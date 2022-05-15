@@ -44,6 +44,11 @@ struct CreateCommand: Command {
     help: "Force creation even if the template does not support the current OS and installed Swift version.")
   var force = false
 
+  /// If `true`, Swift Bundler does not ensure that the templates are up-to-date.
+  @Flag(
+    help: "Skip automatic template updates")
+  var skipUpdates = false
+
   func wrappedValidate() throws {
     guard Self.isValidAppName(appName) else {
       throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
@@ -60,6 +65,13 @@ struct CreateCommand: Command {
 
     var template: Template?
     let elapsed = try Stopwatch.time {
+      if !skipUpdates {
+        log.info("Ensuring that your templates are up-to-date")
+        if case let .failure(error) = Templater.updateTemplates() {
+          throw CLIError.failedToAutomaticallyUpdateTemplates(error)
+        }
+      }
+
       // Create package from template
       if let templateRepository = templateRepository, let templateName = templateName {
         template = try Templater.createPackage(

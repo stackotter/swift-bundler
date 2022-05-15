@@ -31,21 +31,20 @@ enum Templater {
     guard let template = template else {
       log.info("Creating package")
 
-      return SwiftPackageManager.createPackage(in: outputDirectory, name: packageName)
-        .mapError { error -> TemplaterError in
-          .failedToCreateBareMinimumPackage(error)
-        }
-        .flatMap { _ in
-          log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
-          return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
-        }
-        .mapError { error -> TemplaterError in
-          attemptCleanup(outputDirectory)
-          return error
-        }
-        .map { (_: Void) -> Template? in
-          return nil // No template was used
-        }
+      return SwiftPackageManager.createPackage(
+        in: outputDirectory,
+        name: packageName
+      ).mapError { error -> TemplaterError in
+        .failedToCreateBareMinimumPackage(error)
+      }.flatMap { _ in
+        log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
+        return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
+      }.mapError { error -> TemplaterError in
+        attemptCleanup(outputDirectory)
+        return error
+      }.map { (_: Void) -> Template? in
+        return nil // No template was used
+      }
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
@@ -57,7 +56,8 @@ enum Templater {
           in: templatesDirectory,
           packageName: packageName,
           forceCreation: forceCreation,
-          indentationStyle: indentationStyle)
+          indentationStyle: indentationStyle
+        )
       }
       .map { template in
         return .some(template)
@@ -109,7 +109,7 @@ enum Templater {
     }
 
     if !forceCreation {
-      // Verify that the current OS and Swift version are supported
+      // Verify that this machine's Swift version is supported
       if case let .failure(error) = verifyTemplateIsSupported(template, manifest) {
         return .failure(error)
       }
@@ -152,26 +152,12 @@ enum Templater {
     }
   }
 
-  /// Verifies that the given template supports the current OS and Swift version.
-  /// - Returns: An error if the current OS and Swift version are not supported by the template.
-  static func verifyTemplateIsSupported(_ name: String, _ manifest: TemplateManifest) -> Result<Void, TemplaterError> {
-    #if os(macOS)
-    if !manifest.platforms.contains("macOS") {
-      return .failure(.templateDoesNotSupportCurrentPlatform(
-        template: name,
-        platform: "macOS",
-        supportedPlatforms: manifest.platforms
-      ))
-    }
-    #else
-    // Unknown platforms are always unsupported
-    return .failure(.templateDoesNotSupportCurrentPlatform(
-      template: name,
-      platform: "unknown",
-      supportedPlatforms: manifest.platforms
-    ))
-    #endif
-
+  /// Verifies that the given template supports this machine's Swift version.
+  /// - Returns: An error if this machine's Swift version is not supported by the template.
+  static func verifyTemplateIsSupported(
+    _ name: String,
+    _ manifest: TemplateManifest
+  ) -> Result<Void, TemplaterError> {
     // Verify that the installed Swift version is supported
     switch SwiftPackageManager.getSwiftVersion() {
       case .success(let version):
@@ -219,11 +205,29 @@ enum Templater {
     return getDefaultTemplatesDirectory(downloadIfNecessary: false)
       .flatMap { templatesDirectory in
         if FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
-          let process = Process.create(
+          let result = Process.create(
             "/usr/bin/git",
-            arguments: ["pull"],
-            directory: templatesDirectory)
-          if case let .failure(error) = process.runAndWait() {
+            arguments: [
+              "fetch"
+            ],
+            directory: templatesDirectory
+          ).runAndWait().flatMap { _ in
+            return Process.create(
+              "/usr/bin/git",
+              arguments: [
+                "checkout", "v\(SwiftBundler.version.major)"
+              ],
+              directory: templatesDirectory
+            ).runAndWait()
+          }.flatMap { _ in
+            return Process.create(
+              "/usr/bin/git",
+              arguments: ["pull"],
+              directory: templatesDirectory
+            ).runAndWait()
+          }
+
+          if case let .failure(error) = result {
             return .failure(.failedToPullLatestTemplates(error))
           }
           return .success()
@@ -298,7 +302,8 @@ enum Templater {
       arguments: [
         "clone", "\(defaultTemplateRepository)",
         directory.path
-      ])
+      ]
+    )
 
     return process.runAndWait()
       .mapError { error in

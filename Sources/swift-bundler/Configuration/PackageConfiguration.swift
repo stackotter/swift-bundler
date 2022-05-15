@@ -54,7 +54,7 @@ struct PackageConfiguration: Codable {
         from: contents
       )
     } catch {
-      // Maybe the configuration is a v2.0.0 configuration. Attempt to migrate it.
+      // Maybe the configuration is a Swift Bundler v2 configuration. Attempt to migrate it.
     migrationAttempt:
       do {
         let table = try TOMLTable(string: contents)
@@ -70,7 +70,7 @@ struct PackageConfiguration: Codable {
 
     return configuration.withExpressionsEvaluated(in: packageDirectory)
   }
-  
+
   /// Migrates a Swift Bundler `v2.0.0` configuration file to the current configuration format.
   ///
   /// Mutates the contents of the given configuration file.
@@ -115,7 +115,7 @@ struct PackageConfiguration: Codable {
     } catch {
       return .failure(.failedToSerializeConfiguration(error))
     }
-    
+
     do {
       try encodedContents.write(to: configurationFile, atomically: false, encoding: .utf8)
     } catch {
