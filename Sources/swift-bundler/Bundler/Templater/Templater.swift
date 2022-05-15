@@ -300,7 +300,8 @@ enum Templater {
     let process = Process.create(
       "/usr/bin/git",
       arguments: [
-        "clone", "\(defaultTemplateRepository)",
+        "clone", "-b", "v\(SwiftBundler.version.major)",
+        "\(defaultTemplateRepository)",
         directory.path
       ]
     )
