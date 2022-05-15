@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  DEVELOPER_DIR: /Applications/Xcode_13.2.app/Contents/Developer
+
 jobs:
   build:
     runs-on: macos-latest
@@ -12,9 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-      - name: List Xcode versions
-        run: ls /Applications/
 
       - name: Build
         run: swift build -c release --arch arm64 --arch x86_64
