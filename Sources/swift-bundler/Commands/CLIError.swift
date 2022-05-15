@@ -7,7 +7,6 @@ enum CLIError: LocalizedError {
   case invalidBuildConfiguration(String)
   case missingMinimumMacOSVersion
   case missingMinimumIOSVersion
-  case failedToAutomaticallyUpdateTemplates(Error)
 
   var errorDescription: String? {
     switch self {
@@ -21,8 +20,6 @@ enum CLIError: LocalizedError {
         return "'minimum_macos_version' must be specified in Bundler.toml to build for platform 'macOS'"
       case .missingMinimumIOSVersion:
         return "'minimum_ios_version' must be specified in Bundler.toml to build for platform 'iOS'"
-      case .failedToAutomaticallyUpdateTemplates(let error):
-        return "Failed to automatically update your templates. Use the '--skip-update' flag to continue anyway. Details: \(error.localizedDescription)"
     }
   }
 }
