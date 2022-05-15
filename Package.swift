@@ -29,7 +29,7 @@ let package = Package(
         "TOMLKit",
         "Rainbow",
         "Version",
-        .product(name: "SwiftPMDataModel", package: "swift-package-manager"),
+        .product(name: "SwiftPMDataModel-auto", package: "swift-package-manager"),
         .product(name: "XcodeGenKit", package: "XcodeGen"),
         .product(name: "ProjectSpec", package: "XcodeGen")
       ]

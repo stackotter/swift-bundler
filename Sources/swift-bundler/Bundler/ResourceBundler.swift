@@ -249,7 +249,7 @@ enum ResourceBundler {
           at: file,
           to: fileDestination)
       } catch {
-        return .failure(.failedToCopyResource(source: file, destination: fileDestination))
+        return .failure(.failedToCopyResource(source: file, destination: fileDestination, error))
       }
     }
 

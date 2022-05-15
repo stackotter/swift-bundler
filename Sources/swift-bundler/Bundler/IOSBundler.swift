@@ -140,7 +140,6 @@ enum IOSBundler: Bundler {
     let fileManager = FileManager.default
 
     let appBundleDirectory = outputDirectory.appendingPathComponent("\(appName).app")
-    let appResources = appBundleDirectory.appendingPathComponent("Assets.xcassets")
     // let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
 
     do {
@@ -148,7 +147,6 @@ enum IOSBundler: Bundler {
         try fileManager.removeItem(at: appBundleDirectory)
       }
       try fileManager.createDirectory(at: appBundleDirectory)
-      try fileManager.createDirectory(at: appResources)
       // TODO: support dynamic libraries on ios
       // try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
