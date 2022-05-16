@@ -25,7 +25,7 @@ extension Result where Success == Void {
 /// Returns a closure that runs the given operations one by one and stops on failure.
 /// - Parameter operations: The operations to chain together.
 /// - Returns: If an error occurs, a failure is returned.
-func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> () -> Result<Void, Failure> {
+func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> (() -> Result<Void, Failure>) {
   return {
     for operation in operations {
       let result = operation()
@@ -40,7 +40,7 @@ func flatten<Failure: Error>(_ operations: (() -> Result<Void, Failure>)...) -> 
 /// Returns a closure that runs the given operations one by one and stops on failure.
 /// - Parameter operations: The operations to chain together.
 /// - Returns: If an error occurs, a failure is returned.
-func flatten<Failure: Error>(_ operations: (() async -> Result<Void, Failure>)...) -> () async -> Result<Void, Failure> {
+func flatten<Failure: Error>(_ operations: (() async -> Result<Void, Failure>)...) -> (() async -> Result<Void, Failure>) {
   return {
     for operation in operations {
       let result = await operation()

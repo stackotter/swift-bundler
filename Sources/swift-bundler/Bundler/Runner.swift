@@ -78,7 +78,7 @@ enum Runner {
       runSilentlyWhenNotVerbose: false
     )
     process.addEnvironmentVariables(environmentVariables)
-    
+
     return process.runAndWait().mapError { error in
       return .failedToRunExecutable(error)
     }

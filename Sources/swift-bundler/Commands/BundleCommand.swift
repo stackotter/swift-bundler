@@ -113,6 +113,76 @@ struct BundleCommand: AsyncCommand {
     ))
   var builtWithXcode = false
 
+  func validateParameters(platform: Platform) -> Bool {
+    // Validate parameters
+    if !skipBuild {
+      guard productsDirectory == nil, !builtWithXcode else {
+        log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
+        return false
+      }
+    }
+
+    if case .iOS = platform, builtWithXcode || universal || !architectures.isEmpty {
+      log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
+      return false
+    }
+
+    if shouldCodesign && identity == nil {
+      log.error("Please provide a codesigning identity with `--identity`")
+      print(Output {
+        ""
+        Section("Tip: Listing available identities") {
+          ExampleCommand("swift bundler list-identities")
+        }
+      })
+      return false
+    }
+
+    if identity != nil && !shouldCodesign {
+      log.error("`--identity` can only be used with `--codesign`")
+      return false
+    }
+
+    if case .iOS = platform, !shouldCodesign || identity == nil || provisioningProfile == nil {
+      log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
+      if identity == nil {
+        print(Output {
+          ""
+          Section("Tip: Listing available identities") {
+            ExampleCommand("swift bundler list-identities")
+          }
+        })
+      }
+      return false
+    }
+
+    switch platform {
+      case .iOS:
+        break
+      default:
+        if provisioningProfile != nil {
+          log.error("`--provisioning-profile` is only available when building iOS apps")
+          return false
+        }
+    }
+
+    return true
+  }
+
+  func getArchitectures(platform: Platform) -> [BuildArchitecture] {
+    let architectures: [BuildArchitecture]
+    switch platform {
+      case .macOS:
+        architectures = universal
+          ? [.arm64, .x86_64]
+          : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
+      case .iOS:
+        architectures = [.arm64]
+    }
+
+    return architectures
+  }
+
   func wrappedRun() async throws {
     var appBundle: URL?
 
@@ -127,69 +197,13 @@ struct BundleCommand: AsyncCommand {
 
       let platform = try Self.parsePlatform(platform, appConfiguration: appConfiguration)
 
-      // Validate parameters
-      if !skipBuild {
-        guard productsDirectory == nil, !builtWithXcode else {
-          log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
-          Foundation.exit(1)
-        }
-      }
-
-      if case .iOS = platform, builtWithXcode || universal || !architectures.isEmpty {
-        log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
+      if !validateParameters(platform: platform) {
         Foundation.exit(1)
-      }
-
-      if shouldCodesign && identity == nil {
-        log.error("Please provide a codesigning identity with `--identity`")
-        print(Output {
-          ""
-          Section("Tip: Listing available identities") {
-            ExampleCommand("swift bundler list-identities")
-          }
-        })
-        Foundation.exit(1)
-      }
-
-      if identity != nil && !shouldCodesign {
-        log.error("`--identity` can only be used with `--codesign`")
-        Foundation.exit(1)
-      }
-
-      if case .iOS = platform, !shouldCodesign || identity == nil || provisioningProfile == nil {
-        log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
-        if identity == nil {
-          print(Output {
-            ""
-            Section("Tip: Listing available identities") {
-              ExampleCommand("swift bundler list-identities")
-            }
-          })
-        }
-        Foundation.exit(1)
-      }
-
-      switch platform {
-        case .iOS:
-          break
-        default:
-          if provisioningProfile != nil {
-            log.error("`--provisioning-profile` is only available when building iOS apps")
-            Foundation.exit(1)
-          }
       }
 
       // Get relevant configuration
       let universal = universal || architectures.count > 1
-      let architectures: [BuildArchitecture]
-      switch platform {
-        case .macOS:
-          architectures = universal
-            ? [.arm64, .x86_64]
-            : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
-        case .iOS:
-          architectures = [.arm64]
-      }
+      let architectures = getArchitectures(platform: platform)
 
       let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
 
