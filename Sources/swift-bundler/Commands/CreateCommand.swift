@@ -5,7 +5,8 @@ import ArgumentParser
 struct CreateCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "create",
-    abstract: "Create a new app package.")
+    abstract: "Create a new app package."
+  )
 
   /// The app's name. Must only contain characters from the English alphabet.
   @Argument(

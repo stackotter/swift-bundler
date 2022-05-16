@@ -5,101 +5,12 @@ import ArgumentParser
 struct BundleCommand: AsyncCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
-    abstract: "Create an app bundle from a package.")
+    abstract: "Create an app bundle from a package."
+  )
 
-  /// The name of the app to build.
-  @Argument(
-    help: "The name of the app to build.")
-  var appName: String?
-
-  /// The directory containing the package to build.
-  @Option(
-    name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to build.",
-    transform: URL.init(fileURLWithPath:))
-  var packageDirectory: URL?
-
-  /// The directory to output the bundled .app to.
-  @Option(
-    name: .shortAndLong,
-    help: "The directory to output the bundled .app to.",
-    transform: URL.init(fileURLWithPath:))
-  var outputDirectory: URL?
-
-  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
-  @Option(
-    name: .long,
-    help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
-    transform: URL.init(fileURLWithPath:))
-  var productsDirectory: URL?
-
-  /// The build configuration to use.
-  @Option(
-    name: [.customShort("c"), .customLong("configuration")],
-    help: "The build configuration to use \(BuildConfiguration.possibleValuesString).",
-    transform: {
-      guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
-        throw CLIError.invalidBuildConfiguration($0)
-      }
-      return configuration
-    })
-  var buildConfiguration = BuildConfiguration.debug
-
-  /// The architectures to build for.
-  @Option(
-    name: [.customShort("a"), .customLong("arch")],
-    parsing: .singleValue,
-    help: {
-      let possibleValues = BuildArchitecture.possibleValuesString
-      let defaultValue = BuildArchitecture.current.rawValue
-      return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
-    }(),
-    transform: {
-      guard let arch = BuildArchitecture.init(rawValue: $0) else {
-        throw CLIError.invalidArchitecture($0)
-      }
-      return arch
-    })
-  var architectures: [BuildArchitecture] = []
-
-  /// The platform to build for (incompatible with `--arch`).
-  @Option(
-    name: .shortAndLong,
-    help: {
-      return "The platform to build for (macOS|iOS). Incompatible with `--arch`."
-    }())
-  var platform: String = "macOS"
-
-  /// A codesigning identity to use.
-  @Option(
-    name: .customLong("identity"),
-    help: "The identity to use for codesigning")
-  var identity: String?
-
-  /// A provisioing profile to use.
-  @Option(
-    name: .customLong("provisioning-profile"),
-    help: "The provisioning profile to embed in the app (only applicable to iOS).",
-    transform: URL.init(fileURLWithPath:))
-  var provisioningProfile: URL?
-
-  /// If `true`, the application will be codesigned.
-  @Flag(
-    name: .customLong("codesign"),
-    help: "Codesign the application (use `--identity` to select the identity).")
-  var shouldCodesign = false
-
-  /// If `true` a universal application will be created (arm64 and x86_64).
-  @Flag(
-    name: .shortAndLong,
-    help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
-  var universal = false
-
-  /// Whether to skip the build step or not.
-  @Flag(
-    name: .long,
-    help: "Skip the build step.")
-  var skipBuild = false
+  /// Arguments in common with the run command.
+  @OptionGroup
+  var arguments: BundleArguments
 
   /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
   ///
@@ -113,21 +24,21 @@ struct BundleCommand: AsyncCommand {
     ))
   var builtWithXcode = false
 
-  func validateParameters(platform: Platform) -> Bool {
+  static func validateArguments(_ arguments: BundleArguments, platform: Platform, builtWithXcode: Bool) -> Bool {
     // Validate parameters
-    if !skipBuild {
-      guard productsDirectory == nil, !builtWithXcode else {
+    if !arguments.skipBuild {
+      guard arguments.productsDirectory == nil, !builtWithXcode else {
         log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
         return false
       }
     }
 
-    if case .iOS = platform, builtWithXcode || universal || !architectures.isEmpty {
+    if case .iOS = platform, builtWithXcode || arguments.universal || !arguments.architectures.isEmpty {
       log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
       return false
     }
 
-    if shouldCodesign && identity == nil {
+    if arguments.shouldCodesign && arguments.identity == nil {
       log.error("Please provide a codesigning identity with `--identity`")
       print(Output {
         ""
@@ -138,14 +49,14 @@ struct BundleCommand: AsyncCommand {
       return false
     }
 
-    if identity != nil && !shouldCodesign {
+    if arguments.identity != nil && !arguments.shouldCodesign {
       log.error("`--identity` can only be used with `--codesign`")
       return false
     }
 
-    if case .iOS = platform, !shouldCodesign || identity == nil || provisioningProfile == nil {
+    if case .iOS = platform, !arguments.shouldCodesign || arguments.identity == nil || arguments.provisioningProfile == nil {
       log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
-      if identity == nil {
+      if arguments.identity == nil {
         print(Output {
           ""
           Section("Tip: Listing available identities") {
@@ -160,7 +71,7 @@ struct BundleCommand: AsyncCommand {
       case .iOS:
         break
       default:
-        if provisioningProfile != nil {
+        if arguments.provisioningProfile != nil {
           log.error("`--provisioning-profile` is only available when building iOS apps")
           return false
         }
@@ -173,9 +84,9 @@ struct BundleCommand: AsyncCommand {
     let architectures: [BuildArchitecture]
     switch platform {
       case .macOS:
-        architectures = universal
+        architectures = arguments.universal
           ? [.arm64, .x86_64]
-          : (!self.architectures.isEmpty ? self.architectures : [BuildArchitecture.current])
+          : (!arguments.architectures.isEmpty ? arguments.architectures : [BuildArchitecture.current])
       case .iOS:
         architectures = [.arm64]
     }
@@ -189,30 +100,30 @@ struct BundleCommand: AsyncCommand {
     // Start timing
     let elapsed = try await Stopwatch.time {
       // Load configuration
-      let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
+      let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
       let (appName, appConfiguration) = try Self.getAppConfiguration(
-        appName,
+        arguments.appName,
         packageDirectory: packageDirectory
       ).unwrap()
 
-      let platform = try Self.parsePlatform(platform, appConfiguration: appConfiguration)
+      let platform = try Self.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
 
-      if !validateParameters(platform: platform) {
+      if !Self.validateArguments(arguments, platform: platform, builtWithXcode: builtWithXcode) {
         Foundation.exit(1)
       }
 
       // Get relevant configuration
-      let universal = universal || architectures.count > 1
+      let universal = arguments.universal || arguments.architectures.count > 1
       let architectures = getArchitectures(platform: platform)
 
-      let outputDirectory = Self.getOutputDirectory(outputDirectory, packageDirectory: packageDirectory)
+      let outputDirectory = Self.getOutputDirectory(arguments.outputDirectory, packageDirectory: packageDirectory)
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
 
       // Get build output directory
-      let productsDirectory = try productsDirectory ?? SwiftPackageManager.getProductsDirectory(
+      let productsDirectory = try arguments.productsDirectory ?? SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
-        configuration: buildConfiguration,
+        configuration: arguments.buildConfiguration,
         architectures: architectures,
         platform: platform
       ).unwrap()
@@ -222,7 +133,7 @@ struct BundleCommand: AsyncCommand {
         SwiftPackageManager.build(
           product: appConfiguration.product,
           packageDirectory: packageDirectory,
-          configuration: buildConfiguration,
+          configuration: arguments.buildConfiguration,
           architectures: architectures,
           platform: platform
         ).mapError { error in
@@ -241,15 +152,15 @@ struct BundleCommand: AsyncCommand {
           outputDirectory: outputDirectory,
           isXcodeBuild: builtWithXcode,
           universal: universal,
-          codesigningIdentity: identity,
-          provisioningProfile: provisioningProfile,
+          codesigningIdentity: arguments.identity,
+          provisioningProfile: arguments.provisioningProfile,
           platformVersion: platform.version
         )
       }
 
       // Build pipeline
       let task: () async -> Result<Void, Error>
-      if skipBuild {
+      if arguments.skipBuild {
         task = bundle
       } else {
         task = flatten(

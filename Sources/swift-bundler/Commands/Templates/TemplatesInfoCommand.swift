@@ -6,7 +6,8 @@ import Rainbow
 struct TemplatesInfoCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "info",
-    abstract: "Get info about a template.")
+    abstract: "Get info about a template."
+  )
 
   /// The template to get info about.
   @Argument(

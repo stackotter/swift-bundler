@@ -11,5 +11,6 @@ struct TemplatesCommand: ParsableCommand {
       TemplatesInfoCommand.self,
       TemplatesUpdateCommand.self
     ],
-    defaultSubcommand: TemplatesListCommand.self)
+    defaultSubcommand: TemplatesListCommand.self
+  )
 }

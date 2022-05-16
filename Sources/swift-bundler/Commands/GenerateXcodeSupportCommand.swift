@@ -6,7 +6,8 @@ struct GenerateXcodeSupportCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "generate-xcode-support",
     abstract: "Generate the files required for Xcode to work nicely with a package.",
-    discussion: "This requires Swift Bundler to be installed at '/opt/swift-bundler/swift-bundler'")
+    discussion: "This requires Swift Bundler to be installed at '/opt/swift-bundler/swift-bundler'"
+  )
 
   /// The root directory of the package to generate Xcode support files for.
   @Option(

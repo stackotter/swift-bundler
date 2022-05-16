@@ -5,7 +5,8 @@ import ArgumentParser
 struct TemplatesListCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "list",
-    abstract: "List available templates.")
+    abstract: "List available templates."
+  )
 
   /// The directory to search for templates in.
   @Option(

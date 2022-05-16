@@ -6,7 +6,8 @@ import Rainbow
 struct ListIdentitiesCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "list-identities",
-    abstract: "List available codesigning identities.")
+    abstract: "List available codesigning identities."
+  )
 
   func wrappedRun() throws {
     let identities = try CodeSigner.enumerateIdentities().unwrap()
