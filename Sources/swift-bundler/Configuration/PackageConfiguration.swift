@@ -75,6 +75,10 @@ struct PackageConfiguration: Codable {
       return .failure(.failedToDeserializeConfiguration(error))
     }
 
+    if configuration.formatVersion != PackageConfiguration.currentFormatVersion {
+      return .failure(.unsupportedFormatVersion(configuration.formatVersion))
+    }
+
     return ExpressionEvaluator.evaluatePackageConfiguration(
       configuration,
       in: packageDirectory
