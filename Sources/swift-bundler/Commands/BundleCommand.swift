@@ -30,6 +30,16 @@ struct BundleCommand: AsyncCommand {
     ))
   var builtWithXcode = false
 
+  init() {
+    _arguments = OptionGroup()
+  }
+
+  init(arguments: OptionGroup<BundleArguments>, skipBuild: Bool, builtWithXcode: Bool) {
+    _arguments = arguments
+    self.skipBuild = skipBuild
+    self.builtWithXcode = builtWithXcode
+  }
+
   static func validateArguments(
     _ arguments: BundleArguments,
     platform: Platform,

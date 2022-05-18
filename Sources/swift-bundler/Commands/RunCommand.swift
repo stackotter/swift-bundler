@@ -42,7 +42,7 @@ struct RunCommand: AsyncCommand {
 
     let platform = try BundleCommand.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
 
-    let bundleCommand = BundleCommand(arguments: _arguments, builtWithXcode: false)
+    let bundleCommand = BundleCommand(arguments: _arguments, skipBuild: false, builtWithXcode: false)
 
     if !skipBuild {
       await bundleCommand.run()
