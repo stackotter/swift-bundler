@@ -18,7 +18,7 @@ struct CreateCommand: Command {
   @Option(
     name: .shortAndLong,
     help: "The app's identifier. (e.g. 'com.example.ExampleApp')")
-  var identifier: String
+  var identifier: String?
 
   /// The app's initial version.
   @Option(
@@ -91,17 +91,39 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
+    // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
+    var version = version
+    var identifier = identifier
+    var category = category
+
+    let plist: [String: PlistValue]
+    if let infoPlistFile = infoPlistFile {
+      plist = try PlistValue.loadDictionary(fromPlistFile: infoPlistFile).unwrap()
+      
+      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
+        version = versionString
+      }
+      
+      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
+        identifier = identifierString
+      }
+
+      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
+        category = categoryString
+      }
+    } else {
+      plist = [:]
+    }
+
     var configuration = AppConfiguration(
-      identifier: identifier,
+      identifier: identifier ?? "com.example.\(appName)",
       product: appName,
       version: version ?? "0.1.0",
       category: category,
       icon: icon
     )
 
-    if let infoPlistFile = infoPlistFile {
-      configuration = try configuration.appendingInfoPlistEntries(from: infoPlistFile).unwrap()
-    }
+    configuration = configuration.appendingInfoPlistEntries(plist, excludeHandledKeys: true)
 
     var template: Template?
     let elapsed = try Stopwatch.time {

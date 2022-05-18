@@ -15,7 +15,7 @@ import TOMLKit
 ///   "value": "2022-05-18T00:54:55Z"
 /// }
 /// ```
-enum PlistValue: Codable {
+enum PlistValue: Codable, Equatable {
   case dictionary([String: PlistValue])
   case array([PlistValue])
   case real(Double)
@@ -223,7 +223,7 @@ enum PlistValue: Codable {
   /// Loads a dictionary of ``PlistValue``s from a plist file.
   /// - Parameter plistFile: The plist file to load the dictionary from.
   /// - Returns: The loaded plist dictionary, or a failure if an error occurs.
-  static func load(fromPlistFile plistFile: URL) -> Result<[String: PlistValue], PlistError> {
+  static func loadDictionary(fromPlistFile plistFile: URL) -> Result<[String: PlistValue], PlistError> {
     let contents: Data
     do {
       contents = try Data(contentsOf: plistFile)

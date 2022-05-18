@@ -67,6 +67,7 @@ enum PlistCreator {
     platform: Platform
   ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any?] = [
+      "CFBundleDevelopmentRegion": "en",
       "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
       "CFBundleIconName": "AppIcon",
