@@ -89,10 +89,4 @@ struct BundleArguments: ParsableArguments {
     name: .shortAndLong,
     help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
   var universal = false
-
-  /// Whether to skip the build step or not.
-  @Flag(
-    name: .long,
-    help: "Skip the build step.")
-  var skipBuild = false
 }

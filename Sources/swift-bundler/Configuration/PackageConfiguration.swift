@@ -11,9 +11,12 @@ struct PackageConfiguration: Codable {
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
 
+  var test: [String: PlistValue]
+
   private enum CodingKeys: String, CodingKey {
     case formatVersion = "format_version"
     case apps
+    case test
   }
 
   /// Creates a new package configuration.
@@ -21,6 +24,7 @@ struct PackageConfiguration: Codable {
   init(_ apps: [String: AppConfiguration]) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
+    test = [:]
   }
 
   // MARK: Static methods
@@ -67,6 +71,8 @@ struct PackageConfiguration: Codable {
 
       return .failure(.failedToDeserializeConfiguration(error))
     }
+
+    print(configuration.test)
 
     return configuration.withExpressionsEvaluated(in: packageDirectory)
   }

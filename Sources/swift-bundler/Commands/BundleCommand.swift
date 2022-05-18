@@ -12,6 +12,12 @@ struct BundleCommand: AsyncCommand {
   @OptionGroup
   var arguments: BundleArguments
 
+  /// Whether to skip the build step or not.
+  @Flag(
+    name: .long,
+    help: "Skip the build step.")
+  var skipBuild = false
+
   /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
   ///
   /// Can only be `true` when ``skipBuild`` is `true`.
@@ -24,9 +30,14 @@ struct BundleCommand: AsyncCommand {
     ))
   var builtWithXcode = false
 
-  static func validateArguments(_ arguments: BundleArguments, platform: Platform, builtWithXcode: Bool) -> Bool {
+  static func validateArguments(
+    _ arguments: BundleArguments,
+    platform: Platform,
+    skipBuild: Bool,
+    builtWithXcode: Bool
+  ) -> Bool {
     // Validate parameters
-    if !arguments.skipBuild {
+    if !skipBuild {
       guard arguments.productsDirectory == nil, !builtWithXcode else {
         log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
         return false
@@ -108,7 +119,7 @@ struct BundleCommand: AsyncCommand {
 
       let platform = try Self.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
 
-      if !Self.validateArguments(arguments, platform: platform, builtWithXcode: builtWithXcode) {
+      if !Self.validateArguments(arguments, platform: platform, skipBuild: skipBuild, builtWithXcode: builtWithXcode) {
         Foundation.exit(1)
       }
 
@@ -160,7 +171,7 @@ struct BundleCommand: AsyncCommand {
 
       // Build pipeline
       let task: () async -> Result<Void, Error>
-      if arguments.skipBuild {
+      if skipBuild {
         task = bundle
       } else {
         task = flatten(

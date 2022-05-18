@@ -27,14 +27,7 @@ enum PackageConfigurationError: LocalizedError {
       case .failedToReadConfigurationFile(let file, _):
         return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):
-        let deserializationError: String
-        switch error {
-          case DecodingError.keyNotFound(_, let context):
-            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-            deserializationError = "Expected a value at '\(path)'"
-          default:
-            deserializationError = "Unknown cause"
-        }
+        let deserializationError = Self.deserializationErrorDescription(error)
         return "Failed to deserialize configuration: \(deserializationError)"
       case .failedToSerializeConfiguration:
         return "Failed to serialize configuration"
@@ -51,19 +44,27 @@ enum PackageConfigurationError: LocalizedError {
       case .failedToCreateConfigurationBackup:
         return "Failed to backup configuration file"
       case .failedToDeserializeV2Configuration(let error):
-        let deserializationError: String
-        switch error {
-          case DecodingError.keyNotFound(let codingKey, let context):
-            if codingKey.stringValue == "bundle_identifier" {
-              deserializationError = "'bundle_identifier' is required for app configuration to be migrated"
-            } else {
-              let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-              deserializationError = "Expected a value at '\(path)'"
-            }
-          default:
-            deserializationError = "Unknown cause"
-        }
+        let deserializationError = Self.deserializationErrorDescription(error)
         return "Failed to deserialize configuration for migration: \(deserializationError)"
     }
+  }
+
+  /// Computes a human readable description for the provided deserialization related error.
+  static func deserializationErrorDescription(_ error: Error) -> String {
+    let description: String
+    switch error {
+      case DecodingError.keyNotFound(let codingKey, let context):
+        if codingKey.stringValue == "bundle_identifier" {
+          description = "'bundle_identifier' is required for app configuration to be migrated"
+        } else {
+          let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+          description = "Expected a value at '\(path)'"
+        }
+      case let error as PlistError:
+        description = error.localizedDescription
+      default:
+        description = String(reflecting: error)
+    }
+    return description
   }
 }
