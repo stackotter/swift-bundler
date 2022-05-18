@@ -7,6 +7,7 @@ enum CLIError: LocalizedError {
   case invalidBuildConfiguration(String)
   case missingMinimumMacOSVersion
   case missingMinimumIOSVersion
+  case failedToCopyIcon(from: URL, to: URL, Error)
 
   var errorDescription: String? {
     switch self {
@@ -20,6 +21,8 @@ enum CLIError: LocalizedError {
         return "'minimum_macos_version' must be specified in Bundler.toml to build for platform 'macOS'"
       case .missingMinimumIOSVersion:
         return "'minimum_ios_version' must be specified in Bundler.toml to build for platform 'iOS'"
+      case .failedToCopyIcon(let source, let destination, _):
+        return "Failed to copy icon from '\(source)' to '\(destination)'"
     }
   }
 }

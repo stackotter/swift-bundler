@@ -34,9 +34,10 @@ struct CreateCommand: Command {
 
   /// The app's icon file (1024x1024 png or icns file).
   @Option(
-    name: .long,
-    help: "The app's icon file (1024x1024 png or icns file).")
-  var icon: String?
+    name: [.customLong("icon")],
+    help: "The app's icon file (1024x1024 png or icns file).",
+    transform: URL.init(fileURLWithPath:))
+  var iconFile: URL?
 
   /// An Info.plist file containing entries to add to the app's configuration.
   @Option(
@@ -91,39 +92,15 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
-    // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
-    var version = version
-    var identifier = identifier
-    var category = category
-
-    let plist: [String: PlistValue]
-    if let infoPlistFile = infoPlistFile {
-      plist = try PlistValue.loadDictionary(fromPlistFile: infoPlistFile).unwrap()
-      
-      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
-        version = versionString
-      }
-      
-      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
-        identifier = identifierString
-      }
-
-      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
-        category = categoryString
-      }
-    } else {
-      plist = [:]
-    }
-
-    var configuration = AppConfiguration(
-      identifier: identifier ?? "com.example.\(appName)",
-      product: appName,
-      version: version ?? "0.1.0",
+    let configuration = try Self.createAppConfiguration(
+      appName: appName,
+      packageDirectory: packageDirectory,
+      version: version,
+      identifier: identifier,
       category: category,
-      icon: icon
+      infoPlistFile: infoPlistFile,
+      iconFile: iconFile
     )
-
-    configuration = configuration.appendingInfoPlistEntries(plist, excludeHandledKeys: true)
 
     var template: Template?
     let elapsed = try Stopwatch.time {
@@ -147,6 +124,16 @@ struct CreateCommand: Command {
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()
+      }
+
+      
+      if let iconFile = iconFile {
+        let outputIcon = packageDirectory.appendingPathComponent(iconFile.lastPathComponent)
+        do {
+          try FileManager.default.copyItem(at: iconFile, to: outputIcon)
+        } catch {
+          throw CLIError.failedToCopyIcon(from: iconFile, to: outputIcon, error)
+        }
       }
     }
 
@@ -190,6 +177,50 @@ struct CreateCommand: Command {
         ExampleCommand("swift bundler run")
       }
     }.show()
+  }
+
+  static func createAppConfiguration(
+    appName: String,
+    packageDirectory: URL,
+    version: String?,
+    identifier: String?,
+    category: String?,
+    infoPlistFile: URL?,
+    iconFile: URL?
+  ) throws -> AppConfiguration {
+    // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
+    var version = version
+    var identifier = identifier
+    var category = category
+
+    let plist: [String: PlistValue]
+    if let infoPlistFile = infoPlistFile {
+      plist = try PlistValue.loadDictionary(fromPlistFile: infoPlistFile).unwrap()
+
+      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
+        version = versionString
+      }
+
+      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
+        identifier = identifierString
+      }
+
+      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
+        category = categoryString
+      }
+    } else {
+      plist = [:]
+    }
+
+    let configuration = AppConfiguration(
+      identifier: identifier ?? "com.example.\(appName)",
+      product: appName,
+      version: version ?? "0.1.0",
+      category: category,
+      icon: iconFile?.lastPathComponent
+    )
+
+    return configuration.appendingInfoPlistEntries(plist, excludeHandledKeys: true)
   }
 
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
