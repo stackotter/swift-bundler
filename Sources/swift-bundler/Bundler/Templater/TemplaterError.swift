@@ -22,6 +22,7 @@ enum TemplaterError: LocalizedError {
   case failedToEnumerateOutputFiles
   case failedToUpdateIndentationStyle(directory: URL, Error)
   case failedToCheckSwiftVersion(SwiftPackageManagerError)
+  case failedToCreateConfigurationFile(PackageConfiguration, URL, Error)
 
   var errorDescription: String? {
     switch self {
@@ -73,6 +74,8 @@ enum TemplaterError: LocalizedError {
         return "Failed to update the indentation style of the package in '\(directory.relativePath)'"
       case .failedToCheckSwiftVersion(let swiftPackageManagerError):
         return "Failed to check Swift version: \(swiftPackageManagerError.localizedDescription)"
+      case .failedToCreateConfigurationFile(_, let file, _):
+        return "Failed to create configuration file at '\(file.relativePath)'"
     }
   }
 }

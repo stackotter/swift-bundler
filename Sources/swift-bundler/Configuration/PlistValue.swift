@@ -219,4 +219,90 @@ enum PlistValue: Codable {
         try string.encode(to: valueEncoder)
     }
   }
+
+  /// Loads a dictionary of ``PlistValue``s from a plist file.
+  /// - Parameter plistFile: The plist file to load the dictionary from.
+  /// - Returns: The loaded plist dictionary, or a failure if an error occurs.
+  static func load(fromPlistFile plistFile: URL) -> Result<[String: PlistValue], PlistError> {
+    let contents: Data
+    do {
+      contents = try Data(contentsOf: plistFile)
+    } catch {
+      return .failure(.failedToReadInfoPlistFile(error))
+    }
+
+    let dictionary: [String: Any]
+    do {
+      var propertyListFormat = PropertyListSerialization.PropertyListFormat.xml
+      guard let plist = try PropertyListSerialization.propertyList(
+        from: contents,
+        options: .mutableContainersAndLeaves,
+        format: &propertyListFormat
+      ) as? [String: Any] else {
+        return .failure(.failedToDeserializePlistFileContents(contents, nil))
+      }
+
+      dictionary = plist
+    } catch {
+      return .failure(.failedToDeserializePlistFileContents(contents, error))
+    }
+
+    return convert(dictionary)
+  }
+
+  /// Converts a Swift dictionary to a dictionary of ``PlistValue``s.
+  /// - Parameter value: The value to convert.
+  /// - Returns: The converted value, or a failure if the value is invalid.
+  static func convert(_ dictionary: [String: Any]) -> Result<[String: PlistValue], PlistError> {
+    var convertedDictionary: [String: PlistValue] = [:]
+    for (key, value) in dictionary {
+      switch convert(value) {
+        case .success(let convertedValue):
+          convertedDictionary[key] = convertedValue
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+    return .success(convertedDictionary)
+  }
+
+  /// Converts a Swift value to a ``PlistValue``.
+  /// - Parameter value: The value to convert.
+  /// - Returns: The converted value, or a failure if the value is invalid.
+  static func convert(_ value: Any) -> Result<PlistValue, PlistError> { // swiftlint:disable:this cyclomatic_complexity
+    let convertedValue: PlistValue
+    if let string = value as? String {
+      convertedValue = .string(string)
+    } else if let date = value as? Date {
+      convertedValue = .date(date)
+    } else if let integer = value as? Int {
+      convertedValue = .integer(integer)
+    } else if let double = value as? Double {
+      convertedValue = .real(double)
+    } else if let boolean = value as? Bool {
+      convertedValue = .boolean(boolean)
+    } else if let array = value as? [Any] {
+      var convertedArray: [PlistValue] = []
+      for element in array {
+        switch convert(element) {
+          case .success(let convertedElement):
+            convertedArray.append(convertedElement)
+          case .failure(let error):
+            return .failure(error)
+        }
+      }
+      convertedValue = .array(convertedArray)
+    } else if let dictionary = value as? [String: Any] {
+      switch convert(dictionary) {
+        case .success(let convertedDictionary):
+          convertedValue = .dictionary(convertedDictionary)
+        case .failure(let error):
+          return .failure(error)
+      }
+    } else {
+      return .failure(.invalidPlistValue(value))
+    }
+      
+    return .success(convertedValue)
+  }
 }

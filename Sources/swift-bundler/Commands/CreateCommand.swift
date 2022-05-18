@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import Version
 
 /// The subcommand for creating new app packages from templates.
 struct CreateCommand: Command {
@@ -18,6 +19,31 @@ struct CreateCommand: Command {
     name: .shortAndLong,
     help: "The app's identifier. (e.g. 'com.example.ExampleApp')")
   var identifier: String
+
+  /// The app's initial version.
+  @Option(
+    name: .long,
+    help: "The app's initial version.")
+  var version: String?
+
+  /// The app's category.
+  @Option(
+    name: .long,
+    help: "The app's category.")
+  var category: String?
+
+  /// The app's icon file (1024x1024 png or icns file).
+  @Option(
+    name: .long,
+    help: "The app's icon file (1024x1024 png or icns file).")
+  var icon: String?
+
+  /// An Info.plist file containing entries to add to the app's configuration.
+  @Option(
+    name: [.customLong("info-plist")],
+    help: "An Info.plist file containing entries to add to the app's configuration.",
+    transform: URL.init(fileURLWithPath:))
+  var infoPlistFile: URL?
 
   /// A custom directory to create the app in. Default: create a new directory at './[app-name]'.
   @Option(
@@ -65,6 +91,18 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
+    var configuration = AppConfiguration(
+      identifier: identifier,
+      product: appName,
+      version: version ?? "0.1.0",
+      category: category,
+      icon: icon
+    )
+
+    if let infoPlistFile = infoPlistFile {
+      configuration = try configuration.appendingInfoPlistEntries(from: infoPlistFile).unwrap()
+    }
+
     var template: Template?
     let elapsed = try Stopwatch.time {
       // Create package from template
@@ -74,7 +112,7 @@ struct CreateCommand: Command {
           from: templateName,
           in: templateRepository,
           packageName: appName,
-          identifier: identifier,
+          configuration: configuration,
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()
@@ -83,7 +121,7 @@ struct CreateCommand: Command {
           in: packageDirectory,
           from: templateName,
           packageName: appName,
-          identifier: identifier,
+          configuration: configuration,
           forceCreation: force,
           indentationStyle: indentation
         ).unwrap()

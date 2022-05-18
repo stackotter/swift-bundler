@@ -1,5 +1,6 @@
 import Foundation
 import Version
+import TOMLKit
 
 /// A utility for creating packages from package templates.
 enum Templater {
@@ -13,7 +14,7 @@ enum Templater {
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
   ///   - packageName: The name of the package.
-  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
+  ///   - configuration: The app's configuration.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
   /// - Returns: The template that the package was created from (or nil if none were used), or a failure if package creation failed.
@@ -21,7 +22,7 @@ enum Templater {
     in outputDirectory: URL,
     from template: String?,
     packageName: String,
-    identifier: String,
+    configuration: AppConfiguration,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
   ) -> Result<Template?, TemplaterError> {
@@ -44,27 +45,31 @@ enum Templater {
       }.mapError { error -> TemplaterError in
         attemptCleanup(outputDirectory)
         return error
+      }.flatMap { (_: Void) -> Result<Void, TemplaterError> in
+        return createPackageConfigurationFile(
+          in: outputDirectory,
+          packageName: packageName,
+          configuration: configuration
+        )
       }.map { (_: Void) -> Template? in
         return nil // No template was used
       }
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
-    return getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      .flatMap { templatesDirectory in
-        createPackage(
-          in: outputDirectory,
-          from: template,
-          in: templatesDirectory,
-          packageName: packageName,
-          identifier: identifier,
-          forceCreation: forceCreation,
-          indentationStyle: indentationStyle
-        )
-      }
-      .map { template in
-        return .some(template)
-      }
+    return getDefaultTemplatesDirectory(downloadIfNecessary: true).flatMap { templatesDirectory in
+      return createPackage(
+        in: outputDirectory,
+        from: template,
+        in: templatesDirectory,
+        packageName: packageName,
+        configuration: configuration,
+        forceCreation: forceCreation,
+        indentationStyle: indentationStyle
+      )
+    }.map { template in
+      return .some(template)
+    }
   }
 
   /// Creates a package from the specified template from the specified template repository.
@@ -73,7 +78,7 @@ enum Templater {
   ///   - template: The template to use to create the package.
   ///   - templatesDirectory: The directory containing the template to use.
   ///   - packageName: The name of the package.
-  ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
+  ///   - configuration: The package's configuration.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
   /// - Returns: The template that the package was created from, or a failure if package creation failed.
@@ -82,7 +87,7 @@ enum Templater {
     from template: String,
     in templatesDirectory: URL,
     packageName: String,
-    identifier: String,
+    configuration: AppConfiguration,
     forceCreation: Bool,
     indentationStyle: IndentationStyle
   ) -> Result<Template, TemplaterError> {
@@ -136,8 +141,10 @@ enum Templater {
         baseTemplate,
         to: outputDirectory,
         packageName: packageName,
-        identifier: identifier,
-        indentationStyle: .tabs)
+        identifier: configuration.identifier,
+        indentationStyle: .tabs
+      )
+
       if case let .failure(error) = result {
         attemptCleanup(outputDirectory)
         return .failure(error)
@@ -149,13 +156,40 @@ enum Templater {
       templateDirectory,
       to: outputDirectory,
       packageName: packageName,
-      identifier: identifier,
+      identifier: configuration.identifier,
       indentationStyle: indentationStyle
     ).mapError { error in
+      // Cleanup output directory
       attemptCleanup(outputDirectory)
       return error
+    }.flatMap { _ -> Result<Void, TemplaterError> in
+      return createPackageConfigurationFile(
+        in: outputDirectory,
+        packageName: packageName,
+        configuration: configuration
+      )
     }.map { _ in
       return Template(name: template, manifest: manifest)
+    }
+  }
+
+  static func createPackageConfigurationFile(
+    in packageDirectory: URL,
+    packageName: String,
+    configuration: AppConfiguration
+  ) -> Result<Void, TemplaterError> {
+    // Create package configuration file
+    let file = packageDirectory.appendingPathComponent("Bundler.toml")
+    let configuration = PackageConfiguration([
+      packageName: configuration
+    ])
+
+    do {
+      let contents = try TOMLEncoder().encode(configuration)
+      try contents.write(to: file, atomically: false, encoding: .utf8)
+      return .success()
+    } catch {
+      return .failure(.failedToCreateConfigurationFile(configuration, file, error))
     }
   }
 
