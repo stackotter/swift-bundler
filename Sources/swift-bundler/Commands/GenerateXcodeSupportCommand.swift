@@ -16,10 +16,20 @@ struct GenerateXcodeSupportCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
+  /// Overrides the default configuration file location.
+  @Option(
+    name: [.customLong("config-file")],
+    help: "Overrides the default configuration file location",
+    transform: URL.init(fileURLWithPath:))
+  var configurationFileOverride: URL?
+
   func wrappedRun() throws {
     let elapsed = try Stopwatch.time {
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let configuration = try PackageConfiguration.load(fromDirectory: packageDirectory).unwrap()
+      let configuration = try PackageConfiguration.load(
+        fromDirectory: packageDirectory,
+        customFile: configurationFileOverride
+      ).unwrap()
 
       try XcodeSupportGenerator.generateXcodeSupport(
         for: configuration,

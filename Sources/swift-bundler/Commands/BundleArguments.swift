@@ -14,6 +14,13 @@ struct BundleArguments: ParsableArguments {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
+  /// Overrides the default configuration file location.
+  @Option(
+    name: [.customLong("config-file")],
+    help: "Overrides the default configuration file location",
+    transform: URL.init(fileURLWithPath:))
+  var configurationFileOverride: URL?
+
   /// The directory to output the bundled .app to.
   @Option(
     name: .shortAndLong,

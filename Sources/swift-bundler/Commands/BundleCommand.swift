@@ -124,7 +124,8 @@ struct BundleCommand: AsyncCommand {
       let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
       let (appName, appConfiguration) = try Self.getAppConfiguration(
         arguments.appName,
-        packageDirectory: packageDirectory
+        packageDirectory: packageDirectory,
+        customFile: arguments.configurationFileOverride
       ).unwrap()
 
       let platform = try Self.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
@@ -204,15 +205,19 @@ struct BundleCommand: AsyncCommand {
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
+  ///   - customFile: A custom configuration file not at the standard location.
   /// - Returns: The app's configuration if successful.
   static func getAppConfiguration(
     _ appName: String?,
-    packageDirectory: URL
+    packageDirectory: URL,
+    customFile: URL? = nil
   ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
-    return PackageConfiguration.load(fromDirectory: packageDirectory)
-      .flatMap { configuration in
-        configuration.getAppConfiguration(appName)
-      }
+    return PackageConfiguration.load(
+      fromDirectory: packageDirectory,
+      customFile: customFile
+    ).flatMap { configuration in
+      return configuration.getAppConfiguration(appName)
+    }
   }
 
   /// Unwraps an optional output directory and returns the default output directory if it's `nil`.
@@ -234,18 +239,18 @@ struct BundleCommand: AsyncCommand {
   /// - Throws: ``CLIError/missingMinimumIOSVersion`` if `platform` is iOS and the app's configuration doesn't contain a minimum iOS version.
   static func parsePlatform(_ platform: String, appConfiguration: AppConfiguration) throws -> Platform {
     switch platform {
-    case "macOS":
-      guard let macOSVersion = appConfiguration.minimumMacOSVersion else {
-        throw CLIError.missingMinimumMacOSVersion
-      }
-      return .macOS(version: macOSVersion)
-    case "iOS":
-      guard let iOSVersion = appConfiguration.minimumIOSVersion else {
-        throw CLIError.missingMinimumIOSVersion
-      }
-      return .iOS(version: iOSVersion)
-    default:
-      throw CLIError.invalidPlatform(platform)
+      case "macOS":
+        guard let macOSVersion = appConfiguration.minimumMacOSVersion else {
+          throw CLIError.missingMinimumMacOSVersion
+        }
+        return .macOS(version: macOSVersion)
+      case "iOS":
+        guard let iOSVersion = appConfiguration.minimumIOSVersion else {
+          throw CLIError.missingMinimumIOSVersion
+        }
+        return .iOS(version: iOSVersion)
+      default:
+        throw CLIError.invalidPlatform(platform)
     }
   }
 }

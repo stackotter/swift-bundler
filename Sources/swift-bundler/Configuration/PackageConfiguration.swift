@@ -28,16 +28,23 @@ struct PackageConfiguration: Codable {
   /// Loads configuration from the `Bundler.toml` file in the given directory. Attempts to migrate outdated configurations.
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
+  ///   - customFile: A custom configuration file not at the standard location.
   /// - Returns: The configuration.
-  static func load(fromDirectory packageDirectory: URL) -> Result<PackageConfiguration, PackageConfigurationError> {
-    let configurationFile = packageDirectory.appendingPathComponent("Bundler.toml")
-    let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
+  static func load(
+    fromDirectory packageDirectory: URL,
+    customFile: URL? = nil
+  ) -> Result<PackageConfiguration, PackageConfigurationError> {
+    let configurationFile = customFile ?? packageDirectory.appendingPathComponent("Bundler.toml")
 
     // Migrate old configuration if no new configuration exists
-    let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
-    let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
-    if oldConfigurationExists && !configurationExists {
-      return migrateJSONConfiguration(from: oldConfigurationFile, to: configurationFile)
+    let shouldAttemptJSONMigration = customFile == nil
+    if shouldAttemptJSONMigration {
+      let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
+      let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
+      let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
+      if oldConfigurationExists && !configurationExists {
+        return migrateJSONConfiguration(from: oldConfigurationFile, to: configurationFile)
+      }
     }
 
     let contents: String

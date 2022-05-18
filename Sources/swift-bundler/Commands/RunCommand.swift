@@ -37,7 +37,8 @@ struct RunCommand: AsyncCommand {
 
     let (appName, appConfiguration) = try BundleCommand.getAppConfiguration(
       arguments.appName,
-      packageDirectory: packageDirectory
+      packageDirectory: packageDirectory,
+      customFile: arguments.configurationFileOverride
     ).unwrap()
 
     let platform = try BundleCommand.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
