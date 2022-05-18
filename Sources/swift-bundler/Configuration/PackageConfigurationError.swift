@@ -4,7 +4,7 @@ import Foundation
 enum PackageConfigurationError: LocalizedError {
   case noSuchApp(String)
   case multipleAppsAndNoneSpecified
-  case failedToEvaluateExpressions(app: String, AppConfigurationError)
+  case failedToEvaluateExpressions(ExpressionEvaluatorError)
   case failedToReadConfigurationFile(URL, Error)
   case failedToDeserializeConfiguration(Error)
   case failedToSerializeConfiguration(Error)
@@ -22,8 +22,8 @@ enum PackageConfigurationError: LocalizedError {
         return "There is no app called '\(name)'."
       case .multipleAppsAndNoneSpecified:
         return "This package contains multiple apps. You must provide the 'app-name' argument"
-      case .failedToEvaluateExpressions(let app, let appConfigurationError):
-        return "Failed to evaluate the '\(app)' app's configuration: \(appConfigurationError.localizedDescription)"
+      case .failedToEvaluateExpressions(let error):
+        return "Failed to evaluate all expressions: \(error.localizedDescription)"
       case .failedToReadConfigurationFile(let file, _):
         return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):

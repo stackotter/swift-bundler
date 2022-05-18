@@ -11,12 +11,9 @@ struct PackageConfiguration: Codable {
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
 
-  var test: [String: PlistValue]
-
   private enum CodingKeys: String, CodingKey {
     case formatVersion = "format_version"
     case apps
-    case test
   }
 
   /// Creates a new package configuration.
@@ -24,7 +21,6 @@ struct PackageConfiguration: Codable {
   init(_ apps: [String: AppConfiguration]) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
-    test = [:]
   }
 
   // MARK: Static methods
@@ -72,9 +68,12 @@ struct PackageConfiguration: Codable {
       return .failure(.failedToDeserializeConfiguration(error))
     }
 
-    print(configuration.test)
-
-    return configuration.withExpressionsEvaluated(in: packageDirectory)
+    return ExpressionEvaluator.evaluatePackageConfiguration(
+      configuration,
+      in: packageDirectory
+    ).mapError { error in
+      return .failedToEvaluateExpressions(error)
+    }
   }
 
   /// Migrates a Swift Bundler `v2.0.0` configuration file to the current configuration format.
@@ -146,10 +145,10 @@ struct PackageConfiguration: Codable {
     return OldPackageConfiguration.load(
       from: oldConfigurationFile
     ).flatMap { oldConfiguration in
-      var extraPlistEntries: [String: String] = [:]
+      var extraPlistEntries: [String: PlistValue] = [:]
       for (key, value) in oldConfiguration.extraInfoPlistEntries {
         if let value = value as? String {
-          extraPlistEntries[key] = value
+          extraPlistEntries[key] = .string(value)
         }
       }
 
@@ -168,7 +167,7 @@ struct PackageConfiguration: Codable {
         version: oldConfiguration.versionString,
         category: oldConfiguration.category,
         minimumMacOSVersion: oldConfiguration.minOSVersion,
-        extraPlistEntries: extraPlistEntries.isEmpty ? nil : extraPlistEntries
+        plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
       )
 
       let configuration = PackageConfiguration([oldConfiguration.target: appConfiguration])
@@ -248,26 +247,5 @@ struct PackageConfiguration: Codable {
     } else {
       return .failure(.multipleAppsAndNoneSpecified)
     }
-  }
-
-  /// Evaluates the expressions in all configuration field values that support expressions.
-  /// - Parameter packageDirectory: The root directory of the package. Used to evaluate the `COMMIT` expression.
-  /// - Returns: The evaluated configuration. If any of the expressions are invalid, a failure is returned.
-  func withExpressionsEvaluated(in packageDirectory: URL) -> Result<PackageConfiguration, PackageConfigurationError> {
-    var config = self
-    for (appName, app) in config.apps {
-      let evaluator = ExpressionEvaluator(context: .init(
-        packageDirectory: packageDirectory,
-        version: app.version))
-      let result = app.withExpressionsEvaluated(evaluator)
-      switch result {
-        case let .success(evaluatedConfig):
-          config.apps[appName] = evaluatedConfig
-        case let .failure(error):
-          return .failure(.failedToEvaluateExpressions(app: appName, error))
-      }
-    }
-
-    return .success(config)
   }
 }

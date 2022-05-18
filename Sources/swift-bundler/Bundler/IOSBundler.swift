@@ -201,7 +201,7 @@ enum IOSBundler: Bundler {
       version: appConfiguration.version,
       bundleIdentifier: appConfiguration.identifier,
       category: appConfiguration.category,
-      extraPlistEntries: appConfiguration.extraPlistEntries,
+      extraPlistEntries: appConfiguration.plist,
       platform: .iOS(version: iOSVersion)
     ).mapError { error in
       .failedToCreateInfoPlist(error)

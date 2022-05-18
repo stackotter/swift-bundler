@@ -63,12 +63,35 @@ enum PlistValue: Codable {
     }
   }
 
+  /// This value's value represented using regular Swift types. Used when serializing to plist.
+  var value: Any {
+    switch self {
+      case .dictionary(let dictionary):
+        return dictionary.mapValues(\.value)
+      case .array(let array):
+        return array.map(\.value)
+      case .real(let double):
+        return double
+      case .integer(let integer):
+        return integer
+      case .boolean(let boolean):
+        return boolean
+      case .date(let date):
+        return date
+      case .data(let data):
+        return data
+      case .string(let string):
+        return string
+    }
+  }
+
   /// Coding keys used by explicitly typed value containers.
   enum CodingKeys: String, CodingKey {
     case type
     case value
   }
 
+  // swiftlint:disable:next cyclomatic_complexity
   init(from decoder: Decoder) throws {
     // Attempt to decode the value as an explicitly typed value.
     if let container = try? decoder.container(keyedBy: CodingKeys.self) {

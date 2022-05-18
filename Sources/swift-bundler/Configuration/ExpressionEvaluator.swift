@@ -117,4 +117,113 @@ struct ExpressionEvaluator {
     cache[variable] = output
     return .success(output)
   }
+
+  /// Evaluates the expressions present in a plist value (only string values within the tree are evaluated).
+  /// - Parameter value: The plist value to evaluate.
+  /// - Returns: The evaluated plist value, or a failure if evaluation fails.
+  mutating func evaluatePlistValue(_ value: PlistValue) -> Result<PlistValue, ExpressionEvaluatorError> {
+    switch value {
+      case .string(let string):
+        return evaluateExpression(string).map { evaluatedString in
+          return .string(evaluatedString)
+        }
+      case .array(let array):
+        return evaluatePlistArray(array).map { evaluatedArray in
+          return .array(evaluatedArray)
+        }
+      case .dictionary(let dictionary):
+        return evaluatePlistDictionary(dictionary).map { evaluatedDictionary in
+          return .dictionary(evaluatedDictionary)
+        }
+      default:
+        return .success(value)
+    }
+  }
+
+  /// Evaluates the expressions present in a plist array (only string values are evaluated).
+  /// - Parameter array: The plist array to evaluate.
+  /// - Returns: The evaluated plist array, or a failure if evaluation fails.
+  mutating func evaluatePlistArray(
+    _ array: [PlistValue]
+  ) -> Result<[PlistValue], ExpressionEvaluatorError> {
+    var evaluatedArray: [PlistValue] = []
+    for value in array {
+      switch evaluatePlistValue(value) {
+        case .success(let evaluatedValue):
+          evaluatedArray.append(evaluatedValue)
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+    return .success(evaluatedArray)
+  }
+
+  /// Evaluates the expressions present in a plist dictionary (only string values are evaluated).
+  /// - Parameter value: The plist dictionary to evaluate.
+  /// - Returns: The evaluated plist dictionary, or a failure if evaluation fails.
+  mutating func evaluatePlistDictionary(
+    _ dictionary: [String: PlistValue]
+  ) -> Result<[String: PlistValue], ExpressionEvaluatorError> {
+    var evaluatedDictionary: [String: PlistValue] = [:]
+    for (key, value) in dictionary {
+      switch evaluatePlistValue(value) {
+        case .success(let evaluatedValue):
+          evaluatedDictionary[key] = evaluatedValue
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+    return .success(evaluatedDictionary)
+  }
+
+  /// Evaluates the expressions present in supported sections of an app's configuration.
+  ///
+  /// The only currently supported section is ``AppConfiguration/plist``.
+  /// - Parameter configuration: The configuration to evaluate expressions in.
+  /// - Returns: The evaluated configuration, or a failure if evaluation fails.
+  mutating func evaluateAppConfiguration(
+    _ configuration: AppConfiguration
+  ) -> Result<AppConfiguration, ExpressionEvaluatorError> {
+    var configuration = configuration
+
+    if let plist = configuration.plist {
+      switch evaluatePlistDictionary(plist) {
+        case .success(let evaluatedPlist):
+          configuration.plist = evaluatedPlist
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+
+    return .success(configuration)
+  }
+
+  /// Evaluates the expressions present in supported sections of a package's configuration.
+  ///
+  /// The only currently supported section in ``AppConfiguration/plist``.
+  /// - Parameters:
+  ///   - configuration: The configuration to evaluate expressions in.
+  ///   - packageDirectory: The package's root directory (used to evaluate certain variables).
+  /// - Returns: The evaluated configuratoin, or a failure if evaluation fails.
+  static func evaluatePackageConfiguration(
+    _ configuration: PackageConfiguration,
+    in packageDirectory: URL
+  ) -> Result<PackageConfiguration, ExpressionEvaluatorError> {
+    var evaluatedConfiguration = configuration
+
+    for (name, app) in configuration.apps {
+      var evaluator = ExpressionEvaluator(context: .init(
+        packageDirectory: packageDirectory,
+        version: app.version
+      ))
+      switch evaluator.evaluateAppConfiguration(app) {
+        case .success(let evaluatedAppConfiguration):
+          evaluatedConfiguration.apps[name] = evaluatedAppConfiguration
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+
+    return .success(evaluatedConfiguration)
+  }
 }

@@ -19,7 +19,7 @@ enum PlistCreator {
     version: String,
     bundleIdentifier: String?,
     category: String?,
-    extraPlistEntries: [String: String]?,
+    extraPlistEntries: [String: PlistValue]?,
     platform: Platform
   ) -> Result<Void, PlistCreatorError> {
     createAppInfoPlistContents(
@@ -79,7 +79,7 @@ enum PlistCreator {
     version: String,
     bundleIdentifier: String?,
     category: String?,
-    extraPlistEntries: [String: String]?,
+    extraPlistEntries: [String: PlistValue]?,
     platform: Platform
   ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any?] = [
@@ -105,7 +105,7 @@ enum PlistCreator {
     }
 
     for (key, value) in extraPlistEntries ?? [:] {
-      entries[key] = value
+      entries[key] = value.value
     }
 
     return Self.serialize(entries.compactMapValues { $0 })

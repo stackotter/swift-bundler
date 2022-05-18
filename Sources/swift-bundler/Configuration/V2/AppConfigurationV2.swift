@@ -35,6 +35,12 @@ struct AppConfigurationV2: Codable {
 
   /// Migrates this configuration to the latest version.
   func migrate() -> AppConfiguration {
+    let plist: [String: PlistValue]? = extraPlistEntries.map { entries in
+      entries.mapValues { value in
+        return .string(value)
+      }
+    }
+
     return AppConfiguration(
       identifier: bundleIdentifier,
       product: product,
@@ -43,7 +49,7 @@ struct AppConfigurationV2: Codable {
       minimumMacOSVersion: minimumMacOSVersion,
       minimumIOSVersion: minimumIOSVersion,
       icon: icon,
-      extraPlistEntries: extraPlistEntries
+      plist: plist 
     )
   }
 }
