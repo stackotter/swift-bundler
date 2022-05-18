@@ -8,4 +8,9 @@ extension OutputComponent {
   var description: String {
     body
   }
+
+  /// Prints the component to standard output.
+  func show() {
+    print(body)
+  }
 }

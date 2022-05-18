@@ -39,7 +39,7 @@ struct TemplatesInfoCommand: Command {
       exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }
 
-    print(Output {
+    Output {
       Section("Template info") {
         KeyedList {
           KeyedList.Entry("Name", template.name)
@@ -53,6 +53,6 @@ struct TemplatesInfoCommand: Command {
       Section("Using this template") {
         ExampleCommand(exampleCommand)
       }
-    })
+    }.show()
   }
 }

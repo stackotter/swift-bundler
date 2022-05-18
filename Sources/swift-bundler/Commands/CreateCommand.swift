@@ -100,7 +100,7 @@ struct CreateCommand: Command {
   ///   - packageDirectory: The package's root directory.
   ///   - template: The template that the package was created from.
   static func printNextSteps(packageDirectory: URL, template: Template?) {
-    print(Output {
+    Output {
       if let template = template, let dependencies = template.manifest.systemDependencies {
         ""
         Section("System dependencies") {
@@ -129,7 +129,7 @@ struct CreateCommand: Command {
         ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
         ExampleCommand("swift bundler run")
       }
-    })
+    }.show()
   }
 
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).

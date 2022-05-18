@@ -147,7 +147,6 @@ enum PlistValue: Codable {
     let type: String
     do {
       type = try container.decode(String.self, forKey: .type)
-      print("type: \(type)")
     } catch {
       return nil
     }

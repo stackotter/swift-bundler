@@ -61,12 +61,12 @@ struct BundleCommand: AsyncCommand {
 
     if arguments.shouldCodesign && arguments.identity == nil {
       log.error("Please provide a codesigning identity with `--identity`")
-      print(Output {
+      Output {
         ""
         Section("Tip: Listing available identities") {
           ExampleCommand("swift bundler list-identities")
         }
-      })
+      }.show()
       return false
     }
 
@@ -78,12 +78,12 @@ struct BundleCommand: AsyncCommand {
     if case .iOS = platform, !arguments.shouldCodesign || arguments.identity == nil || arguments.provisioningProfile == nil {
       log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
       if arguments.identity == nil {
-        print(Output {
+        Output {
           ""
           Section("Tip: Listing available identities") {
             ExampleCommand("swift bundler list-identities")
           }
-        })
+        }.show()
       }
       return false
     }

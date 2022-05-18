@@ -12,7 +12,7 @@ struct ListIdentitiesCommand: Command {
   func wrappedRun() throws {
     let identities = try CodeSigner.enumerateIdentities().unwrap()
 
-    print(Output {
+    Output {
       Section("Available identities") {
         KeyedList {
           for identity in identities {
@@ -20,6 +20,6 @@ struct ListIdentitiesCommand: Command {
           }
         }
       }
-    })
+    }.show()
   }
 }

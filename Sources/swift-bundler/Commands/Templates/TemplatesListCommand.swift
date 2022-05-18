@@ -30,7 +30,7 @@ struct TemplatesListCommand: Command {
       repositoryOption = ""
     }
 
-    print(Output {
+    Output {
       Section("Templates") {
         KeyedList {
           for template in templates {
@@ -41,6 +41,6 @@ struct TemplatesListCommand: Command {
       Section("Using a template") {
         ExampleCommand("swift bundler create [app-name] --identifier [app-identifier] --template [template]" + repositoryOption)
       }
-    })
+    }.show()
   }
 }
