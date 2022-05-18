@@ -7,27 +7,18 @@ enum PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - appName: The name of the app.
-  ///   - version: The app's version string.
-  ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
-  ///   - category: The app's category.
-  ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
   /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
     appName: String,
-    version: String,
-    bundleIdentifier: String?,
-    category: String?,
-    extraPlistEntries: [String: PlistValue]?,
+    configuration: AppConfiguration,
     platform: Platform
   ) -> Result<Void, PlistCreatorError> {
     createAppInfoPlistContents(
       appName: appName,
-      version: version,
-      bundleIdentifier: bundleIdentifier,
-      category: category,
-      extraPlistEntries: extraPlistEntries,
+      configuration: configuration,
       platform: platform
     ).flatMap { contents in
       do {
@@ -67,44 +58,37 @@ enum PlistCreator {
   /// Creates the contents of an app's `Info.plist` file.
   /// - Parameters:
   ///   - appName: The app's name.
-  ///   - version: The app's version string.
-  ///   - bundleIdentifier: The app's bundle identifier (e.g. `com.example.HelloWorldApp`).
-  ///   - category: The app's category.
-  ///   - minimumOSVersion: The minimum OS version that the app should run on.
-  ///   - extraPlistEntries: Extra entries to insert into `Info.plist`.
+  ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
   /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
-    version: String,
-    bundleIdentifier: String?,
-    category: String?,
-    extraPlistEntries: [String: PlistValue]?,
+    configuration: AppConfiguration,
     platform: Platform
   ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any?] = [
       "CFBundleExecutable": appName,
       "CFBundleIconFile": "AppIcon",
       "CFBundleIconName": "AppIcon",
-      "CFBundleIdentifier": bundleIdentifier,
+      "CFBundleIdentifier": configuration.identifier,
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
-      "CFBundleShortVersionString": version,
-      "LSApplicationCategoryType": category
+      "CFBundleShortVersionString": configuration.version,
+      "LSApplicationCategoryType": configuration.category
     ]
 
     switch platform {
-    case .macOS(let version):
-      entries["LSMinimumSystemVersion"] = version
-      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-    case .iOS(let version):
-      // TODO: Make the produced Info.plist for iOS identical to Xcode's
-      entries["MinimumOSVersion"] = version
-      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      case .macOS(let version):
+        entries["LSMinimumSystemVersion"] = version
+        entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
+      case .iOS(let version):
+        // TODO: Make the produced Info.plist for iOS identical to Xcode's
+        entries["MinimumOSVersion"] = version
+        entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
     }
 
-    for (key, value) in extraPlistEntries ?? [:] {
+    for (key, value) in configuration.plist ?? [:] {
       entries[key] = value.value
     }
 

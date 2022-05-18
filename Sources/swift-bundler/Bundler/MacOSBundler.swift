@@ -191,10 +191,7 @@ enum MacOSBundler: Bundler {
     return PlistCreator.createAppInfoPlist(
       at: infoPlistFile,
       appName: appName,
-      version: appConfiguration.version,
-      bundleIdentifier: appConfiguration.identifier,
-      category: appConfiguration.category,
-      extraPlistEntries: appConfiguration.plist,
+      configuration: appConfiguration,
       platform: .macOS(version: macOSVersion)
     ).mapError { error in
       .failedToCreateInfoPlist(error)

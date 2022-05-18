@@ -198,10 +198,7 @@ enum IOSBundler: Bundler {
     return PlistCreator.createAppInfoPlist(
       at: infoPlistFile,
       appName: appName,
-      version: appConfiguration.version,
-      bundleIdentifier: appConfiguration.identifier,
-      category: appConfiguration.category,
-      extraPlistEntries: appConfiguration.plist,
+      configuration: appConfiguration,
       platform: .iOS(version: iOSVersion)
     ).mapError { error in
       .failedToCreateInfoPlist(error)
