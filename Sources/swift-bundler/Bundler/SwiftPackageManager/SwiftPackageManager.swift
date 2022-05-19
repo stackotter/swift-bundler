@@ -79,13 +79,15 @@ enum SwiftPackageManager {
   ///   - configuration: The build configuration to use.
   ///   - architectures: The set of architectures to build for.
   ///   - platform: The platform to build for.
+  ///   - platformVersion: The platform version to build for.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
     packageDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
 
@@ -94,7 +96,8 @@ enum SwiftPackageManager {
       packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
-      platform: platform
+      platform: platform,
+      platformVersion: platformVersion
     ).flatMap { arguments in
       let process = Process.create(
         swiftExecutable,
@@ -113,11 +116,12 @@ enum SwiftPackageManager {
     packageDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch platform {
-    case .iOS(let version):
+    case .iOS:
       let sdkPath: String
       switch getLatestIOSSDKPath() {
       case .success(let path):
@@ -128,7 +132,7 @@ enum SwiftPackageManager {
 
       platformArguments = [
         "-sdk", sdkPath,
-        "-target", "arm64-apple-ios\(version)"
+        "-target", "arm64-apple-ios\(platformVersion)"
       ].flatMap { ["-Xswiftc", $0] }
     case .macOS:
       platformArguments = []
@@ -211,19 +215,23 @@ enum SwiftPackageManager {
   ///   - packageDirectory: The package's root directory.
   ///   - configuration: The current build configuration.
   ///   - architectures: The architectures that the build was for.
+  ///   - platform: The platform that was built for.
+  ///   - platformVersion: The platform version that was built for.
   /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args` fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<URL, SwiftPackageManagerError> {
     return createBuildArguments(
       product: nil,
       packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
-      platform: platform
+      platform: platform,
+      platformVersion: platformVersion
     ).flatMap { arguments in
       let process = Process.create(
         "/usr/bin/swift",

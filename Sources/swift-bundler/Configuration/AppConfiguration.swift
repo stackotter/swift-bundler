@@ -11,10 +11,6 @@ struct AppConfiguration: Codable {
   // swiftlint:disable:next line_length
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
-  /// The minimum macOS version that the app can run on.
-  var minimumMacOSVersion: String?
-  /// The minimum iOS version that the app can run on.
-  var minimumIOSVersion: String?
   /// The path to the app's icon.
   var icon: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
@@ -27,8 +23,6 @@ struct AppConfiguration: Codable {
     case version
     case category
     case identifier = "identifier"
-    case minimumMacOSVersion = "minimum_macos_version"
-    case minimumIOSVersion = "minimum_ios_version"
     case icon
     case plist
   }

@@ -17,6 +17,7 @@ enum IOSBundlerError: LocalizedError {
   case failedToCodesign(CodeSignerError)
   case mustSpecifyBundleIdentifier
   case failedToLoadManifest(SwiftPackageManagerError)
+  case failedToGetMinimumIOSVersion(manifest: URL)
 
   var errorDescription: String? {
     switch self {
@@ -50,6 +51,8 @@ enum IOSBundlerError: LocalizedError {
         return "Bundle identifier must be specified for iOS apps"
       case .failedToLoadManifest(let error):
         return error.localizedDescription
+      case .failedToGetMinimumIOSVersion(let manifest):
+        return "To build for iOS, please specify a iOS deployment version in the platforms field of '\(manifest.relativePath)'"
     }
   }
 }

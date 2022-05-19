@@ -35,13 +35,11 @@ struct RunCommand: AsyncCommand {
       packageDirectory: packageDirectory
     )
 
-    let (appName, appConfiguration) = try BundleCommand.getAppConfiguration(
+    let (appName, _) = try BundleCommand.getAppConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       customFile: arguments.configurationFileOverride
     ).unwrap()
-
-    let platform = try BundleCommand.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
 
     let bundleCommand = BundleCommand(arguments: _arguments, skipBuild: false, builtWithXcode: false)
 
@@ -51,7 +49,7 @@ struct RunCommand: AsyncCommand {
 
     try Runner.run(
       bundle: outputDirectory.appendingPathComponent("\(appName).app"),
-      platform: platform,
+      platform: arguments.platform,
       environmentFile: environmentFile
     ).unwrap()
   }

@@ -9,17 +9,20 @@ enum PlistCreator {
   ///   - appName: The name of the app.
   ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
     appName: String,
     configuration: AppConfiguration,
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Void, PlistCreatorError> {
     createAppInfoPlistContents(
       appName: appName,
       configuration: configuration,
-      platform: platform
+      platform: platform,
+      platformVersion: platformVersion
     ).flatMap { contents in
       do {
         try contents.write(to: file)
@@ -36,15 +39,18 @@ enum PlistCreator {
   ///   - bundleName: The bundle's name.
   ///   - minimumOSVersion: The minimum OS version that the resource bundle should work on.
   ///   - platform: The platform the bundle is for.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   /// - Returns: If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlist(
     at file: URL,
     bundleName: String,
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Void, PlistCreatorError> {
     createResourceBundleInfoPlistContents(
       bundleName: bundleName,
-      platform: platform
+      platform: platform,
+      platformVersion: platformVersion
     ).flatMap { contents in
       do {
         try contents.write(to: file)
@@ -60,11 +66,13 @@ enum PlistCreator {
   ///   - appName: The app's name.
   ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
     configuration: AppConfiguration,
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Data, PlistCreatorError> {
     var entries: [String: Any?] = [
       "CFBundleDevelopmentRegion": "en",
@@ -80,12 +88,12 @@ enum PlistCreator {
     ]
 
     switch platform {
-      case .macOS(let version):
-        entries["LSMinimumSystemVersion"] = version
+      case .macOS:
+        entries["LSMinimumSystemVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-      case .iOS(let version):
+      case .iOS:
         // TODO: Make the produced Info.plist for iOS identical to Xcode's
-        entries["MinimumOSVersion"] = version
+        entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
     }
 
@@ -99,12 +107,13 @@ enum PlistCreator {
   /// Creates the contents of a resource bundle's `Info.plist` file.
   /// - Parameters:
   ///   - bundleName: The bundle's name.
-  ///   - minimumOSVersion: The minimum OS version that the resource bundle should work on.
   ///   - platform: The platform the bundle is for.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlistContents(
     bundleName: String,
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Data, PlistCreatorError> {
     let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
     var entries: [String: Any?] = [
@@ -115,12 +124,12 @@ enum PlistCreator {
     ]
 
     switch platform {
-    case .macOS(let version):
-      entries["LSMinimumSystemVersion"] = version
+    case .macOS:
+      entries["LSMinimumSystemVersion"] = platformVersion
       entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-    case .iOS(let version):
+    case .iOS:
       // TODO: Make the produced Info.plist for iOS identical to Xcode's
-      entries["MinimumOSVersion"] = version
+      entries["MinimumOSVersion"] = platformVersion
       entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
     }
 

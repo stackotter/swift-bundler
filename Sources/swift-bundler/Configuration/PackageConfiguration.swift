@@ -177,7 +177,6 @@ struct PackageConfiguration: Codable {
         product: oldConfiguration.target,
         version: oldConfiguration.versionString,
         category: oldConfiguration.category,
-        minimumMacOSVersion: oldConfiguration.minOSVersion,
         plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
       )
 

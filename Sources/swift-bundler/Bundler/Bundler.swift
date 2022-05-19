@@ -3,6 +3,7 @@ import Foundation
 protocol Bundler {
   static func bundle(
     appName: String,
+    packageName: String,
     appConfiguration: AppConfiguration,
     packageDirectory: URL,
     productsDirectory: URL,
@@ -12,7 +13,7 @@ protocol Bundler {
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String
-  ) async -> Result<Void, Error>
+  ) -> Result<Void, Error>
 }
 
 func getBundler(for platform: Platform) -> any Bundler.Type {

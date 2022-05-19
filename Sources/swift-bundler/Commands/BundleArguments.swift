@@ -56,9 +56,9 @@ struct BundleArguments: ParsableArguments {
       let defaultValue = BuildArchitecture.current.rawValue
       return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
     }(),
-    transform: {
-      guard let arch = BuildArchitecture.init(rawValue: $0) else {
-        throw CLIError.invalidArchitecture($0)
+    transform: { string in
+      guard let arch = BuildArchitecture.init(rawValue: string) else {
+        throw CLIError.invalidArchitecture(string)
       }
       return arch
     })
@@ -69,8 +69,14 @@ struct BundleArguments: ParsableArguments {
     name: .shortAndLong,
     help: {
       return "The platform to build for (macOS|iOS)."
-    }())
-  var platform: String = "macOS"
+    }(),
+    transform: { string in
+      guard let platform = Platform(rawValue: string) else {
+        throw CLIError.invalidPlatform(string)
+      }
+      return platform
+    })
+  var platform = Platform.macOS
 
   /// A codesigning identity to use.
   @Option(

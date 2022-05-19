@@ -15,6 +15,7 @@ enum MacOSBundlerError: LocalizedError {
   case invalidAppIconFile(URL)
   case failedToCodesign(CodeSignerError)
   case failedToLoadManifest(SwiftPackageManagerError)
+  case failedToGetMinimumMacOSVersion(manifest: URL)
 
   var errorDescription: String? {
     switch self {
@@ -44,6 +45,8 @@ enum MacOSBundlerError: LocalizedError {
         return error.localizedDescription
       case .failedToLoadManifest(let error):
         return error.localizedDescription
+      case .failedToGetMinimumMacOSVersion(let manifest):
+        return "To build for macOS, please specify a macOS deployment version in the platforms field of '\(manifest.relativePath)'"
     }
   }
 }

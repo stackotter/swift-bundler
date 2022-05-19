@@ -1,5 +1,4 @@
 import Foundation
-import PackageModel
 
 /// The bundler for creating iOS apps.
 enum IOSBundler: Bundler {
@@ -8,6 +7,7 @@ enum IOSBundler: Bundler {
   /// ``build(product:in:buildConfiguration:universal:)`` should usually be called first.
   /// - Parameters:
   ///   - appName: The name to give the bundled app.
+  ///   - packageName: The name of the package.
   ///   - appConfiguration: The app's configuration.
   ///   - packageDirectory: The root directory of the package containing the app.
   ///   - productsDirectory: The directory containing the products from the build step.
@@ -16,10 +16,11 @@ enum IOSBundler: Bundler {
   ///   - universal: Does nothing for iOS.
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
-  ///   - platformVersion: The platform version to target.
+  ///   - platformVersion: The platform version that the executable was built for.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
+    packageName: String,
     appConfiguration: AppConfiguration,
     packageDirectory: URL,
     productsDirectory: URL,
@@ -29,16 +30,8 @@ enum IOSBundler: Bundler {
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String
-  ) async -> Result<Void, Error> {
+  ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
-
-    let manifest: Manifest
-    switch await SwiftPackageManager.loadPackageManifest(from: packageDirectory) {
-      case .success(let value):
-        manifest = value
-      case .failure(let error):
-        return .failure(IOSBundlerError.failedToLoadManifest(error))
-    }
 
     let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
 
@@ -59,8 +52,9 @@ enum IOSBundler: Bundler {
         from: productsDirectory,
         to: appBundle,
         fixBundles: !isXcodeBuild && !universal,
-        platform: .iOS(version: platformVersion),
-        packageName: manifest.displayName,
+        platform: .iOS,
+        platformVersion: platformVersion,
+        packageName: packageName,
         productName: appConfiguration.product
       ).mapError { error in
         .failedToCopyResourceBundles(error)
@@ -199,7 +193,8 @@ enum IOSBundler: Bundler {
       at: infoPlistFile,
       appName: appName,
       configuration: appConfiguration,
-      platform: .iOS(version: iOSVersion)
+      platform: .iOS,
+      platformVersion: iOSVersion
     ).mapError { error in
       .failedToCreateInfoPlist(error)
     }

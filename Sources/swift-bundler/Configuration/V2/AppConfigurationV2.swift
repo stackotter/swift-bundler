@@ -46,10 +46,8 @@ struct AppConfigurationV2: Codable {
       product: product,
       version: version,
       category: category,
-      minimumMacOSVersion: minimumMacOSVersion,
-      minimumIOSVersion: minimumIOSVersion,
       icon: icon,
-      plist: plist 
+      plist: plist
     )
   }
 }

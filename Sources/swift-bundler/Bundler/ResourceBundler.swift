@@ -6,7 +6,8 @@ enum ResourceBundler {
   static func compileAssetCatalog(
     _ assetCatalog: URL,
     to destinationDirectory: URL,
-    for platform: Platform
+    for platform: Platform,
+    platformVersion: String
   ) -> Result<Void, ResourceBundlerError> {
     log.info("Compiling asset catalog")
     return Process.create(
@@ -15,7 +16,7 @@ enum ResourceBundler {
         "actool", assetCatalog.path,
         "--compile", destinationDirectory.path,
         "--platform", platform.sdkName,
-        "--minimum-deployment-target", platform.version
+        "--minimum-deployment-target", platformVersion
       ]
     ).runAndWait().mapError { error in
       return .failedToCompileXCAssets(error)
@@ -29,6 +30,7 @@ enum ResourceBundler {
   ///   - destinationDirectory: The directory to copy the bundles to, fixing them if required.
   ///   - fixBundles: If `false`, bundles will be left alone when copying them.
   ///   - platform: The platform that the app should run on.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - packageName: The name of the package this app is in.
   ///   - mainProductName: The name of the app's product.
   /// - Returns: If an error occurs, a failure is returned.
@@ -37,6 +39,7 @@ enum ResourceBundler {
     to destinationDirectory: URL,
     fixBundles: Bool,
     platform: Platform,
+    platformVersion: String,
     packageName: String,
     productName: String
   ) -> Result<Void, ResourceBundlerError> {
@@ -66,6 +69,7 @@ enum ResourceBundler {
           file,
           to: destinationDirectory,
           platform: platform,
+          platformVersion: platformVersion,
           isMainBundle: bundleName == mainBundleName
         )
       }
@@ -105,12 +109,14 @@ enum ResourceBundler {
   ///   - bundle: The bundle to fix and copy.
   ///   - destination: The directory to copy the bundle to.
   ///   - platform: The platform that the app should run on.
+  ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - isMainBundle: If `true`, the contents of the bundle are fixed and copied straight into the app's resources directory.
   /// - Returns: If an error occurs, a failure is returned.
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
     platform: Platform,
+    platformVersion: String,
     isMainBundle: Bool
   ) -> Result<Void, ResourceBundlerError> {
     log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
@@ -137,7 +143,12 @@ enum ResourceBundler {
         return .success()
       }
 
-      return Self.compileAssetCatalog(assetCatalog, to: destinationBundleResources, for: platform).flatMap { _ in
+      return Self.compileAssetCatalog(
+        assetCatalog,
+        to: destinationBundleResources,
+        for: platform,
+        platformVersion: platformVersion
+      ).flatMap { _ in
         do {
           try FileManager.default.removeItem(at: assetCatalog)
         } catch {
@@ -166,7 +177,11 @@ enum ResourceBundler {
       },
       {
         if !isMainBundle {
-          return createResourceBundleInfoPlist(in: destinationBundle, platform: platform)
+          return createResourceBundleInfoPlist(
+            in: destinationBundle,
+            platform: platform,
+            platformVersion: platformVersion
+          )
         }
         return .success()
       },
@@ -204,10 +219,12 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - bundle: The bundle to create the `Info.plist` file for.
   ///   - platform: The platform that the app should run on.
+  ///   - platformVersion: The platform version to target.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createResourceBundleInfoPlist(
     in bundle: URL,
-    platform: Platform
+    platform: Platform,
+    platformVersion: String
   ) -> Result<Void, ResourceBundlerError> {
     let bundleName = bundle.deletingPathExtension().lastPathComponent
     let infoPlist = bundle
@@ -217,7 +234,8 @@ enum ResourceBundler {
     let result = PlistCreator.createResourceBundleInfoPlist(
       at: infoPlist,
       bundleName: bundleName,
-      platform: platform
+      platform: platform,
+      platformVersion: platformVersion
     )
 
     if case let .failure(error) = result {

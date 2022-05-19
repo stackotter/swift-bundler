@@ -1,19 +1,9 @@
 import Foundation
 
 /// A platform to build for.
-enum Platform {
-  case macOS(version: String)
-  case iOS(version: String)
-
-  /// The platform's version.
-  var version: String {
-    switch self {
-    case .macOS(let version):
-      return version
-    case .iOS(let version):
-      return version
-    }
-  }
+enum Platform: String {
+  case macOS
+  case iOS
 
   /// The platform's name.
   var name: String {
@@ -33,5 +23,10 @@ enum Platform {
       case .iOS:
         return "iphoneos"
     }
+  }
+
+  /// The platform's name in a SwiftPM manifest's JSON representation.
+  var manifestName: String {
+    return name.lowercased()
   }
 }

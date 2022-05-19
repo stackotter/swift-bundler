@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import PackageModel
 
 /// The subcommand for creating app bundles for a package.
 struct BundleCommand: AsyncCommand {
@@ -128,26 +129,34 @@ struct BundleCommand: AsyncCommand {
         customFile: arguments.configurationFileOverride
       ).unwrap()
 
-      let platform = try Self.parsePlatform(arguments.platform, appConfiguration: appConfiguration)
-
-      if !Self.validateArguments(arguments, platform: platform, skipBuild: skipBuild, builtWithXcode: builtWithXcode) {
+      if !Self.validateArguments(arguments, platform: arguments.platform, skipBuild: skipBuild, builtWithXcode: builtWithXcode) {
         Foundation.exit(1)
       }
 
       // Get relevant configuration
       let universal = arguments.universal || arguments.architectures.count > 1
-      let architectures = getArchitectures(platform: platform)
+      let architectures = getArchitectures(platform: arguments.platform)
 
       let outputDirectory = Self.getOutputDirectory(arguments.outputDirectory, packageDirectory: packageDirectory)
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
+
+      // Load package manifest
+      log.info("Loading package manifest")
+      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory).unwrap()
+
+      guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
+        let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
+        throw CLIError.failedToGetPlatformVersion(platform: arguments.platform, manifest: manifestFile)
+      }
 
       // Get build output directory
       let productsDirectory = try arguments.productsDirectory ?? SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
         configuration: arguments.buildConfiguration,
         architectures: architectures,
-        platform: platform
+        platform: arguments.platform,
+        platformVersion: platformVersion
       ).unwrap()
 
       // Create build job
@@ -157,17 +166,19 @@ struct BundleCommand: AsyncCommand {
           packageDirectory: packageDirectory,
           configuration: arguments.buildConfiguration,
           architectures: architectures,
-          platform: platform
+          platform: arguments.platform,
+          platformVersion: platformVersion
         ).mapError { error in
           return error
         }
       }
 
       // Create bundle job
-      let bundler = getBundler(for: platform)
+      let bundler = getBundler(for: arguments.platform)
       let bundle = {
-        await bundler.bundle(
+        bundler.bundle(
           appName: appName,
+          packageName: manifest.displayName,
           appConfiguration: appConfiguration,
           packageDirectory: packageDirectory,
           productsDirectory: productsDirectory,
@@ -176,7 +187,7 @@ struct BundleCommand: AsyncCommand {
           universal: universal,
           codesigningIdentity: arguments.identity,
           provisioningProfile: arguments.provisioningProfile,
-          platformVersion: platform.version
+          platformVersion: platformVersion
         )
       }
 
@@ -227,30 +238,5 @@ struct BundleCommand: AsyncCommand {
   /// - Returns: The output directory to use.
   static func getOutputDirectory(_ outputDirectory: URL?, packageDirectory: URL) -> URL {
     return outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
-  }
-
-  /// Parses the platform argument in combination with the app's configuration.
-  ///
-  /// The app's configuration is required to populate the iOS platform's version if chosen.
-  /// - Parameters:
-  ///   - platform: The platform string (macOS|iOS).
-  ///   - appConfiguration: The app's configuration.
-  /// - Returns: The parsed platform.
-  /// - Throws: ``CLIError/missingMinimumIOSVersion`` if `platform` is iOS and the app's configuration doesn't contain a minimum iOS version.
-  static func parsePlatform(_ platform: String, appConfiguration: AppConfiguration) throws -> Platform {
-    switch platform {
-      case "macOS":
-        guard let macOSVersion = appConfiguration.minimumMacOSVersion else {
-          throw CLIError.missingMinimumMacOSVersion
-        }
-        return .macOS(version: macOSVersion)
-      case "iOS":
-        guard let iOSVersion = appConfiguration.minimumIOSVersion else {
-          throw CLIError.missingMinimumIOSVersion
-        }
-        return .iOS(version: iOSVersion)
-      default:
-        throw CLIError.invalidPlatform(platform)
-    }
   }
 }

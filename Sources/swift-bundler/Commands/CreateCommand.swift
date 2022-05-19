@@ -126,13 +126,12 @@ struct CreateCommand: Command {
         ).unwrap()
       }
 
-      
       if let iconFile = iconFile {
         let outputIcon = packageDirectory.appendingPathComponent(iconFile.lastPathComponent)
         do {
           try FileManager.default.copyItem(at: iconFile, to: outputIcon)
         } catch {
-          throw CLIError.failedToCopyIcon(from: iconFile, to: outputIcon, error)
+          throw CLIError.failedToCopyIcon(source: iconFile, destination: outputIcon, error)
         }
       }
     }
