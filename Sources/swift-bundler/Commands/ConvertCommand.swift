@@ -15,7 +15,8 @@ struct ConvertCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var xcodeProjectFile: URL
 
-  @Argument(
+  @Option(
+    name: [.customShort("o"), .customLong("out")],
     help: "The output directory.",
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL
@@ -26,6 +27,14 @@ struct ConvertCommand: Command {
     // Check deployment platforms
     // Copy indentation settings
     // Preserve project structure
+    log.warning("Converting xcodeprojs is currently an experimental feature. Proceed with caution.")
+    print("[press ENTER to continue]", terminator: "")
+    _ = readLine()
+
+    guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
+      log.error("Directory already exists at '\(outputDirectory.relativePath)'")
+      Foundation.exit(1)
+    }
 
     let project = try XcodeProj(pathString: xcodeProjectFile.path)
     let sourceRoot = xcodeProjectFile.deletingLastPathComponent().path
