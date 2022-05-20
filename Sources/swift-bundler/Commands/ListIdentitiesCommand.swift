@@ -1,6 +1,5 @@
 import Foundation
 import ArgumentParser
-import Rainbow
 
 /// The command for listing codesigning identities.
 struct ListIdentitiesCommand: Command {
