@@ -25,7 +25,6 @@ struct ConvertCommand: Command {
     // - [ ] Convert executable targets
     // - [ ] Convert library dependency targets
     // - [ ] Check deployment platforms
-    // - [ ] Copy indentation settings
     // - [ ] Preserve project structure
     // - [ ] Extract version and identifier
     // - [ ] Extract indentation settings

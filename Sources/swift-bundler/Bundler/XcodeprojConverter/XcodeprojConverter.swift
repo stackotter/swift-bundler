@@ -27,16 +27,16 @@ enum XcodeprojConverter {
       return .failure(.failedToLoadXcodeProj(xcodeProjectFile, error))
     }
 
-    let sourceRoot = xcodeProjectFile.deletingLastPathComponent()
+    let projectRootDirectory = xcodeProjectFile.deletingLastPathComponent()
     let sourcesDirectory = outputDirectory.appendingPathComponent("Sources")
 
     // Extract and convert targets
-    return extractTargets(from: project).flatMap { targets in
+    return extractTargets(from: project, rootDirectory: projectRootDirectory).flatMap { targets in
       // Copy targets and then create configuration files
       return copyTargets(
         targets,
         to: sourcesDirectory,
-        xcodeprojSourceRoot: sourceRoot
+        xcodeProjectRootDirectory: projectRootDirectory
       ).flatMap { _ in
         // Create Package.swift
         return createPackageManifestFile(
@@ -55,10 +55,13 @@ enum XcodeprojConverter {
   }
 
   /// Extracts the targets of an xcodeproj.
-  /// - Parameter project: The xcodeproj to extract the targets from.
+  /// - Parameters:
+  ///   - project: The xcodeproj to extract the targets from.
+  ///   - rootDirectory: The Xcode project's root directory.
   /// - Returns: The extracted targets, or a failure if an error occurs.
   static func extractTargets(
-    from project: XcodeProj
+    from project: XcodeProj,
+    rootDirectory: URL
   ) -> Result<[XcodeTarget], XcodeprojConverterError> {
     var targets: [XcodeTarget] = []
     for target in project.pbxproj.nativeTargets {
@@ -74,16 +77,8 @@ enum XcodeprojConverter {
       // Enumerate the target's source files
       let sources: [XcodeFile]
       do {
-        sources = try target.sourceFiles().compactMap { file -> XcodeFile? in
-          guard
-            let path = file.path,
-            let sourceTree = file.sourceTree
-          else {
-            log.warning("Skipping invalid source file '\(file.name ?? "Unknown name")'")
-            return nil
-          }
-
-          return XcodeFile(path: path, sourceTree: sourceTree, parent: file.parent)
+        sources = try target.sourceFiles().compactMap { file -> XcodeFile in
+          return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
         }
       } catch {
         return .failure(.failedToEnumerateSources(target: name, error))
@@ -91,16 +86,7 @@ enum XcodeprojConverter {
 
       // Enumerate the target's resource files
       let resources = try? target.resourcesBuildPhase()?.files?.compactMap { file -> XcodeFile? in
-        guard
-          let file = file.file,
-          let path = file.path,
-          let sourceTree = file.sourceTree
-        else {
-          log.warning("Skipping invalid resource file '\(file.file?.name ?? "Unknown name")'")
-          return nil
-        }
-
-        return XcodeFile(path: path, sourceTree: sourceTree, parent: file.parent)
+        return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
       }
 
       targets.append(XcodeTarget(
@@ -117,15 +103,15 @@ enum XcodeprojConverter {
   /// - Parameters:
   ///   - targets: The targets to copy.
   ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-  ///   - xcodeprojSourceRoot: The root directory of the xcodeproj.
+  ///   - xcodeProjectRootDirectory: The root directory of the Xcode project.
   /// - Returns: A failure if an error occurs.
   static func copyTargets(
     _ targets: [XcodeTarget],
     to sourcesDirectory: URL,
-    xcodeprojSourceRoot: URL
+    xcodeProjectRootDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {
     for target in targets {
-      let result = copyTarget(target, to: sourcesDirectory, xcodeprojSourceRoot: xcodeprojSourceRoot)
+      let result = copyTarget(target, to: sourcesDirectory, xcodeProjectRootDirectory: xcodeProjectRootDirectory)
 
       if case .failure = result {
         return result
@@ -139,56 +125,39 @@ enum XcodeprojConverter {
   /// - Parameters:
   ///   - target: The target to copy.
   ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-  ///   - xcodeprojSourceRoot: The root directory of the xcodeproj.
+  ///   - xcodeProjectRootDirectory: The root directory of the Xcode project.
   /// - Returns: A failure if an error occurs.
   static func copyTarget(
     _ target: XcodeTarget,
     to sourcesDirectory: URL,
-    xcodeprojSourceRoot: URL
+    xcodeProjectRootDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {
     log.info("Copying files for target '\(target.name)'")
 
     for file in target.files {
       // Get source and destination
-      let result: Result<Void, XcodeprojConverterError> = file.relativePath().flatMap { relativePath in
-        let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
-        let source = xcodeprojSourceRoot.appendingPathComponent(relativePath)
+      let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
+      let source = xcodeProjectRootDirectory.appendingPathComponent(file.relativePath)
+      let destination = targetDirectory.appendingPathComponent(file.bundlerPath(target: target.name))
 
-        // Simplify destination path
-        var relativePath = relativePath
-        if relativePath.hasPrefix(target.name) {
-          // Files are usually under a folder matching the name of the target. To reduce unnecessary
-          // nesting, remove this folder from the destination if present.
-          relativePath.removeFirst(target.name.count + 1)
-        }
-
-        let destination = targetDirectory.appendingPathComponent(relativePath)
-
-        // Create output directory
-        do {
-          try FileManager.default.createDirectory(at: targetDirectory)
-        } catch {
-          return .failure(.failedToCreateTargetDirectory(target: target.name, targetDirectory, error))
-        }
-
-        // Copy item
-        do {
-          // Create parent directory if required
-          let directory = destination.deletingLastPathComponent()
-          if !FileManager.default.fileExists(atPath: directory.path) {
-            try FileManager.default.createDirectory(at: directory)
-          }
-
-          try FileManager.default.copyItem(at: source, to: destination)
-        } catch {
-          return .failure(.failedToCopyFile(source: source, destination: destination, error))
-        }
-
-        return .success()
+      // Create output directory
+      do {
+        try FileManager.default.createDirectory(at: targetDirectory)
+      } catch {
+        return .failure(.failedToCreateTargetDirectory(target: target.name, targetDirectory, error))
       }
 
-      if case .failure = result {
-        return result
+      // Copy item
+      do {
+        // Create parent directory if required
+        let directory = destination.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: directory.path) {
+          try FileManager.default.createDirectory(at: directory)
+        }
+
+        try FileManager.default.copyItem(at: source, to: destination)
+      } catch {
+        return .failure(.failedToCopyFile(source: source, destination: destination, error))
       }
     }
 
@@ -263,7 +232,7 @@ enum XcodeprojConverter {
   static func createPackageManifestContents(packageName: String, targets: [XcodeTarget]) -> String {
     let targetsString = targets.map { target in
       let resourcesString = target.resources.map { file in
-        return "                .process(\"\(file.path)\")"
+        return "                .process(\"\(file.bundlerPath(target: target.name))\")"
       }.joined(separator: ",\n")
       return """
         .executableTarget(

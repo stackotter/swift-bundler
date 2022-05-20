@@ -2,51 +2,114 @@ import Foundation
 import SwiftXcodeProj
 
 extension XcodeprojConverter {
+  /// A file in an Xcode project.
   struct XcodeFile {
-    var path: String
-    var sourceTree: PBXSourceTree
-    var parent: PBXFileElement?
+    /// The file's path relative to ``base``.
+    var relativePath: String
+    /// The directory that ``relativePath`` is relative to.
+    var base: URL
 
-    func absolutePath(sourceRoot: URL) -> Result<URL, XcodeprojConverterError> {
-      switch sourceTree {
-        case .absolute:
-          return .success(URL(fileURLWithPath: path))
-        default:
-          return relativePath().map { relativePath in
-            return sourceRoot.appendingPathComponent(relativePath)
-          }
-      }
+    /// The file's absolute location.
+    var location: URL {
+      return base.appendingPathComponent(relativePath)
     }
 
-    func relativePath() -> Result<String, XcodeprojConverterError> {
+    /// The file's absolute path.
+    var absolutePath: String {
+      return location.path
+    }
+
+    /// Gets the file's path as it would be in a Swift Bundler project (relative to the
+    /// target's sources directory).
+    /// - Parameter: The target that the source is in.
+    /// - Returns: The file's path as it would be in a Swift Bundler project (relative to
+    ///            the target's sources directory).
+    func bundlerPath(target: String) -> String {
+      var bundlerPath = relativePath
+
+      // Simplify th path
+      if bundlerPath.hasPrefix(target) {
+        // Files are usually under a folder matching the name of the target. To reduce unnecessary
+        // nesting, remove this folder from the destination if present.
+        bundlerPath.removeFirst(target.count + 1)
+      }
+
+      return bundlerPath
+    }
+
+    /// Creates a nicer representation of a file in an Xcode project.
+    /// - Parameters:
+    ///   - file: The file to create a nicer representation of.
+    ///   - rootDirectory: The root directory of the Xcode project the file is part of.
+    /// - Returns: The nicer representation, or a failure if the file is invalid.
+    static func from(
+      _ file: PBXFileElement,
+      relativeTo rootDirectory: URL
+    ) -> Result<XcodeFile, XcodeprojConverterError> {
+      let path = file.path ?? ""
+
+      guard let sourceTree = file.sourceTree else {
+        return .success(XcodeFile(
+          relativePath: path,
+          base: rootDirectory
+        ))
+      }
+
       switch sourceTree {
         case .absolute:
-          return .success(URL(fileURLWithPath: path).lastPathComponent)
+          let absolute = URL(fileURLWithPath: path)
+          return .success(XcodeFile(
+            relativePath: absolute.lastPathComponent,
+            base: absolute.deletingLastPathComponent()
+          ))
         case .sourceRoot:
-          return .success(path)
+          return .success(XcodeFile(
+            relativePath: path,
+            base: rootDirectory
+          ))
         case .group:
-          guard let parent = parent, let sourceTree = parent.sourceTree else {
-            return .success(path)
+          guard let parent = file.parent else {
+            return .success(XcodeFile(
+              relativePath: path,
+              base: rootDirectory
+            ))
           }
 
-          let parentGroup = XcodeFile(
-            path: parent.path ?? "",
-            sourceTree: sourceTree,
-            parent: parent.parent
-          )
-
-          return parentGroup.relativePath().map { parentPath in
+          return XcodeFile.from(parent, relativeTo: rootDirectory).map { parentGroup in
+            let parentPath = parentGroup.relativePath
+            let relativePath: String
             if path != "" && parentPath != "" {
-              return parentPath + "/" + path
+              relativePath = parentPath + "/" + path
             } else if parentPath != "" {
-              return parentPath
+              relativePath = parentPath
             } else {
-              return path
+              relativePath = path
             }
+
+            return XcodeFile(
+              relativePath: relativePath,
+              base: rootDirectory
+            )
           }
         default:
           return .failure(.unsupportedFilePathType(sourceTree))
       }
+    }
+
+    /// Creates a nicer representation of a file in an Xcode project.
+    /// - Parameters:
+    ///   - file: The file to create a nicer representation of.
+    ///   - rootDirectory: The root directory of the Xcode project the file is part of.
+    /// - Returns: The nicer representation, or a failure if the file is invalid.
+    static func from(
+      _ file: PBXBuildFile,
+      relativeTo rootDirectory: URL
+    ) -> Result<XcodeFile, XcodeprojConverterError> {
+      guard let file = file.file else {
+        return .failure(.invalidBuildFile(file))
+      }
+
+      return XcodeFile.from(file, relativeTo: rootDirectory)
     }
   }
 }

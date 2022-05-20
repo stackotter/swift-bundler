@@ -11,6 +11,7 @@ enum XcodeprojConverterError: LocalizedError {
   case failedToCreatePackageManifest(URL, Error)
   case failedToCreateConfigurationFile(URL, Error)
   case directoryAlreadyExists(URL)
+  case invalidBuildFile(PBXBuildFile)
 
   var errorDescription: String? {
     switch self {
@@ -30,6 +31,8 @@ enum XcodeprojConverterError: LocalizedError {
         return "Failed to create configuration file: \(error.localizedDescription)"
       case .directoryAlreadyExists(let directory):
         return "Directory already exists at '\(directory.relativePath)'"
+      case .invalidBuildFile(let file):
+        return "Encountered invalid build file with uuid '\(file.uuid)'"
     }
   }
 }
