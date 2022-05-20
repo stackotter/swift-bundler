@@ -8,6 +8,8 @@ extension XcodeprojConverter {
     var relativePath: String
     /// The directory that ``relativePath`` is relative to.
     var base: URL
+    /// The file's apparent location in the Xcode file navigator.
+    var navigatorPath: String
 
     /// The file's absolute location.
     var location: URL {
@@ -25,7 +27,7 @@ extension XcodeprojConverter {
     /// - Returns: The file's path as it would be in a Swift Bundler project (relative to
     ///            the target's sources directory).
     func bundlerPath(target: String) -> String {
-      var bundlerPath = relativePath
+      var bundlerPath = navigatorPath
 
       // Simplify th path
       if bundlerPath.hasPrefix(target) {
@@ -47,12 +49,18 @@ extension XcodeprojConverter {
       relativeTo rootDirectory: URL
     ) -> Result<XcodeFile, XcodeprojConverterError> {
       let path = file.path ?? ""
+      let navigatorPath = file.name ?? path
 
-      guard let sourceTree = file.sourceTree else {
+      let simpleCase: () -> Result<XcodeFile, XcodeprojConverterError> = {
         return .success(XcodeFile(
           relativePath: path,
-          base: rootDirectory
+          base: rootDirectory,
+          navigatorPath: navigatorPath
         ))
+      }
+
+      guard let sourceTree = file.sourceTree else {
+        return simpleCase()
       }
 
       switch sourceTree {
@@ -60,40 +68,43 @@ extension XcodeprojConverter {
           let absolute = URL(fileURLWithPath: path)
           return .success(XcodeFile(
             relativePath: absolute.lastPathComponent,
-            base: absolute.deletingLastPathComponent()
+            base: absolute.deletingLastPathComponent(),
+            navigatorPath: navigatorPath
           ))
         case .sourceRoot:
-          return .success(XcodeFile(
-            relativePath: path,
-            base: rootDirectory
-          ))
+          return simpleCase()
         case .group:
           guard let parent = file.parent else {
-            return .success(XcodeFile(
-              relativePath: path,
-              base: rootDirectory
-            ))
+            return simpleCase()
           }
 
           return XcodeFile.from(parent, relativeTo: rootDirectory).map { parentGroup in
-            let parentPath = parentGroup.relativePath
-            let relativePath: String
-            if path != "" && parentPath != "" {
-              relativePath = parentPath + "/" + path
-            } else if parentPath != "" {
-              relativePath = parentPath
-            } else {
-              relativePath = path
-            }
-
             return XcodeFile(
-              relativePath: relativePath,
-              base: rootDirectory
+              relativePath: combinePaths([parentGroup.relativePath, path]),
+              base: rootDirectory,
+              navigatorPath: combinePaths([parentGroup.navigatorPath, navigatorPath])
             )
           }
         default:
           return .failure(.unsupportedFilePathType(sourceTree))
       }
+    }
+
+    /// Combines multiple paths together.
+    /// - Parameter paths: The paths to combine into one.
+    /// - Returns: The combined path.
+    static func combinePaths(_ paths: [String]) -> String {
+      return paths.compactMap { path in
+        if path.isEmpty {
+          return nil
+        }
+        
+        if path.hasSuffix("/") {
+          return String(path.dropLast())
+        }
+
+        return path
+      }.joined(separator: "/")
     }
 
     /// Creates a nicer representation of a file in an Xcode project.

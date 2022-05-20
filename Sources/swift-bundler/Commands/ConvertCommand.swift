@@ -22,10 +22,10 @@ struct ConvertCommand: Command {
   var outputDirectory: URL
 
   func wrappedRun() throws {
-    // - [ ] Convert executable targets
+    // - [x] Convert executable targets
     // - [ ] Convert library dependency targets
-    // - [ ] Check deployment platforms
-    // - [ ] Preserve project structure
+    // - [ ] Extract deployment platforms
+    // - [x] Preserve project structure
     // - [ ] Extract version and identifier
     // - [ ] Extract indentation settings
     // - [ ] Handle tests

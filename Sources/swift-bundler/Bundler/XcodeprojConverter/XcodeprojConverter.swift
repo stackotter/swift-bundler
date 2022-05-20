@@ -15,7 +15,6 @@ enum XcodeprojConverter {
   ) -> Result<Void, XcodeprojConverterError> {
     // Ensure that output directory doesn't already exist
     guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
-      log.error("Directory already exists at '\(outputDirectory.relativePath)'")
       return .failure(.directoryAlreadyExists(outputDirectory))
     }
 
