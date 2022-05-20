@@ -24,9 +24,11 @@ struct ConvertCommand: Command {
   func wrappedRun() throws {
     // - [x] Convert executable targets
     // - [ ] Convert library dependency targets
-    // - [ ] Extract deployment platforms
     // - [x] Preserve project structure
-    // - [ ] Extract version and identifier
+    // - [x] Extract version and identifier
+    // - [ ] Extract code signing settings
+    // - [ ] Extract platform deployment versions
+    // - [ ] Extract asset catalog compiler settings
     // - [ ] Extract indentation settings
     // - [ ] Handle tests
 

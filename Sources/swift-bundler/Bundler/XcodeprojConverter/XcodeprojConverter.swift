@@ -89,11 +89,14 @@ enum XcodeprojConverter {
       }
 
       // Extract target settings
-      let identifier = target.buildConfigurationList?.buildConfigurations.first?.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
+      let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
+      let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
+      let version = buildSettings?["MARKETING_VERSION"] as? String
 
       targets.append(XcodeTarget(
         name: name,
         identifier: identifier,
+        version: version,
         sources: sources,
         resources: resources ?? []
       ))
@@ -195,7 +198,7 @@ enum XcodeprojConverter {
       apps[target.name] = AppConfiguration(
         identifier: target.identifier ?? "com.example.\(target.name)",
         product: target.name,
-        version: "0.1.0"
+        version: target.version ?? "0.1.0"
       )
     }
 
