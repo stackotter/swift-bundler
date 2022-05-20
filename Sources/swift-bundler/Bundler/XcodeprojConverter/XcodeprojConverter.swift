@@ -1,6 +1,7 @@
 import Foundation
 import SwiftXcodeProj
 import TOMLKit
+import Version
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
@@ -90,13 +91,19 @@ enum XcodeprojConverter {
 
       // Extract target settings
       let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
+      // for (key, value) in buildSettings ?? [:] {
+      //   print("\(key): \(value)")
+      // }
+
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
       let version = buildSettings?["MARKETING_VERSION"] as? String
+      let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
 
       targets.append(XcodeTarget(
         name: name,
         identifier: identifier,
         version: version,
+        macOSDeploymentVersion: macOSDeploymentVersion,
         sources: sources,
         resources: resources ?? []
       ))
@@ -236,10 +243,20 @@ enum XcodeprojConverter {
   ///   - targets: The targets to declare.
   /// - Returns: The generated contents.
   static func createPackageManifestContents(packageName: String, targets: [XcodeTarget]) -> String {
+    var macOSDeploymentVersion: Version?
     let targetsString = targets.map { target in
       let resourcesString = target.resources.map { file in
         return "                .process(\"\(file.bundlerPath(target: target.name))\")"
       }.joined(separator: ",\n")
+
+      if let versionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: versionString) {
+        if let currentVersion = macOSDeploymentVersion, macOSVersion > currentVersion {
+          macOSDeploymentVersion = macOSVersion
+        } else {
+          macOSDeploymentVersion = macOSVersion
+        }
+      }
+
       return """
         .executableTarget(
             name: "\(target.name)",
@@ -251,6 +268,18 @@ enum XcodeprojConverter {
 """
     }.joined(separator: ",\n")
 
+    var platformsString = ""
+    if let macOSDeploymentVersion = macOSDeploymentVersion {
+      var versionString = "\(macOSDeploymentVersion.major)"
+      if macOSDeploymentVersion.minor != 0 {
+        versionString += "_\(macOSDeploymentVersion.minor)"
+        if macOSDeploymentVersion.patch != 0 {
+          versionString += "_\(macOSDeploymentVersion.patch)"
+        }
+      }
+      platformsString = ".macOS(.v\(versionString))"
+    }
+
     let packageManifestContents = """
 // swift-tools-version: 5.6
 
@@ -258,7 +287,7 @@ import PackageDescription
 
 let package = Package(
     name: "\(packageName)",
-    platforms: [.macOS(.v11), .iOS(.v14)],
+    platforms: [\(platformsString)],
     dependencies: [],
     targets: [
 \(targetsString)

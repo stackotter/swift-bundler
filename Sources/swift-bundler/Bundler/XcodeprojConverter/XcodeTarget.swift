@@ -5,6 +5,7 @@ extension XcodeprojConverter {
     var name: String
     var identifier: String?
     var version: String?
+    var macOSDeploymentVersion: String?
     var sources: [XcodeFile]
     var resources: [XcodeFile]
 
