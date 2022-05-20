@@ -286,8 +286,7 @@ enum XcodeprojConverter {
 import PackageDescription
 
 let package = Package(
-    name: "\(packageName)",
-    platforms: [\(platformsString)],
+    name: "\(packageName)",\(platformsString == "" ? "" : "\n    platforms: [\(platformsString)],")
     dependencies: [],
     targets: [
 \(targetsString)
