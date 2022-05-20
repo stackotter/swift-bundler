@@ -88,8 +88,12 @@ enum XcodeprojConverter {
         return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
       }
 
+      // Extract target settings
+      let identifier = target.buildConfigurationList?.buildConfigurations.first?.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
+
       targets.append(XcodeTarget(
         name: name,
+        identifier: identifier,
         sources: sources,
         resources: resources ?? []
       ))
@@ -189,7 +193,7 @@ enum XcodeprojConverter {
     var apps: [String: AppConfiguration] = [:]
     for target in targets {
       apps[target.name] = AppConfiguration(
-        identifier: "com.example.\(target.name)",
+        identifier: target.identifier ?? "com.example.\(target.name)",
         product: target.name,
         version: "0.1.0"
       )

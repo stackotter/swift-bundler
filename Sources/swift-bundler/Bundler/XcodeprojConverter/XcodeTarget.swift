@@ -3,6 +3,7 @@ import Foundation
 extension XcodeprojConverter {
   struct XcodeTarget {
     var name: String
+    var identifier: String?
     var sources: [XcodeFile]
     var resources: [XcodeFile]
 
