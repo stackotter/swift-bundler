@@ -302,7 +302,7 @@ enum PlistValue: Codable, Equatable {
     } else {
       return .failure(.invalidPlistValue(value))
     }
-      
+
     return .success(convertedValue)
   }
 }

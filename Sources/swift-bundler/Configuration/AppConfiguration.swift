@@ -18,15 +18,6 @@ struct AppConfiguration: Codable {
   /// String values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var plist: [String: PlistValue]?
 
-  enum CodingKeys: String, CodingKey {
-    case product
-    case version
-    case category
-    case identifier = "identifier"
-    case icon
-    case plist
-  }
-
   /// Appends the contents of a plist dictionary to the app's Info.plist entries.
   /// - Parameters:
   ///   - dictionary: The plist dictionary to append.

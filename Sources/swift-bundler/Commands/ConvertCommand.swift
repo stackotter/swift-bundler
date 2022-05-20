@@ -38,7 +38,7 @@ struct ConvertCommand: Command {
 
     let project = try XcodeProj(pathString: xcodeProjectFile.path)
     let sourceRoot = xcodeProjectFile.deletingLastPathComponent()
-    
+
     struct XcodeFile {
       var path: String
       var sourceTree: PBXSourceTree
@@ -106,7 +106,7 @@ struct ConvertCommand: Command {
       var filesToCopy: [XcodeFile] = []
 
       let sourceFiles = try target.sourceFiles().compactMap { file -> XcodeFile? in
-        guard 
+        guard
           let path = file.path,
           let sourceTree = file.sourceTree
         else {
@@ -151,7 +151,7 @@ struct ConvertCommand: Command {
           // Remove the redundant initial folder and the following '/'
           relativePath.removeFirst(name.count + 1)
         }
-        
+ 
         let destination = targetDirectory.appendingPathComponent(relativePath)
 
         // Create parent directory if required
