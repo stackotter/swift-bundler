@@ -3,12 +3,21 @@ import Foundation
 /// A utility for handling resource bundles.
 enum ResourceBundler {
   /// Compiles an `xcassets` directory into an `Assets.car` file.
+  /// - Parameters:
+  ///   - assetCatalog: The catalog to compile.
+  ///   - destinationDirectory: The directory to output `Assets.car` to.
+  ///   - platform: The platform to compile for.
+  ///   - platformVersion: The platform version to target.
+  ///   - keepSource: If `false`, the catalog will be deleted after compilation.
+  /// - Returns: A failure if an error occurs.
   static func compileAssetCatalog(
     _ assetCatalog: URL,
     to destinationDirectory: URL,
     for platform: Platform,
-    platformVersion: String
+    platformVersion: String,
+    keepSource: Bool = true
   ) -> Result<Void, ResourceBundlerError> {
+    // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
     return Process.create(
       "/usr/bin/xcrun",
@@ -20,6 +29,14 @@ enum ResourceBundler {
       ]
     ).runAndWait().mapError { error in
       return .failedToCompileXCAssets(error)
+    }.flatMap { _ in
+      do {
+        try FileManager.default.removeItem(at: assetCatalog)
+      } catch {
+        return .failure(.failedToDeleteAssetCatalog(error))
+      }
+
+      return .success()
     }
   }
 
@@ -147,23 +164,27 @@ enum ResourceBundler {
         assetCatalog,
         to: destinationBundleResources,
         for: platform,
-        platformVersion: platformVersion
-      ).flatMap { _ in
-        do {
-          try FileManager.default.removeItem(at: assetCatalog)
-        } catch {
-          return .failure(.failedToDeleteAssetCatalog(error))
-        }
-        return .success()
-      }
+        platformVersion: platformVersion,
+        keepSource: false
+      )
     }
 
     let compileMetalShaders: () -> Result<Void, ResourceBundlerError> = {
-      MetalCompiler.compileMetalShaders(
+      return MetalCompiler.compileMetalShaders(
         in: destinationBundleResources,
         keepSources: false
       ).mapError { error in
-        .failedToCompileMetalShaders(error)
+        return .failedToCompileMetalShaders(error)
+      }
+    }
+
+    let compileStoryboards: () -> Result<Void, ResourceBundlerError> = {
+      return StoryboardCompiler.compileStoryboards(
+        in: destinationBundleResources,
+        to: destinationBundleResources.appendingPathComponent("Base.lproj"),
+        keepSources: false
+      ).mapError { error in
+        return .failedToCompileStoryboards(error)
       }
     }
 
@@ -171,23 +192,20 @@ enum ResourceBundler {
     let copyBundle = flatten(
       {
         if !isMainBundle {
-          return createResourceBundleDirectoryStructure(at: destinationBundle)
-        }
-        return .success()
-      },
-      {
-        if !isMainBundle {
-          return createResourceBundleInfoPlist(
-            in: destinationBundle,
-            platform: platform,
-            platformVersion: platformVersion
-          )
+          return createResourceBundleDirectoryStructure(at: destinationBundle).flatMap { _ in
+            createResourceBundleInfoPlist(
+              in: destinationBundle,
+              platform: platform,
+              platformVersion: platformVersion
+            )
+          }
         }
         return .success()
       },
       { copyResources(from: bundle, to: destinationBundleResources) },
       { compileAssetCatalog() },
-      { compileMetalShaders() }
+      { compileMetalShaders() },
+      { compileStoryboards() }
     )
 
     return copyBundle()
