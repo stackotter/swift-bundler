@@ -82,8 +82,7 @@ enum XcodeprojConverter {
       // Copy targets and then create configuration files
       return copyTargets(
         targets,
-        to: sourcesDirectory,
-        xcodeProjectRootDirectory: projectRootDirectory
+        to: sourcesDirectory
       ).flatMap { _ in
         // Create Package.swift
         return createPackageManifestFile(
@@ -173,15 +172,13 @@ enum XcodeprojConverter {
   /// - Parameters:
   ///   - targets: The targets to copy.
   ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-  ///   - xcodeProjectRootDirectory: The root directory of the Xcode project.
   /// - Returns: A failure if an error occurs.
   static func copyTargets(
     _ targets: [XcodeTarget],
-    to sourcesDirectory: URL,
-    xcodeProjectRootDirectory: URL
+    to sourcesDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {
     for target in targets {
-      let result = copyTarget(target, to: sourcesDirectory, xcodeProjectRootDirectory: xcodeProjectRootDirectory)
+      let result = copyTarget(target, to: sourcesDirectory)
 
       if case .failure = result {
         return result
@@ -195,20 +192,17 @@ enum XcodeprojConverter {
   /// - Parameters:
   ///   - target: The target to copy.
   ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-  ///   - xcodeProjectRootDirectory: The root directory of the Xcode project.
   /// - Returns: A failure if an error occurs.
   static func copyTarget(
     _ target: XcodeTarget,
-    to sourcesDirectory: URL,
-    xcodeProjectRootDirectory: URL
+    to sourcesDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {
     log.info("Copying files for target '\(target.name)'")
 
     for file in target.files {
       // Get source and destination
       let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
-      // TODO: use location instead of appending the relative path
-      let source = xcodeProjectRootDirectory.appendingPathComponent(file.relativePath)
+      let source = file.location
       let destination = targetDirectory.appendingPathComponent(file.bundlerPath(target: target.name))
 
       // Create output directory
