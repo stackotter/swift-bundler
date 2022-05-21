@@ -92,15 +92,14 @@ struct CreateCommand: Command {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
-    let configuration = try Self.createAppConfiguration(
+    let configuration = try AppConfiguration.create(
       appName: appName,
-      packageDirectory: packageDirectory,
       version: version,
       identifier: identifier,
       category: category,
       infoPlistFile: infoPlistFile,
       iconFile: iconFile
-    )
+    ).unwrap()
 
     var template: Template?
     let elapsed = try Stopwatch.time {
@@ -177,51 +176,7 @@ struct CreateCommand: Command {
       }
     }.show()
   }
-
-  static func createAppConfiguration(
-    appName: String,
-    packageDirectory: URL,
-    version: String?,
-    identifier: String?,
-    category: String?,
-    infoPlistFile: URL?,
-    iconFile: URL?
-  ) throws -> AppConfiguration {
-    // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
-    var version = version
-    var identifier = identifier
-    var category = category
-
-    let plist: [String: PlistValue]
-    if let infoPlistFile = infoPlistFile {
-      plist = try PlistValue.loadDictionary(fromPlistFile: infoPlistFile).unwrap()
-
-      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
-        version = versionString
-      }
-
-      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
-        identifier = identifierString
-      }
-
-      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
-        category = categoryString
-      }
-    } else {
-      plist = [:]
-    }
-
-    let configuration = AppConfiguration(
-      identifier: identifier ?? "com.example.\(appName)",
-      product: appName,
-      version: version ?? "0.1.0",
-      category: category,
-      icon: iconFile?.lastPathComponent
-    )
-
-    return configuration.appendingInfoPlistEntries(plist, excludeHandledKeys: true)
-  }
-
+  
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
   /// - Parameter name: The name to verify.
   /// - Returns: Whether the app name is valid or not.

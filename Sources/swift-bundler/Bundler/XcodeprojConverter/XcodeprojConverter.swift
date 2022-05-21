@@ -149,12 +149,18 @@ enum XcodeprojConverter {
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
       let version = buildSettings?["MARKETING_VERSION"] as? String
       let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
+      let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
+
+      let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
+        return rootDirectory.appendingPathComponent(path)
+      }
 
       targets.append(XcodeTarget(
         name: name,
         identifier: identifier,
         version: version,
         macOSDeploymentVersion: macOSDeploymentVersion,
+        infoPlist: infoPlist,
         sources: sources,
         resources: resources ?? []
       ))
@@ -238,7 +244,14 @@ enum XcodeprojConverter {
     at file: URL,
     targets: [XcodeTarget]
   ) -> Result<Void, XcodeprojConverterError> {
-    let configuration = createPackageConfiguration(targets: targets)
+    let configuration: PackageConfiguration
+    switch createPackageConfiguration(targets: targets) {
+      case .success(let value):
+        configuration = value
+      case .failure(let error):
+        return .failure(error)
+    }
+
     do {
       try TOMLEncoder().encode(configuration).write(to: file, atomically: false, encoding: .utf8)
     } catch {
@@ -251,17 +264,29 @@ enum XcodeprojConverter {
   /// Creates a package configuration declaring the given executable targets as apps.
   /// - Parameter targets: The executable targets to add as apps.
   /// - Returns: The configuration.
-  static func createPackageConfiguration(targets: [XcodeTarget]) -> PackageConfiguration {
+  static func createPackageConfiguration(
+    targets: [XcodeTarget]
+  ) -> Result<PackageConfiguration, XcodeprojConverterError> {
     var apps: [String: AppConfiguration] = [:]
     for target in targets {
-      apps[target.name] = AppConfiguration(
+      let result = AppConfiguration.create(
+        appName: target.name,
+        version: target.version ?? "0.1.0",
         identifier: target.identifier ?? "com.example.\(target.name)",
-        product: target.name,
-        version: target.version ?? "0.1.0"
+        category: nil,
+        infoPlistFile: target.infoPlist,
+        iconFile: nil
       )
+
+      switch result {
+        case .success(let app):
+          apps[target.name] = app
+        case .failure(let error):
+          return .failure(.failedToCreateAppConfiguration(target: target.name, error))
+      }
     }
 
-    return PackageConfiguration(apps)
+    return .success(PackageConfiguration(apps))
   }
 
   /// Creates a `Package.swift` file declaring the given targets.

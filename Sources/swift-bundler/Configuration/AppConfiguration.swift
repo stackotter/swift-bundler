@@ -18,6 +18,66 @@ struct AppConfiguration: Codable {
   /// String values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
   var plist: [String: PlistValue]?
 
+  /// Creates a new app configuration. Uses an `Info.plist` file to supplement missing values where possible.
+  /// - Parameters:
+  ///   - appName: The app's name.
+  ///   - version: The app's version.
+  ///   - identifier: The app's identifier (e.g. com.example.ExampleApp).
+  ///   - category: The app's category identifier. See ``category``.
+  ///   - infoPlistFile: An `Info.plist` file to extract missing configuration from (any non-standard keys are also added to the configuration).
+  ///   - iconFile: The app's icon.
+  /// - Returns: The app configuration, or a failure if an error occurs.
+  static func create(
+    appName: String,
+    version: String?,
+    identifier: String?,
+    category: String?,
+    infoPlistFile: URL?,
+    iconFile: URL?
+  ) -> Result<AppConfiguration, AppConfigurationError> {
+    // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
+    var version = version
+    var identifier = identifier
+    var category = category
+
+    let plist: [String: PlistValue]
+    if let infoPlistFile = infoPlistFile {
+      switch PlistValue.loadDictionary(fromPlistFile: infoPlistFile) {
+        case .success(let value):
+          plist = value
+        case .failure(let error):
+          return .failure(.failedToLoadInfoPlistEntries(file: infoPlistFile, error: error))
+      }
+
+      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
+        version = versionString
+      }
+
+      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
+        identifier = identifierString
+      }
+
+      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
+        category = categoryString
+      }
+    } else {
+      plist = [:]
+    }
+
+    let configuration = AppConfiguration(
+      identifier: identifier ?? "com.example.\(appName)",
+      product: appName,
+      version: version ?? "0.1.0",
+      category: category,
+      icon: iconFile?.lastPathComponent
+    )
+
+    return .success(configuration.appendingInfoPlistEntries(
+      plist,
+      excludeHandledKeys: true
+    ))
+  }
+
   /// Appends the contents of a plist dictionary to the app's Info.plist entries.
   /// - Parameters:
   ///   - dictionary: The plist dictionary to append.

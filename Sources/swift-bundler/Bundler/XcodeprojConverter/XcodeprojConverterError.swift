@@ -14,6 +14,7 @@ enum XcodeprojConverterError: LocalizedError {
   case invalidBuildFile(PBXBuildFile)
   case failedToLoadXcodeWorkspace(URL, Error)
   case failedToGetRelativePath(PBXFileElement, Error?)
+  case failedToCreateAppConfiguration(target: String, AppConfigurationError)
 
   var errorDescription: String? {
     switch self {
@@ -39,6 +40,8 @@ enum XcodeprojConverterError: LocalizedError {
         return "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
       case .failedToGetRelativePath(let file, _):
         return "Failed to get relative path of '\(file.name ?? "unknown file")'"
+      case .failedToCreateAppConfiguration(let target, let error):
+        return "Failed to create app configuration for '\(target)': \(error.localizedDescription)"
     }
   }
 }
