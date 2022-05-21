@@ -13,7 +13,7 @@ struct ConvertCommand: Command {
   @Argument(
     help: "Xcodeproj to convert.",
     transform: URL.init(fileURLWithPath:))
-  var xcodeProjectFile: URL
+  var xcodeFile: URL
 
   @Option(
     name: [.customShort("o"), .customLong("out")],
@@ -27,7 +27,7 @@ struct ConvertCommand: Command {
     // - [x] Preserve project structure
     // - [x] Extract version and identifier
     // - [ ] Extract code signing settings
-    // - [ ] Extract platform deployment versions
+    // - [x] Extract platform deployment versions
     // - [ ] Extract asset catalog compiler settings
     // - [ ] Extract indentation settings
     // - [ ] Handle tests
@@ -36,6 +36,14 @@ struct ConvertCommand: Command {
     print("[press ENTER to continue]", terminator: "")
     _ = readLine()
 
-    try XcodeprojConverter.convert(xcodeProjectFile, outputDirectory: outputDirectory).unwrap()
+    switch xcodeFile.pathExtension {
+      case "xcodeproj":
+        try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory).unwrap()
+      case "xcworkspace":
+        try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory).unwrap()
+      default:
+        log.error("Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'")
+        Foundation.exit(1)
+    }
   }
 }

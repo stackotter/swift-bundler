@@ -5,12 +5,52 @@ import Version
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
+  static func convertWorkspace(
+    _ xcodeWorkspaceFile: URL,
+    outputDirectory: URL
+  ) -> Result<Void, XcodeprojConverterError> {
+    let workspace: XCWorkspace
+    do {
+      workspace = try XCWorkspace(pathString: xcodeWorkspaceFile.path)
+    } catch {
+      return .failure(.failedToLoadXcodeWorkspace(xcodeWorkspaceFile, error))
+    }
+
+    let projects = workspace.data.children.map(\.location.path).map(URL.init(fileURLWithPath:))
+    let total = projects.count
+
+    log.info("Converting \(total) projects")
+    
+    var successCount = 0
+    for (index, project) in projects.enumerated() {
+      let projectName = project.deletingPathExtension().lastPathComponent
+
+      log.info("Converting '\(projectName)' (\(index)/\(total))")
+      
+      let result = convertProject(
+        project,
+        outputDirectory: outputDirectory.appendingPathComponent(projectName)
+      )
+
+      if case let .failure(error) = result {
+        log.error("Failed to convert '\(projectName)': \(error.localizedDescription)")
+        continue
+      }
+
+      successCount += 1
+    }
+
+    log.info("Successfully converted \(successCount)/\(total)")
+
+    return .success()
+  }
+
   /// Converts an xcodeproj to a Swift Bundler project.
   /// - Parameters:
   ///   - xcodeProjectFile: The xcodeproj to convert.
   ///   - outputDirectory: The Swift Bundler project's directory.
   /// - Returns: A failure if an error occurs.
-  static func convert(
+  static func convertProject(
     _ xcodeProjectFile: URL,
     outputDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {

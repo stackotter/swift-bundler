@@ -12,6 +12,7 @@ enum XcodeprojConverterError: LocalizedError {
   case failedToCreateConfigurationFile(URL, Error)
   case directoryAlreadyExists(URL)
   case invalidBuildFile(PBXBuildFile)
+  case failedToLoadXcodeWorkspace(URL, Error)
 
   var errorDescription: String? {
     switch self {
@@ -33,6 +34,8 @@ enum XcodeprojConverterError: LocalizedError {
         return "Directory already exists at '\(directory.relativePath)'"
       case .invalidBuildFile(let file):
         return "Encountered invalid build file with uuid '\(file.uuid)'"
+      case .failedToLoadXcodeWorkspace(let file, let error):
+        return "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
     }
   }
 }
