@@ -30,7 +30,7 @@ extension XcodeprojConverter {
       var bundlerPath = navigatorPath
 
       // Simplify th path
-      if bundlerPath.hasPrefix(target) {
+      if bundlerPath.hasPrefix(target + "/") {
         // Files are usually under a folder matching the name of the target. To reduce unnecessary
         // nesting, remove this folder from the destination if present.
         bundlerPath.removeFirst(target.count + 1)
@@ -48,12 +48,21 @@ extension XcodeprojConverter {
       _ file: PBXFileElement,
       relativeTo rootDirectory: URL
     ) -> Result<XcodeFile, XcodeprojConverterError> {
-      let path = file.path ?? ""
-      let navigatorPath = file.name ?? path
+      let relativePath: String
+      do {
+        guard let fullPath = try file.fullPath(sourceRoot: "/") else {
+          return .failure(.failedToGetRelativePath(file, nil))
+        }
+        relativePath = String(fullPath.dropFirst())
+      } catch {
+        return .failure(.failedToGetRelativePath(file, error))
+      }
+
+      let navigatorPath = file.name ?? file.path ?? ""
 
       let simpleCase: () -> Result<XcodeFile, XcodeprojConverterError> = {
         return .success(XcodeFile(
-          relativePath: path,
+          relativePath: relativePath,
           base: rootDirectory,
           navigatorPath: navigatorPath
         ))
@@ -65,7 +74,7 @@ extension XcodeprojConverter {
 
       switch sourceTree {
         case .absolute:
-          let absolute = URL(fileURLWithPath: path)
+          let absolute = URL(fileURLWithPath: relativePath)
           return .success(XcodeFile(
             relativePath: absolute.lastPathComponent,
             base: absolute.deletingLastPathComponent(),
@@ -80,7 +89,7 @@ extension XcodeprojConverter {
 
           return XcodeFile.from(parent, relativeTo: rootDirectory).map { parentGroup in
             return XcodeFile(
-              relativePath: combinePaths([parentGroup.relativePath, path]),
+              relativePath: relativePath,
               base: rootDirectory,
               navigatorPath: combinePaths([parentGroup.navigatorPath, navigatorPath])
             )
@@ -98,7 +107,7 @@ extension XcodeprojConverter {
         if path.isEmpty {
           return nil
         }
-        
+
         if path.hasSuffix("/") {
           return String(path.dropLast())
         }

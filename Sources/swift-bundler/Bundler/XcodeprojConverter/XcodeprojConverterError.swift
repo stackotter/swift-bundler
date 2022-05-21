@@ -13,6 +13,7 @@ enum XcodeprojConverterError: LocalizedError {
   case directoryAlreadyExists(URL)
   case invalidBuildFile(PBXBuildFile)
   case failedToLoadXcodeWorkspace(URL, Error)
+  case failedToGetRelativePath(PBXFileElement, Error?)
 
   var errorDescription: String? {
     switch self {
@@ -36,6 +37,8 @@ enum XcodeprojConverterError: LocalizedError {
         return "Encountered invalid build file with uuid '\(file.uuid)'"
       case .failedToLoadXcodeWorkspace(let file, let error):
         return "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
+      case .failedToGetRelativePath(let file, _):
+        return "Failed to get relative path of '\(file.name ?? "unknown file")'"
     }
   }
 }

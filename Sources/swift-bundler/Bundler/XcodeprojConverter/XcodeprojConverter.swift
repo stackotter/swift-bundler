@@ -9,6 +9,12 @@ enum XcodeprojConverter {
     _ xcodeWorkspaceFile: URL,
     outputDirectory: URL
   ) -> Result<Void, XcodeprojConverterError> {
+    // Ensure that output directory doesn't already exist
+    guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
+      return .failure(.directoryAlreadyExists(outputDirectory))
+    }
+
+    // Load xcworkspace
     let workspace: XCWorkspace
     do {
       workspace = try XCWorkspace(pathString: xcodeWorkspaceFile.path)
@@ -16,17 +22,18 @@ enum XcodeprojConverter {
       return .failure(.failedToLoadXcodeWorkspace(xcodeWorkspaceFile, error))
     }
 
+    // Enumerate projects
     let projects = workspace.data.children.map(\.location.path).map(URL.init(fileURLWithPath:))
     let total = projects.count
 
     log.info("Converting \(total) projects")
-    
+
     var successCount = 0
     for (index, project) in projects.enumerated() {
       let projectName = project.deletingPathExtension().lastPathComponent
 
       log.info("Converting '\(projectName)' (\(index)/\(total))")
-      
+
       let result = convertProject(
         project,
         outputDirectory: outputDirectory.appendingPathComponent(projectName)
@@ -125,14 +132,18 @@ enum XcodeprojConverter {
       }
 
       // Enumerate the target's resource files
-      let resources = try? target.resourcesBuildPhase()?.files?.compactMap { file -> XcodeFile? in
+      let resources = try? target.resourcesBuildPhase()?.files?.map { file -> XcodeFile in
         return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
       }
 
       // Extract target settings
       let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
-      // for (key, value) in buildSettings ?? [:] {
-      //   print("\(key): \(value)")
+
+      // for config in target.buildConfigurationList?.buildConfigurations ?? [] {
+      //   let buildSettings = config.buildSettings
+      //   for (key, value) in buildSettings {
+      //     print("\(key): \(value)")
+      //   }
       // }
 
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
@@ -190,6 +201,7 @@ enum XcodeprojConverter {
     for file in target.files {
       // Get source and destination
       let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
+      // TODO: use location instead of appending the relative path
       let source = xcodeProjectRootDirectory.appendingPathComponent(file.relativePath)
       let destination = targetDirectory.appendingPathComponent(file.bundlerPath(target: target.name))
 
