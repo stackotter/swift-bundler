@@ -5,13 +5,15 @@ enum Runner {
   /// Runs the given app.
   /// - Parameters:
   ///   - bundle: The app bundle to run.
-  ///   - platform: The platform to run the app on. Unless it's ``Platform/iOS``, it must match the current platform.
+  ///   - bundleIdentifier: The app's bundle identifier.
+  ///   - device: The device to run the app on.
   ///   - environmentFile: A file containing environment variables to pass to the app.
   /// - Returns: Returns a failure if the app fails to run.
   static func run(
     bundle: URL,
-    platform: Platform,
-    environmentFile: URL?
+    bundleIdentifier: String,
+    device: Device,
+    environmentFile: URL? = nil
   ) -> Result<Void, RunnerError> {
     log.info("Running '\(bundle.lastPathComponent)'")
     let environmentVariables: [String: String]
@@ -26,7 +28,7 @@ enum Runner {
       environmentVariables = [:]
     }
 
-    switch platform {
+    switch device {
       case .macOS:
         return runMacOSApp(
           bundle: bundle,
@@ -37,9 +39,13 @@ enum Runner {
           bundle: bundle,
           environmentVariables: environmentVariables
         )
-      case .iOSSimulator:
-        // TODO: Implement running on the iOS simulator
-        fatalError("TODO: Implement running on the iOS simulator")
+      case .iOSSimulator(let id):
+        return runIOSSimulatorApp(
+          bundle: bundle,
+          bundleIdentifier: bundleIdentifier,
+          simulatorId: id,
+          environmentVariables: environmentVariables
+        )
     }
   }
 
@@ -115,6 +121,28 @@ enum Runner {
       ).runAndWait().mapError { error in
         return .failedToRunIOSDeploy(error)
       }
+    }
+  }
+
+  static func runIOSSimulatorApp(
+    bundle: URL,
+    bundleIdentifier: String,
+    simulatorId: String,
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    return SimulatorManager.bootSimulator(id: simulatorId).flatMap { _ in
+      return SimulatorManager.installApp(bundle, simulatorId: simulatorId)
+    }.flatMap { _ in
+      return SimulatorManager.openSimulatorApp()
+    }.flatMap { _ in
+      return SimulatorManager.launchApp(
+        bundleIdentifier,
+        simulatorId: simulatorId,
+        connectConsole: true,
+        environmentVariables: environmentVariables
+      )
+    }.mapError { error in
+      return .failedToRunOnIOSSimulator(error)
     }
   }
 }

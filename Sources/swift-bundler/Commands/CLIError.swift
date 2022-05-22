@@ -18,7 +18,7 @@ enum CLIError: LocalizedError {
         return "Invalid build configuration '\(buildConfiguration)'. Must be one of \(BuildConfiguration.possibleValuesString)"
       case .failedToCopyIcon(let source, let destination, _):
         return "Failed to copy icon from '\(source)' to '\(destination)'"
-    case .failedToGetPlatformVersion(let platform, let manifest):
+      case .failedToGetPlatformVersion(let platform, let manifest):
         return "To build for \(platform.name) you must specify a minimum deployment version in the 'platforms' field of '\(manifest.relativePath)'"
     }
   }

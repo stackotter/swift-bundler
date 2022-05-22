@@ -149,7 +149,7 @@ enum SwiftPackageManager {
           case .failure(let error):
             return .failure(error)
         }
-        
+
         // TODO: Make target triple generation generic
         let target = "\(BuildArchitecture.current.rawValue)-apple-ios\(platformVersion)-simulator"
         platformArguments = [

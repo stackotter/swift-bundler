@@ -7,6 +7,7 @@ enum RunnerError: LocalizedError {
   case failedToRunIOSDeploy(ProcessError)
   case failedToReadEnvironmentFile(URL, Error)
   case failedToParseEnvironmentFileEntry(line: String)
+  case failedToRunOnIOSSimulator(SimulatorManagerError)
 
   var errorDescription: String? {
     switch self {
@@ -26,6 +27,8 @@ enum RunnerError: LocalizedError {
         return "Failed to read contents of environment file '\(file.relativePath)'"
       case .failedToParseEnvironmentFileEntry(let line):
         return "Failed to parse environment file, lines must contain '=': '\(line)'"
+      case .failedToRunOnIOSSimulator(let error):
+        return "Failed to run app on iOS simulator: \(error.localizedDescription)"
     }
   }
 }

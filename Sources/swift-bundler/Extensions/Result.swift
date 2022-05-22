@@ -32,6 +32,16 @@ extension Result {
         return failure
     }
   }
+
+  /// Changes the success value type to void.
+  func eraseSuccessValue() -> Result<Void, Failure> {
+    switch self {
+      case .success:
+        return .success()
+      case .failure(let error):
+        return .failure(error)
+    }
+  }
 }
 
 extension Result where Success == Void {

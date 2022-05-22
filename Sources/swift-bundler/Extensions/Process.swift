@@ -23,11 +23,18 @@ extension Process {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
-    return runAndWait()
-      .map { _ in
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return data
+    return runAndWait().map { _ in
+      let data = pipe.fileHandleForReading.readDataToEndOfFile()
+      return data
+    }.mapError { error in
+      switch error {
+        case .nonZeroExitStatus(let status):
+          let data = pipe.fileHandleForReading.readDataToEndOfFile()
+          return .nonZeroExitStatusWithOutput(data, status)
+        default:
+          return error
       }
+    }
   }
 
   /// Gets the process's stdout and stderr as a string.
