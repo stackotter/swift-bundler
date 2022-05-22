@@ -68,7 +68,8 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: .shortAndLong,
     help: {
-      return "The platform to build for (macOS|iOS)."
+      let possibleValues = Platform.possibleValuesString
+      return "The platform to build for \(possibleValues). (default: macOS)"
     }(),
     transform: { string in
       guard let platform = Platform(rawValue: string) else {

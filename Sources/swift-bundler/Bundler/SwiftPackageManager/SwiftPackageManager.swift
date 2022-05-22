@@ -128,21 +128,36 @@ enum SwiftPackageManager {
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch platform {
-    case .iOS:
-      let sdkPath: String
-      switch getLatestIOSSDKPath() {
-      case .success(let path):
-        sdkPath = path
-      case .failure(let error):
-        return .failure(error)
-      }
+      case .iOS:
+        let sdkPath: String
+        switch getLatestSDKPath(for: platform) {
+          case .success(let path):
+            sdkPath = path
+          case .failure(let error):
+            return .failure(error)
+        }
 
-      platformArguments = [
-        "-sdk", sdkPath,
-        "-target", "arm64-apple-ios\(platformVersion)"
-      ].flatMap { ["-Xswiftc", $0] }
-    case .macOS:
-      platformArguments = []
+        platformArguments = [
+          "-sdk", sdkPath,
+          "-target", "arm64-apple-ios\(platformVersion)"
+        ]
+      case .iOSSimulator:
+        let sdkPath: String
+        switch getLatestSDKPath(for: platform) {
+          case .success(let path):
+            sdkPath = path
+          case .failure(let error):
+            return .failure(error)
+        }
+        
+        // TODO: Make target triple generation generic
+        let target = "\(BuildArchitecture.current.rawValue)-apple-ios\(platformVersion)-simulator"
+        platformArguments = [
+          "-sdk", sdkPath,
+          "-target", target
+        ]
+      case .macOS:
+        platformArguments = []
     }
 
     let architectureArguments = architectures.flatMap {
@@ -159,24 +174,25 @@ enum SwiftPackageManager {
     let arguments = [
       "build",
       "-c", configuration.rawValue
-    ] + productArguments + architectureArguments + platformArguments
+    ] + productArguments + architectureArguments + platformArguments.flatMap { ["-Xswiftc", $0] }
 
     return .success(arguments)
   }
 
-  /// Gets the path to the latest iOS SDK.
+  /// Gets the path to the latest SDK for a given platform.
+  /// - Parameter platform: The platform to get the SDK path for.
   /// - Returns: The SDK's path, or a failure if an error occurs.
-  static func getLatestIOSSDKPath() -> Result<String, SwiftPackageManagerError> {
+  static func getLatestSDKPath(for platform: Platform) -> Result<String, SwiftPackageManagerError> {
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "--sdk", "iphoneos",
+        "--sdk", platform.sdkName,
         "--show-sdk-path"
       ]
     ).getOutput().map { output in
       return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }.mapError { error in
-      return .failedToGetIOSSDKPath(error)
+      return .failedToGetLatestSDKPath(platform, error)
     }
   }
 

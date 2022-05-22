@@ -12,7 +12,8 @@ protocol Bundler {
     universal: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
-    platformVersion: String
+    platformVersion: String,
+    targetingSimulator: Bool
   ) -> Result<Void, Error>
 }
 
@@ -20,7 +21,7 @@ func getBundler(for platform: Platform) -> any Bundler.Type {
   switch platform {
     case .macOS:
       return MacOSBundler.self
-    case .iOS:
+    case .iOS, .iOSSimulator:
       return IOSBundler.self
   }
 }

@@ -84,6 +84,7 @@ enum PlistCreator {
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
       "CFBundleShortVersionString": configuration.version,
+      "CFBundleVersion": configuration.version,
       "LSApplicationCategoryType": configuration.category
     ]
 
@@ -91,7 +92,7 @@ enum PlistCreator {
       case .macOS:
         entries["LSMinimumSystemVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-      case .iOS:
+      case .iOS, .iOSSimulator:
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
         entries["UILaunchScreen"] = [String: Any]()
@@ -127,7 +128,7 @@ enum PlistCreator {
     case .macOS:
       entries["LSMinimumSystemVersion"] = platformVersion
       entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-    case .iOS:
+    case .iOS, .iOSSimulator:
       // TODO: Make the produced Info.plist for iOS identical to Xcode's
       entries["MinimumOSVersion"] = platformVersion
       entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]

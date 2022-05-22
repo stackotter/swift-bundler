@@ -10,7 +10,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToGetSwiftVersion(ProcessError)
   case invalidSwiftVersionOutput(String, Error)
   case failedToGetProductsDirectory(command: String, ProcessError)
-  case failedToGetIOSSDKPath(ProcessError)
+  case failedToGetLatestSDKPath(Platform, ProcessError)
   case failedToLoadPackageManifest(directory: URL, [Diagnostic], Error)
 
   var errorDescription: String? {
@@ -29,8 +29,8 @@ enum SwiftPackageManagerError: LocalizedError {
         return "The output of 'swift --version' could not be parsed: '\(output)'"
       case .failedToGetProductsDirectory(let command, let error):
         return "Failed to get products directory via '\(command)': \(error.localizedDescription)"
-      case .failedToGetIOSSDKPath(let error):
-        return "Failed to get iOS SDK path: \(error.localizedDescription)"
+      case .failedToGetLatestSDKPath(let platform, let error):
+        return "Failed to get latest \(platform.rawValue) SDK path: \(error.localizedDescription)"
       case .failedToLoadPackageManifest(let directory, let diagnostics, _):
         let diagnosticsString = diagnostics.map(\.description).map({ $0 + "\n" }).joined(separator: "")
         return "\(diagnosticsString)Failed to load package manifest from '\(directory)'"

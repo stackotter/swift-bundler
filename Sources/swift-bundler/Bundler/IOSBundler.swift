@@ -17,6 +17,7 @@ enum IOSBundler: Bundler {
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   ///   - platformVersion: The platform version that the executable was built for.
+  ///   - targetingSimulator: If `true`, the app should be bundled for running on a simulator.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -29,7 +30,8 @@ enum IOSBundler: Bundler {
     universal: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
-    platformVersion: String
+    platformVersion: String,
+    targetingSimulator: Bool
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
 
@@ -52,7 +54,7 @@ enum IOSBundler: Bundler {
         from: productsDirectory,
         to: appBundle,
         fixBundles: !isXcodeBuild && !universal,
-        platform: .iOS,
+        platform: targetingSimulator ? .iOSSimulator : .iOS,
         platformVersion: platformVersion,
         packageName: packageName,
         productName: appConfiguration.product
@@ -98,7 +100,7 @@ enum IOSBundler: Bundler {
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion) },
+      { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion, targetingSimulator: targetingSimulator) },
       // { createAppIconIfPresent() },
       { copyResourcesBundles() },
       // { copyDynamicLibraries() },
@@ -170,12 +172,14 @@ enum IOSBundler: Bundler {
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
   ///   - iOSVersion: The iOS version to target.
+  ///   - targetingSimulator: If `true`, the files will be created for running in a simulator.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(
     at outputDirectory: URL,
     appName: String,
     appConfiguration: AppConfiguration,
-    iOSVersion: String
+    iOSVersion: String,
+    targetingSimulator: Bool
   ) -> Result<Void, IOSBundlerError> {
     log.info("Creating 'PkgInfo'")
     let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
@@ -193,7 +197,7 @@ enum IOSBundler: Bundler {
       at: infoPlistFile,
       appName: appName,
       configuration: appConfiguration,
-      platform: .iOS,
+      platform: targetingSimulator ? .iOSSimulator : .iOS,
       platformVersion: iOSVersion
     ).mapError { error in
       .failedToCreateInfoPlist(error)

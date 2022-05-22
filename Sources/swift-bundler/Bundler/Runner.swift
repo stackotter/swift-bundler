@@ -37,6 +37,9 @@ enum Runner {
           bundle: bundle,
           environmentVariables: environmentVariables
         )
+      case .iOSSimulator:
+        // TODO: Implement running on the iOS simulator
+        fatalError("TODO: Implement running on the iOS simulator")
     }
   }
 

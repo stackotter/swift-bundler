@@ -149,7 +149,7 @@ enum ResourceBundler {
       switch platform {
         case .macOS:
           destinationBundleResources = destinationBundle.appendingPathComponent("Contents/Resources")
-        case .iOS:
+        case .iOS, .iOSSimulator:
           destinationBundleResources = destinationBundle
       }
     }

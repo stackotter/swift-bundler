@@ -18,6 +18,7 @@ enum MacOSBundler: Bundler {
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   ///   - platformVersion: The platform version that the executable was built for.
+  ///   - targetingSimulator: Does nothing for macOS builds.
   /// - Returns: If a failure occurs, it is returned.
   static func bundle(
     appName: String,
@@ -30,7 +31,8 @@ enum MacOSBundler: Bundler {
     universal: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
-    platformVersion: String
+    platformVersion: String,
+    targetingSimulator: Bool
   ) -> Result<Void, Error> {
     log.info("Bundling '\(appName).app'")
 

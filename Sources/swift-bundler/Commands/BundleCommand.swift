@@ -111,6 +111,8 @@ struct BundleCommand: AsyncCommand {
           : (!arguments.architectures.isEmpty ? arguments.architectures : [BuildArchitecture.current])
       case .iOS:
         architectures = [.arm64]
+      case .iOSSimulator:
+        architectures = [BuildArchitecture.current]
     }
 
     return architectures
@@ -187,7 +189,8 @@ struct BundleCommand: AsyncCommand {
           universal: universal,
           codesigningIdentity: arguments.identity,
           provisioningProfile: arguments.provisioningProfile,
-          platformVersion: platformVersion
+          platformVersion: platformVersion,
+          targetingSimulator: arguments.platform.isSimulator
         )
       }
 
