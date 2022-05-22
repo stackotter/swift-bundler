@@ -93,7 +93,6 @@ enum SwiftPackageManager {
 
     return createBuildArguments(
       product: product,
-      packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform,
@@ -112,9 +111,16 @@ enum SwiftPackageManager {
     }
   }
 
+  /// Creates the arguments for the Swift build command.
+  /// - Parameters:
+  ///   - product: The product to build.
+  ///   - configuration: The build configuration to use.
+  ///   - architectures: The architectures to build for.
+  ///   - platform: The platform to build for.
+  ///   - platformVersion: The platform version to target.
+  /// - Returns: The build arguments, or a failure if an error occurs.
   static func createBuildArguments(
     product: String?,
-    packageDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
@@ -228,7 +234,6 @@ enum SwiftPackageManager {
   ) -> Result<URL, SwiftPackageManagerError> {
     return createBuildArguments(
       product: nil,
-      packageDirectory: packageDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform,

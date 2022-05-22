@@ -1,5 +1,6 @@
 import Foundation
 
+/// A utility for compiling storyboards.
 enum StoryboardCompiler {
   /// Compiles all storyboards present within the top level of a directory.
   /// - Parameters:
