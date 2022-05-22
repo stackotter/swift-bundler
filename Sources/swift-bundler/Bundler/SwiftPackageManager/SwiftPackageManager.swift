@@ -102,7 +102,8 @@ enum SwiftPackageManager {
       let process = Process.create(
         swiftExecutable,
         arguments: arguments,
-        directory: packageDirectory
+        directory: packageDirectory,
+        runSilentlyWhenNotVerbose: false
       )
 
       return process.runAndWait().mapError { error in
