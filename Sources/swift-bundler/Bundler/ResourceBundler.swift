@@ -172,6 +172,7 @@ enum ResourceBundler {
     let compileMetalShaders: () -> Result<Void, ResourceBundlerError> = {
       return MetalCompiler.compileMetalShaders(
         in: destinationBundleResources,
+        for: platform,
         keepSources: false
       ).mapError { error in
         return .failedToCompileMetalShaders(error)

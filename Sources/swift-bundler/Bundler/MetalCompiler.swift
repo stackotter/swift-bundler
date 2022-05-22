@@ -6,8 +6,13 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - directory: The directory to compile shaders from.
   ///   - keepSources: If `false`, the sources will get deleted after compilation.
+  ///   - platform: The platform to compile for.
   /// - Returns: If an error occurs, a failure is returned.
-  static func compileMetalShaders(in directory: URL, keepSources: Bool) -> Result<Void, MetalCompilerError> {
+  static func compileMetalShaders(
+    in directory: URL,
+    for platform: Platform,
+    keepSources: Bool
+  ) -> Result<Void, MetalCompilerError> {
     guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
       return .failure(.failedToEnumerateShaders(directory: directory))
     }
@@ -24,30 +29,34 @@ enum MetalCompiler {
     log.info("Compiling metal shaders")
 
     // Compile metal shaders, and if successful, delete all shader sources
-    return compileMetalShaders(shaderSources, destination: directory)
-      .flatMap { _ in
-        if keepSources {
-          return .success()
-        }
-
-        for source in shaderSources {
-          do {
-            try FileManager.default.removeItem(at: source)
-          } catch {
-            return .failure(.failedToDeleteShaderSource(source, error))
-          }
-        }
-
+    return compileMetalShaders(shaderSources, to: directory, for: platform).flatMap { _ in
+      if keepSources {
         return .success()
       }
+
+      for source in shaderSources {
+        do {
+          try FileManager.default.removeItem(at: source)
+        } catch {
+          return .failure(.failedToDeleteShaderSource(source, error))
+        }
+      }
+
+      return .success()
+    }
   }
 
   /// Compiles a list of metal source files into a `metallib` file.
   /// - Parameters:
   ///   - sources: The source files to comile.
   ///   - destination: The directory to output `default.metallib` to.
+  ///   - platform: The platform to compile for.
   /// - Returns: Returns the location of the resulting `metallib`. If an error occurs, a failure is returned.
-  static func compileMetalShaders(_ sources: [URL], destination: URL) -> Result<URL, MetalCompilerError> {
+  static func compileMetalShaders(
+    _ sources: [URL],
+    to destination: URL,
+    for platform: Platform
+  ) -> Result<URL, MetalCompilerError> {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("metal_compilation-\(UUID().uuidString)")
@@ -62,7 +71,7 @@ enum MetalCompiler {
     for shaderSource in sources {
       let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air").lastPathComponent
       let outputFile = tempDirectory.appendingPathComponent(outputFileName)
-      if case let .failure(error) = compileShader(shaderSource, to: outputFile) {
+      if case let .failure(error) = compileShader(shaderSource, to: outputFile, for: platform) {
         return .failure(error)
       }
       airFiles.append(outputFile)
@@ -70,14 +79,14 @@ enum MetalCompiler {
 
     // Combine the compiled shaders into a `.metal-ar` archive
     let archive = tempDirectory.appendingPathComponent("default.metal-ar")
-    let archiveResult = createArchive(at: archive, from: airFiles)
+    let archiveResult = createArchive(at: archive, from: airFiles, for: platform)
     if case let .failure(error) = archiveResult {
       return .failure(error)
     }
 
     // Convert the `metal-ar` archive into a `metallib` library
     let library = destination.appendingPathComponent("default.metallib")
-    let libraryResult = createLibrary(at: library, from: archive)
+    let libraryResult = createLibrary(at: library, from: archive, for: platform)
     if case let .failure(error) = libraryResult {
       return .failure(error)
     }
@@ -89,15 +98,21 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - shader: The shader file to compile.
   ///   - outputFile: The resulting `air` file.
+  ///   - platform: The platform to build for.
   /// - Returns: If an error occurs, a failure is returned.
-  static func compileShader(_ shader: URL, to outputFile: URL) -> Result<Void, MetalCompilerError> {
+  static func compileShader(
+    _ shader: URL,
+    to outputFile: URL,
+    for platform: Platform
+  ) -> Result<Void, MetalCompilerError> {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "-sdk", "macosx", "metal",
+        "-sdk", platform.sdkName, "metal",
         "-o", outputFile.path,
         "-c", shader.path
-      ])
+      ]
+    )
 
     let result = process.runAndWait()
     if case let .failure(error) = result {
@@ -111,14 +126,20 @@ enum MetalCompiler {
   /// - Parameters:
   ///   - archive: The resulting `metal-ar` file.
   ///   - airFiles: The air files to create an archive from.
+  ///   - platform: The platform to archive for.
   /// - Returns: If an error occurs, a failure is returned.
-  static func createArchive(at archive: URL, from airFiles: [URL]) -> Result<Void, MetalCompilerError> {
+  static func createArchive(
+    at archive: URL,
+    from airFiles: [URL],
+    for platform: Platform
+  ) -> Result<Void, MetalCompilerError> {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "-sdk", "macosx", "metal-ar",
+        "-sdk", platform.sdkName, "metal-ar",
         "rcs", archive.path
-      ] + airFiles.map(\.path))
+      ] + airFiles.map(\.path)
+    )
 
     let result = process.runAndWait()
     if case let .failure(error) = result {
@@ -128,14 +149,25 @@ enum MetalCompiler {
     return .success()
   }
 
-  static func createLibrary(at library: URL, from archive: URL) -> Result<Void, MetalCompilerError> {
+  /// Creates a metal library from a metal archive.
+  /// - Parameters:
+  ///   - library: The output file location.
+  ///   - archive: The archive to convert.
+  ///   - platform: The platform to create the library for.
+  // - Returns: If an error occurs, a failure is returned.
+  static func createLibrary(
+    at library: URL,
+    from archive: URL,
+    for platform: Platform
+  ) -> Result<Void, MetalCompilerError> {
     let libraryCreationProcess = Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "-sdk", "macosx", "metallib",
+        "-sdk", platform.sdkName, "metallib",
         archive.path,
         "-o", library.path
-      ])
+      ]
+    )
 
     let libraryCreationResult = libraryCreationProcess.runAndWait()
     if case let .failure(error) = libraryCreationResult {
