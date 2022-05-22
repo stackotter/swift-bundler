@@ -21,6 +21,11 @@ struct ConvertCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL
 
+  @Flag(
+    name: [.customLong("dont-warn")],
+    help: "Disables the experimental feature warning")
+  var dontWarn = false
+
   func wrappedRun() throws {
     // - [x] Convert executable targets
     // - [ ] Convert library dependency targets
@@ -32,9 +37,11 @@ struct ConvertCommand: Command {
     // - [ ] Extract indentation settings
     // - [ ] Handle tests
 
-    log.warning("Converting xcodeprojs is currently an experimental feature. Proceed with caution.")
-    print("[press ENTER to continue]", terminator: "")
-    _ = readLine()
+    if !dontWarn {
+      log.warning("Converting xcodeprojs is currently an experimental feature. Proceed with caution.")
+      print("[press ENTER to continue]", terminator: "")
+      _ = readLine()
+    }
 
     switch xcodeFile.pathExtension {
       case "xcodeproj":

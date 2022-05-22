@@ -6,6 +6,7 @@ enum VariableEvaluatorError: LocalizedError {
   case unknownVariable(String)
   case failedToEvaluateCommitHash(directory: URL)
   case customEvaluatorFailedToEvaluateVariable(String, Error)
+  case packageDirectoryRequiredToEvaluateCommitHash
 
   var errorDescription: String? {
     switch self {
@@ -18,6 +19,8 @@ enum VariableEvaluatorError: LocalizedError {
              + " that git is installed at '/usr/bin/git'."
       case .customEvaluatorFailedToEvaluateVariable(let variable, _):
         return "Custom evaluator failed to evaluate variable '\(variable)'"
+      case .packageDirectoryRequiredToEvaluateCommitHash:
+        return "Failed to evaluate commit hash. Context missing package directory"
     }
   }
 }

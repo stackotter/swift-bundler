@@ -145,18 +145,33 @@ enum XcodeprojConverter {
       //   }
       // }
 
+      let evaluate = { (string: String) -> String in
+        let result = VariableEvaluator.evaluateVariables(in: string, with: .default(.init(
+          appName: name,
+          productName: name
+        )))
+
+        switch result {
+          case .success(let value):
+            return value
+          case .failure:
+            log.warning("Failed to evaluate variables in '\(string)', you may have to replace some variables manually in 'Bundler.toml'.")
+            return string
+        }
+      }
+
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
       let version = buildSettings?["MARKETING_VERSION"] as? String
       let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
       let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
 
       let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
-        return rootDirectory.appendingPathComponent(path)
+        return rootDirectory.appendingPathComponent(evaluate(path))
       }
 
       targets.append(XcodeTarget(
         name: name,
-        identifier: identifier,
+        identifier: identifier.map(evaluate),
         version: version,
         macOSDeploymentVersion: macOSDeploymentVersion,
         infoPlist: infoPlist,

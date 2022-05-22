@@ -94,7 +94,7 @@ enum PlistCreator {
       case .iOS:
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
-        entries["UILaunchScreen"] = [String:Any]()
+        entries["UILaunchScreen"] = [String: Any]()
     }
 
     for (key, value) in configuration.plist ?? [:] {

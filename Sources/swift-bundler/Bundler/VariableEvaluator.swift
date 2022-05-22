@@ -7,10 +7,14 @@ enum VariableEvaluator {
   struct Context {
     /// The app's name.
     var appName: String
+    /// The app's product name.
+    var productName: String
     /// The root directory of the package.
-    var packageDirectory: URL
+    var packageDirectory: URL?
     /// The app's version.
-    var version: String
+    var version: String?
+    /// The app's identifier.
+    var identifier: String?
   }
 
   /// An evaluator for evaluating the values of variables.
@@ -120,29 +124,60 @@ enum VariableEvaluator {
   ///   - variable: The variable to evaluate.
   ///   - context: The context required to evaluate variables.
   /// - Returns: The variable's value, or a failure if an error occurs.
-  static func evaluateVariable(
+  static func evaluateVariable( // swiftlint:disable:this cyclomatic_complexity
     _ variable: String,
     with context: Context
   ) -> Result<String, VariableEvaluatorError> {
+    // TODO: Make text macros more generic
+    let rfc1034Characters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+    let productRFC1034Identifier = String(context.productName.map { character in
+      return rfc1034Characters.contains(character) ? character : "-"
+    })
+
+    let value: String?
     switch variable {
       case "COMMIT_HASH":
+        guard let packageDirectory = context.packageDirectory else {
+          return .failure(.packageDirectoryRequiredToEvaluateCommitHash)
+        }
+
         // TODO: Consider using git library
         let result = Process.create(
           "/usr/bin/git",
           arguments: ["rev-parse", "HEAD"],
-          directory: context.packageDirectory
+          directory: packageDirectory
         ).getOutput()
 
         guard case let .success(string) = result else {
-          return .failure(.failedToEvaluateCommitHash(directory: context.packageDirectory))
+          return .failure(.failedToEvaluateCommitHash(directory: packageDirectory))
         }
 
-        return .success(string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines))
-      case "VERSION":
-        return .success(context.version)
+        value = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+      case "VERSION", "MARKETING_VERSION", "CURRENT_PROJECT_VERSION":
+        value = context.version
+      case "PRODUCT_BUNDLE_IDENTIFIER":
+        value = context.identifier
+      case "PRODUCT_NAME":
+        value = context.productName
+      case "PRODUCT_NAME:rfc1034identifier":
+        value = productRFC1034Identifier
+      case "PRODUCT_BUNDLE_PACKAGE_TYPE":
+        value = "APPL"
+      case "DEVELOPMENT_LANGUAGE":
+        value = "en"
+      case "PRODUCT_MODULE_NAME":
+        value = productRFC1034Identifier.replacingOccurrences(of: "-", with: "_")
+      case "SRCROOT":
+        value = "." // Swift Bundler avoids using absolute paths
       default:
-        return .failure(.unknownVariable(variable))
+        value = nil
     }
+
+    guard let value = value else {
+      return .failure(.unknownVariable(variable))
+    }
+
+    return .success(value)
   }
 
   /// Evaluates the expressions present in a plist value (only string values within the tree are evaluated).
@@ -232,8 +267,10 @@ enum VariableEvaluator {
     if let plist = configuration.plist {
       let context = Context(
         appName: appName,
+        productName: configuration.product,
         packageDirectory: packageDirectory,
-        version: configuration.version
+        version: configuration.version,
+        identifier: configuration.identifier
       )
 
       switch evaluateVariables(in: plist, with: context) {
