@@ -15,7 +15,7 @@ struct AppConfiguration: Codable {
   var icon: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   ///
-  /// String values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
+  /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var plist: [String: PlistValue]?
 
   /// Creates a new app configuration. Uses an `Info.plist` file to supplement missing values where possible.

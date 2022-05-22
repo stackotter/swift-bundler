@@ -43,7 +43,7 @@ struct PackageConfiguration: Codable {
       let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
       let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
       if oldConfigurationExists && !configurationExists {
-        return migrateJSONConfiguration(from: oldConfigurationFile, to: configurationFile)
+        return migrateV1Configuration(from: oldConfigurationFile, to: configurationFile)
       }
     }
 
@@ -79,11 +79,11 @@ struct PackageConfiguration: Codable {
       return .failure(.unsupportedFormatVersion(configuration.formatVersion))
     }
 
-    return ExpressionEvaluator.evaluatePackageConfiguration(
-      configuration,
-      in: packageDirectory
+    return VariableEvaluator.evaluateVariables(
+      in: configuration,
+      packageDirectory: packageDirectory
     ).mapError { error in
-      return .failedToEvaluateExpressions(error)
+      return .failedToEvaluateVariables(error)
     }
   }
 
@@ -94,7 +94,10 @@ struct PackageConfiguration: Codable {
   ///   - configurationFile: The configuration file to migrate.
   ///   - shouldBackup: If `true`, the original configuration file will be backed up to `Bundler.toml.orig`.
   /// - Returns: The migrated configuration.
-  static func migrateV2Configuration(_ configurationFile: URL, shouldBackup: Bool) -> Result<PackageConfiguration, PackageConfigurationError> {
+  static func migrateV2Configuration(
+    _ configurationFile: URL,
+    shouldBackup: Bool
+  ) -> Result<PackageConfiguration, PackageConfigurationError> {
     log.info("'\(configurationFile.relativePath)' is outdated. Migrating it to the latest configuration format")
 
     let contents: String
@@ -146,14 +149,14 @@ struct PackageConfiguration: Codable {
   ///   - oldConfigurationFile: The `Bundle.json` file to migrate.
   ///   - newConfigurationFile: The `Bundler.toml` file to output to.
   /// - Returns: The converted configuration.
-  static func migrateJSONConfiguration(
+  static func migrateV1Configuration(
     from oldConfigurationFile: URL,
     to newConfigurationFile: URL
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
     log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     log.info("Migrating 'Bundle.json' to the new configuration format")
 
-    return OldPackageConfiguration.load(
+    return PackageConfigurationV1.load(
       from: oldConfigurationFile
     ).flatMap { oldConfiguration in
       var extraPlistEntries: [String: PlistValue] = [:]
@@ -243,10 +246,12 @@ struct PackageConfiguration: Codable {
 
   // MARK: Instance methods
 
-  /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is used.
+  /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is returned.
   /// - Parameter name: The name of the app to get.
   /// - Returns: The app's name and configuration. If no app is specified, and there is more than one app, a failure is returned.
-  func getAppConfiguration(_ name: String?) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+  func getAppConfiguration(
+    _ name: String?
+  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
     if let name = name {
       guard let selected = apps[name] else {
         return .failure(.noSuchApp(name))

@@ -19,7 +19,7 @@ struct AppConfigurationV2: Codable {
   var icon: String?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   ///
-  /// The values can contain variable substitutions (see ``ExpressionEvaluator`` for details).
+  /// The values can contain variable substitutions of the form `...{VARIABLE}...`.
   var extraPlistEntries: [String: String]?
 
   private enum CodingKeys: String, CodingKey {
@@ -35,9 +35,14 @@ struct AppConfigurationV2: Codable {
 
   /// Migrates this configuration to the latest version.
   func migrate() -> AppConfiguration {
-    let plist: [String: PlistValue]? = extraPlistEntries.map { entries in
-      entries.mapValues { value in
-        return .string(value)
+    var plist: [String: PlistValue]? = extraPlistEntries?.mapValues { value -> PlistValue in
+      return .string(value)
+    }
+
+    // Update variable delimeters from '{' and '}' to '$(' and ')' (they were changed to match Xcode)
+    plist = plist.map { plist in
+      return plist.mapValues { value in
+        return Self.updateVariableDelimeters(value)
       }
     }
 
@@ -50,4 +55,35 @@ struct AppConfigurationV2: Codable {
       plist: plist
     )
   }
+
+  /// Updates the variable delimeters present in any strings contained within a plist value.
+  /// - Parameter value: The value to update.
+  /// - Returns: The value with delimeters updated (if any were present).
+  static func updateVariableDelimeters(_ value: PlistValue) -> PlistValue {
+    switch value {
+      case .string(let string):
+        let result = VariableEvaluator.evaluateVariables(in: string, with: .custom { variable in
+          return .success("$(\(variable))")
+        }, openingDelimeter: "{", closingDelimeter: "}")
+
+        switch result {
+          case .success(let newValue):
+            return .string(newValue)
+          case .failure(let error):
+            log.warning("Failed to update variable delimeters in plist value '\(string)': \(error.localizedDescription)")
+            return value
+        }
+      case .array(let array):
+        return .array(array.map { value in
+          return updateVariableDelimeters(value)
+        })
+      case .dictionary(let dictionary):
+        return .dictionary(dictionary.mapValues { value in
+          return updateVariableDelimeters(value)
+        })
+      default:
+        return value
+    }
+  }
 }
+

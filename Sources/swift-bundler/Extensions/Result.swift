@@ -12,6 +12,26 @@ extension Result {
         throw failure
     }
   }
+
+  /// The result as a success (`nil` if the result is a failure).
+  var success: Success? {
+    switch self {
+      case let .success(success):
+        return success
+      case .failure:
+        return nil
+    }
+  }
+
+  /// The result as a failure (`nil` if the result is a success).
+  var failure: Failure? {
+    switch self {
+      case .success:
+        return nil
+      case let .failure(failure):
+        return failure
+    }
+  }
 }
 
 extension Result where Success == Void {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// The old configuration format (from swift-bundler 1.x.x). Kept for use in automatic configuration migration.
-struct OldPackageConfiguration: Codable {
+struct PackageConfigurationV1: Codable {
   /// The name of the app's executable target.
   var target: String
   /// The app's bundle identifier (e.g. `com.example.ExampleApp`).
@@ -25,7 +25,7 @@ struct OldPackageConfiguration: Codable {
   /// Loads the configuration from a `Bundle.json` file.
   /// - Parameter file: The file to load the configuration from.
   /// - Returns: The configuration. If an error occurs, a failure is returned.
-  static func load(from file: URL) -> Result<OldPackageConfiguration, PackageConfigurationError> {
+  static func load(from file: URL) -> Result<PackageConfigurationV1, PackageConfigurationError> {
     let data: Data
     do {
       data = try Data(contentsOf: file)
@@ -33,9 +33,9 @@ struct OldPackageConfiguration: Codable {
       return .failure(.failedToReadContentsOfOldConfigurationFile(file, error))
     }
 
-    var configuration: OldPackageConfiguration
+    var configuration: PackageConfigurationV1
     do {
-      configuration = try JSONDecoder().decode(OldPackageConfiguration.self, from: data)
+      configuration = try JSONDecoder().decode(PackageConfigurationV1.self, from: data)
 
       // Load the `extraInfoPlistEntries` property if present
       let json = try JSONSerialization.jsonObject(with: data)
