@@ -98,7 +98,7 @@ struct PackageConfiguration: Codable {
     _ configurationFile: URL,
     shouldBackup: Bool
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
-    log.info("'\(configurationFile.relativePath)' is outdated. Migrating it to the latest configuration format")
+    log.warning("'\(configurationFile.relativePath)' is outdated. Migrating it to the latest configuration format")
 
     let contents: String
     do {
@@ -153,7 +153,7 @@ struct PackageConfiguration: Codable {
     from oldConfigurationFile: URL,
     to newConfigurationFile: URL
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
-    log.info("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
+    log.warning("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     log.info("Migrating 'Bundle.json' to the new configuration format")
 
     return PackageConfigurationV1.load(

@@ -39,7 +39,7 @@ struct TemplatesListCommand: Command {
         }
       }
       Section("Using a template") {
-        ExampleCommand("swift bundler create [app-name] --identifier [app-identifier] --template [template]" + repositoryOption)
+        ExampleCommand("swift bundler create [app-name] --template [template]" + repositoryOption)
       }
     }.show()
   }

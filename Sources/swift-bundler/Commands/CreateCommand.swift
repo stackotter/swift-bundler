@@ -174,9 +174,20 @@ struct CreateCommand: Command {
         ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
         ExampleCommand("swift bundler run")
       }
+      
     }.show()
+
+    if template == nil {
+      Output {
+        "warning".yellow.bold + ": You have created a project without a template and it will not have a UI framework set up out of the box. Did you mean to use a template?"
+        ""
+        ExampleCommand("swift bundler templates list")
+        ExampleCommand("swift bundler create [app-name] --template [template]")
+        ""
+      }.show()
+    }
   }
-  
+
   /// App names can only contain characters from the English alphabet (to avoid things getting a bit complex when figuring out the product name).
   /// - Parameter name: The name to verify.
   /// - Returns: Whether the app name is valid or not.
