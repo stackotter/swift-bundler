@@ -317,7 +317,7 @@ enum XcodeprojConverter {
     var macOSDeploymentVersion: Version?
     let targetsString = targets.map { target in
       let resourcesString = target.resources.map { file in
-        return "                .process(\"\(file.bundlerPath(target: target.name))\")"
+        return "                .copy(\"\(file.bundlerPath(target: target.name))\")"
       }.joined(separator: ",\n")
 
       if let versionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: versionString) {
