@@ -20,6 +20,14 @@ enum StoryboardCompiler {
       return .failure(.failedToEnumerateStoryboards(directory, error))
     }
 
+    let storyboards = contents.filter { file in
+      file.pathExtension == "storyboard"
+    }
+
+    guard !storyboards.isEmpty else {
+      return .success()
+    }
+
     if !FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
       do {
         try FileManager.default.createDirectory(at: outputDirectory)
@@ -28,16 +36,16 @@ enum StoryboardCompiler {
       }
     }
 
-    for file in contents where file.pathExtension == "storyboard" {
-      if case .failure(let error) = compileStoryboard(file, to: outputDirectory) {
+    for storyboard in storyboards {
+      if case .failure(let error) = compileStoryboard(storyboard, to: outputDirectory) {
         return .failure(error)
       }
 
       if !keepSources {
         do {
-          try FileManager.default.removeItem(at: file)
+          try FileManager.default.removeItem(at: storyboard)
         } catch {
-          return .failure(.failedToDeleteStoryboard(file, error))
+          return .failure(.failedToDeleteStoryboard(storyboard, error))
         }
       }
     }

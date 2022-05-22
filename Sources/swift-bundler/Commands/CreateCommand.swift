@@ -174,12 +174,12 @@ struct CreateCommand: Command {
         ExampleCommand("cd \(packageDirectory.relativePath.quotedIfNecessary)")
         ExampleCommand("swift bundler run")
       }
-      
     }.show()
 
     if template == nil {
       Output {
-        "warning".yellow.bold + ": You have created a project without a template and it will not have a UI framework set up out of the box. Did you mean to use a template?"
+        "warning".yellow.bold
+          + ": You have created a project without a template and it will not have a UI framework set up out of the box. Did you mean to use a template?"
         ""
         ExampleCommand("swift bundler templates list")
         ExampleCommand("swift bundler create [app-name] --template [template]")
