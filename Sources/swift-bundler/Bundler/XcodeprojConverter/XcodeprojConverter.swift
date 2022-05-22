@@ -163,7 +163,14 @@ enum XcodeprojConverter {
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
       let version = buildSettings?["MARKETING_VERSION"] as? String
       let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
+      var iOSDeploymentVersion = buildSettings?["IPHONEOS_DEPLOYMENT_TARGET"] as? String
       let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
+
+      // iOS deployment version doesn't always seem to be included, so we can just guess if iOS is supported
+      if iOSDeploymentVersion == nil && buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
+        iOSDeploymentVersion = "15.0"
+        log.warning("Could not find target iOS version, assuming 15.0")
+      }
 
       let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
         return rootDirectory.appendingPathComponent(evaluate(path))
@@ -174,6 +181,7 @@ enum XcodeprojConverter {
         identifier: identifier.map(evaluate),
         version: version,
         macOSDeploymentVersion: macOSDeploymentVersion,
+        iOSDeploymentVersion: iOSDeploymentVersion,
         infoPlist: infoPlist,
         sources: sources,
         resources: resources ?? []
@@ -329,17 +337,27 @@ enum XcodeprojConverter {
   ///   - targets: The targets to declare.
   /// - Returns: The generated contents.
   static func createPackageManifestContents(packageName: String, targets: [XcodeTarget]) -> String {
+    // TODO: Rewrite package manifest generation
     var macOSDeploymentVersion: Version?
+    var iOSDeploymentVersion: Version?
     let targetsString = targets.map { target in
       let resourcesString = target.resources.map { file in
         return "                .copy(\"\(file.bundlerPath(target: target.name))\")"
       }.joined(separator: ",\n")
 
-      if let versionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: versionString) {
+      if let macOSVersionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: macOSVersionString) {
         if let currentVersion = macOSDeploymentVersion, macOSVersion > currentVersion {
           macOSDeploymentVersion = macOSVersion
         } else {
           macOSDeploymentVersion = macOSVersion
+        }
+      }
+
+      if let iOSVersionString = target.iOSDeploymentVersion, let iOSVersion = Version(tolerant: iOSVersionString) {
+        if let currentVersion = iOSDeploymentVersion, iOSVersion > currentVersion {
+          iOSDeploymentVersion = iOSVersion
+        } else {
+          iOSDeploymentVersion = iOSVersion
         }
       }
 
@@ -354,7 +372,7 @@ enum XcodeprojConverter {
 """
     }.joined(separator: ",\n")
 
-    var platformsString = ""
+    var platformStrings: [String] = []
     if let macOSDeploymentVersion = macOSDeploymentVersion {
       var versionString = "\(macOSDeploymentVersion.major)"
       if macOSDeploymentVersion.minor != 0 {
@@ -363,7 +381,18 @@ enum XcodeprojConverter {
           versionString += "_\(macOSDeploymentVersion.patch)"
         }
       }
-      platformsString = ".macOS(.v\(versionString))"
+      platformStrings.append(".macOS(.v\(versionString))")
+    }
+
+    if let iOSDeploymentVersion = iOSDeploymentVersion {
+      var versionString = "\(iOSDeploymentVersion.major)"
+      if iOSDeploymentVersion.minor != 0 {
+        versionString += "_\(iOSDeploymentVersion.minor)"
+        if iOSDeploymentVersion.patch != 0 {
+          versionString += "_\(iOSDeploymentVersion.patch)"
+        }
+      }
+      platformStrings.append(".iOS(.v\(versionString))")
     }
 
     let packageManifestContents = """
@@ -372,7 +401,7 @@ enum XcodeprojConverter {
 import PackageDescription
 
 let package = Package(
-    name: "\(packageName)",\(platformsString == "" ? "" : "\n    platforms: [\(platformsString)],")
+    name: "\(packageName)",\(platformStrings == [] ? "" : "\n    platforms: [\(platformStrings.joined(separator: ", "))],")
     dependencies: [],
     targets: [
 \(targetsString)

@@ -6,6 +6,7 @@ extension XcodeprojConverter {
     var identifier: String?
     var version: String?
     var macOSDeploymentVersion: String?
+    var iOSDeploymentVersion: String?
     var infoPlist: URL?
     var sources: [XcodeFile]
     var resources: [XcodeFile]
