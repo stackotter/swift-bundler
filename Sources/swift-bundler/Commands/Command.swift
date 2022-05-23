@@ -21,6 +21,10 @@ extension Command {
     } catch {
       log.error("\(error.localizedDescription)")
       log.debug("Error details: \(error)")
+      if log.logLevel > .debug {
+        print("")
+        log.info("Use -v to get more error details")
+      }
       Foundation.exit(1)
     }
   }
