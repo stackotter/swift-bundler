@@ -17,6 +17,7 @@ struct SwiftBundler: AsyncParsableCommand {
       RunCommand.self,
       CreateCommand.self,
       ConvertCommand.self,
+      SimulatorsCommand.self,
       TemplatesCommand.self,
       GenerateXcodeSupportCommand.self,
       ListIdentitiesCommand.self

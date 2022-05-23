@@ -77,6 +77,7 @@ enum SimulatorManager {
       ].compactMap { $0 }
     )
 
+    // TODO: Ensure that environment variables are passed correctly
     var prefixedVariables: [String: String] = [:]
     for (key, value) in environmentVariables {
       prefixedVariables["SIMCTL_CHILD_" + key] = value

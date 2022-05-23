@@ -21,7 +21,7 @@ struct RunCommand: AsyncCommand {
 
   @Option(
     name: [.customLong("simulator")],
-    help: "A search term to identify the target simulator (e.g. 'iPhone 8').")
+    help: "A search term or id to identify the target simulator (e.g. 'iPhone 8').")
   var simulatorSearchTerm: String?
 
   /// If `true`, the building and bundling step is skipped.
@@ -33,6 +33,13 @@ struct RunCommand: AsyncCommand {
   // MARK: Methods
 
   func wrappedRun() async throws {
+    // Validate arguments
+    if !arguments.platform.isSimulator && simulatorSearchTerm != nil {
+      log.error("'--simulator' can only be used when the selected platform is a simulator")
+      Foundation.exit(1)
+    }
+
+    // Load configuration
     let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
 
     let outputDirectory = BundleCommand.getOutputDirectory(
@@ -47,43 +54,7 @@ struct RunCommand: AsyncCommand {
     ).unwrap()
 
     // Get the device to run on
-    let device: Device
-    switch arguments.platform {
-      case .macOS:
-        device = .macOS
-      case .iOS:
-        device = .iOS
-      case .iOSSimulator:
-        if let searchTerm = simulatorSearchTerm {
-          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm).unwrap()
-
-          guard let simulator = simulators.first else {
-            log.error("Search term '\(searchTerm)' did not match any simulators")
-
-            Output {
-              Section("List available simulators") {
-                // TODO: Implement simulator list command
-                ExampleCommand("swift bundler simulators list")
-              }
-            }.show()
-
-            Foundation.exit(1)
-          }
-
-          device = .iOSSimulator(id: simulator.id)
-        } else {
-          let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
-
-          // If an iOS simulator is booted, use that
-          if allSimulators.contains(where: { $0.state == .booted }) {
-            device = .iOSSimulator(id: "booted")
-            break
-          } else {
-            log.error("To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already")
-            Foundation.exit(1)
-          }
-        }
-    }
+    let device = try Self.getDevice(for: arguments.platform, simulatorSearchTerm: simulatorSearchTerm)
 
     let bundleCommand = BundleCommand(arguments: _arguments, skipBuild: false, builtWithXcode: false)
 
@@ -97,5 +68,65 @@ struct RunCommand: AsyncCommand {
       device: device,
       environmentFile: environmentFile
     ).unwrap()
+  }
+
+  static func getDevice(for platform: Platform, simulatorSearchTerm: String?) throws -> Device {
+    switch platform {
+      case .macOS:
+        return .macOS
+      case .iOS:
+        return .iOS
+      case .iOSSimulator:
+        if let searchTerm = simulatorSearchTerm {
+          // Get matching simulators
+          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm).unwrap().sorted { first, second in
+            // Put booted simulators first and sort by name length
+            if first.state == .shutdown && second.state == .booted {
+              return false
+            } else if first.name.count > second.name.count {
+              return false
+            } else {
+              return true
+            }
+          }
+
+          guard let simulator = simulators.first else {
+            log.error("Search term '\(searchTerm)' did not match any simulators")
+
+            Output {
+              ""
+              Section("List available simulators") {
+                ExampleCommand("swift bundler simulators list")
+              }
+            }.show()
+
+            Foundation.exit(1)
+          }
+
+          if simulators.count > 1 {
+            log.info("Found multiple matching simulators, using '\(simulator.name)'")
+          }
+
+          return .iOSSimulator(id: simulator.id)
+        } else {
+          let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
+
+          // If an iOS simulator is booted, use that
+          if allSimulators.contains(where: { $0.state == .booted }) {
+            return .iOSSimulator(id: "booted")
+          } else {
+            log.error("To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already")
+
+            Output {
+              ""
+              Section("List available simulators") {
+                ExampleCommand("swift bundler simulators list")
+              }
+            }.show()
+
+            Foundation.exit(1)
+          }
+        }
+    }
   }
 }

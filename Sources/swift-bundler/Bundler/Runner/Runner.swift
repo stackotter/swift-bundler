@@ -75,6 +75,11 @@ enum Runner {
     return .success(variables)
   }
 
+  /// Runs an app on the current macOS device.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - environmentVariables: Environment variables to pass to the process.
+  /// - Returns: A failure if an error occurs.
   static func runMacOSApp(
     bundle: URL,
     environmentVariables: [String: String]
@@ -93,6 +98,11 @@ enum Runner {
     }
   }
 
+  /// Runs an app on the first connected iOS device.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - environmentVariables: Environment variables to pass to the process.
+  /// - Returns: A failure if an error occurs.
   static func runIOSApp(
     bundle: URL,
     environmentVariables: [String: String]
@@ -124,17 +134,28 @@ enum Runner {
     }
   }
 
+  /// Runs an app on an iOS simulator.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - bundleIdentifier: The app's identifier.
+  ///   - simulatorId: The id of the simulator to run.
+  ///   - environmentVariables: Environment variables to pass to the process.
+  /// - Returns: A failure if an error occurs.
   static func runIOSSimulatorApp(
     bundle: URL,
     bundleIdentifier: String,
     simulatorId: String,
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
+    log.info("Preparing simulator")
     return SimulatorManager.bootSimulator(id: simulatorId).flatMap { _ in
+      log.info("Installing app")
       return SimulatorManager.installApp(bundle, simulatorId: simulatorId)
-    }.flatMap { _ in
+    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+      log.info("Opening 'Simulator.app'")
       return SimulatorManager.openSimulatorApp()
-    }.flatMap { _ in
+    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+      log.info("Launching '\(bundleIdentifier)'")
       return SimulatorManager.launchApp(
         bundleIdentifier,
         simulatorId: simulatorId,
