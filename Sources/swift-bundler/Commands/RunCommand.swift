@@ -21,7 +21,7 @@ struct RunCommand: AsyncCommand {
 
   @Option(
     name: [.customLong("simulator")],
-    help: "A search term or id to identify the target simulator (e.g. 'iPhone 8').")
+    help: "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8').")
   var simulatorSearchTerm: String?
 
   /// If `true`, the building and bundling step is skipped.
@@ -91,13 +91,11 @@ struct RunCommand: AsyncCommand {
           }
 
           guard let simulator = simulators.first else {
-            log.error("Search term '\(searchTerm)' did not match any simulators")
+            log.error("Search term '\(searchTerm)' did not match any simulators. To list available simulators, use the following command:")
 
             Output {
               ""
-              Section("List available simulators") {
-                ExampleCommand("swift bundler simulators list")
-              }
+              ExampleCommand("swift bundler simulators list")
             }.show()
 
             Foundation.exit(1)
@@ -115,13 +113,11 @@ struct RunCommand: AsyncCommand {
           if allSimulators.contains(where: { $0.state == .booted }) {
             return .iOSSimulator(id: "booted")
           } else {
-            log.error("To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already")
+            // swiftlint:disable:next line_length
+            log.error("To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:")
 
             Output {
-              ""
-              Section("List available simulators") {
-                ExampleCommand("swift bundler simulators list")
-              }
+              ExampleCommand("swift bundler simulators list")
             }.show()
 
             Foundation.exit(1)

@@ -152,10 +152,10 @@ enum Runner {
       log.info("Installing app")
       return SimulatorManager.installApp(bundle, simulatorId: simulatorId)
     }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
-      log.info("Opening 'Simulator.app'")
+      log.info("Opening Simulator")
       return SimulatorManager.openSimulatorApp()
     }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
-      log.info("Launching '\(bundleIdentifier)'")
+      log.info("Launching \(bundleIdentifier)")
       return SimulatorManager.launchApp(
         bundleIdentifier,
         simulatorId: simulatorId,

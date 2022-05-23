@@ -34,7 +34,7 @@ enum SimulatorManager {
   }
 
   /// Boots a simulator. If it's already running, nothing is done.
-  /// - Parameter id: The id of the simulator to start.
+  /// - Parameter id: The name or id of the simulator to start.
   /// - Returns: A failure if an error occurs.
   static func bootSimulator(id: String) -> Result<Void, SimulatorManagerError> {
     return Process.create(
@@ -59,7 +59,7 @@ enum SimulatorManager {
   /// Launches an app on the simulator (the app must already be installed).
   /// - Parameters:
   ///   - bundleIdentifier: The app's bundle identifier.
-  ///   - simulatorId: The id of the simulator to launch in.
+  ///   - simulatorId: The name or id of the simulator to launch in.
   ///   - connectConsole: If `true`, the function will block and the current process will print the stdout and stderr of the running app.
   ///   - environmentVariables: Additional environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
@@ -93,7 +93,7 @@ enum SimulatorManager {
   /// Installs an app on the simulator.
   /// - Parameters:
   ///   - bundle: The app bundle to install.
-  ///   - simulatorId: The id of the simulator to install on.
+  ///   - simulatorId: The name or id of the simulator to install on.
   /// - Returns: A failure if an error occurs.
   static func installApp(
     _ bundle: URL,

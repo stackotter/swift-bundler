@@ -25,7 +25,7 @@ struct SimulatorsListCommand: Command {
         }
       }
       Section("Booting a simulator") {
-        ExampleCommand("swift bundler simulators boot [id]")
+        ExampleCommand("swift bundler simulators boot [id-or-name]")
       }
     }.show()
   }

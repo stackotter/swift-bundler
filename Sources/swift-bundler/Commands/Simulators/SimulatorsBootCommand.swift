@@ -8,14 +8,14 @@ struct SimulatorsBootCommand: Command {
     abstract: "Boot an iOS simulator."
   )
 
-  /// The id of the simulator to start.
+  /// The id or name of the simulator to start.
   @Argument(
-    help: "The id of the simulator to start.")
-  var id: String
+    help: "The id or name of the simulator to start.")
+  var idOrName: String
 
   func wrappedRun() throws {
-    log.info("Booting '\(id)'")
-    try SimulatorManager.bootSimulator(id: id).unwrap()
+    log.info("Booting '\(idOrName)'")
+    try SimulatorManager.bootSimulator(id: idOrName).unwrap()
     log.info("Opening 'Simulator.app'")
     try SimulatorManager.openSimulatorApp().unwrap()
   }
