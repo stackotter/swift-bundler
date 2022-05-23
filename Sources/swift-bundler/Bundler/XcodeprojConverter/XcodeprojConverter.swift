@@ -190,6 +190,30 @@ enum XcodeprojConverter {
         ))
       }
     }
+    
+    // Remove empty targets
+    targets = targets.filter { target in
+      if target.files.isEmpty {
+        log.warning("Removing empty target '\(target.name)'")
+        return false
+      } else {
+        return true
+      }
+    }
+
+    // Remove dependencies that don't exist
+    targets = targets.map { target in
+      var target = target
+      target.dependencies = target.dependencies.filter { dependency in
+        if targets.contains(where: { $0.name == dependency }) {
+          return true
+        } else {
+          log.warning("Removing \(target.name)'s dependency on non-existent target '\(dependency)'")
+          return false
+        }
+      }
+      return target
+    }
 
     return .success(targets)
   }
