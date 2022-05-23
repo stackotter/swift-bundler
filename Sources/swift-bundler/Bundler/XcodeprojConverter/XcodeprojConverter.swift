@@ -94,7 +94,9 @@ enum XcodeprojConverter {
         // Create Bundler.toml
         return createPackageConfigurationFile(
           at: outputDirectory.appendingPathComponent("Bundler.toml"),
-          targets: targets
+          targets: targets.compactMap { target in
+            return target as? ExecutableTarget
+          }
         )
       }
     }
@@ -108,13 +110,16 @@ enum XcodeprojConverter {
   static func extractTargets(
     from project: XcodeProj,
     rootDirectory: URL
-  ) -> Result<[XcodeTarget], XcodeprojConverterError> {
-    var targets: [XcodeTarget] = []
+  ) -> Result<[any XcodeTarget], XcodeprojConverterError> {
+    var targets: [any XcodeTarget] = []
     for target in project.pbxproj.nativeTargets {
       let name = target.name
 
-      guard target.productType == .application else {
-        log.warning("Non-executable targets not yet supported. Skipping '\(name)'")
+      guard
+        let productType = target.productType,
+        let targetType = TargetType(productType)
+      else {
+        log.warning("Only executable and library targets are supported. Skipping '\(name)'")
         continue
       }
 
@@ -135,60 +140,78 @@ enum XcodeprojConverter {
         return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
       }
 
+      let dependencies = target.dependencies.compactMap(\.target?.name)
+
       // Extract target settings
       let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
-
-      // for config in target.buildConfigurationList?.buildConfigurations ?? [] {
-      //   let buildSettings = config.buildSettings
-      //   for (key, value) in buildSettings {
-      //     print("\(key): \(value)")
-      //   }
-      // }
-
-      let evaluate = { (string: String) -> String in
-        let result = VariableEvaluator.evaluateVariables(in: string, with: .default(.init(
-          appName: name,
-          productName: name
-        )))
-
-        switch result {
-          case .success(let value):
-            return value
-          case .failure:
-            log.warning("Failed to evaluate variables in '\(string)', you may have to replace some variables manually in 'Bundler.toml'.")
-            return string
-        }
-      }
-
       let identifier = buildSettings?["PRODUCT_BUNDLE_IDENTIFIER"] as? String
       let version = buildSettings?["MARKETING_VERSION"] as? String
-      let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
-      var iOSDeploymentVersion = buildSettings?["IPHONEOS_DEPLOYMENT_TARGET"] as? String
-      let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
 
-      // iOS deployment version doesn't always seem to be included, so we can just guess if iOS is supported
-      if iOSDeploymentVersion == nil && buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
-        iOSDeploymentVersion = "15.0"
-        log.warning("Could not find target iOS version, assuming 15.0")
+      if targetType == .executable {
+        // Extract the rest of the executable target
+        let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
+        var iOSDeploymentVersion = buildSettings?["IPHONEOS_DEPLOYMENT_TARGET"] as? String
+        let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
+
+        // iOS deployment version doesn't always seem to be included, so we can just guess if iOS is supported
+        if iOSDeploymentVersion == nil && buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
+          iOSDeploymentVersion = "15.0"
+          log.warning("Could not find target iOS version, assuming 15.0")
+        }
+
+        let evaluate = { (value: String) -> String in
+          evaluateBuildSetting(value, targetName: name)
+        }
+
+        let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
+          return rootDirectory.appendingPathComponent(evaluate(path))
+        }
+
+        targets.append(ExecutableTarget(
+          name: name,
+          identifier: identifier.map(evaluate),
+          version: version,
+          sources: sources,
+          resources: resources ?? [],
+          dependencies: dependencies,
+          macOSDeploymentVersion: macOSDeploymentVersion,
+          iOSDeploymentVersion: iOSDeploymentVersion,
+          infoPlist: infoPlist
+        ))
+      } else {
+        // Extract the rest of the library target
+        targets.append(LibraryTarget(
+          name: name,
+          identifier: identifier,
+          version: version,
+          sources: sources,
+          resources: resources ?? [],
+          dependencies: dependencies
+        ))
       }
-
-      let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
-        return rootDirectory.appendingPathComponent(evaluate(path))
-      }
-
-      targets.append(XcodeTarget(
-        name: name,
-        identifier: identifier.map(evaluate),
-        version: version,
-        macOSDeploymentVersion: macOSDeploymentVersion,
-        iOSDeploymentVersion: iOSDeploymentVersion,
-        infoPlist: infoPlist,
-        sources: sources,
-        resources: resources ?? []
-      ))
     }
 
     return .success(targets)
+  }
+
+  /// Evaluates the Xcode variables (e.g. `$PRODUCT_NAME`) in a build setting string.
+  /// - Parameters:
+  ///   - value: The value to evaluate variables in.
+  ///   - targetName: The name of the target the value is from.
+  /// - Returns: The evaluated string, or the original string if there are unknown variables.
+  static func evaluateBuildSetting(_ value: String, targetName: String) -> String {
+    let result = VariableEvaluator.evaluateVariables(in: value, with: .default(.init(
+      appName: targetName,
+      productName: targetName
+    )))
+
+    switch result {
+      case .success(let evaluatedValue):
+        return evaluatedValue
+      case .failure:
+        log.warning("Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'.")
+        return value
+    }
   }
 
   /// Copies the given xcodeproj targets into a Swift Bundler project.
@@ -259,7 +282,7 @@ enum XcodeprojConverter {
   /// - Returns: A failure if an error occurs.
   static func createPackageConfigurationFile(
     at file: URL,
-    targets: [XcodeTarget]
+    targets: [ExecutableTarget]
   ) -> Result<Void, XcodeprojConverterError> {
     let configuration: PackageConfiguration
     switch createPackageConfiguration(targets: targets) {
@@ -282,7 +305,7 @@ enum XcodeprojConverter {
   /// - Parameter targets: The executable targets to add as apps.
   /// - Returns: The configuration.
   static func createPackageConfiguration(
-    targets: [XcodeTarget]
+    targets: [ExecutableTarget]
   ) -> Result<PackageConfiguration, XcodeprojConverterError> {
     var apps: [String: AppConfiguration] = [:]
     for target in targets {
@@ -315,7 +338,7 @@ enum XcodeprojConverter {
   static func createPackageManifestFile(
     at file: URL,
     packageName: String,
-    targets: [XcodeTarget]
+    targets: [any XcodeTarget]
   ) -> Result<Void, XcodeprojConverterError> {
     let contents = createPackageManifestContents(
       packageName: packageName,
@@ -336,7 +359,10 @@ enum XcodeprojConverter {
   ///   - packageName: The package's name.
   ///   - targets: The targets to declare.
   /// - Returns: The generated contents.
-  static func createPackageManifestContents(packageName: String, targets: [XcodeTarget]) -> String {
+  static func createPackageManifestContents(
+    packageName: String,
+    targets: [any XcodeTarget]
+  ) -> String {
     // TODO: Rewrite package manifest generation
     var macOSDeploymentVersion: Version?
     var iOSDeploymentVersion: Version?
@@ -345,26 +371,28 @@ enum XcodeprojConverter {
         return "                .copy(\"\(file.bundlerPath(target: target.name))\")"
       }.joined(separator: ",\n")
 
-      if let macOSVersionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: macOSVersionString) {
-        if let currentVersion = macOSDeploymentVersion, macOSVersion > currentVersion {
-          macOSDeploymentVersion = macOSVersion
-        } else {
-          macOSDeploymentVersion = macOSVersion
+      if let target = target as? ExecutableTarget {
+        if let macOSVersionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: macOSVersionString) {
+          if let currentVersion = macOSDeploymentVersion, macOSVersion > currentVersion {
+            macOSDeploymentVersion = macOSVersion
+          } else {
+            macOSDeploymentVersion = macOSVersion
+          }
         }
-      }
 
-      if let iOSVersionString = target.iOSDeploymentVersion, let iOSVersion = Version(tolerant: iOSVersionString) {
-        if let currentVersion = iOSDeploymentVersion, iOSVersion > currentVersion {
-          iOSDeploymentVersion = iOSVersion
-        } else {
-          iOSDeploymentVersion = iOSVersion
+        if let iOSVersionString = target.iOSDeploymentVersion, let iOSVersion = Version(tolerant: iOSVersionString) {
+          if let currentVersion = iOSDeploymentVersion, iOSVersion > currentVersion {
+            iOSDeploymentVersion = iOSVersion
+          } else {
+            iOSDeploymentVersion = iOSVersion
+          }
         }
       }
 
       return """
-        .executableTarget(
+        .\(target.targetType.manifestName)(
             name: "\(target.name)",
-            dependencies: [],
+            dependencies: \(target.dependencies),
             resources: [
 \(resourcesString)
             ]
