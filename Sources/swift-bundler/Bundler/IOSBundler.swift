@@ -39,7 +39,7 @@ enum IOSBundler: Bundler {
 
     let appBundle = outputDirectory.appendingPathComponent("\(appName).app")
     let appExecutable = appBundle.appendingPathComponent(appName)
-    // let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
+    let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
 
     // let createAppIconIfPresent: () -> Result<Void, IOSBundlerError> = {
     //   if let path = appConfiguration.icon {
@@ -63,17 +63,17 @@ enum IOSBundler: Bundler {
       }
     }
 
-    // let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
-    //   DynamicLibraryBundler.copyDynamicLibraries(
-    //     from: productsDirectory,
-    //     to: appDynamicLibrariesDirectory,
-    //     appExecutable: appExecutable,
-    //     isXcodeBuild: false,
-    //     universal: false
-    //   ).mapError { error in
-    //     .failedToCopyDynamicLibraries(error)
-    //   }
-    // }
+    let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
+      DynamicLibraryBundler.copyDynamicLibraries(
+        from: productsDirectory,
+        to: appDynamicLibrariesDirectory,
+        appExecutable: appExecutable,
+        isXcodeBuild: false,
+        universal: false
+      ).mapError { error in
+        .failedToCopyDynamicLibraries(error)
+      }
+    }
 
     let embedProfile: () -> Result<Void, IOSBundlerError> = {
       if let provisioningProfile = provisioningProfile {
@@ -103,7 +103,7 @@ enum IOSBundler: Bundler {
       { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion, targetingSimulator: targetingSimulator) },
       // { createAppIconIfPresent() },
       { copyResourcesBundles() },
-      // { copyDynamicLibraries() },
+      { copyDynamicLibraries() },
       { embedProfile() },
       { codesign() }
     )
@@ -136,15 +136,14 @@ enum IOSBundler: Bundler {
     let fileManager = FileManager.default
 
     let appBundleDirectory = outputDirectory.appendingPathComponent("\(appName).app")
-    // let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
+    let appDynamicLibrariesDirectory = appBundleDirectory.appendingPathComponent("Libraries")
 
     do {
       if fileManager.itemExists(at: appBundleDirectory, withType: .directory) {
         try fileManager.removeItem(at: appBundleDirectory)
       }
       try fileManager.createDirectory(at: appBundleDirectory)
-      // TODO: support dynamic libraries on ios
-      // try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
+      try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
       return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
