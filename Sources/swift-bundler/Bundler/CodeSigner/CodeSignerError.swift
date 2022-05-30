@@ -9,6 +9,7 @@ enum CodeSignerError: LocalizedError {
   case failedToVerifyProvisioningProfile(ProcessError)
   case failedToDeserializeProvisioningProfile(Error)
   case provisioningProfileMissingTeamIdentifier
+  case failedToEnumerateDynamicLibraries(Error)
 
   var errorDescription: String? {
     switch self {
@@ -26,6 +27,8 @@ enum CodeSignerError: LocalizedError {
         return "Failed to deserialize provisioning profile plist"
       case .provisioningProfileMissingTeamIdentifier:
         return "The supplied provisioning profile is missing the 'TeamIdentifier' entry"
+      case .failedToEnumerateDynamicLibraries:
+        return "Failed to enumerate dynamic libraries"
     }
   }
 }

@@ -32,7 +32,7 @@ enum CodeSigner {
         return .failure(.failedToWriteEntitlements(error))
       }
 
-      return sign(bundle: bundle, identityId: identityId, entitlements: entitlements)
+      return signAppBundle(bundle: bundle, identityId: identityId, entitlements: entitlements)
     }
   }
 
@@ -42,8 +42,35 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func sign(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
-    log.info("Codesigning executable")
+  static func signAppBundle(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
+    log.info("Codesigning app bundle")
+ 
+    let librariesDirectory = bundle.appendingPathComponent("Libraries")
+    if FileManager.default.itemExists(at: librariesDirectory, withType: .directory) {
+      let contents: [URL]
+      do {
+        contents = try FileManager.default.contentsOfDirectory(at: librariesDirectory, includingPropertiesForKeys: nil)
+      } catch {
+        return .failure(.failedToEnumerateDynamicLibraries(error))
+      }
+
+      for file in contents where file.pathExtension == "dylib" {
+        if case let .failure(error) = sign(file: file, identityId: identityId) {
+          return .failure(error)
+        }
+      }
+    }
+
+    return sign(file: bundle, identityId: identityId, entitlements: entitlements)
+  }
+
+  /// Signs a binary or app bundle.
+  /// - Parameters:
+  ///   - bundle: The binary or app bundle to sign.
+  ///   - identityId: The id of the codesigning identity to use.
+  ///   - entitlements: The entitlements to give the file (only valid for app bundles).
+  /// - Returns: A failure if the `codesign` command fails to run.
+  static func sign(file: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
@@ -57,7 +84,7 @@ enum CodeSigner {
     let arguments = entitlementArguments + [
       "--force", "--deep",
       "--sign", identityId,
-      bundle.path
+      file.path
     ]
 
     let process = Process.create(
@@ -65,10 +92,9 @@ enum CodeSigner {
       arguments: arguments
     )
 
-    return process.runAndWait()
-      .mapError { error in
-        return .failedToRunCodesignTool(error)
-      }
+    return process.runAndWait().mapError { error in
+      return .failedToRunCodesignTool(error)
+    }
   }
 
   /// Enumerates the user's available codesigning identities.
@@ -79,45 +105,43 @@ enum CodeSigner {
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
-    return process.getOutput()
-      .mapError { error in
-        return .failedToEnumerateIdentities(error)
-      }
-      .flatMap { output in
-        // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
-        let identityParser = Parse {
-          PrefixThrough(") ").map(String.init)
-          PrefixUpTo(" ").map(String.init)
-          " "
-          OneOf {
-            PrefixUpTo("\n")
-            Rest()
-          }.map { substring in
-            // Remove quotation marks
-            substring.dropFirst().dropLast()
-          }.map(String.init)
-        }.map { _, id, name in
-          return Identity(id: id, name: name)
-        }
-
-        let identityListParser = Parse {
-          Many {
-            identityParser
-          }
+    return process.getOutput().mapError { error in
+      return .failedToEnumerateIdentities(error)
+    }.flatMap { output in
+      // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
+      let identityParser = Parse {
+        PrefixThrough(") ").map(String.init)
+        PrefixUpTo(" ").map(String.init)
+        " "
+        OneOf {
+          PrefixUpTo("\n")
           Rest()
-        }.map { identities, _ in
-          return identities
-        }
-
-        let identities: [Identity]
-        do {
-          identities = try identityListParser.parse(output)
-        } catch {
-          return .failure(.failedToParseIdentityList(error))
-        }
-
-        return .success(identities)
+        }.map { substring in
+          // Remove quotation marks
+          substring.dropFirst().dropLast()
+        }.map(String.init)
+      }.map { _, id, name in
+        return Identity(id: id, name: name)
       }
+
+      let identityListParser = Parse {
+        Many {
+          identityParser
+        }
+        Rest()
+      }.map { identities, _ in
+        return identities
+      }
+
+      let identities: [Identity]
+      do {
+        identities = try identityListParser.parse(output)
+      } catch {
+        return .failure(.failedToParseIdentityList(error))
+      }
+
+      return .success(identities)
+    }
   }
 
   static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {

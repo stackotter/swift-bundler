@@ -193,7 +193,7 @@ enum ResourceBundler {
     let copyBundle = flatten(
       {
         if !isMainBundle {
-          return createResourceBundleDirectoryStructure(at: destinationBundle).flatMap { _ in
+          return createResourceBundleDirectoryStructure(at: destinationBundle, for: platform).flatMap { _ in
             createResourceBundleInfoPlist(
               in: destinationBundle,
               platform: platform,
@@ -214,19 +214,28 @@ enum ResourceBundler {
 
   // MARK: Private methods
 
-  /// Creates the following structure for the specified resource bundle directory:
+  /// Creates the directory structure for the specified resource bundle directory.
+  ///
+  /// The structure created is as follows:
   ///
   /// - `Contents`
-  ///   - `Info.plist`
   ///   - `Resources`
+  ///
   /// - Parameter bundle: The bundle to create.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createResourceBundleDirectoryStructure(at bundle: URL) -> Result<Void, ResourceBundlerError> {
-    let bundleContents = bundle.appendingPathComponent("Contents")
-    let bundleResources = bundleContents.appendingPathComponent("Resources")
+  private static func createResourceBundleDirectoryStructure(at bundle: URL, for platform: Platform) -> Result<Void, ResourceBundlerError> {
+    let directory: URL
+    switch platform {
+      case .macOS:
+        let bundleContents = bundle.appendingPathComponent("Contents")
+        let bundleResources = bundleContents.appendingPathComponent("Resources")
+        directory = bundleResources
+      case .iOS, .iOSSimulator:
+        directory = bundle
+    }
 
     do {
-      try FileManager.default.createDirectory(at: bundleResources)
+      try FileManager.default.createDirectory(at: directory)
     } catch {
       return .failure(.failedToCreateBundleDirectory(bundle, error))
     }
@@ -246,9 +255,17 @@ enum ResourceBundler {
     platformVersion: String
   ) -> Result<Void, ResourceBundlerError> {
     let bundleName = bundle.deletingPathExtension().lastPathComponent
-    let infoPlist = bundle
-      .appendingPathComponent("Contents")
-      .appendingPathComponent("Info.plist")
+
+    let infoPlist: URL
+    switch platform {
+      case .macOS:
+        infoPlist = bundle
+          .appendingPathComponent("Contents")
+          .appendingPathComponent("Info.plist")
+      case .iOS, .iOSSimulator:
+        infoPlist = bundle
+          .appendingPathComponent("Info.plist")
+    }
 
     let result = PlistCreator.createResourceBundleInfoPlist(
       at: infoPlist,

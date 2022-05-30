@@ -124,7 +124,7 @@ enum Runner {
       return Process.create(
         iosDeployExecutable,
         arguments: [
-          "--justlaunch",
+          "--noninteractive",
           "--bundle", bundle.path
         ] + environmentArguments,
         runSilentlyWhenNotVerbose: false

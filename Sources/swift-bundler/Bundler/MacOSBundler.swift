@@ -80,10 +80,9 @@ enum MacOSBundler: Bundler {
 
     let codesign: () -> Result<Void, MacOSBundlerError> = {
       if let identity = codesigningIdentity {
-        return CodeSigner.sign(bundle: appBundle, identityId: identity)
-          .mapError { error in
-            return .failedToCodesign(error)
-          }
+        return CodeSigner.signAppBundle(bundle: appBundle, identityId: identity).mapError { error in
+          return .failedToCodesign(error)
+        }
       } else {
         return .success()
       }

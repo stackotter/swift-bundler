@@ -137,10 +137,14 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
+        let targetTriple = "arm64-apple-ios\(platformVersion)"
         platformArguments = [
           "-sdk", sdkPath,
-          "-target", "arm64-apple-ios\(platformVersion)"
-        ]
+          "-target", targetTriple
+        ].flatMap { ["-Xswiftc", $0] } + [
+          "--target=\(targetTriple)",
+          "-isysroot", sdkPath
+        ].flatMap { ["-Xcc", $0] }
       case .iOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
@@ -151,11 +155,14 @@ enum SwiftPackageManager {
         }
 
         // TODO: Make target triple generation generic
-        let target = "\(BuildArchitecture.current.rawValue)-apple-ios\(platformVersion)-simulator"
+        let targetTriple = "\(BuildArchitecture.current.rawValue)-apple-ios\(platformVersion)-simulator"
         platformArguments = [
           "-sdk", sdkPath,
-          "-target", target
-        ]
+          "-target", targetTriple
+        ].flatMap { ["-Xswiftc", $0] } + [
+          "--target=\(targetTriple)",
+          "-isysroot", sdkPath
+        ].flatMap { ["-Xcc", $0] }
       case .macOS:
         platformArguments = []
     }
@@ -174,7 +181,7 @@ enum SwiftPackageManager {
     let arguments = [
       "build",
       "-c", configuration.rawValue
-    ] + productArguments + architectureArguments + platformArguments.flatMap { ["-Xswiftc", $0] }
+    ] + productArguments + architectureArguments + platformArguments
 
     return .success(arguments)
   }
