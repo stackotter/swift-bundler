@@ -102,15 +102,60 @@ enum XcodeprojConverter {
     }
   }
 
-  /// Extracts the targets of an xcodeproj.
+  /// Extracts the packages that a target depends on. Ignores package dependencies that it doesn't understand.
   /// - Parameters:
-  ///   - project: The xcodeproj to extract the targets from.
+  ///   - target: The Xcode target to extract the package dependencies from.
+  ///   - rootDirectory: The Xcode project's root directory
+  /// - Returns: All of the Xcode target's valid package dependencies.
+  static func extractPackageDependencies(
+    from target: PBXNativeTarget,
+    rootDirectory: URL
+  ) -> [XcodePackageDependency] {
+    var packageDependencies: [XcodePackageDependency] = []
+    for dependency in target.packageProductDependencies {
+      guard
+        let package = dependency.package,
+        let packageName = package.name,
+        let url = package.repositoryURL,
+        let version = package.versionRequirement
+      else {
+        continue
+      }
+
+      let absoluteURL: URL
+      if url.hasPrefix("https://") || url.hasPrefix("http://") || url.hasPrefix("git://") {
+        guard let url = URL(string: url) else {
+          log.warning("Skipping package dependency with invalid url '\(url)'")
+          continue
+        }
+        absoluteURL = url
+      } else if url.hasPrefix("/") {
+        absoluteURL = URL(fileURLWithPath: url)
+      } else {
+        absoluteURL = rootDirectory.appendingPathComponent(url)
+      }
+
+      packageDependencies.append(XcodePackageDependency(
+        product: dependency.productName,
+        package: packageName,
+        url: absoluteURL,
+        version: version
+      ))
+    }
+
+    return packageDependencies
+  }
+
+  /// Extracts the targets of an Xcode project.
+  /// - Parameters:
+  ///   - project: The Xcode project to extract the targets from.
+  ///   - packageDependencies: The project's package dependencies.
   ///   - rootDirectory: The Xcode project's root directory.
   /// - Returns: The extracted targets, or a failure if an error occurs.
   static func extractTargets(
     from project: XcodeProj,
     rootDirectory: URL
-  ) -> Result<[any XcodeTarget], XcodeprojConverterError> {
+  ) -> Result<([any XcodeTarget]), XcodeprojConverterError> {
     var targets: [any XcodeTarget] = []
     for target in project.pbxproj.nativeTargets {
       let name = target.name
@@ -141,6 +186,7 @@ enum XcodeprojConverter {
       }
 
       let dependencies = target.dependencies.compactMap(\.target?.name)
+      let packageDependencies = extractPackageDependencies(from: target, rootDirectory: rootDirectory)
 
       // Extract target settings
       let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
@@ -174,6 +220,7 @@ enum XcodeprojConverter {
           sources: sources,
           resources: resources ?? [],
           dependencies: dependencies,
+          packageDependencies: packageDependencies,
           macOSDeploymentVersion: macOSDeploymentVersion,
           iOSDeploymentVersion: iOSDeploymentVersion,
           infoPlist: infoPlist
@@ -186,11 +233,12 @@ enum XcodeprojConverter {
           version: version,
           sources: sources,
           resources: resources ?? [],
-          dependencies: dependencies
+          dependencies: dependencies,
+          packageDependencies: packageDependencies
         ))
       }
     }
-    
+
     // Remove empty targets
     targets = targets.filter { target in
       if target.files.isEmpty {
@@ -413,10 +461,33 @@ enum XcodeprojConverter {
         }
       }
 
+      var dependenciesString = "["
+      for (index, dependency) in target.dependencies.enumerated() {
+        dependenciesString += "\n                "
+        let name = dependency.replacingOccurrences(of: "\"", with: "\\\"")
+        dependenciesString += "\"\(name)\""
+        if index < target.dependencies.count - 1 || !target.packageDependencies.isEmpty {
+          dependenciesString += ","
+        }
+      }
+      for (index, dependency) in target.packageDependencies.enumerated() {
+        dependenciesString += "\n                "
+        let productName = dependency.product.replacingOccurrences(of: "\"", with: "\\\"")
+        let packageName = dependency.package.replacingOccurrences(of: "\"", with: "\\\"")
+        dependenciesString += ".product(name: \"\(productName)\", package: \"\(packageName)\")"
+        if index < target.packageDependencies.count - 1 {
+          dependenciesString += ","
+        }
+      }
+      if !target.dependencies.isEmpty || !target.packageDependencies.isEmpty {
+        dependenciesString += "\n            "
+      }
+      dependenciesString += "]"
+
       return """
         .\(target.targetType.manifestName)(
             name: "\(target.name)",
-            dependencies: \(target.dependencies),
+            dependencies: \(dependenciesString),
             resources: [
 \(resourcesString)
             ]
@@ -444,8 +515,52 @@ enum XcodeprojConverter {
           versionString += "_\(iOSDeploymentVersion.patch)"
         }
       }
+      if iOSDeploymentVersion.major == 15 {
+        versionString = "15"
+      }
       platformStrings.append(".iOS(.v\(versionString))")
     }
+
+    let packageDependencies = targets.flatMap { target in
+      target.packageDependencies
+    }
+
+    let uniquePackageNames = Set(packageDependencies.map(\.package))
+    let uniquePackageDependencies = uniquePackageNames.compactMap { name in
+      return packageDependencies.first { dependency in
+        return dependency.package == name
+      }
+    }
+
+    var dependenciesString = "["
+    for (index, dependency) in uniquePackageDependencies.enumerated() {
+      dependenciesString += "\n        "
+      let requirement: String
+      switch dependency.version {
+        case .branch(let branch):
+          requirement = "branch: \"\(branch)\""
+        case .exact(let version):
+          requirement = "exact: \"\(version)\""
+        case .range(let minimum, let maximum):
+          requirement = "\"\(minimum)\"..<\"\(maximum)\""
+        case .revision(let revision):
+          requirement = "revision: \"\(revision)\""
+        case .upToNextMajorVersion(let version):
+          requirement = ".upToNextMajor(from: \"\(version)\")"
+        case .upToNextMinorVersion(let version):
+          requirement = ".upToNextMinor(from: \"\(version)\")"
+      }
+      dependenciesString.append(
+        ".package(url: \"\(dependency.url)\", \(requirement))"
+      )
+      if index < uniquePackageDependencies.count - 1 {
+        dependenciesString += ","
+      }
+    }
+    if !uniquePackageDependencies.isEmpty {
+      dependenciesString += "\n    "
+    }
+    dependenciesString += "]"
 
     let packageManifestContents = """
 // swift-tools-version: 5.6
@@ -454,7 +569,7 @@ import PackageDescription
 
 let package = Package(
     name: "\(packageName)",\(platformStrings == [] ? "" : "\n    platforms: [\(platformStrings.joined(separator: ", "))],")
-    dependencies: [],
+    dependencies: \(dependenciesString),
     targets: [
 \(targetsString)
     ]

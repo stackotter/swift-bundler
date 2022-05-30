@@ -9,6 +9,7 @@ extension XcodeprojConverter {
     var sources: [XcodeFile]
     var resources: [XcodeFile]
     var dependencies: [String]
+    var packageDependencies: [XcodePackageDependency]
 
     var targetType: TargetType {
       return .executable

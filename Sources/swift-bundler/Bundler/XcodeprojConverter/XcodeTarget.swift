@@ -14,6 +14,8 @@ protocol XcodeTarget {
   var resources: [XcodeprojConverter.XcodeFile] { get set }
   /// The names of targets that the target depends on.
   var dependencies: [String] { get set }
+  /// The package products that the target depends on.
+  var packageDependencies: [XcodeprojConverter.XcodePackageDependency] { get set }
   /// The type of target.
   var targetType: XcodeprojConverter.TargetType { get }
 }
