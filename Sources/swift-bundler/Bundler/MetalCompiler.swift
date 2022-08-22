@@ -112,7 +112,9 @@ enum MetalCompiler {
         "-sdk", platform.sdkName, "metal",
         // "-mmacosx-version-min=\(minimumMacOSVersion)", // TODO: re-enable this code and get it working with the new platform versioning system
         "-o", outputFile.path,
-        "-c", shader.path
+        "-c", shader.path,
+        "-gline-tables-only", // TODO: disable these in distribution builds
+        "-frecord-sources"
       ]
     )
 
