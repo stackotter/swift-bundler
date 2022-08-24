@@ -31,6 +31,9 @@ struct BundleCommand: AsyncCommand {
     ))
   var builtWithXcode = false
 
+  /// Used to avoid loading configuration twice when RunCommand is used.
+  static var app: (name: String, app: AppConfiguration)? // TODO: fix this weird pattern with a better config loading system
+
   init() {
     _arguments = OptionGroup()
   }
@@ -226,11 +229,18 @@ struct BundleCommand: AsyncCommand {
     packageDirectory: URL,
     customFile: URL? = nil
   ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+    if let app = Self.app {
+      return .success(app)
+    }
+
     return PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
     ).flatMap { configuration in
       return configuration.getAppConfiguration(appName)
+    }.map { app in
+      Self.app = app
+      return app
     }
   }
 

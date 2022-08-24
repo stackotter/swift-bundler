@@ -29,10 +29,14 @@ struct PackageConfiguration: Codable {
   /// - Parameters:
   ///   - packageDirectory: The directory containing the configuration file.
   ///   - customFile: A custom configuration file not at the standard location.
+  ///   - migrateConfiguration: If `true`, configuration is written to disk if the file is an old
+  ///     configuration file and an error is thrown if the configuration is already at the latest
+  ///     version.
   /// - Returns: The configuration.
   static func load(
     fromDirectory packageDirectory: URL,
-    customFile: URL? = nil
+    customFile: URL? = nil,
+    migrateConfiguration: Bool = false
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
     let configurationFile = customFile ?? packageDirectory.appendingPathComponent("Bundler.toml")
 
@@ -43,7 +47,10 @@ struct PackageConfiguration: Codable {
       let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
       let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
       if oldConfigurationExists && !configurationExists {
-        return migrateV1Configuration(from: oldConfigurationFile, to: configurationFile)
+        return migrateV1Configuration(
+          from: oldConfigurationFile,
+          to: migrateConfiguration ? configurationFile : nil
+        )
       }
     }
 
@@ -60,6 +67,9 @@ struct PackageConfiguration: Codable {
         PackageConfiguration.self,
         from: contents
       )
+      if migrateConfiguration {
+        return .failure(.configurationIsAlreadyUpToDate)
+      }
     } catch {
       // Maybe the configuration is a Swift Bundler v2 configuration. Attempt to migrate it.
     migrationAttempt:
@@ -69,7 +79,10 @@ struct PackageConfiguration: Codable {
           break migrationAttempt
         }
 
-        return migrateV2Configuration(configurationFile, shouldBackup: true)
+        return migrateV2Configuration(
+          configurationFile,
+          mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
+        )
       } catch {}
 
       return .failure(.failedToDeserializeConfiguration(error))
@@ -92,13 +105,16 @@ struct PackageConfiguration: Codable {
   /// Mutates the contents of the given configuration file.
   /// - Parameters:
   ///   - configurationFile: The configuration file to migrate.
-  ///   - shouldBackup: If `true`, the original configuration file will be backed up to `Bundler.toml.orig`.
+  ///   - mode: The migration mode to use.
   /// - Returns: The migrated configuration.
   static func migrateV2Configuration(
     _ configurationFile: URL,
-    shouldBackup: Bool
+    mode: MigrationMode
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
-    log.warning("'\(configurationFile.relativePath)' is outdated. Migrating it to the latest configuration format")
+    if mode == .readOnly {
+      log.warning("'\(configurationFile.relativePath)' is outdated.")
+      log.warning("Run 'swift bundler migrate' to migrate it to the latest config format.")
+    }
 
     let contents: String
     do {
@@ -107,7 +123,7 @@ struct PackageConfiguration: Codable {
       return .failure(.failedToReadConfigurationFile(configurationFile, error))
     }
 
-    if shouldBackup {
+    if mode == .writeChanges(backup: true) {
       let backupFile = configurationFile.appendingPathExtension("orig")
       do {
         try contents.write(to: backupFile, atomically: false, encoding: .utf8)
@@ -135,10 +151,13 @@ struct PackageConfiguration: Codable {
       return .failure(.failedToSerializeConfiguration(error))
     }
 
-    do {
-      try encodedContents.write(to: configurationFile, atomically: false, encoding: .utf8)
-    } catch {
-      return .failure(.failedToWriteToConfigurationFile(configurationFile, error))
+    if case .writeChanges = mode {
+      log.info("Writing migrated config to disk.")
+      do {
+        try encodedContents.write(to: configurationFile, atomically: false, encoding: .utf8)
+      } catch {
+        return .failure(.failedToWriteToConfigurationFile(configurationFile, error))
+      }
     }
 
     return .success(configuration)
@@ -147,14 +166,19 @@ struct PackageConfiguration: Codable {
   /// Migrates a `Bundle.json` to a `Bundler.toml` file.
   /// - Parameters:
   ///   - oldConfigurationFile: The `Bundle.json` file to migrate.
-  ///   - newConfigurationFile: The `Bundler.toml` file to output to.
+  ///   - newConfigurationFile: The `Bundler.toml` file to output to. If `nil` the migrated
+  ///     configuration is not written to disk.
   /// - Returns: The converted configuration.
   static func migrateV1Configuration(
     from oldConfigurationFile: URL,
-    to newConfigurationFile: URL
+    to newConfigurationFile: URL?
   ) -> Result<PackageConfiguration, PackageConfigurationError> {
     log.warning("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
-    log.info("Migrating 'Bundle.json' to the new configuration format")
+    if newConfigurationFile == nil {
+      log.warning("Use 'swift bundler migrate' to update your configuration to the latest format")
+    } else {
+      log.info("Migrating 'Bundle.json' to the new configuration format")
+    }
 
     return PackageConfigurationV1.load(
       from: oldConfigurationFile
@@ -173,7 +197,7 @@ struct PackageConfiguration: Codable {
         ))
       }
 
-      log.warning("Discarding 'buildNumber' because the new format has no build number field")
+      log.warning("Discarding 'buildNumber' because the latest config format has no build number field")
 
       let appConfiguration = AppConfiguration(
         identifier: oldConfiguration.bundleIdentifier,
@@ -191,14 +215,16 @@ struct PackageConfiguration: Codable {
         return .failure(.failedToSerializeMigratedConfiguration(error))
       }
 
-      do {
-        try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
-      } catch {
-        return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
-      }
+      if let newConfigurationFile = newConfigurationFile {
+        do {
+          try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
+        } catch {
+          return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
+        }
 
-      log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need")
-      log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it")
+        log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need")
+        log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it")
+      }
 
       return .success(configuration)
     }

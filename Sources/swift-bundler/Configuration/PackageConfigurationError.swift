@@ -16,6 +16,7 @@ enum PackageConfigurationError: LocalizedError {
   case failedToCreateConfigurationBackup(Error)
   case failedToDeserializeV2Configuration(Error)
   case unsupportedFormatVersion(Int)
+  case configurationIsAlreadyUpToDate
 
   var errorDescription: String? {
     switch self {
@@ -47,9 +48,11 @@ enum PackageConfigurationError: LocalizedError {
       case .failedToDeserializeV2Configuration(let error):
         let deserializationError = Self.deserializationErrorDescription(error)
         return "Failed to deserialize configuration for migration: \(deserializationError)"
-    case .unsupportedFormatVersion(let formatVersion):
+      case .unsupportedFormatVersion(let formatVersion):
         return "Package configuration file has an invalid format version '\(formatVersion)' and could not"
              + " be automatically migrated. The latest format version is '\(PackageConfiguration.currentFormatVersion)'"
+      case .configurationIsAlreadyUpToDate:
+        return "Configuration file is already up-to-date"
     }
   }
 
