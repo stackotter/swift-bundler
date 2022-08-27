@@ -2,22 +2,22 @@ import Logging
 
 extension Logger.Level {
   /// The log level as a colored string.
-  var colored: String {
+  func coloring(_ string: String) -> String {
     switch self {
       case .critical:
-        return rawValue.red.bold
+        return string.red.bold
       case .error:
-        return rawValue.red.bold
+        return string.red.bold
       case .warning:
-        return rawValue.yellow.bold
+        return string.yellow.bold
       case .notice:
-        return rawValue.cyan
+        return string.cyan
       case .info:
-        return rawValue.cyan
+        return string.cyan
       case .debug:
-        return rawValue.lightWhite
+        return string.lightWhite
       case .trace:
-        return rawValue.lightWhite
+        return string.lightWhite
     }
   }
 }
