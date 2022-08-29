@@ -73,6 +73,15 @@
       }
     },
     {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "48254824bb4248676bf7ce56014ff57b142b77eb",
+        "version" : "1.0.2"
+      }
+    },
+    {
       "identity" : "swift-crypto",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
@@ -95,8 +104,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-driver.git",
       "state" : {
-        "branch" : "release/5.6",
-        "revision" : "9982f32f96a2e0e597d1b4a0af4a7e997dc471be"
+        "branch" : "release/5.7",
+        "revision" : "719426df790661020de657bf38beb2a8b1de5ad3"
       }
     },
     {
@@ -104,8 +113,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-llbuild.git",
       "state" : {
-        "branch" : "release/5.6",
-        "revision" : "acd686530e56122d916acd49a166beb9198e9b87"
+        "branch" : "release/5.7",
+        "revision" : "564424db5fdb62dcb5d863bdf7212500ef03a87b"
       }
     },
     {
@@ -122,8 +131,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-package-manager",
       "state" : {
-        "branch" : "release/5.6",
-        "revision" : "e399e87bd4a2984947e15edc3f6750d1f6fa5d6e"
+        "branch" : "release/5.7",
+        "revision" : "c5da46610e82d22508532fdaa6858cc74b3bb870"
       }
     },
     {
@@ -136,12 +145,21 @@
       }
     },
     {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system.git",
+      "state" : {
+        "revision" : "836bc4557b74fe6d2660218d56e3ce96aff76574",
+        "version" : "1.1.1"
+      }
+    },
+    {
       "identity" : "swift-tools-support-core",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-tools-support-core.git",
       "state" : {
-        "branch" : "release/5.6",
-        "revision" : "f6c8048a76e280d0f14cc378b8b5c3cfb77c61fb"
+        "branch" : "release/5.7",
+        "revision" : "184eba382f6abbb362ffc02942d790ff35019ad4"
       }
     },
     {

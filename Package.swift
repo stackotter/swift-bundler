@@ -15,7 +15,7 @@ let package = Package(
     .package(url: "https://github.com/LebJe/TOMLKit", from: "0.5.2"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
-    .package(url: "https://github.com/apple/swift-package-manager", branch: "release/5.6"),
+    .package(url: "https://github.com/apple/swift-package-manager", branch: "release/5.7"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/stackotter/XcodeGen", branch: "renamed")
   ],
