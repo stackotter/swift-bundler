@@ -1,4 +1,5 @@
 import Foundation
+import TOMLKit
 
 /// An error related to package configuration.
 enum PackageConfigurationError: LocalizedError {
@@ -58,20 +59,37 @@ enum PackageConfigurationError: LocalizedError {
 
   /// Computes a human readable description for the provided deserialization related error.
   static func deserializationErrorDescription(_ error: Error) -> String {
-    let description: String
     switch error {
       case DecodingError.keyNotFound(let codingKey, let context):
         if codingKey.stringValue == "bundle_identifier" {
-          description = "'bundle_identifier' is required for app configuration to be migrated"
+          return "'bundle_identifier' is required for app configuration to be migrated"
         } else {
           let path = context.codingPath.map(\.stringValue).joined(separator: ".")
-          description = "Expected a value at '\(path)'"
+          return "Expected a value at '\(path)'"
+        }
+      case let error as UnexpectedKeysError:
+        if error.keys.count == 1, let key = error.keys.keys.first {
+          return "Encountered unexpected key '\(key)'"
+        } else {
+          // Sort to make error stable
+          let keys = error.keys.keys.sorted()
+
+          // Format as a nice list
+          var keysString = ""
+          for (i, key) in keys.enumerated() {
+            keysString += "'\(key)'"
+            if i == keys.count - 2 {
+              keysString += " and "
+            } else if i < keys.count - 2 {
+              keysString += ", "
+            }
+          }
+          return "Encountered unexpected keys \(keysString)"
         }
       case let error as PlistError:
-        description = error.localizedDescription
+        return error.localizedDescription
       default:
-        description = String(reflecting: error)
+        return String(reflecting: error)
     }
-    return description
   }
 }

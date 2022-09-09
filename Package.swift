@@ -12,7 +12,7 @@ let package = Package(
     .package(url: "https://github.com/stackotter/swift-argument-parser", branch: "main"),
     .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
     .package(url: "https://github.com/pointfreeco/swift-parsing.git", from: "0.7.1"),
-    .package(url: "https://github.com/LebJe/TOMLKit", from: "0.5.2"),
+    .package(url: "https://github.com/LebJe/TOMLKit", branch: "main"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-package-manager", branch: "release/5.7"),

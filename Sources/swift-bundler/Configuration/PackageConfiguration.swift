@@ -63,7 +63,7 @@ struct PackageConfiguration: Codable {
 
     let configuration: PackageConfiguration
     do {
-      configuration = try TOMLDecoder().decode(
+      configuration = try TOMLDecoder(strictDecoding: true).decode(
         PackageConfiguration.self,
         from: contents
       )
