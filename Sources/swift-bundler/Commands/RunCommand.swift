@@ -30,6 +30,12 @@ struct RunCommand: AsyncCommand {
     help: "Skips the building and bundling steps.")
   var skipBuild = false
 
+  /// Command line arguments that get passed through to the app.
+  @Argument(
+    parsing: .unconditionalRemaining,
+    help: "Command line arguments to pass through to the app.")
+  var passThroughArguments: [String] = []
+
   // MARK: Methods
 
   func wrappedRun() async throws {
@@ -66,6 +72,7 @@ struct RunCommand: AsyncCommand {
       bundle: outputDirectory.appendingPathComponent("\(appName).app"),
       bundleIdentifier: appConfiguration.identifier,
       device: device,
+      arguments: passThroughArguments,
       environmentFile: environmentFile
     ).unwrap()
   }

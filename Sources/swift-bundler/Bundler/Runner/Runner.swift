@@ -7,14 +7,17 @@ enum Runner {
   ///   - bundle: The app bundle to run.
   ///   - bundleIdentifier: The app's bundle identifier.
   ///   - device: The device to run the app on.
+  ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentFile: A file containing environment variables to pass to the app.
   /// - Returns: Returns a failure if the app fails to run.
   static func run(
     bundle: URL,
     bundleIdentifier: String,
     device: Device,
+    arguments: [String] = [],
     environmentFile: URL? = nil
   ) -> Result<Void, RunnerError> {
+    // TODO: Test `arguments` on an actual iOS when I get the chance
     log.info("Running '\(bundle.lastPathComponent)'")
     let environmentVariables: [String: String]
     if let environmentFile = environmentFile {
@@ -32,11 +35,13 @@ enum Runner {
       case .macOS:
         return runMacOSApp(
           bundle: bundle,
+          arguments: arguments,
           environmentVariables: environmentVariables
         )
       case .iOS:
         return runIOSApp(
           bundle: bundle,
+          arguments: arguments,
           environmentVariables: environmentVariables
         )
       case .iOSSimulator(let id):
@@ -44,6 +49,7 @@ enum Runner {
           bundle: bundle,
           bundleIdentifier: bundleIdentifier,
           simulatorId: id,
+          arguments: arguments,
           environmentVariables: environmentVariables
         )
     }
@@ -78,10 +84,12 @@ enum Runner {
   /// Runs an app on the current macOS device.
   /// - Parameters:
   ///   - bundle: The app bundle to run.
-  ///   - environmentVariables: Environment variables to pass to the process.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
   static func runMacOSApp(
     bundle: URL,
+    arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
     let appName = bundle.deletingPathExtension().lastPathComponent
@@ -91,6 +99,7 @@ enum Runner {
       executable.path,
       runSilentlyWhenNotVerbose: false
     )
+    process.arguments = arguments
     process.addEnvironmentVariables(environmentVariables)
 
     return process.runAndWait().mapError { error in
@@ -101,10 +110,12 @@ enum Runner {
   /// Runs an app on the first connected iOS device.
   /// - Parameters:
   ///   - bundle: The app bundle to run.
-  ///   - environmentVariables: Environment variables to pass to the process.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
   static func runIOSApp(
     bundle: URL,
+    arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
     return Process.locate("ios-deploy").mapError { error in
@@ -126,7 +137,9 @@ enum Runner {
         arguments: [
           "--noninteractive",
           "--bundle", bundle.path
-        ] + environmentArguments,
+        ] + environmentArguments + arguments.flatMap { argument in
+          return ["--args", argument]
+        },
         runSilentlyWhenNotVerbose: false
       ).runAndWait().mapError { error in
         return .failedToRunIOSDeploy(error)
@@ -139,12 +152,14 @@ enum Runner {
   ///   - bundle: The app bundle to run.
   ///   - bundleIdentifier: The app's identifier.
   ///   - simulatorId: The id of the simulator to run.
-  ///   - environmentVariables: Environment variables to pass to the process.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
   static func runIOSSimulatorApp(
     bundle: URL,
     bundleIdentifier: String,
     simulatorId: String,
+    arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
     log.info("Preparing simulator")
@@ -160,6 +175,7 @@ enum Runner {
         bundleIdentifier,
         simulatorId: simulatorId,
         connectConsole: true,
+        arguments: arguments,
         environmentVariables: environmentVariables
       )
     }.mapError { error in

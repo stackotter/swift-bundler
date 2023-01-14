@@ -61,12 +61,14 @@ enum SimulatorManager {
   ///   - bundleIdentifier: The app's bundle identifier.
   ///   - simulatorId: The name or id of the simulator to launch in.
   ///   - connectConsole: If `true`, the function will block and the current process will print the stdout and stderr of the running app.
+  ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Additional environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
   static func launchApp(
     _ bundleIdentifier: String,
     simulatorId: String,
     connectConsole: Bool,
+    arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, SimulatorManagerError> {
     let process = Process.create(
@@ -74,7 +76,8 @@ enum SimulatorManager {
       arguments: [
         "simctl", "launch", connectConsole ? "--console" : nil,
         simulatorId, bundleIdentifier
-      ].compactMap { $0 }
+      ].compactMap { $0 } + arguments,
+      runSilentlyWhenNotVerbose: false
     )
 
     // TODO: Ensure that environment variables are passed correctly
