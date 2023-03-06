@@ -9,7 +9,8 @@ import struct TSCBasic.AbsolutePath
 import class Basics.ObservabilitySystem
 import struct Basics.Diagnostic
 
-/// A utility for interacting with the Swift package manager and performing some other package related operations.
+/// A utility for interacting with the Swift package manager and performing some other package
+/// related operations.
 enum SwiftPackageManager {
   /// The path to the swift executable.
   static let swiftExecutable = "/usr/bin/swift"
@@ -51,7 +52,10 @@ enum SwiftPackageManager {
 
       return process.runAndWait()
         .mapError { error in
-          .failedToRunSwiftInit(command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))", error)
+          .failedToRunSwiftInit(
+            command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))",
+            error
+          )
         }
     }
 
@@ -106,7 +110,10 @@ enum SwiftPackageManager {
       )
 
       return process.runAndWait().mapError { error in
-        return .failedToRunSwiftBuild(command: "\(swiftExecutable) \(arguments.joined(separator: " "))", error)
+        return .failedToRunSwiftBuild(
+          command: "\(swiftExecutable) \(arguments.joined(separator: " "))",
+          error
+        )
       }
     }
   }
@@ -155,7 +162,8 @@ enum SwiftPackageManager {
         }
 
         // TODO: Make target triple generation generic
-        let targetTriple = "\(BuildArchitecture.current.rawValue)-apple-ios\(platformVersion)-simulator"
+        let architecture = BuildArchitecture.current.rawValue
+        let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
         platformArguments = [
           "-sdk", sdkPath,
           "-target", targetTriple
@@ -247,7 +255,8 @@ enum SwiftPackageManager {
   ///   - architectures: The architectures that the build was for.
   ///   - platform: The platform that was built for.
   ///   - platformVersion: The platform version that was built for.
-  /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args` fails, a failure is returned.
+  /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args`
+  ///   fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
     configuration: BuildConfiguration,
@@ -294,7 +303,9 @@ enum SwiftPackageManager {
 
       let workspace = try Workspace(forRootPackage: packagePath)
       result = await Task { () -> Manifest in
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Manifest, Error>) in
+        return try await withCheckedThrowingContinuation { (
+          continuation: CheckedContinuation<Manifest, Error>
+        ) in
           workspace.loadRootManifest(
             at: packagePath,
             observabilityScope: scope,

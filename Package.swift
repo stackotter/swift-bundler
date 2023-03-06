@@ -17,7 +17,8 @@ let package = Package(
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-package-manager", branch: "release/5.7"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-    .package(url: "https://github.com/stackotter/XcodeGen", branch: "renamed")
+    .package(url: "https://github.com/stackotter/XcodeGen", branch: "renamed"),
+    .package(url: "https://github.com/apple/swift-syntax", exact: "0.50800.0-SNAPSHOT-2022-12-29-a")
   ],
   targets: [
     .executableTarget(
@@ -32,6 +33,14 @@ let package = Package(
         .product(name: "SwiftPMDataModel-auto", package: "swift-package-manager"),
         .product(name: "XcodeGenKit", package: "XcodeGen"),
         .product(name: "ProjectSpec", package: "XcodeGen")
+      ]
+    ),
+
+    .executableTarget(
+      name: "schema-gen",
+      dependencies: [
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
       ]
     ),
 

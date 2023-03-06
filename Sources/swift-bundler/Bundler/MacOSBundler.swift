@@ -78,7 +78,7 @@ enum MacOSBundler: Bundler {
       }
     }
 
-    let codesign: () -> Result<Void, MacOSBundlerError> = {
+    let sign: () -> Result<Void, MacOSBundlerError> = {
       if let identity = codesigningIdentity {
         return CodeSigner.signAppBundle(bundle: appBundle, identityId: identity).mapError { error in
           return .failedToCodesign(error)
@@ -95,7 +95,7 @@ enum MacOSBundler: Bundler {
       { createAppIconIfPresent() },
       { copyResourcesBundles() },
       { copyDynamicLibraries() },
-      { codesign() }
+      { sign() }
     )
 
     return bundleApp().mapError { (error: MacOSBundlerError) -> Error in
@@ -202,7 +202,7 @@ enum MacOSBundler: Bundler {
   ///   - icon: The app's icon. Should be either an `icns` file or a 1024x1024 `png` with an alpha channel.
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
-  ///            If the file is neither an `icns` or a `png`, a failure is also returned.
+  ///   If the file is neither an `icns` or a `png`, a failure is also returned.
   private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, MacOSBundlerError> {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {

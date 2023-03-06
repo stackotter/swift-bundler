@@ -1,0 +1,52 @@
+{
+  "required" : [
+    "formatVersion",
+    "apps"
+  ],
+  "type" : "object",
+  "properties" : {
+    "apps" : {
+      "patternProperties" : {
+        "^.*$" : {
+          "type" : "object",
+          "properties" : {
+            "icon" : {
+              "type" : "string",
+              "description" : "The path to the app's icon."
+            },
+            "version" : {
+              "type" : "string",
+              "description" : "The app's current version."
+            },
+            "category" : {
+              "type" : "string",
+              "description" : "The app's category. See [Apple's documentation](https:\/\/developer.apple.com\/documentation\/bundleresources\/information_property_list\/lsapplicationcategorytype) for more details."
+            },
+            "identifier" : {
+              "description" : "The app's identifier (e.g. `com.example.ExampleApp`).",
+              "type" : "string"
+            },
+            "product" : {
+              "description" : "The name of the executable product.",
+              "type" : "string"
+            }
+          },
+          "required" : [
+            "identifier",
+            "product",
+            "version"
+          ]
+        }
+      },
+      "description" : "The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.",
+      "type" : "object"
+    },
+    "formatVersion" : {
+      "type" : "integer",
+      "description" : "The configuration format version."
+    }
+  },
+  "$schema" : "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+  "title" : "Bundler.toml",
+  "description" : "A Swift Bundler configuration file"
+}
