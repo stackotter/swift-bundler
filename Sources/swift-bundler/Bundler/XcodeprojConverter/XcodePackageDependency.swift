@@ -12,5 +12,24 @@ extension XcodeprojConverter {
     var url: URL
     /// The required version of the package.
     var version: XCRemoteSwiftPackageReference.VersionRequirement
+
+    /// Swift source code that conveys the dependency's version requirement in a Swift Package
+    /// Manager manifest file dependencies section.
+    var requirementParameterSource: String {
+      switch version {
+        case .branch(let branch):
+          return "branch: \"\(branch)\""
+        case .exact(let version):
+          return "exact: \"\(version)\""
+        case .range(let minimum, let maximum):
+          return "\"\(minimum)\"..<\"\(maximum)\""
+        case .revision(let revision):
+          return "revision: \"\(revision)\""
+        case .upToNextMajorVersion(let version):
+          return ".upToNextMajor(from: \"\(version)\")"
+        case .upToNextMinorVersion(let version):
+          return ".upToNextMinor(from: \"\(version)\")"
+      }
+    }
   }
 }

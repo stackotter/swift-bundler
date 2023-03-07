@@ -2,6 +2,9 @@ import Foundation
 import SwiftXcodeProj
 import TOMLKit
 import Version
+import SwiftSyntax
+import SwiftSyntaxBuilder
+import SwiftFormat
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
@@ -412,18 +415,17 @@ enum XcodeprojConverter {
     packageName: String,
     targets: [any XcodeTarget]
   ) -> Result<Void, XcodeprojConverterError> {
-    let contents = createPackageManifestContents(
+    return createPackageManifestContents(
       packageName: packageName,
       targets: targets
-    )
-
-    do {
-     try contents.write(to: file, atomically: false, encoding: .utf8)
-    } catch {
-      return .failure(.failedToCreatePackageManifest(file, error))
+    ).flatMap { contents in
+      do {
+        try contents.write(to: file, atomically: false, encoding: .utf8)
+        return .success()
+      } catch {
+        return .failure(.failedToCreatePackageManifest(file, error))
+      }
     }
-
-    return .success()
   }
 
   /// Creates the contents of a `Package.swift` file declaring the given targets.
@@ -434,148 +436,121 @@ enum XcodeprojConverter {
   static func createPackageManifestContents(
     packageName: String,
     targets: [any XcodeTarget]
-  ) -> String {
-    // TODO: Rewrite package manifest generation
-    var macOSDeploymentVersion: Version?
-    var iOSDeploymentVersion: Version?
-    let targetsString = targets.map { target in
-      let resourcesString = target.resources.map { file in
-        return "                .copy(\"\(file.bundlerPath(target: target.name))\")"
-      }.joined(separator: ",\n")
+  ) -> Result<String, XcodeprojConverterError> {
+    let platformStrings = minimalPlatformStrings(for: targets)
 
-      if let target = target as? ExecutableTarget {
-        if let macOSVersionString = target.macOSDeploymentVersion, let macOSVersion = Version(tolerant: macOSVersionString) {
-          if let currentVersion = macOSDeploymentVersion, macOSVersion > currentVersion {
-            macOSDeploymentVersion = macOSVersion
-          } else {
-            macOSDeploymentVersion = macOSVersion
+    var names: Set<String> = []
+    let uniquePackageDependencies = targets
+      .flatMap { target in
+        target.packageDependencies
+      }
+      .filter { dependency in
+        return names.insert(dependency.package).inserted
+      }
+
+    let dependenciesSource = ArrayExprSyntax {
+      for dependency in uniquePackageDependencies {
+        let url = dependency.url.absoluteString
+        let requirement = dependency.requirementParameterSource
+        ArrayElementSyntax(expression: ExprSyntax(
+          ".package(url: \(literal: url), \(raw: requirement))"
+        ))
+      }
+    }
+
+    let targetsSource = ArrayExprSyntax {
+      for target in targets {
+        ArrayElement(
+          expression: FunctionCallExprSyntax(
+            callee: ExprSyntax(".\(raw: target.targetType.manifestName)")
+          ) {
+            TupleExprElement(label: "name", expression: ExprSyntax("\(literal: target.name)"))
+            TupleExprElement(
+              label: "dependencies",
+              expression: ExprSyntax(ArrayExprSyntax {
+                for dependency in target.dependencies {
+                  ArrayElementSyntax(expression: ExprSyntax("\(literal: dependency)"))
+                }
+
+                for dependency in target.packageDependencies {
+                  ArrayElementSyntax(expression: ExprSyntax(
+                    ".product(name: \(literal: dependency.product), package: \(literal: dependency.package))"
+                  ))
+                }
+              })
+            )
+            TupleExprElement(
+              label: "resources",
+              expression: ExprSyntax(ArrayExprSyntax {
+                for resource in target.resources {
+                  let path = resource.bundlerPath(target: target.name)
+                  ArrayElementSyntax(expression: ExprSyntax(".copy(\(literal: path))"))
+                }
+              })
+            )
           }
-        }
-
-        if let iOSVersionString = target.iOSDeploymentVersion, let iOSVersion = Version(tolerant: iOSVersionString) {
-          if let currentVersion = iOSDeploymentVersion, iOSVersion > currentVersion {
-            iOSDeploymentVersion = iOSVersion
-          } else {
-            iOSDeploymentVersion = iOSVersion
-          }
-        }
-      }
-
-      var dependenciesString = "["
-      for (index, dependency) in target.dependencies.enumerated() {
-        dependenciesString += "\n                "
-        let name = dependency.replacingOccurrences(of: "\"", with: "\\\"")
-        dependenciesString += "\"\(name)\""
-        if index < target.dependencies.count - 1 || !target.packageDependencies.isEmpty {
-          dependenciesString += ","
-        }
-      }
-      for (index, dependency) in target.packageDependencies.enumerated() {
-        dependenciesString += "\n                "
-        let productName = dependency.product.replacingOccurrences(of: "\"", with: "\\\"")
-        let packageName = dependency.package.replacingOccurrences(of: "\"", with: "\\\"")
-        dependenciesString += ".product(name: \"\(productName)\", package: \"\(packageName)\")"
-        if index < target.packageDependencies.count - 1 {
-          dependenciesString += ","
-        }
-      }
-      if !target.dependencies.isEmpty || !target.packageDependencies.isEmpty {
-        dependenciesString += "\n            "
-      }
-      dependenciesString += "]"
-
-      return """
-        .\(target.targetType.manifestName)(
-            name: "\(target.name)",
-            dependencies: \(dependenciesString),
-            resources: [
-\(resourcesString)
-            ]
         )
-"""
-    }.joined(separator: ",\n")
+      }
+    }
+
+    let source = SourceFileSyntax {
+      DeclSyntax("import PackageDescription")
+        .withLeadingTrivia(Trivia(pieces: [
+          .lineComment("// swift-tools-version: 5.6"),
+          .newlines(1)
+        ]))
+        .withTrailingTrivia(Trivia.newline)
+
+      DeclSyntax(
+        """
+        let package = Package(
+            name: \(literal: packageName),
+            platforms: \(raw: platformStrings == [] ? "[]" : "[\(platformStrings.joined(separator: ", "))]"),
+            dependencies: \(dependenciesSource),
+            targets: \(targetsSource)
+        )
+        """
+      )
+    }
+
+    let formatter = SwiftFormatter(configuration: .init())
+    var formattedSource = ""
+    do {
+      try formatter.format(source: source.description, assumingFileURL: nil, to: &formattedSource)
+    } catch {
+      return .failure(.failedToFormatPackageManifest(error))
+    }
+
+    return .success(formattedSource)
+  }
+
+  static func minimalPlatformStrings(for targets: [any XcodeTarget]) -> [String] {
+    let executableTargets = targets.compactMap { target in
+      return target as? ExecutableTarget
+    }
+
+    let macOSDeploymentVersion: Version? = executableTargets
+      .compactMap(\.macOSDeploymentVersion)
+      .compactMap(Version.init(tolerant:))
+      .max()
+
+    let iOSDeploymentVersion: Version? = executableTargets
+      .compactMap(\.iOSDeploymentVersion)
+      .compactMap(Version.init(tolerant:))
+      .max()
 
     var platformStrings: [String] = []
-    if let macOSDeploymentVersion = macOSDeploymentVersion {
-      var versionString = "\(macOSDeploymentVersion.major)"
-      if macOSDeploymentVersion.minor != 0 {
-        versionString += "_\(macOSDeploymentVersion.minor)"
-        if macOSDeploymentVersion.patch != 0 {
-          versionString += "_\(macOSDeploymentVersion.patch)"
-        }
-      }
-      platformStrings.append(".macOS(.v\(versionString))")
+    if let version = macOSDeploymentVersion?.underscoredMinimal {
+      platformStrings.append(".macOS(.v\(version))")
     }
 
-    if let iOSDeploymentVersion = iOSDeploymentVersion {
-      var versionString = "\(iOSDeploymentVersion.major)"
-      if iOSDeploymentVersion.minor != 0 {
-        versionString += "_\(iOSDeploymentVersion.minor)"
-        if iOSDeploymentVersion.patch != 0 {
-          versionString += "_\(iOSDeploymentVersion.patch)"
-        }
+    if var version = iOSDeploymentVersion?.underscoredMinimal {
+      if iOSDeploymentVersion?.major == 15 {
+        version = "15"
       }
-      if iOSDeploymentVersion.major == 15 {
-        versionString = "15"
-      }
-      platformStrings.append(".iOS(.v\(versionString))")
+      platformStrings.append(".iOS(.v\(version))")
     }
 
-    let packageDependencies = targets.flatMap { target in
-      target.packageDependencies
-    }
-
-    let uniquePackageNames = Set(packageDependencies.map(\.package))
-    let uniquePackageDependencies = uniquePackageNames.compactMap { name in
-      return packageDependencies.first { dependency in
-        return dependency.package == name
-      }
-    }
-
-    var dependenciesString = "["
-    for (index, dependency) in uniquePackageDependencies.enumerated() {
-      dependenciesString += "\n        "
-      let requirement: String
-      switch dependency.version {
-        case .branch(let branch):
-          requirement = "branch: \"\(branch)\""
-        case .exact(let version):
-          requirement = "exact: \"\(version)\""
-        case .range(let minimum, let maximum):
-          requirement = "\"\(minimum)\"..<\"\(maximum)\""
-        case .revision(let revision):
-          requirement = "revision: \"\(revision)\""
-        case .upToNextMajorVersion(let version):
-          requirement = ".upToNextMajor(from: \"\(version)\")"
-        case .upToNextMinorVersion(let version):
-          requirement = ".upToNextMinor(from: \"\(version)\")"
-      }
-      dependenciesString.append(
-        ".package(url: \"\(dependency.url)\", \(requirement))"
-      )
-      if index < uniquePackageDependencies.count - 1 {
-        dependenciesString += ","
-      }
-    }
-    if !uniquePackageDependencies.isEmpty {
-      dependenciesString += "\n    "
-    }
-    dependenciesString += "]"
-
-    let packageManifestContents = """
-// swift-tools-version: 5.6
-
-import PackageDescription
-
-let package = Package(
-    name: "\(packageName)",\(platformStrings == [] ? "" : "\n    platforms: [\(platformStrings.joined(separator: ", "))],")
-    dependencies: \(dependenciesString),
-    targets: [
-\(targetsString)
-    ]
-)
-"""
-
-    return packageManifestContents
+    return platformStrings
   }
 }

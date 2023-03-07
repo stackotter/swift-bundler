@@ -109,6 +109,15 @@
       }
     },
     {
+      "identity" : "swift-format",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-format",
+      "state" : {
+        "revision" : "9bd7b6df27be3a7887a34073aa519c0dcdfab976",
+        "version" : "0.50800.0-SNAPSHOT-2022-12-29-a"
+      }
+    },
+    {
       "identity" : "swift-llbuild",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-llbuild.git",
