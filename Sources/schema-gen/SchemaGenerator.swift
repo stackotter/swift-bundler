@@ -82,10 +82,14 @@ struct SchemaGenerator {
     schema["title"] = "Bundler.toml"
     schema["description"] = "A Swift Bundler configuration file"
 
-    let json = try! JSONSerialization.data(withJSONObject: schema, options: .prettyPrinted)
-    let jsonString = String(data: json, encoding: .utf8)!
-
-    print(jsonString)
+    do {
+      let json = try JSONSerialization.data(withJSONObject: schema, options: .prettyPrinted)
+      let jsonString = String(data: json, encoding: .utf8)!
+      print(jsonString)
+    } catch {
+      print("Failed to serialize schema")
+      Foundation.exit(1)
+    }
   }
 
   static func typeDecl(of identifier: String, source: String) -> TypeDecl {
@@ -126,12 +130,13 @@ struct SchemaGenerator {
           Foundation.exit(1)
         }
         return schema
-      case .structDecl(let structDecl):
+      case .structDecl:
         if let schema = explicitSchema(of: typeDecl) {
           return schema
         }
 
-        let structProperties = properties(of: structDecl)
+        let structProperties = properties(of: typeDecl)
+          .filter { !$0.modifiers.contains("static") }
 
         var schema: [String: Any] = [
           "type": "object"
@@ -139,19 +144,22 @@ struct SchemaGenerator {
 
         var required: [String] = []
         var propertySchemas: [String: Any] = [:]
-        for (identifier, type, description) in structProperties {
-          var property = partialSchema(for: type, customTypes: customTypes)
-
-          // TODO: Remove once PlistValue schema generation is implemented
-          guard !property.isEmpty else {
-            continue
+        for property in structProperties {
+          guard let description = property.documentation else {
+            print("'\(typeDecl.identifier).\(property.identifier)' missing documentation")
+            Foundation.exit(1)
           }
 
-          property["description"] = description
+          guard let type = property.type else {
+            print("'\(typeDecl.identifier).\(property.identifier)' missing type annotation")
+            Foundation.exit(1)
+          }
 
-          let tomlIdentifier = camelCaseToLowerSnakeCase(identifier)
-          propertySchemas[tomlIdentifier] = property
+          let tomlIdentifier = camelCaseToLowerSnakeCase(property.identifier)
+          var propertySchema = partialSchema(for: type, customTypes: customTypes)
+          propertySchema["description"] = description
 
+          propertySchemas[tomlIdentifier] = propertySchema
           if type.last != "?" {
             required.append(tomlIdentifier)
           }
@@ -214,46 +222,12 @@ struct SchemaGenerator {
   static func explicitSchema(
     of typeDecl: TypeDecl
   ) -> [String: Any]? {
-    let staticModifier = TokenSyntax.staticKeyword().text
-    let value: StringLiteralExprSyntax? = typeDecl.children
-      .compactMap { $0.as(MemberDeclBlockSyntax.self) }
-      .flatMap { (memberDeclBlock: MemberDeclBlockSyntax) -> [VariableDeclSyntax] in
-        let children = memberDeclBlock.members.children(viewMode: .all)
-        return children.compactMap { (child: Syntax) -> VariableDeclSyntax? in
-          child.as(MemberDeclListItemSyntax.self)?.decl.as(VariableDeclSyntax.self)
-        }
+    let value: StringLiteralExprSyntax? = properties(of: typeDecl)
+      .filter { (property: PropertyDecl) -> Bool in
+        return property.modifiers.contains("static") && property.identifier == "schema"
       }
-      .filter { (variable: VariableDeclSyntax) in
-        return variable.modifiers?.contains { modifier in
-          return modifier.name.withoutTrivia().text == staticModifier
-        } ?? false
-      }
-      .compactMap { (variable: VariableDeclSyntax) -> StringLiteralExprSyntax? in
-        return variable.bindings.children(viewMode: .all).compactMap { binding -> StringLiteralExprSyntax? in
-          let patternBinding: SyntaxChildren? = binding
-            .as(PatternBindingSyntax.self)?
-            .children(viewMode: .all)
-
-          guard
-            let identifier = patternBinding?
-              .first?
-              .as(IdentifierPatternSyntax.self)
-          else {
-            return nil
-          }
-
-          let value = patternBinding?.last
-
-          guard identifier.identifier.text == "schema" else {
-            return nil
-          }
-
-          guard let stringLiteral = value?.children(viewMode: .all).last?.as(StringLiteralExprSyntax.self) else {
-            return nil
-          }
-
-          return stringLiteral
-        }.first
+      .compactMap { (property: PropertyDecl) -> StringLiteralExprSyntax? in
+        return property.initialValue?.as(StringLiteralExprSyntax.self)
       }
       .first
 
@@ -276,84 +250,22 @@ struct SchemaGenerator {
   }
 
   static func properties(
-    of structDecl: StructDeclSyntax
-  ) -> [(identifier: String, type: String, description: String?)] {
-    var properties: [(String, String, String)] = []
-    for child in structDecl.children(viewMode: .all) {
-      let node = child.as(SyntaxEnum.self)
-      guard case let .memberDeclBlock(memberBlock) = node else {
+    of typeDecl: TypeDecl
+  ) -> [PropertyDecl] {
+    var properties: [PropertyDecl] = []
+    for child in typeDecl.children {
+      guard let memberBlock = child.as(MemberDeclBlockSyntax.self) else {
         continue
       }
 
       for member in memberBlock.members.children(viewMode: .all) {
-        guard case let .memberDeclListItem(item) = member.as(SyntaxEnum.self) else {
+        guard let item = member.as(MemberDeclListItemSyntax.self) else {
           continue
         }
 
-        guard let variable = item.decl.as(VariableDeclSyntax.self) else {
-          continue
+        if case let .success(property) = PropertyDecl.parse(from: item) {
+          properties.append(property)
         }
-
-        let staticModifier = TokenSyntax.staticKeyword().text
-        var isStatic = false
-        for modifier in variable.modifiers ?? ModifierListSyntax([]) {
-          if modifier.name.withoutTrivia().text == staticModifier {
-            isStatic = true
-            break
-          }
-        }
-
-        guard !isStatic else {
-          continue
-        }
-
-        var description: String?
-        if let leadingTrivia = variable.leadingTrivia {
-          guard leadingTrivia.count >= 3 else {
-            print("Missing documentation for '\(variable.withoutTrivia().description)'")
-            Foundation.exit(1)
-          }
-
-          let trivia = leadingTrivia[leadingTrivia.count - 3]
-          let triviaString = String(describing: trivia).trimmingCharacters(in: .whitespaces)
-          guard triviaString.hasPrefix("/// ") else {
-            print("Missing documentation for '\(variable.withoutTrivia().description)'")
-            Foundation.exit(1)
-          }
-
-          description = String(triviaString.dropFirst(4))
-        }
-
-        guard let description = description else {
-          print("Missing documentation for '\(variable.withoutTrivia().description)'")
-          Foundation.exit(1)
-        }
-
-        var identifier: String?
-        var type: String?
-        for binding in variable.bindings.children(viewMode: .all) {
-          guard
-            let binding = binding.as(PatternBindingSyntax.self),
-            let identifierSyntax = binding.pattern.as(IdentifierPatternSyntax.self)
-          else {
-            continue
-          }
-
-          identifier = identifierSyntax.identifier.text
-          type = binding.typeAnnotation?.type.withoutTrivia().description
-          break
-        }
-
-        guard let identifier = identifier else {
-          continue
-        }
-
-        guard let type = type else {
-          print("'\(identifier)' is missing a type annotation")
-          Foundation.exit(1)
-        }
-
-        properties.append((identifier, type, description))
       }
     }
 
