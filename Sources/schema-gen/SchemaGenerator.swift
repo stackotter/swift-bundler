@@ -40,7 +40,7 @@ struct SchemaGenerator {
 
   static func main() {
     guard CommandLine.arguments.count == 4 else {
-      print("Usage: gen-schema /path/to/PackageConfiguration.swift /path/to/AppConfiguration.swift /path/to/PlistValue.swift")
+      print("Usage: schema-gen /path/to/PackageConfiguration.swift /path/to/AppConfiguration.swift /path/to/PlistValue.swift")
       Foundation.exit(1)
     }
 
