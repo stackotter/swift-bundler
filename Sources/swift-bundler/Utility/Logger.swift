@@ -11,8 +11,8 @@ struct Handler: LogHandler {
   var logLevel: Logger.Level = .info
 
   subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-    get { nil }
-    set { }
+    get { metadata[key] }
+    set { metadata[key] = newValue }
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {

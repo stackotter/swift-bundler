@@ -97,10 +97,19 @@ enum IOSBundler: Bundler {
       }
     }
 
+    // TODO: Why is app icon creation disabled?
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appBundle, appName: appName, appConfiguration: appConfiguration, iOSVersion: platformVersion, targetingSimulator: targetingSimulator) },
+      {
+        Self.createMetadataFiles(
+          at: appBundle,
+          appName: appName,
+          appConfiguration: appConfiguration,
+          iOSVersion: platformVersion,
+          targetingSimulator: targetingSimulator
+        )
+      },
       // { createAppIconIfPresent() },
       { copyResourcesBundles() },
       { copyDynamicLibraries() },

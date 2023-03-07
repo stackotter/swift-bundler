@@ -36,7 +36,8 @@ let package = Package(
         .product(name: "ProjectSpec", package: "XcodeGen"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-        .product(name: "SwiftFormat", package: "swift-format")
+        .product(name: "SwiftFormat", package: "swift-format"),
+        .product(name: "SwiftFormatConfiguration", package: "swift-format")
       ]
     ),
 

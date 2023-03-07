@@ -3,10 +3,12 @@ disabled_rules:
 - opening_brace # Forced to disable because this misunderstands some syntax that I use
 - multiple_closures_with_trailing_closure
 - function_parameter_count
+- for_where
+- type_body_length
 
 line_length: 150
 type_body_length: 300
 file_length: 500
 identifier_name:
   max_length: 60
-function_body_length: 55
+function_body_length: 65

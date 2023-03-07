@@ -5,6 +5,7 @@ import Version
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftFormat
+import SwiftFormatConfiguration
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
@@ -513,7 +514,10 @@ enum XcodeprojConverter {
       )
     }
 
-    let formatter = SwiftFormatter(configuration: .init())
+    var config = Configuration()
+    config.indentation = .spaces(4)
+
+    let formatter = SwiftFormatter(configuration: config)
     var formattedSource = ""
     do {
       try formatter.format(source: source.description, assumingFileURL: nil, to: &formattedSource)
