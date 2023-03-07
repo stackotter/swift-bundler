@@ -26,16 +26,20 @@ struct PropertyDecl {
 
     var documentation: String?
     if let leadingTrivia = variable.leadingTrivia, leadingTrivia.count >= 3 {
-      let trivia = leadingTrivia[leadingTrivia.count - 3]
-      let triviaString = String(describing: trivia)
-        .trimmingCharacters(in: .whitespaces)
+      var lines: [String] = []
+      for trivia in leadingTrivia {
+        let triviaString = String(describing: trivia)
+          .trimmingCharacters(in: .whitespaces)
 
-      if triviaString.hasPrefix("/// ") {
-        // TODO: Parse multiline doc comments
-        let documentationString = triviaString.dropFirst(4).split(separator: "\n").first
-        if let documentationString = documentationString {
-          documentation = String(documentationString)
+        if triviaString.hasPrefix("/// ") {
+          lines.append(String(triviaString.dropFirst(4)))
+        } else if triviaString == "///" {
+          lines.append("")
         }
+      }
+
+      if !lines.isEmpty {
+        documentation = lines.joined(separator: "\n")
       }
     }
 

@@ -83,7 +83,10 @@ struct SchemaGenerator {
     schema["description"] = "A Swift Bundler configuration file"
 
     do {
-      let json = try JSONSerialization.data(withJSONObject: schema, options: .prettyPrinted)
+      let json = try JSONSerialization.data(
+        withJSONObject: schema,
+        options: [.prettyPrinted, .sortedKeys]
+      )
       let jsonString = String(data: json, encoding: .utf8)!
       print(jsonString)
     } catch {
@@ -145,7 +148,9 @@ struct SchemaGenerator {
         var required: [String] = []
         var propertySchemas: [String: Any] = [:]
         for property in structProperties {
-          guard let description = property.documentation else {
+          guard
+            let description = property.documentation?.split(separator: "\n").first
+          else {
             print("'\(typeDecl.identifier).\(property.identifier)' missing documentation")
             Foundation.exit(1)
           }
@@ -156,8 +161,9 @@ struct SchemaGenerator {
           }
 
           let tomlIdentifier = camelCaseToLowerSnakeCase(property.identifier)
+
           var propertySchema = partialSchema(for: type, customTypes: customTypes)
-          propertySchema["description"] = description
+          propertySchema["description"] = String(description)
 
           propertySchemas[tomlIdentifier] = propertySchema
           if type.last != "?" {
