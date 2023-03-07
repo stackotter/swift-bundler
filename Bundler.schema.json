@@ -1,36 +1,31 @@
 {
+  "required" : [
+    "format_version",
+    "apps"
+  ],
+  "$schema" : "https:\/\/json-schema.org\/draft\/2020-12\/schema",
   "properties" : {
-    "format_version" : {
-      "description" : "The configuration format version.",
-      "type" : "integer"
-    },
     "apps" : {
-      "type" : "object",
+      "description" : "The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.",
       "patternProperties" : {
         "^.*$" : {
+          "required" : [
+            "identifier",
+            "product",
+            "version"
+          ],
           "type" : "object",
           "properties" : {
-            "identifier" : {
-              "type" : "string",
-              "description" : "The app's identifier (e.g. `com.example.ExampleApp`)."
-            },
-            "version" : {
-              "type" : "string",
-              "description" : "The app's current version."
-            },
-            "product" : {
-              "type" : "string",
-              "description" : "The name of the executable product."
-            },
-            "category" : {
-              "type" : "string",
-              "description" : "The app's category. See [Apple's documentation](https:\/\/developer.apple.com\/documentation\/bundleresources\/information_property_list\/lsapplicationcategorytype) for more details."
-            },
             "icon" : {
-              "type" : "string",
-              "description" : "The path to the app's icon."
+              "description" : "The path to the app's icon.",
+              "type" : "string"
+            },
+            "identifier" : {
+              "description" : "The app's identifier (e.g. `com.example.ExampleApp`).",
+              "type" : "string"
             },
             "plist" : {
+              "description" : "String values can contain variable substitutions (see ``VariableEvaluator`` for details).",
               "patternProperties" : {
                 "^.*$" : {
                   "type" : [
@@ -42,26 +37,31 @@
                   ]
                 }
               },
-              "description" : "String values can contain variable substitutions (see ``VariableEvaluator`` for details).",
               "type" : "object"
+            },
+            "category" : {
+              "type" : "string",
+              "description" : "The app's category. See [Apple's documentation](https:\/\/developer.apple.com\/documentation\/bundleresources\/information_property_list\/lsapplicationcategorytype) for more details."
+            },
+            "version" : {
+              "type" : "string",
+              "description" : "The app's current version."
+            },
+            "product" : {
+              "type" : "string",
+              "description" : "The name of the executable product."
             }
-          },
-          "required" : [
-            "identifier",
-            "product",
-            "version"
-          ]
+          }
         }
       },
-      "description" : "The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration."
+      "type" : "object"
+    },
+    "format_version" : {
+      "type" : "integer",
+      "description" : "The configuration format version."
     }
   },
-  "$schema" : "https:\/\/json-schema.org\/draft\/2020-12\/schema",
-  "description" : "A Swift Bundler configuration file",
-  "required" : [
-    "formatVersion",
-    "apps"
-  ],
   "type" : "object",
+  "description" : "A Swift Bundler configuration file",
   "title" : "Bundler.toml"
 }

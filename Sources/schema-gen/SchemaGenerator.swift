@@ -149,10 +149,11 @@ struct SchemaGenerator {
 
           property["description"] = description
 
-          propertySchemas[camelCaseToLowerSnakeCase(identifier)] = property
+          let tomlIdentifier = camelCaseToLowerSnakeCase(identifier)
+          propertySchemas[tomlIdentifier] = property
 
           if type.last != "?" {
-            required.append(identifier)
+            required.append(tomlIdentifier)
           }
         }
 
