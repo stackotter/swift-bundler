@@ -16,6 +16,12 @@ import TOMLKit
 /// }
 /// ```
 enum PlistValue: Codable, Equatable {
+  private static var schema = """
+  {
+    "type": ["number", "string", "object", "array", "boolean"]
+  }
+  """
+
   case dictionary([String: PlistValue])
   case array([PlistValue])
   case real(Double)
