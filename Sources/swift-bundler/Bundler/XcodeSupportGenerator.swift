@@ -63,7 +63,6 @@ enum XcodeSupportGenerator {
       }
   }
 
-  // swiftlint:disable function_body_length
   /// Generates the contents of the Xcode scheme for an app.
   /// - Parameters:
   ///   - app: The name of the app.
@@ -216,5 +215,4 @@ enum XcodeSupportGenerator {
 </Scheme>
 """)
   }
-  // swiftlint:enable function_body_length
 }

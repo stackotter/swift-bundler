@@ -76,11 +76,11 @@ enum PackageConfigurationError: LocalizedError {
 
           // Format as a nice list
           var keysString = ""
-          for (i, key) in keys.enumerated() {
+          for (index, key) in keys.enumerated() {
             keysString += "'\(key)'"
-            if i == keys.count - 2 {
+            if index == keys.count - 2 {
               keysString += " and "
-            } else if i < keys.count - 2 {
+            } else if index < keys.count - 2 {
               keysString += ", "
             }
           }

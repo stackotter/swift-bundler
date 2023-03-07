@@ -44,7 +44,7 @@ enum CodeSigner {
   /// - Returns: A failure if the `codesign` command fails to run.
   static func signAppBundle(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
     log.info("Codesigning app bundle")
- 
+
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
     if FileManager.default.itemExists(at: librariesDirectory, withType: .directory) {
       let contents: [URL]

@@ -12,7 +12,7 @@ struct Handler: LogHandler {
 
   subscript(metadataKey key: String) -> Logger.Metadata.Value? {
     get { nil }
-    set(newValue) { }
+    set { }
   }
 
   func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
