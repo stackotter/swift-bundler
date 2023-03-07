@@ -149,7 +149,7 @@ struct SchemaGenerator {
 
           property["description"] = description
 
-          propertySchemas[identifier] = property
+          propertySchemas[camelCaseToLowerSnakeCase(identifier)] = property
 
           if type.last != "?" {
             required.append(identifier)
@@ -186,11 +186,6 @@ struct SchemaGenerator {
           print("Dictionary keys must be strings")
           Foundation.exit(1)
         }
-
-        // TODO: Implement schema generation for PlistValue
-        // if valueType == "PlistValue" {
-        //   return [:]
-        // }
 
         schema["type"] = "object"
         schema["patternProperties"] = [
@@ -362,5 +357,24 @@ struct SchemaGenerator {
     }
 
     return properties
+  }
+
+  static func camelCaseToLowerSnakeCase(_ camelCase: String) -> String {
+    var words: [String] = []
+    var currentWord = ""
+    for character in camelCase {
+      if (character.isUppercase || character.isNumber) && !currentWord.isEmpty {
+        words.append(currentWord)
+        currentWord = ""
+      }
+
+      currentWord += character.lowercased()
+    }
+
+    if !currentWord.isEmpty {
+      words.append(currentWord)
+    }
+
+    return words.joined(separator: "_")
   }
 }
