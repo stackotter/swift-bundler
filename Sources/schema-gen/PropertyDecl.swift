@@ -6,11 +6,17 @@ enum PropertyDeclError: LocalizedError {
   case notIdentifierBinding
 }
 
+/// A declaration of a property belonging to a specific type.
 struct PropertyDecl {
+  /// The content of the documentation comment if any.
   var documentation: String?
+  /// Modifiers such as `static`, `private`, etc.
   var modifiers: [String]
+  /// The property's identifier.
   var identifier: String
+  /// A type annotation if present.
   var type: String?
+  /// An initial value if any.
   var initialValue: Syntax?
 
   private struct ParsedBinding {
@@ -19,6 +25,31 @@ struct PropertyDecl {
     var type: String?
   }
 
+  /// ``identifier`` converted to lower snake case. Assumes that ``identifier`` is in camel case (as
+  /// is convention in Swift).
+  var snakeCaseIdentifier: String {
+    var words: [String] = []
+    var currentWord = ""
+    for character in identifier {
+      if (character.isUppercase || character.isNumber) && !currentWord.isEmpty {
+        words.append(currentWord)
+        currentWord = ""
+      }
+
+      currentWord += character.lowercased()
+    }
+
+    if !currentWord.isEmpty {
+      words.append(currentWord)
+    }
+
+    return words.joined(separator: "_")
+  }
+
+  /// Converts a `MemberDeclListItemSyntax` (the most useless thing in existence) into a
+  /// ``PropertyDecl`` (much better).
+  /// - Parameter decl: A declaration to convert.
+  /// - Returns: A success if the declaration was a property, and a failure otherwise.
   static func parse(from decl: MemberDeclListItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
     guard let variable = decl.decl.as(VariableDeclSyntax.self) else {
       return .failure(.notVariable)
@@ -67,6 +98,10 @@ struct PropertyDecl {
     ))
   }
 
+  /// Parses a pattern binding list to extract the identifier, type annotation and pattern binding.
+  /// - Parameter bindings: A pattern binding list to parse.
+  /// - Returns: The parsed binding if it was of a supported format (i.e. identifier pattern
+  ///   binding).
   private static func parseBindings(
     _ bindings: PatternBindingListSyntax
   ) -> ParsedBinding? {

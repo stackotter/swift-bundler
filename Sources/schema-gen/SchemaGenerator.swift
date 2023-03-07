@@ -2,31 +2,18 @@ import Foundation
 import SwiftSyntax
 import SwiftParser
 
-enum TypeDecl {
-  case structDecl(StructDeclSyntax)
-  case enumDecl(EnumDeclSyntax)
-
-  var children: SyntaxChildren {
-    switch self {
-      case .structDecl(let decl):
-        return decl.children(viewMode: .all)
-      case .enumDecl(let decl):
-        return decl.children(viewMode: .all)
-    }
-  }
-
-  var identifier: String {
-    switch self {
-      case .structDecl(let decl):
-        return decl.identifier.text
-      case .enumDecl(let decl):
-        return decl.identifier.text
-    }
+extension FileHandle: TextOutputStream {
+  public func write(_ string: String) {
+    let data = Data(string.utf8)
+    self.write(data)
   }
 }
 
 @main
 struct SchemaGenerator {
+  static var standardError = FileHandle.standardError
+
+  /// A simple conversion from Swift type to JSON type.
   static var jsonTypeConversion: [String: String] = [
     "Int": "integer",
     "Float": "number",
@@ -34,48 +21,30 @@ struct SchemaGenerator {
     "String": "string"
   ]
 
-  static func readFile(atPath path: String) throws -> String {
-    return try String(contentsOf: URL(fileURLWithPath: path))
-  }
-
   static func main() {
-    guard CommandLine.arguments.count == 4 else {
-      print("Usage: schema-gen /path/to/PackageConfiguration.swift /path/to/AppConfiguration.swift /path/to/PlistValue.swift")
+    guard CommandLine.arguments.count == 2 else {
+      print(
+        "Usage: schema-gen /path/to/Sources/swift-bundler/Configuration",
+        to: &standardError
+      )
       Foundation.exit(1)
     }
 
-    let packageConfigSourcePath = CommandLine.arguments[1]
-    let appConfigSourcePath = CommandLine.arguments[2]
-    let plistValueSourcePath = CommandLine.arguments[3]
+    let sourceDirectory = URL(fileURLWithPath: CommandLine.arguments[1])
+    let namespace = Namespace(sourceDirectory: sourceDirectory)
 
-    guard
-      let packageConfigSource = try? readFile(atPath: packageConfigSourcePath),
-      let appConfigSource = try? readFile(atPath: appConfigSourcePath),
-      let plistValueSource = try? readFile(atPath: plistValueSourcePath)
-    else {
-      print("Invalid source file path/s")
-      Foundation.exit(1)
+    let packageConfigStruct: TypeDecl
+    switch namespace.get("PackageConfiguration") {
+      case .success(let decl):
+        packageConfigStruct = decl
+      case .failure(let error):
+        print("\(error)", to: &standardError)
+        Foundation.exit(1)
     }
-
-    let packageConfigStruct = typeDecl(
-      of: "PackageConfiguration",
-      source: packageConfigSource
-    )
-    let appConfigStruct = typeDecl(
-      of: "AppConfiguration",
-      source: appConfigSource
-    )
-    let plistValueEnum = typeDecl(
-      of: "PlistValue",
-      source: plistValueSource
-    )
 
     var schema = partialSchema(
       for: packageConfigStruct,
-      customTypes: [
-        "AppConfiguration": appConfigStruct,
-        "PlistValue": plistValueEnum
-      ]
+      namespace: namespace
     )
 
     schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
@@ -90,46 +59,28 @@ struct SchemaGenerator {
       let jsonString = String(data: json, encoding: .utf8)!
       print(jsonString)
     } catch {
-      print("Failed to serialize schema")
+      print("Failed to serialize schema", to: &standardError)
       Foundation.exit(1)
     }
   }
 
-  static func typeDecl(of identifier: String, source: String) -> TypeDecl {
-    let sourceFile = Parser.parse(source: source)
-
-    for statement in sourceFile.statements {
-      for child in statement.children(viewMode: .all) {
-        guard let decl = child.asProtocol(DeclSyntaxProtocol.self) else {
-          continue
-        }
-
-        if let structDecl = decl as? StructDeclSyntax {
-          guard structDecl.identifier.text == identifier else {
-            continue
-          }
-          return .structDecl(structDecl)
-        } else if let enumDecl = decl as? EnumDeclSyntax {
-          guard enumDecl.identifier.text == identifier else {
-            continue
-          }
-          return .enumDecl(enumDecl)
-        }
-      }
-    }
-
-    print("Missing '\(identifier)' source file")
-    Foundation.exit(1)
-  }
-
+  /// Generates a partial schema for a Swift Bundler type. Partial schemas exclude
+  /// `title`, `description`, etc.
+  /// - Properties:
+  ///   - typeDecl: The type to generate a schema for.
+  ///   - namespace: The namespace to use when generating schemas for properties.
+  /// - Returns: A partial schema for the type.
   static func partialSchema(
     for typeDecl: TypeDecl,
-    customTypes: [String: TypeDecl]
+    namespace: Namespace
   ) -> [String: Any] {
     switch typeDecl {
       case .enumDecl:
         guard let schema = explicitSchema(of: typeDecl) else {
-          print("Enum '\(typeDecl.identifier)' requires an explicit schema")
+          print(
+            "Enum '\(typeDecl.identifier)' requires an explicit schema",
+            to: &standardError
+          )
           Foundation.exit(1)
         }
         return schema
@@ -138,7 +89,7 @@ struct SchemaGenerator {
           return schema
         }
 
-        let structProperties = properties(of: typeDecl)
+        let structProperties = typeDecl.properties
           .filter { !$0.modifiers.contains("static") }
 
         var schema: [String: Any] = [
@@ -151,20 +102,25 @@ struct SchemaGenerator {
           guard
             let description = property.documentation?.split(separator: "\n").first
           else {
-            print("'\(typeDecl.identifier).\(property.identifier)' missing documentation")
+            print(
+              "'\(typeDecl.identifier).\(property.identifier)' missing documentation",
+              to: &standardError
+            )
             Foundation.exit(1)
           }
 
           guard let type = property.type else {
-            print("'\(typeDecl.identifier).\(property.identifier)' missing type annotation")
+            print(
+              "'\(typeDecl.identifier).\(property.identifier)' missing type annotation",
+              to: &standardError
+            )
             Foundation.exit(1)
           }
 
-          let tomlIdentifier = camelCaseToLowerSnakeCase(property.identifier)
-
-          var propertySchema = partialSchema(for: type, customTypes: customTypes)
+          var propertySchema = partialSchema(for: type, namespace: namespace)
           propertySchema["description"] = String(description)
 
+          let tomlIdentifier = property.snakeCaseIdentifier
           propertySchemas[tomlIdentifier] = propertySchema
           if type.last != "?" {
             required.append(tomlIdentifier)
@@ -178,9 +134,16 @@ struct SchemaGenerator {
     }
   }
 
+  /// Generates a partial schema for an arbitrary type. Partial schemas exclude
+  /// `title`, `description`, etc.
+  /// - Properties:
+  ///   - type: The type's identifier.
+  ///   - namespace: The namespace to search in for matching Swift Bundler types
+  ///     if the type doesn't have a simple one-to-one mapping to a JSON type.
+  /// - Returns: A partial schema for the type.
   static func partialSchema(
     for type: String,
-    customTypes: [String: TypeDecl]
+    namespace: Namespace
   ) -> [String: Any] {
     var cleanedType = type
     if type.last == "?" {
@@ -198,7 +161,7 @@ struct SchemaGenerator {
         let valueType = String(parts[1]).trimmingCharacters(in: .whitespaces)
 
         guard keyType == "String" else {
-          print("Dictionary keys must be strings")
+          print("Dictionary keys must be strings", to: &standardError)
           Foundation.exit(1)
         }
 
@@ -206,29 +169,42 @@ struct SchemaGenerator {
         schema["patternProperties"] = [
           "^.*$": partialSchema(
             for: valueType,
-            customTypes: customTypes
+            namespace: namespace
           )
         ]
       } else {
         schema["type"] = "array"
         schema["items"] = partialSchema(
           for: strippedType,
-          customTypes: customTypes
+          namespace: namespace
         )
       }
-    } else if let structDecl = customTypes[type] {
-      schema = partialSchema(for: structDecl, customTypes: customTypes)
     } else {
-      print("failed to gen schema for '\(type)'")
+      switch namespace.get(type) {
+        case .success(let decl):
+          schema = partialSchema(for: decl, namespace: namespace)
+        case .failure(let error):
+          print("\(error)", to: &standardError)
+          Foundation.exit(1)
+      }
     }
 
     return schema
   }
 
+  /// Attempts to extract an explicitly defined schema from a type declaration.
+  ///
+  /// Explicit schemas come in the form of a `static` `schema` property defined
+  /// in the declaration with a string literal value. The string literal must
+  /// contain no interpolations and must be valid JSON.
+  /// - Parameter typeDecl: The type declaration to extract an explicit schema
+  ///   from.
+  /// - Returns: The result of decoding the explicit schema, or `nil` if the
+  ///   type doesn't declare one.
   static func explicitSchema(
     of typeDecl: TypeDecl
   ) -> [String: Any]? {
-    let value: StringLiteralExprSyntax? = properties(of: typeDecl)
+    let value: StringLiteralExprSyntax? = typeDecl.properties
       .filter { (property: PropertyDecl) -> Bool in
         return property.modifiers.contains("static") && property.identifier == "schema"
       }
@@ -247,53 +223,17 @@ struct SchemaGenerator {
       let schemaObject = try? JSONSerialization.jsonObject(with: data),
       let schema = schemaObject as? [String: Any]
     else {
-      print("Failed to decode explicit schema for '\(typeDecl.identifier)'.")
-      print("Ensure that it is a string literal containing valid JSON.")
+      print(
+        "Failed to decode explicit schema for '\(typeDecl.identifier)'.",
+        to: &standardError
+      )
+      print(
+        "Ensure that it is a string literal containing valid JSON.",
+        to: &standardError
+      )
       Foundation.exit(1)
     }
 
     return schema
-  }
-
-  static func properties(
-    of typeDecl: TypeDecl
-  ) -> [PropertyDecl] {
-    var properties: [PropertyDecl] = []
-    for child in typeDecl.children {
-      guard let memberBlock = child.as(MemberDeclBlockSyntax.self) else {
-        continue
-      }
-
-      for member in memberBlock.members.children(viewMode: .all) {
-        guard let item = member.as(MemberDeclListItemSyntax.self) else {
-          continue
-        }
-
-        if case let .success(property) = PropertyDecl.parse(from: item) {
-          properties.append(property)
-        }
-      }
-    }
-
-    return properties
-  }
-
-  static func camelCaseToLowerSnakeCase(_ camelCase: String) -> String {
-    var words: [String] = []
-    var currentWord = ""
-    for character in camelCase {
-      if (character.isUppercase || character.isNumber) && !currentWord.isEmpty {
-        words.append(currentWord)
-        currentWord = ""
-      }
-
-      currentWord += character.lowercased()
-    }
-
-    if !currentWord.isEmpty {
-      words.append(currentWord)
-    }
-
-    return words.joined(separator: "_")
   }
 }

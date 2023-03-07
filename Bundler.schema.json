@@ -1,21 +1,16 @@
 {
-  "required" : [
-    "format_version",
-    "apps"
-  ],
   "$schema" : "https:\/\/json-schema.org\/draft\/2020-12\/schema",
+  "description" : "A Swift Bundler configuration file",
   "properties" : {
     "apps" : {
       "description" : "The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.",
       "patternProperties" : {
         "^.*$" : {
-          "required" : [
-            "identifier",
-            "product",
-            "version"
-          ],
-          "type" : "object",
           "properties" : {
+            "category" : {
+              "description" : "The app's category. See [Apple's documentation](https:\/\/developer.apple.com\/documentation\/bundleresources\/information_property_list\/lsapplicationcategorytype) for more details.",
+              "type" : "string"
+            },
             "icon" : {
               "description" : "The path to the app's icon.",
               "type" : "string"
@@ -25,7 +20,7 @@
               "type" : "string"
             },
             "plist" : {
-              "description" : "String values can contain variable substitutions (see ``VariableEvaluator`` for details).",
+              "description" : "A dictionary containing extra entries to add to the app's `Info.plist` file.",
               "patternProperties" : {
                 "^.*$" : {
                   "type" : [
@@ -39,29 +34,34 @@
               },
               "type" : "object"
             },
-            "category" : {
-              "type" : "string",
-              "description" : "The app's category. See [Apple's documentation](https:\/\/developer.apple.com\/documentation\/bundleresources\/information_property_list\/lsapplicationcategorytype) for more details."
+            "product" : {
+              "description" : "The name of the executable product.",
+              "type" : "string"
             },
             "version" : {
-              "type" : "string",
-              "description" : "The app's current version."
-            },
-            "product" : {
-              "type" : "string",
-              "description" : "The name of the executable product."
+              "description" : "The app's current version.",
+              "type" : "string"
             }
-          }
+          },
+          "required" : [
+            "identifier",
+            "product",
+            "version"
+          ],
+          "type" : "object"
         }
       },
       "type" : "object"
     },
     "format_version" : {
-      "type" : "integer",
-      "description" : "The configuration format version."
+      "description" : "The configuration format version.",
+      "type" : "integer"
     }
   },
-  "type" : "object",
-  "description" : "A Swift Bundler configuration file",
-  "title" : "Bundler.toml"
+  "required" : [
+    "format_version",
+    "apps"
+  ],
+  "title" : "Bundler.toml",
+  "type" : "object"
 }

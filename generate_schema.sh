@@ -1,10 +1,18 @@
 #!/bin/zsh
 
-# This script generates a JSON schema file (Bundler.schem.json) which describes the schema of
+# This script generates a JSON schema file (Bundler.schema.json) which describes the schema of
 # Swift Bundler's Bundler.toml configuration file format.
+#
+# Usage:
+#   ./generate_schema.sh
+#   ./generate_schema.sh stdout
 
-PACKAGE_CONFIG_SRC_FILE="Sources/swift-bundler/Configuration/PackageConfiguration.swift"
-APP_CONFIG_SRC_FILE="Sources/swift-bundler/Configuration/AppConfiguration.swift"
-PLIST_VALUE_SRC_FILE="Sources/swift-bundler/Configuration/PlistValue.swift"
+CONFIG_SRC_DIR="Sources/swift-bundler/Configuration"
+OUT="$(swift run schema-gen $CONFIG_SRC_DIR)"
 
-swift run schema-gen $PACKAGE_CONFIG_SRC_FILE $APP_CONFIG_SRC_FILE $PLIST_VALUE_SRC_FILE > Bundler.schema.json
+if [ "$1" = "stdout" ]
+then
+  echo $OUT
+else
+  echo $OUT > Bundler.schema.json
+fi
