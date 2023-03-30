@@ -15,6 +15,8 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app into.
   ///   - isXcodeBuild: Whether the build products were created by Xcode or not.
   ///   - universal: Whether the build products were built as universal binaries or not.
+  ///   - standAlone: If `true`, the app bundle will not depend on any system-wide dependencies
+  ///     being installed (such as gtk).
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   ///   - platformVersion: The platform version that the executable was built for.
@@ -29,6 +31,7 @@ enum MacOSBundler: Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
+    standAlone: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String,
@@ -68,11 +71,12 @@ enum MacOSBundler: Bundler {
 
     let copyDynamicLibraries: () -> Result<Void, MacOSBundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
-        from: productsDirectory,
+        dependedOnBy: appExecutable,
         to: appDynamicLibrariesDirectory,
-        appExecutable: appExecutable,
+        productsDirectory: productsDirectory,
         isXcodeBuild: isXcodeBuild,
-        universal: universal
+        universal: universal,
+        makeStandAlone: standAlone
       ).mapError { error in
         .failedToCopyDynamicLibraries(error)
       }
@@ -92,10 +96,10 @@ enum MacOSBundler: Bundler {
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration, macOSVersion: platformVersion) },
-      { createAppIconIfPresent() },
-      { copyResourcesBundles() },
-      { copyDynamicLibraries() },
-      { sign() }
+      createAppIconIfPresent,
+      copyResourcesBundles,
+      copyDynamicLibraries,
+      sign
     )
 
     return bundleApp().mapError { (error: MacOSBundlerError) -> Error in

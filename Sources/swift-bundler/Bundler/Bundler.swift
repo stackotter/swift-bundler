@@ -10,6 +10,7 @@ protocol Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
+    standAlone: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String,

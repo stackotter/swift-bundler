@@ -92,6 +92,11 @@ struct BundleCommand: AsyncCommand {
       return false
     }
 
+    if platform != .macOS && arguments.standAlone {
+      log.error("'--experimental-stand-alone' only works on macOS")
+      return false
+    }
+
     switch platform {
       case .iOS:
         break
@@ -190,6 +195,7 @@ struct BundleCommand: AsyncCommand {
           outputDirectory: outputDirectory,
           isXcodeBuild: builtWithXcode,
           universal: universal,
+          standAlone: arguments.standAlone,
           codesigningIdentity: arguments.identity,
           provisioningProfile: arguments.provisioningProfile,
           platformVersion: platformVersion,

@@ -14,6 +14,8 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app into.
   ///   - isXcodeBuild: Does nothing for iOS.
   ///   - universal: Does nothing for iOS.
+  ///   - standAlone: If `true`, the app bundle will not depend on any system-wide dependencies
+  ///     being installed (such as gtk).
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
   ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
   ///   - platformVersion: The platform version that the executable was built for.
@@ -28,6 +30,7 @@ enum IOSBundler: Bundler {
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
+    standAlone: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String,
@@ -65,11 +68,12 @@ enum IOSBundler: Bundler {
 
     let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
-        from: productsDirectory,
+        dependedOnBy: appExecutable,
         to: appDynamicLibrariesDirectory,
-        appExecutable: appExecutable,
+        productsDirectory: productsDirectory,
         isXcodeBuild: false,
-        universal: false
+        universal: false,
+        makeStandAlone: false
       ).mapError { error in
         .failedToCopyDynamicLibraries(error)
       }

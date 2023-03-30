@@ -3,6 +3,13 @@ import Parsing
 
 /// A utility for codesigning Darwin application bundles
 enum CodeSigner {
+  /// The path to the `codesign` tool.
+  static let codesignToolPath = "/usr/bin/codesign"
+  /// The path to the `security` tool.
+  static let securityToolPath = "/usr/bin/security"
+  /// The path to the `openssl` tool.
+  static let opensslToolPath = "/usr/bin/openssl"
+
   /// An identity that can be used to codesign a bundle.
   struct Identity {
     /// The identity's id.
@@ -69,7 +76,7 @@ enum CodeSigner {
   ///   - bundle: The binary or app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The entitlements to give the file (only valid for app bundles).
-  /// - Returns: A failure if the `codesign` command fails to run.
+  /// - Returns: A failure if the `codesign` command fails.
   static func sign(file: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
@@ -88,8 +95,22 @@ enum CodeSigner {
     ]
 
     let process = Process.create(
-      "/usr/bin/codesign",
+      codesignToolPath,
       arguments: arguments
+    )
+
+    return process.runAndWait().mapError { error in
+      return .failedToRunCodesignTool(error)
+    }
+  }
+
+  /// Signs a binary or app bundle using ad-hoc signing.
+  /// - Parameter file: The file to sign.
+  /// - Returns: A failure if the `codesign` command fails.
+  static func signAdHoc(file: URL) -> Result<Void, CodeSignerError> {
+    let process = Process.create(
+      codesignToolPath,
+      arguments: ["--force", "-s", "-", file.path]
     )
 
     return process.runAndWait().mapError { error in
@@ -101,7 +122,7 @@ enum CodeSigner {
   /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
   static func enumerateIdentities() -> Result<[Identity], CodeSignerError> {
     let process = Process.create(
-      "/usr/bin/security",
+      securityToolPath,
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
@@ -146,7 +167,7 @@ enum CodeSigner {
 
   static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
     Process.create(
-      "/usr/bin/openssl",
+      opensslToolPath,
       arguments: [
         "smime", "-verify",
         "-in", bundle.appendingPathComponent("embedded.mobileprovision").path,

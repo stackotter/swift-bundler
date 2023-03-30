@@ -98,9 +98,16 @@ struct BundleArguments: ParsableArguments {
     help: "Codesign the application (use `--identity` to select the identity).")
   var shouldCodesign = false
 
-  /// If `true` a universal application will be created (arm64 and x86_64).
+  /// If `true`, a universal application will be created (arm64 and x86_64).
   @Flag(
     name: .shortAndLong,
     help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
   var universal = false
+
+  /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
+  /// system-wide dynamic libraries being installed such as gtk).
+  @Flag(
+    name: .customLong("experimental-stand-alone"),
+    help: "Build an application which doesn't rely on any system-wide third-party libraries being installed (such as gtk). This features is experimental and potentially incompatible with '--universal', use with care.")
+  var standAlone = false
 }

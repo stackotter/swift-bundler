@@ -19,7 +19,8 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/stackotter/XcodeGen", branch: "renamed"),
     .package(url: "https://github.com/apple/swift-syntax", exact: "0.50800.0-SNAPSHOT-2022-12-29-a"),
-    .package(url: "https://github.com/apple/swift-format", exact: "0.50800.0-SNAPSHOT-2022-12-29-a")
+    .package(url: "https://github.com/apple/swift-format", exact: "0.50800.0-SNAPSHOT-2022-12-29-a"),
+    .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
   ],
   targets: [
     .executableTarget(
@@ -37,7 +38,8 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftFormat", package: "swift-format"),
-        .product(name: "SwiftFormatConfiguration", package: "swift-format")
+        .product(name: "SwiftFormatConfiguration", package: "swift-format"),
+        .product(name: "Overture", package: "swift-overture")
       ]
     ),
 
