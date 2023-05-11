@@ -114,6 +114,7 @@
               "type" : "paragraph"
             }
           ],
+          "name" : "Note",
           "style" : "note",
           "type" : "aside"
         },
@@ -205,7 +206,7 @@
           "type" : "codeListing"
         },
         {
-          "anchor" : "Info.plist-customization",
+          "anchor" : "Infoplist-customization",
           "level" : 2,
           "text" : "Info.plist customization",
           "type" : "heading"
@@ -423,7 +424,7 @@
   ],
   "schemaVersion" : {
     "major" : 0,
-    "minor" : 2,
+    "minor" : 3,
     "patch" : 0
   },
   "sections" : [

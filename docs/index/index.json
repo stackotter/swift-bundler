@@ -1,0 +1,60 @@
+{
+  "interfaceLanguages" : {
+    "swift" : [
+      {
+        "children" : [
+          {
+            "title" : "Getting started",
+            "type" : "groupMarker"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/installation",
+            "title" : "Installation",
+            "type" : "article"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/creating-an-app",
+            "title" : "Creating an app",
+            "type" : "article"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/configuration",
+            "title" : "Configuration",
+            "type" : "article"
+          },
+          {
+            "title" : "Concepts",
+            "type" : "groupMarker"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/package-templates",
+            "title" : "Package templates",
+            "type" : "article"
+          },
+          {
+            "title" : "Advanced usage",
+            "type" : "groupMarker"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/custom-templates",
+            "title" : "Custom templates",
+            "type" : "article"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/metal-shaders",
+            "title" : "Metal shaders",
+            "type" : "article"
+          }
+        ],
+        "path" : "\/documentation\/swiftbundler",
+        "title" : "SwiftBundler",
+        "type" : "module"
+      }
+    ]
+  },
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 1,
+    "patch" : 1
+  }
+}
