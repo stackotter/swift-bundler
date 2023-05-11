@@ -141,14 +141,14 @@ enum SwiftPackageManager {
           Prefix { $0 != "(" }
           "(swiftlang-"
           Parse({ Version.init(major: $0, minor: $1, patch: $2) }) {
-            Int.parser()
+            Int.parser(of: Substring.self, radix: 10)
             "."
-            Int.parser()
+            Int.parser(of: Substring.self, radix: 10)
             "."
-            Int.parser()
+            Int.parser(of: Substring.self, radix: 10)
           }
-          Rest()
-        }.map { _, version, _ in
+          Rest<Substring>()
+        }.map { (_: Substring, version: Version, _: Substring) in
           version
         }
 

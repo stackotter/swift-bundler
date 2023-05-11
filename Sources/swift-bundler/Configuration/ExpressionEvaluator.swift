@@ -19,7 +19,7 @@ struct ExpressionEvaluator {
       }
 
       Parse(Substring?.none) {
-        End()
+        End<Substring>()
       }
     }
   }

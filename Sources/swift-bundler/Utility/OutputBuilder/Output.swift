@@ -9,7 +9,7 @@ struct Output: OutputComponent {
 
   /// Combines multiple components.
   /// - Parameter content: The child components.
-  init(@OutputBuilder _ content: () -> [String]) {
+  init(@OutputPartsBuilder _ content: () -> [String]) {
     self.content = content()
   }
 }
