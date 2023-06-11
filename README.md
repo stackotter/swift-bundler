@@ -19,13 +19,6 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 
 The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
 
-## Branches 🛠
-
-Swift Bundler's development is organized into branches. When a non-main branch's feature is mature enough, it is merged into main.
-
-- **main**: Currently only creates macOS apps.
-- **ios**: Creates macOS and iOS apps.
-
 ## Installation 📦
 
 Install the latest version of Swift Bundler with [mint](https://github.com/yonaskolb/Mint):
@@ -46,7 +39,7 @@ After installing Swift Bundler, package templates make it quick to get started. 
 
 ```sh
 # Create a new app from the SwiftUI template.
-swift bundler create HelloWorld --identifier com.example.HelloWorld --template SwiftUI
+swift bundler create HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 
@@ -78,6 +71,6 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 
 ## Apps made with Swift Bundler 👨‍💻
 
-If you have an app made with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
+If you have made an app with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
 - [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
