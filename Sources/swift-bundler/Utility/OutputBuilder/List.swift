@@ -11,7 +11,7 @@ struct List: OutputComponent {
 
   /// Creates a component to display a list of elements.
   /// - Parameter content: The elements to display.
-  init(@OutputBuilder _ content: () -> [String]) {
+  init(@OutputPartsBuilder _ content: () -> [String]) {
     self.elements = content()
   }
 

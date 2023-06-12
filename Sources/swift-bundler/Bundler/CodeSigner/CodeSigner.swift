@@ -131,17 +131,18 @@ enum CodeSigner {
     }.flatMap { output in
       // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
       let identityParser = Parse {
-        PrefixThrough(") ").map(String.init)
+        PrefixThrough(") ")
         PrefixUpTo(" ").map(String.init)
         " "
         OneOf {
           PrefixUpTo("\n")
-          Rest()
-        }.map { substring in
+          Rest<Substring>()
+        }.map { (substring: Substring) -> String in
           // Remove quotation marks
-          substring.dropFirst().dropLast()
-        }.map(String.init)
-      }.map { _, id, name in
+          let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
+          return String(withoutQuotationMarks)
+        }
+      }.map { (_: Substring, id: String, name: String) in
         return Identity(id: id, name: name)
       }
 
@@ -149,8 +150,8 @@ enum CodeSigner {
         Many {
           identityParser
         }
-        Rest()
-      }.map { identities, _ in
+        Rest<Substring>()
+      }.map { (identities: [Identity], _: Substring) in
         return identities
       }
 

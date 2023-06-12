@@ -55,8 +55,8 @@ enum VariableEvaluator {
     let parser = Parse {
       OneOf {
         PrefixUpTo(openingDelimeter).map(String.init)
-        Rest().map(String.init)
-        End().map { _ in
+        Rest<Substring>().map(String.init)
+        End<Substring>().map { _ in
           ""
         }
       }
@@ -68,7 +68,7 @@ enum VariableEvaluator {
         }
 
         Parse(String?.none) {
-          End()
+          End<Substring>()
         }
       }
     }

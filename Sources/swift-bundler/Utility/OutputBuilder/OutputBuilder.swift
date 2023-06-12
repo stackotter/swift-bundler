@@ -19,24 +19,4 @@
   static func buildEither(second component: OutputComponent) -> String {
     return component.body
   }
-
-  static func buildBlock(_ components: OutputComponent...) -> [String] {
-    return components.map(\.body)
-  }
-
-  static func buildArray(_ components: [OutputComponent]) -> [String] {
-    return components.map(\.body)
-  }
-
-  static func buildOptional(_ component: OutputComponent?) -> [String] {
-    return [component?.body ?? ""]
-  }
-
-  static func buildEither(first component: OutputComponent) -> [String] {
-    return [component.body]
-  }
-
-  static func buildEither(second component: OutputComponent) -> [String] {
-    return [component.body]
-  }
 }
