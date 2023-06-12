@@ -1,0 +1,184 @@
+{
+  "abstract" : [
+    {
+      "text" : "What is a stand-alone app, and how you can make one.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "SwiftBundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Stand alone apps"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Stand-alone apps are apps that don’t rely on any 3rd-party system-wide dependencies being installed",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "on the user’s system. For example, if you build an executable that uses Gtk3, it isn’t stand-alone",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "and it won’t run on any system without Gtk3 installed. However, fear no more! Swift Bundler has a",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "solution.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "The-Swift-Bundler-solution",
+          "level" : 2,
+          "text" : "The Swift Bundler solution",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "When building your app for macOS, try using the ",
+              "type" : "text"
+            },
+            {
+              "code" : "--experimental-stand-alone",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " flag to automatically",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "relocate all 3rd-party system-wide dynamic library dependencies of your app into the app bundle.",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "This works quite effectively for Gtk, however, you will run into issues when trying to create a",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "universal binary. In particular, universal builds will only be truly universal if the system-wide",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "dependencies of your app were built as universal binaries when you installed them (not the case if",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "you used Homebrew). If you are building on Intel, the built app might be able to run on Apple Silicon",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "because of Rosetta (untested), however it definitely won’t work the other way around.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swiftbundler\/stand-alone-apps"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://SwiftBundler/documentation/SwiftBundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "SwiftBundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler"
+}
+}
+}

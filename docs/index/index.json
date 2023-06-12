@@ -44,6 +44,15 @@
             "path" : "\/documentation\/swiftbundler\/metal-shaders",
             "title" : "Metal shaders",
             "type" : "article"
+          },
+          {
+            "title" : "Articles",
+            "type" : "groupMarker"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/stand-alone-apps",
+            "title" : "Stand alone apps",
+            "type" : "article"
           }
         ],
         "path" : "\/documentation\/swiftbundler",

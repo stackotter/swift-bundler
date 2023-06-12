@@ -131,7 +131,7 @@
         {
           "code" : [
             "description = \"My first package template.\"",
-            "platforms = [\"macOS\", \"Linux\"] # Adjust according to your needs, valid values are `macOS` and `Linux` (for the future)"
+            "platforms = [\"macOS\", \"iOS\"] # Adjust according to your needs, valid values are currently `macOS` and `iOS`"
           ],
           "syntax" : "toml",
           "type" : "codeListing"
@@ -170,15 +170,15 @@
               "type" : "text"
             },
             {
-              "code" : "{{PACKAGE}}",
+              "code" : "{{VARIABLE}}",
               "type" : "codeVoice"
             },
             {
-              "text" : " within the file’s relative path is replaced with the package’s name. Any occurrence of ",
+              "text" : " within the file’s relative path is replaced with the corresponding variable’s value. Any occurrence of ",
               "type" : "text"
             },
             {
-              "code" : "{{PACKAGE}}",
+              "code" : "{{VARIABLE}}",
               "type" : "codeVoice"
             },
             {
@@ -190,7 +190,7 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " is replaced with the package’s name and the ",
+              "text" : " is replaced with the corresponding variable’s value and the ",
               "type" : "text"
             },
             {
@@ -198,7 +198,23 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " file extension is removed.",
+              "text" : " file extension is removed. The available variables are ",
+              "type" : "text"
+            },
+            {
+              "code" : "PACKAGE",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " (the package’s name) and ",
+              "type" : "text"
+            },
+            {
+              "code" : "IDENTIFIER",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " (the package’s identifier).",
               "type" : "text"
             }
           ],
@@ -308,7 +324,7 @@
         },
         {
           "code" : [
-            "swift bundler create MyApp --template MyTemplate --template-repository \/path\/to\/TemplateRepository"
+            "swift bundler create MyApp --identifier com.example.MyApp --template MyTemplate --template-repository \/path\/to\/TemplateRepository"
           ],
           "syntax" : "sh",
           "type" : "codeListing"

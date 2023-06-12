@@ -120,7 +120,7 @@
         },
         {
           "code" : [
-            "swift bundler create [app-name] --template [template]"
+            "swift bundler create [app-name] --identifier [app-identifier] --template [template]"
           ],
           "syntax" : "sh",
           "type" : "codeListing"

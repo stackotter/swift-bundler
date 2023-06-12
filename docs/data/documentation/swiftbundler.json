@@ -80,6 +80,13 @@
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"
       ],
       "title" : "Advanced usage"
+    },
+    {
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps"
+      ],
+      "title" : "Articles"
     }
   ],
   "variants" : [
@@ -193,6 +200,20 @@
   "title" : "Package templates",
   "type" : "topic",
   "url" : "\/documentation\/swiftbundler\/package-templates"
+},
+"doc://SwiftBundler/documentation/SwiftBundler/stand-alone-apps": {
+  "abstract" : [
+    {
+      "text" : "What is a stand-alone app, and how you can make one.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Stand alone apps",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler\/stand-alone-apps"
 }
 }
 }

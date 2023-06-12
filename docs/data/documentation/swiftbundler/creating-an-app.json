@@ -48,7 +48,7 @@
         {
           "code" : [
             "# Create a new app from the SwiftUI template",
-            "swift bundler create HelloWorld --template SwiftUI",
+            "swift bundler create HelloWorld --identifier com.example.HelloWorld --template SwiftUI",
             "cd HelloWorld"
           ],
           "syntax" : "sh",
