@@ -64,12 +64,30 @@
       }
     },
     {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "805deae27a7506dcad043604c00a9dc52d465dcb",
+        "version" : "0.7.0"
+      }
+    },
+    {
       "identity" : "swift-case-paths",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-case-paths",
       "state" : {
         "revision" : "ce9c0d897db8a840c39de64caaa9b60119cf4be8",
         "version" : "0.8.1"
+      }
+    },
+    {
+      "identity" : "swift-certificates",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-certificates.git",
+      "state" : {
+        "revision" : "35a7df2d9d71c401a47de9be2e3de629a01370c2",
+        "version" : "0.4.1"
       }
     },
     {
@@ -86,8 +104,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "ddb07e896a2a8af79512543b1c7eb9797f8898a5",
-        "version" : "1.1.7"
+        "revision" : "33a20e650c33f6d72d822d558333f2085effa3dc",
+        "version" : "2.5.0"
       }
     },
     {
@@ -104,8 +122,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-driver.git",
       "state" : {
-        "branch" : "release/5.7",
-        "revision" : "719426df790661020de657bf38beb2a8b1de5ad3"
+        "branch" : "release/5.9",
+        "revision" : "7555785f8b8f27e3f4e7aafdb6f76efe29f87b00"
       }
     },
     {
@@ -122,8 +140,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-llbuild.git",
       "state" : {
-        "branch" : "release/5.7",
-        "revision" : "564424db5fdb62dcb5d863bdf7212500ef03a87b"
+        "branch" : "release/5.9",
+        "revision" : "17a88707e99dc0379eccfcf190ee2361227369fc"
       }
     },
     {
@@ -149,8 +167,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-package-manager",
       "state" : {
-        "branch" : "release/5.7",
-        "revision" : "c5da46610e82d22508532fdaa6858cc74b3bb870"
+        "branch" : "release/5.9",
+        "revision" : "49ec9c61b2c6bd74eafb72143d310b492fe184c7"
       }
     },
     {
@@ -185,8 +203,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-tools-support-core.git",
       "state" : {
-        "branch" : "release/5.7",
-        "revision" : "184eba382f6abbb362ffc02942d790ff35019ad4"
+        "branch" : "release/5.9",
+        "revision" : "279be8ac3fe7829cc15e93693c45931a1bf7f112"
       }
     },
     {
@@ -203,8 +221,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/SwiftXcodeProj.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "b1aaf2fb0f7754bc274a5b539d5fe94a9e92fa77"
+        "revision" : "46e9b907e3ec66010cf2204594549ff1dc195032",
+        "version" : "8.10.1"
       }
     },
     {
@@ -230,8 +248,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/XcodeGen",
       "state" : {
-        "branch" : "renamed",
-        "revision" : "aafcc23bdb92dfd02444729bfdb58e340fdb6f6a"
+        "revision" : "adbf99beb7afb4844774d14e9275da9a503a427c",
+        "version" : "2.35.1"
       }
     },
     {
@@ -248,8 +266,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpsim/Yams.git",
       "state" : {
-        "revision" : "9ff1cc9327586db4e0c8f46f064b6a82ec1566fa",
-        "version" : "4.0.6"
+        "revision" : "f47ba4838c30dbd59998a4e4c87ab620ff959e8a",
+        "version" : "5.0.5"
       }
     }
   ],

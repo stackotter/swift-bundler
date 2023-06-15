@@ -293,12 +293,12 @@ enum SwiftPackageManager {
   static func loadPackageManifest(
     from packageDirectory: URL
   ) async -> Result<Manifest, SwiftPackageManagerError> {
-    var diagnostics: [Basics.Diagnostic] = []
+    let diagnostics: Box<[Basics.Diagnostic]> = Box([])
     let result: Result<Manifest, Error>
     do {
       let packagePath = try AbsolutePath(validating: packageDirectory.path)
       let scope = ObservabilitySystem({ _, diagnostic in
-        diagnostics.append(diagnostic)
+        diagnostics.wrapped.append(diagnostic)
       }).topScope
 
       let workspace = try Workspace(forRootPackage: packagePath)
@@ -325,7 +325,7 @@ enum SwiftPackageManager {
     }
 
     return result.mapError { error in
-      return .failedToLoadPackageManifest(directory: packageDirectory, diagnostics, error)
+      return .failedToLoadPackageManifest(directory: packageDirectory, diagnostics.wrapped, error)
     }
   }
 }
