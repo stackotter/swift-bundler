@@ -143,7 +143,7 @@ enum VariableEvaluator {
 
         // TODO: Consider using git library
         let result = Process.create(
-          "/usr/bin/git",
+          "git",
           arguments: ["rev-parse", "HEAD"],
           directory: packageDirectory
         ).getOutput()

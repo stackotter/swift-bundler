@@ -118,6 +118,9 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
+    // `ios-deploy` is explicitly resolved (instead of allowing `Process.create`
+    // to handle running programs located on the user's PATH) so that a detailed
+    // error message can be emitted for this easy misconfiguration issue.
     return Process.locate("ios-deploy").mapError { error in
       return .failedToLocateIOSDeploy(error)
     }.flatMap { iosDeployExecutable in

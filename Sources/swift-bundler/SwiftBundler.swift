@@ -1,6 +1,5 @@
 import Foundation
 import ArgumentParser
-import Darwin
 import Version
 
 /// The root command of Swift Bundler.

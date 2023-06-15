@@ -247,14 +247,14 @@ enum Templater {
       .flatMap { templatesDirectory in
         if FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
           let result = Process.create(
-            "/usr/bin/git",
+            "git",
             arguments: [
               "fetch"
             ],
             directory: templatesDirectory
           ).runAndWait().flatMap { _ in
             return Process.create(
-              "/usr/bin/git",
+              "git",
               arguments: [
                 "checkout", "v\(SwiftBundler.version.major)"
               ],
@@ -262,7 +262,7 @@ enum Templater {
             ).runAndWait()
           }.flatMap { _ in
             return Process.create(
-              "/usr/bin/git",
+              "git",
               arguments: ["pull"],
               directory: templatesDirectory
             ).runAndWait()
@@ -339,7 +339,7 @@ enum Templater {
 
     // Clone the templates repository
     let process = Process.create(
-      "/usr/bin/git",
+      "git",
       arguments: [
         "clone", "-b", "v\(SwiftBundler.version.major)",
         "\(defaultTemplateRepository)",

@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 /// A utility for timing arbitrary actions.
 enum Stopwatch {
