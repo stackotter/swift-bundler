@@ -12,9 +12,6 @@ import struct Basics.Diagnostic
 /// A utility for interacting with the Swift package manager and performing some other package
 /// related operations.
 enum SwiftPackageManager {
-  /// The path to the swift executable.
-  static let swiftExecutable = "/usr/bin/swift"
-
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
@@ -45,7 +42,7 @@ enum SwiftPackageManager {
       ]
 
       let process = Process.create(
-        Self.swiftExecutable,
+        "swift",
         arguments: arguments,
         directory: directory)
       process.setOutputPipe(Pipe())
@@ -53,7 +50,7 @@ enum SwiftPackageManager {
       return process.runAndWait()
         .mapError { error in
           .failedToRunSwiftInit(
-            command: "\(Self.swiftExecutable) \(arguments.joined(separator: " "))",
+            command: "swift \(arguments.joined(separator: " "))",
             error
           )
         }
@@ -103,7 +100,7 @@ enum SwiftPackageManager {
       platformVersion: platformVersion
     ).flatMap { arguments in
       let process = Process.create(
-        swiftExecutable,
+        "swift",
         arguments: arguments,
         directory: packageDirectory,
         runSilentlyWhenNotVerbose: false
@@ -111,7 +108,7 @@ enum SwiftPackageManager {
 
       return process.runAndWait().mapError { error in
         return .failedToRunSwiftBuild(
-          command: "\(swiftExecutable) \(arguments.joined(separator: " "))",
+          command: "swift \(arguments.joined(separator: " "))",
           error
         )
       }
@@ -215,7 +212,7 @@ enum SwiftPackageManager {
   /// - Returns: The swift version, or a failure if an error occurs.
   static func getSwiftVersion() -> Result<Version, SwiftPackageManagerError> {
     let process = Process.create(
-      swiftExecutable,
+      "swift",
       arguments: ["--version"])
 
     return process.getOutput()
@@ -223,20 +220,43 @@ enum SwiftPackageManager {
         .failedToGetSwiftVersion(error)
       }
       .flatMap { output in
+        // The first two examples are for release versions of Swift (the first on macOS, the second on Linux).
+        // The next two examples are for snapshot versions of Swift (the first on macOS, the second on Linux).
         // Sample: "swift-driver version: 1.45.2 Apple Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
-        let parser = Parse {
-          Prefix { $0 != "(" }
-          "(swiftlang-"
-          Parse({ Version(major: $0, minor: $1, patch: $2) }) {
-            Int.parser(of: Substring.self, radix: 10)
-            "."
-            Int.parser(of: Substring.self, radix: 10)
-            "."
-            Int.parser(of: Substring.self, radix: 10)
+        //     OR: "swift-driver version: 1.45.2 Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
+        //     OR: "Apple Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
+        //     OR: "Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
+        let parser = OneOf {
+          Parse {
+            "swift-driver version"
+            Prefix { $0 != "(" }
+            "(swiftlang-"
+            Parse({ Version(major: $0, minor: $1, patch: $2) }) {
+              Int.parser(of: Substring.self, radix: 10)
+              "."
+              Int.parser(of: Substring.self, radix: 10)
+              "."
+              Int.parser(of: Substring.self, radix: 10)
+            }
+            Rest<Substring>()
+          }.map { (_: Substring, version: Version, _: Substring) in
+            version
           }
-          Rest<Substring>()
-        }.map { (_: Substring, version: Version, _: Substring) in
-          version
+
+          Parse {
+            Optionally {
+              "Apple "
+            }
+            "Swift version "
+            Parse({ Version(major: $0, minor: $1, patch: 0) }) {
+              Int.parser(of: Substring.self, radix: 10)
+              "."
+              Int.parser(of: Substring.self, radix: 10)
+            }
+            Rest<Substring>()
+          }.map { (_: Void?, version: Version, _: Substring) in
+            version
+          }
         }
 
         do {
@@ -272,7 +292,7 @@ enum SwiftPackageManager {
       platformVersion: platformVersion
     ).flatMap { arguments in
       let process = Process.create(
-        "/usr/bin/swift",
+        "swift",
         arguments: arguments + ["--show-bin-path"],
         directory: packageDirectory
       )
@@ -281,7 +301,7 @@ enum SwiftPackageManager {
         let path = output.trimmingCharacters(in: .newlines)
         return .success(URL(fileURLWithPath: path))
       }.mapError { error in
-        let command = "/usr/bin/swift " + arguments.joined(separator: " ")
+        let command = "swift " + arguments.joined(separator: " ")
         return .failedToGetProductsDirectory(command: command, error)
       }
     }

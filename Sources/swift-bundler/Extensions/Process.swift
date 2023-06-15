@@ -54,7 +54,7 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() -> Result<Void, ProcessError> {
-    log.debug("Running command: '\(launchPath ?? "")' with arguments: \(arguments ?? [])")
+    log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? [])")
 
     do {
       try run()
@@ -111,8 +111,15 @@ extension Process {
     }
 
     process.currentDirectoryURL = directory?.standardizedFileURL.absoluteURL
-    process.launchPath = tool
-    process.arguments = arguments
+
+    // If tool isn't a path, assume it's on the user's PATH
+    if tool.hasPrefix("/") || tool.hasPrefix("./") {
+      process.executableURL = URL(fileURLWithPath: tool)
+      process.arguments = arguments
+    } else {
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+      process.arguments = [tool] + arguments
+    }
 
     // Fix an issue to do with Xcode breaking SwiftPackageManager (https://stackoverflow.com/a/67613515)
     if ProcessInfo.processInfo.environment.keys.contains("OS_ACTIVITY_DT_MODE") {
@@ -126,12 +133,15 @@ extension Process {
     return process
   }
 
-  /// Gets the full path to the specified tool (using the `which` shell command).
+  /// Gets the full path to the specified tool (using the `which` shell command). If
+  /// you don't need to explicitly know the path from Swift, just pass the name of the
+  /// tool to `Process.create` instead (which will detect that it's not a path and instead
+  /// run the tool through `/usr/bin/env` which will find the tool on the user's `PATH`).
   /// - Parameter tool: The tool to expand into a full path.
   /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
   static func locate(_ tool: String) -> Result<String, ProcessError> {
     Process.create(
-      "/bin/zsh",
+      "/bin/sh",
       arguments: [
         "-c",
         "which \(tool)"

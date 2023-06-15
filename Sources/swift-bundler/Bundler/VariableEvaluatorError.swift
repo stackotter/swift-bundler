@@ -16,7 +16,7 @@ enum VariableEvaluatorError: LocalizedError {
         return "Found unknown variable '\(variable)'"
       case .failedToEvaluateCommitHash(let directory):
         return "Failed to evaluate the 'COMMIT_HASH' variable. Ensure that '\(directory.relativePath)' is a git repository and"
-             + " that git is installed at '/usr/bin/git'."
+             + " that git is installed and on your PATH."
       case .customEvaluatorFailedToEvaluateVariable(let variable, _):
         return "Custom evaluator failed to evaluate variable '\(variable)'"
       case .packageDirectoryRequiredToEvaluateCommitHash:
