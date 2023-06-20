@@ -17,7 +17,7 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 
 ## Documentation 📚
 
-The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
+The documentation is hosted on [GitHub pages](https://swiftbundler.dev/).
 
 ## Installation 📦
 
