@@ -1,0 +1,51 @@
+{
+  "meta": {},
+  "theme": {
+    "color": {
+      "bg": "#ffe2ca",
+      "bg-darker": "#f9d5b8",
+      "bg-even-darker": "#edc29f",
+      "fg": "#70374d",
+      "fg-lighter": "#c06e7b",
+      "blue": "#1472c4",
+      "fill-light-blue-secondary": "var(--color-bg-even-darker)",
+      "fill-blue": "var(--color-blue)",
+      "fill-secondary": "var(--color-bg)",
+      "nav-color": "var(--color-fg)",
+      "nav-link-color": "var(--color-fg)",
+      "nav-current-link": "var(--color-fg)",
+      "nav-sticking-expanded-keyline": "var(--color-bg-even-darker)",
+      "nav-keyline": "var(--color-bg-even-darker)",
+      "figure-gray": "var(--color-fg)",
+      "figure-gray-secondary": "var(--color-fg)",
+      "figure-gray-secondary-alt": "var(--color-fg)",
+      "documentation-intro-eyebrow": "var(--color-fg)",
+      "documentation-intro-title": "var(--color-fg)",
+      "documentation-intro-figure": "var(--color-fg)",
+      "fill": "var(--color-bg)",
+      "fill-tertiary": "var(--color-bg-even-darker)",
+      "fill-gray-tertiary": "var(--color-bg-even-darker)",
+      "fill-gray-quaternary": "var(--color-bg-even-darker)",
+      "nav-solid-background": "var(--color-bg)",
+      "text-background": "var(--color-bg)",
+      "button-background": "var(--color-blue)",
+      "figure-blue": "var(--color-blue)",
+      "documentation-intro-accent": "var(--color-fg-lighter)",
+      "documentation-intro-fill": "var(--color-bg-darker)",
+      "navigator-item-hover": "var(--color-bg-darker)",
+      "aside-note-background": "var(--color-bg-darker)",
+      "aside-note-border": "var(--color-bg-even-darker)",
+      "code-background": "var(--color-bg-darker)",
+      "grid": "var(--color-bg-even-darker)",
+
+      "syntax-other-type-names": "var(--color-fg-lighter)"
+    },
+    "typography": {
+      "html-font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Helvetica, Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\"",
+      "html-font-mono": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace"
+    }
+  },
+  "features": {
+    "docs": {}
+  }
+}
