@@ -1,0 +1,174 @@
+:root {
+  --main-bg-color: #FFE2CA;
+  --main-fg-color: #70374D;
+  --button-bg-color: #C06E7B;
+  --button-fg-color: var(--main-bg-color);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Work sans";
+}
+
+html {
+  background: var(--main-bg-color);
+  color: var(--main-fg-color);
+  -webkit-text-size-adjust: none;
+}
+
+body {
+  width: 50vw;
+  margin: auto;
+  margin-bottom: 6rem;
+  margin-top: 6rem;
+}
+
+#logo, #title {
+  margin: auto;
+  display: block;
+  text-align: center;
+}
+
+#logo {
+  width: 12.5rem;
+  height: 12.5rem;
+}
+
+#title {
+  font-size: 4rem;
+  font-weight: medium;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+#blurb {
+  font-size: 1.6rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+#button-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+#docs-link {
+  display: block;
+  text-align: center;
+  color: var(--button-bg-color);
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-family: "Montserrat";
+}
+
+.button {
+  background: var(--button-bg-color);
+  color: var(--button-fg-color);
+  border-radius: 6px;
+  height: 3rem;
+  display: inline-block;
+  text-decoration: none;
+  padding: 0 3rem;
+  line-height: 3rem;
+  font-size: 1.2rem;
+  font-family: "Montserrat";
+  font-weight: 600;
+}
+
+.button:hover {
+  filter: brightness(0.97);
+}
+
+#button-row .button {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+#discord-button {
+  padding: 0;
+  width: 3rem;
+  position: relative;
+}
+
+#discord-button img {
+  width: 2.5rem;
+  height: 2.5rem;
+  top: 53%;
+  left: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+#title, h1, h2 {
+  font-family: "Montserrat";
+}
+
+h1, h2 {
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.75rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+p, li {
+  font-size: 1.25rem;
+}
+
+a {
+  text-decoration: none;
+  color: #1786C5;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+/* Media queries */
+
+@media (max-width: 1280px) {
+  body {
+    width: 60vw;
+  }
+}
+
+@media (max-width: 1060px) {
+  body {
+    width: 80vw;
+  }
+
+  html {
+    font-size: 24px;
+  }
+
+  p, li, #blurb {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-height: 600px) {
+  #logo {
+    width: 9rem;
+    height: 9rem;
+  }
+
+  #title {
+    font-size: 3rem;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+  }  
+
+  body {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+}
+
