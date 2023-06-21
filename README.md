@@ -17,7 +17,7 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 
 ## Documentation 📚
 
-The documentation is hosted on [GitHub pages](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
+The documentation is hosted on [the Swift Bundler website](https://swiftbundler.dev/documentation/swiftbundler).
 
 ## Installation 📦
 
@@ -29,7 +29,7 @@ mint install stackotter/swift-bundler
 
 If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
 
-For more installation methods, see [the documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler/installation).
+For more installation methods, see [the documentation](https://swiftbundler.dev/documentation/swiftbundler/installation).
 
 ## Getting started 🚦
 
@@ -63,7 +63,7 @@ open Package.swift
 
 ### Learning more
 
-To learn more about Swift Bundler refer to the [documentation](https://stackotter.github.io/swift-bundler/documentation/swiftbundler).
+To learn more about Swift Bundler refer to the [documentation](https://swiftbundler.dev/documentation/swiftbundler).
 
 ## Contributing 🛠
 
@@ -73,4 +73,5 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 
 If you have made an app with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
-- [Delta Client](https://github.com/stackotter/delta-client) — A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
+- [Delta Client](https://github.com/stackotter/delta-client): A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
+- [ModularMTL](https://github.com/JezewskiG/ModularMTL): A modular multiplication visualisation made with Swift Bundler, SwiftUI and Metal
