@@ -36,7 +36,7 @@ jobs:
         rm docs/favicon.ico
         cp index.html docs
         cp favicon.ico docs
-        cp css/main.css docs
+        cp css/main.css docs/css
         cp -R image docs
         git add docs
         # Commit changes
