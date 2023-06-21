@@ -1,0 +1,45 @@
+<html>
+  <head>
+    <title>Swift Bundler</title>
+    <link rel="icon" href="favicon.ico?v=1">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <a href="/"><img id="logo" src="image/logo.png" alt="A pixel art crate as the Swift Bundler logo"></a>
+    <div id="title">Swift Bundler</div>
+    <div id="blurb">An Xcodeproj-less tool for creating cross-platform Swift apps.</div>
+
+    <div id="button-row">
+      <a class="button" id="github-button" href="https://github.com/stackotter/swift-bundler">Github repo</a>
+      <a class="button" id="discord-button" href="https://discord.gg/6mUFu3KtAn">
+        <img src="image/discord.png" alt="The discord logo">
+      </a>
+    </div>
+    <a id="docs-link" href="documentation/swiftbundler">Docs</a>
+
+    <h1>Overview</h1>
+    <p>Swift Bundler provides a layer over the top of Swift Package Manager that turns built executables into distributable apps. The only setup required is a (git-friendly) configuration file.</p>
+    <p>There used to be an early access version, but that has now been merged, and the <a href="https://github.com/stackotter/swift-bundler">public version</a> supports creating both macOS and iOS apps!</p>
+
+    <h1>Why Swift Bundler?</h1>
+    
+    <h2>Escape Xcode</h2>
+    <p>All of us know how frustrating it is when Xcode's syntax highlighting breaks, its auto complete stops working or it crashes and we can't do anything to fix it.</p>
+    <p>VSCode and many other code editors are open source (along with their extensions) and the community can easily step up and fix bugs. I use neovim/helix and the autocompletion is more stable than Xcode!</p>
+    <p>However, if you still want to use Xcode, Swift Bundler has excellent support for building and running through Xcode without requiring an xcodeproj.</p>
+    <p>No more xcodeproj-related merge conflicts!</p>
+
+    <h2>A cross-platform future</h2>
+    <p>Swift Bundler currently has full support for macOS. And iOS support is in an experimental state. In the future I hope to add support for other platforms such as Linux, Windows, Android and more.</p>
+    <p>Along with an easy to use cross-platform UI framework (such as [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui)) I believe that Swift can be a great language for developing performant and native cross-platform apps.</p>
+
+    <h1>Apps made with Swift Bundler</h1>
+    <ul>
+      <li><a href="https://deltaclient.app">Delta Client</a>: An open-source 'Minecraft: Java Edition' compatible client written from scratch in Swift for macOS</li>
+      <li><a href="https://github.com/JezewskiG/ModularMTL">ModularMTL</a>: A modular multiplication visualisation made with Swift Bundler and SwiftUI</li>
+    </ul>
+  </body>
+</html>
