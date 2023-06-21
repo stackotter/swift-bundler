@@ -32,6 +32,14 @@ jobs:
         CURRENT_COMMIT_HASH=`git rev-parse --short HEAD`
         cd gh-pages
         git add docs
+        # Inject our site at the index
+        rm docs/index.html
+        rm docs/favicon.ico
+        cp index.html docs
+        cp favicon.ico docs
+        cp css/main.css docs
+        cp -R image docs
+        # Commit changes
         if [ -n "$(git status --porcelain)" ]; then
             echo "Documentation changes found. Commiting the changes to the 'gh-pages' branch and pushing to origin."
             git commit -m "Update GitHub Pages documentation site to '$CURRENT_COMMIT_HASH'."
