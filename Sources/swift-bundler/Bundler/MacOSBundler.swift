@@ -1,5 +1,4 @@
 import Foundation
-import PackageModel
 
 /// The bundler for creating macOS apps.
 enum MacOSBundler: Bundler {
@@ -95,7 +94,11 @@ enum MacOSBundler: Bundler {
     let bundleApp = flatten(
       { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
-      { Self.createMetadataFiles(at: appContents, appName: appName, appConfiguration: appConfiguration, macOSVersion: platformVersion) },
+      {
+        Self.createMetadataFiles(
+          at: appContents, appName: appName, appConfiguration: appConfiguration,
+          macOSVersion: platformVersion)
+      },
       createAppIconIfPresent,
       copyResourcesBundles,
       copyDynamicLibraries,
@@ -125,7 +128,9 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
-  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, MacOSBundlerError> {
+  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String)
+    -> Result<Void, MacOSBundlerError>
+  {
     log.info("Creating '\(appName).app'")
     let fileManager = FileManager.default
 
@@ -144,7 +149,8 @@ enum MacOSBundler: Bundler {
       try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
-      return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
+      return .failure(
+        .failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
     }
   }
 
@@ -153,7 +159,9 @@ enum MacOSBundler: Bundler {
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
-  private static func copyExecutable(at source: URL, to destination: URL) -> Result<Void, MacOSBundlerError> {
+  private static func copyExecutable(at source: URL, to destination: URL) -> Result<
+    Void, MacOSBundlerError
+  > {
     log.info("Copying executable")
     do {
       try FileManager.default.copyItem(at: source, to: destination)
@@ -207,7 +215,9 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
   ///   If the file is neither an `icns` or a `png`, a failure is also returned.
-  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, MacOSBundlerError> {
+  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<
+    Void, MacOSBundlerError
+  > {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {
       log.info("Copying '\(icon.lastPathComponent)'")

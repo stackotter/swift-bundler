@@ -6,6 +6,15 @@ import Foundation
 var processes: [Process] = []
 
 extension Process {
+  /// A string created by concatenating all of the program's arguments together. Suitable for error messages,
+  /// but not necessarily 100% correct.
+  var argumentsString: String {
+    // TODO: This could instead be `commandString` and we infer the human friendly name from the executableURL
+    //   (remembering that if the url is `/usr/bin/env`, the path we care about is actually the first argument)
+    // TODO: This is pretty janky (i.e. what if an arg contains spaces)
+    return arguments?.joined(separator: " ") ?? ""
+  }
+
   /// Sets the pipe for the process's stdout and stderr.
   /// - Parameter excludeStdError: If `true`, only stdout is piped.
   /// - Parameter pipe: The pipe.
@@ -144,7 +153,7 @@ extension Process {
       "/bin/sh",
       arguments: [
         "-c",
-        "which \(tool)"
+        "which \(tool)",
       ]
     ).getOutput().map { path in
       return path.trimmingCharacters(in: .whitespacesAndNewlines)

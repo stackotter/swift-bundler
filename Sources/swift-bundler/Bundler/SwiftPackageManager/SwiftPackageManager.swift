@@ -1,13 +1,7 @@
-import Foundation
 import ArgumentParser
-import Version
+import Foundation
 import Parsing
-
-import class PackageModel.Manifest
-import class Workspace.Workspace
-import struct TSCBasic.AbsolutePath
-import class Basics.ObservabilitySystem
-import struct Basics.Diagnostic
+import Version
 
 /// A utility for interacting with the Swift package manager and performing some other package
 /// related operations.
@@ -38,7 +32,7 @@ enum SwiftPackageManager {
       let arguments = [
         "package", "init",
         "--type=executable",
-        "--name=\(name)"
+        "--name=\(name)",
       ]
 
       let process = Process.create(
@@ -142,13 +136,15 @@ enum SwiftPackageManager {
         }
 
         let targetTriple = "arm64-apple-ios\(platformVersion)"
-        platformArguments = [
-          "-sdk", sdkPath,
-          "-target", targetTriple
-        ].flatMap { ["-Xswiftc", $0] } + [
-          "--target=\(targetTriple)",
-          "-isysroot", sdkPath
-        ].flatMap { ["-Xcc", $0] }
+        platformArguments =
+          [
+            "-sdk", sdkPath,
+            "-target", targetTriple,
+          ].flatMap { ["-Xswiftc", $0] }
+          + [
+            "--target=\(targetTriple)",
+            "-isysroot", sdkPath,
+          ].flatMap { ["-Xcc", $0] }
       case .iOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
@@ -161,13 +157,15 @@ enum SwiftPackageManager {
         // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
         let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
-        platformArguments = [
-          "-sdk", sdkPath,
-          "-target", targetTriple
-        ].flatMap { ["-Xswiftc", $0] } + [
-          "--target=\(targetTriple)",
-          "-isysroot", sdkPath
-        ].flatMap { ["-Xcc", $0] }
+        platformArguments =
+          [
+            "-sdk", sdkPath,
+            "-target", targetTriple,
+          ].flatMap { ["-Xswiftc", $0] }
+          + [
+            "--target=\(targetTriple)",
+            "-isysroot", sdkPath,
+          ].flatMap { ["-Xcc", $0] }
       case .macOS:
         platformArguments = []
     }
@@ -183,10 +181,11 @@ enum SwiftPackageManager {
       productArguments = []
     }
 
-    let arguments = [
-      "build",
-      "-c", configuration.rawValue
-    ] + productArguments + architectureArguments + platformArguments
+    let arguments =
+      [
+        "build",
+        "-c", configuration.rawValue,
+      ] + productArguments + architectureArguments + platformArguments
 
     return .success(arguments)
   }
@@ -199,7 +198,7 @@ enum SwiftPackageManager {
       "/usr/bin/xcrun",
       arguments: [
         "--sdk", platform.sdkName,
-        "--show-sdk-path"
+        "--show-sdk-path",
       ]
     ).getOutput().map { output in
       return output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -297,12 +296,11 @@ enum SwiftPackageManager {
         directory: packageDirectory
       )
 
-      return process.getOutput().flatMap { output in
+      return process.getOutput().map { output in
         let path = output.trimmingCharacters(in: .newlines)
-        return .success(URL(fileURLWithPath: path))
+        return URL(fileURLWithPath: path)
       }.mapError { error in
-        let command = "swift " + arguments.joined(separator: " ")
-        return .failedToGetProductsDirectory(command: command, error)
+        return .failedToGetProductsDirectory(command: "swift " + process.argumentsString, error)
       }
     }
   }
@@ -312,40 +310,130 @@ enum SwiftPackageManager {
   /// - Returns: The loaded manifest, or a failure if an error occurs.
   static func loadPackageManifest(
     from packageDirectory: URL
-  ) async -> Result<Manifest, SwiftPackageManagerError> {
-    let diagnostics: Box<[Basics.Diagnostic]> = Box([])
-    let result: Result<Manifest, Error>
-    do {
-      let packagePath = try AbsolutePath(validating: packageDirectory.path)
-      let scope = ObservabilitySystem({ _, diagnostic in
-        diagnostics.wrapped.append(diagnostic)
-      }).topScope
+  ) async -> Result<PackageManifest, SwiftPackageManagerError> {
+    // We used to use the SwiftPackageManager library to load package manifests,
+    // but that caused issues when the library version didn't match the user's
+    // installed Swift version and was very fiddly to fix. It was easier to just
+    // hand roll a custom solution that we can update in the future to maintain
+    // backwards compatability.
+    //
+    // Overview of loading a manifest manually:
+    // - Compile manifest with Swift compiler (to object file)
+    // - Link the output file with clang as the linker
+    // - Run the resulting executable with `-fileno 1` as its args
+    // - Parse the JSON that the executable outputs to stdout
 
-      let workspace = try Workspace(forRootPackage: packagePath)
-      result = await Task { () -> Manifest in
-        return try await withCheckedThrowingContinuation { (
-          continuation: CheckedContinuation<Manifest, Error>
-        ) in
-          workspace.loadRootManifest(
-            at: packagePath,
-            observabilityScope: scope,
-            completion: { result in
-              switch result {
-                case .success(let value):
-                  continuation.resume(returning: value)
-                case .failure(let error):
-                  continuation.resume(throwing: error)
-              }
-            }
-          )
-        }
-      }.result
-    } catch {
-      return .failure(.failedToLoadPackageManifest(directory: packageDirectory, [], error))
+    let manifestPath = packageDirectory.appendingPathComponent("Package.swift").path
+    let temporaryDirectory = FileManager.default.temporaryDirectory
+    let uuid = UUID().uuidString
+    let temporaryObjectFile =
+      temporaryDirectory
+      .appendingPathComponent("\(uuid)-PackageManifest.o").path
+    let temporaryExecutableFile =
+      temporaryDirectory
+      .appendingPathComponent("\(uuid)-PackageManifest").path
+
+    let targetInfo: SwiftTargetInfo
+    switch self.getTargetInfo() {
+      case .success(let info):
+        targetInfo = info
+      case .failure(let error):
+        return .failure(error)
     }
 
-    return result.mapError { error in
-      return .failedToLoadPackageManifest(directory: packageDirectory, diagnostics.wrapped, error)
+    let manifestAPIDirectory = targetInfo.paths.runtimeResourcePath
+      .appendingPathComponent("pm/ManifestAPI")
+
+    var librariesPaths: [String] = []
+    librariesPaths += targetInfo.paths.runtimeLibraryPaths.map(\.path)
+    librariesPaths += [manifestAPIDirectory.path]
+
+    var additionalSwiftArguments: [String] = []
+    #if os(macOS)
+      switch self.getLatestSDKPath(for: .macOS) {
+        case .success(let path):
+          librariesPaths += [path + "/usr/lib/swift"]
+          additionalSwiftArguments += ["-sdk", path]
+        case .failure(let error):
+          return .failure(error)
+      }
+    #endif
+
+    let swiftArguments =
+      [
+        "-frontend", "-c", "-primary-file", manifestPath,
+        "-I",  // TODO: Fix this hardcoded url
+        "/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-I",
+        manifestAPIDirectory.path,
+        "-swift-version", "5", "-package-description-version", "5.5.0",  // TODO: Parse version from manifest comment
+        "-disable-implicit-concurrency-module-import",
+        "-disable-implicit-string-processing-module-import", "-o", temporaryObjectFile,
+      ] + additionalSwiftArguments
+
+    let swiftProcess = Process.create("swift", arguments: swiftArguments)
+    if case let .failure(error) = swiftProcess.runAndWait() {
+      return .failure(.failedToCompilePackageManifest(error))
+    }
+
+    let clangArguments =
+      [
+        temporaryObjectFile,
+        "-lPackageDescription",
+        "-Xlinker", "-rpath", "-Xlinker",
+        manifestAPIDirectory.path,
+        "-o", temporaryExecutableFile,
+      ]
+      + librariesPaths.flatMap { path in
+        ["-L", path]
+      }
+
+    let clangProcess = Process.create("clang", arguments: clangArguments)
+    if case let .failure(error) = clangProcess.runAndWait() {
+      return .failure(.failedToLinkPackageManifest(error))
+    }
+
+    let process = Process.create(temporaryExecutableFile, arguments: ["-fileno", "1"])
+    let json: String
+    switch process.getOutput() {
+      case .success(let output):
+        json = output
+      case .failure(let error):
+        return .failure(.failedToExecutePackageManifest(error))
+    }
+
+    guard let jsonData = json.data(using: .utf8) else {
+      return .failure(.failedToParsePackageManifestOutput(json: json, nil))
+    }
+
+    do {
+      return .success(
+        try JSONDecoder().decode(PackageManifest.self, from: jsonData)
+      )
+    } catch {
+      return .failure(.failedToParsePackageManifestOutput(json: json, error))
+    }
+  }
+
+  static func getTargetInfo() -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
+    // TODO: This could be a nice easy one to unit test
+    let process = Process.create(
+      "swift",
+      arguments: ["-print-target-info"]
+    )
+
+    return process.getOutput().mapError { error in
+      return .failedToGetTargetInfo(command: "swift " + process.argumentsString, error)
+    }.flatMap { output in
+      guard let data = output.data(using: .utf8) else {
+        return .failure(.failedToParseTargetInfo(json: output, nil))
+      }
+      do {
+        return .success(
+          try JSONDecoder().decode(SwiftTargetInfo.self, from: data))
+      } catch {
+        return .failure(.failedToParseTargetInfo(json: output, error))
+      }
     }
   }
 }

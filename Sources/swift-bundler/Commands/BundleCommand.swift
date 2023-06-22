@@ -1,6 +1,5 @@
-import Foundation
 import ArgumentParser
-import PackageModel
+import Foundation
 
 /// The subcommand for creating app bundles for a package.
 struct BundleCommand: AsyncCommand {
@@ -26,13 +25,13 @@ struct BundleCommand: AsyncCommand {
     name: .long,
     help: .init(
       stringLiteral:
-        "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)." +
-        " Can only be set when `--skip-build` is supplied."
+        "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
+        + " Can only be set when `--skip-build` is supplied."
     ))
   var builtWithXcode = false
 
   /// Used to avoid loading configuration twice when RunCommand is used.
-  static var app: (name: String, app: AppConfiguration)? // TODO: fix this weird pattern with a better config loading system
+  static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
 
   init() {
     _arguments = OptionGroup()
@@ -53,13 +52,17 @@ struct BundleCommand: AsyncCommand {
     // Validate parameters
     if !skipBuild {
       guard arguments.productsDirectory == nil, !builtWithXcode else {
-        log.error("'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
+        log.error(
+          "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
         return false
       }
     }
 
-    if case .iOS = platform, builtWithXcode || arguments.universal || !arguments.architectures.isEmpty {
-      log.error("'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
+    if case .iOS = platform,
+      builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
+    {
+      log.error(
+        "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
       return false
     }
 
@@ -79,8 +82,12 @@ struct BundleCommand: AsyncCommand {
       return false
     }
 
-    if case .iOS = platform, !arguments.shouldCodesign || arguments.identity == nil || arguments.provisioningProfile == nil {
-      log.error("Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app")
+    if case .iOS = platform,
+      !arguments.shouldCodesign || arguments.identity == nil || arguments.provisioningProfile == nil
+    {
+      log.error(
+        "Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app"
+      )
       if arguments.identity == nil {
         Output {
           ""
@@ -114,9 +121,11 @@ struct BundleCommand: AsyncCommand {
     let architectures: [BuildArchitecture]
     switch platform {
       case .macOS:
-        architectures = arguments.universal
+        architectures =
+          arguments.universal
           ? [.arm64, .x86_64]
-          : (!arguments.architectures.isEmpty ? arguments.architectures : [BuildArchitecture.current])
+          : (!arguments.architectures.isEmpty
+            ? arguments.architectures : [BuildArchitecture.current])
       case .iOS:
         architectures = [.arm64]
       case .iOSSimulator:
@@ -139,7 +148,10 @@ struct BundleCommand: AsyncCommand {
         customFile: arguments.configurationFileOverride
       ).unwrap()
 
-      if !Self.validateArguments(arguments, platform: arguments.platform, skipBuild: skipBuild, builtWithXcode: builtWithXcode) {
+      if !Self.validateArguments(
+        arguments, platform: arguments.platform, skipBuild: skipBuild,
+        builtWithXcode: builtWithXcode)
+      {
         Foundation.exit(1)
       }
 
@@ -147,27 +159,32 @@ struct BundleCommand: AsyncCommand {
       let universal = arguments.universal || arguments.architectures.count > 1
       let architectures = getArchitectures(platform: arguments.platform)
 
-      let outputDirectory = Self.getOutputDirectory(arguments.outputDirectory, packageDirectory: packageDirectory)
+      let outputDirectory = Self.getOutputDirectory(
+        arguments.outputDirectory, packageDirectory: packageDirectory)
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
 
       // Load package manifest
       log.info("Loading package manifest")
-      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory).unwrap()
+      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+        .unwrap()
 
       guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
         let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
-        throw CLIError.failedToGetPlatformVersion(platform: arguments.platform, manifest: manifestFile)
+        throw CLIError.failedToGetPlatformVersion(
+          platform: arguments.platform, manifest: manifestFile)
       }
 
       // Get build output directory
-      let productsDirectory = try arguments.productsDirectory ?? SwiftPackageManager.getProductsDirectory(
-        in: packageDirectory,
-        configuration: arguments.buildConfiguration,
-        architectures: architectures,
-        platform: arguments.platform,
-        platformVersion: platformVersion
-      ).unwrap()
+      let productsDirectory =
+        try arguments.productsDirectory
+        ?? SwiftPackageManager.getProductsDirectory(
+          in: packageDirectory,
+          configuration: arguments.buildConfiguration,
+          architectures: architectures,
+          platform: arguments.platform,
+          platformVersion: platformVersion
+        ).unwrap()
 
       // Create build job
       let build: () async -> Result<Void, Error> = {
@@ -219,7 +236,9 @@ struct BundleCommand: AsyncCommand {
     }
 
     // Output the time elapsed and app bundle location
-    log.info("Done in \(elapsed.secondsString). App bundle located at '\(appBundle?.relativePath ?? "unknown")'")
+    log.info(
+      "Done in \(elapsed.secondsString). App bundle located at '\(appBundle?.relativePath ?? "unknown")'"
+    )
   }
 
   /// Gets the configuration for the specified app.

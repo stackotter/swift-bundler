@@ -1,5 +1,4 @@
 import Foundation
-import Basics
 
 /// An error returned by ``SwiftPackageManager``.
 enum SwiftPackageManagerError: LocalizedError {
@@ -11,7 +10,12 @@ enum SwiftPackageManagerError: LocalizedError {
   case invalidSwiftVersionOutput(String, Error)
   case failedToGetProductsDirectory(command: String, ProcessError)
   case failedToGetLatestSDKPath(Platform, ProcessError)
-  case failedToLoadPackageManifest(directory: URL, [Diagnostic], Error)
+  case failedToGetTargetInfo(command: String, ProcessError)
+  case failedToParseTargetInfo(json: String, Error?)
+  case failedToCompilePackageManifest(Error)
+  case failedToLinkPackageManifest(Error)
+  case failedToExecutePackageManifest(Error)
+  case failedToParsePackageManifestOutput(json: String, Error?)
 
   var errorDescription: String? {
     switch self {
@@ -31,9 +35,24 @@ enum SwiftPackageManagerError: LocalizedError {
         return "Failed to get products directory via '\(command)': \(error.localizedDescription)"
       case .failedToGetLatestSDKPath(let platform, let error):
         return "Failed to get latest \(platform.rawValue) SDK path: \(error.localizedDescription)"
-      case .failedToLoadPackageManifest(let directory, let diagnostics, _):
-        let diagnosticsString = diagnostics.map(\.description).map({ $0 + "\n" }).joined(separator: "")
-        return "\(diagnosticsString)Failed to load package manifest from '\(directory)'"
+      case .failedToGetTargetInfo(let command, let error):
+        return "Failed to get target info via '\(command)': \(error.localizedDescription)"
+      case .failedToParseTargetInfo(_, let error):
+        // 'Unknown error' means failed to convert string to data, but I didn't want to
+        // make that weak assumption about the implementation
+        return
+          "Failed to parse Swift target info: \(error?.localizedDescription ?? "Unknown error")"
+      case .failedToCompilePackageManifest(let error):
+        return "Failed to compile package manifest: \(error.localizedDescription)"
+      case .failedToLinkPackageManifest(let error):
+        return "Failed to link package manifest: \(error.localizedDescription)"
+      case .failedToExecutePackageManifest(let error):
+        return "Failed to execute package manifest: \(error.localizedDescription)"
+      case .failedToParsePackageManifestOutput(_, let error):
+        // 'Unknown error' means failed to convert string to data, but I didn't want to
+        // make that weak assumption about the implementation
+        return
+          "Failed to parse package manifest output: \(error?.localizedDescription ?? "Unknown error")"
     }
   }
 }
