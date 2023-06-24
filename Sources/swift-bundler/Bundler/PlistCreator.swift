@@ -56,7 +56,8 @@ enum PlistCreator {
         try contents.write(to: file)
         return .success()
       } catch {
-        return .failure(.failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error))
+        return .failure(
+          .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error))
       }
     }
   }
@@ -85,7 +86,7 @@ enum PlistCreator {
       "CFBundlePackageType": "APPL",
       "CFBundleShortVersionString": configuration.version,
       "CFBundleVersion": configuration.version,
-      "LSApplicationCategoryType": configuration.category
+      "LSApplicationCategoryType": configuration.category,
     ]
 
     switch platform {
@@ -96,6 +97,8 @@ enum PlistCreator {
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
         entries["UILaunchScreen"] = [String: Any]()
+      case .linux:
+        break
     }
 
     for (key, value) in configuration.plist ?? [:] {
@@ -121,17 +124,19 @@ enum PlistCreator {
       "CFBundleIdentifier": bundleIdentifier,
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": bundleName,
-      "CFBundlePackageType": "BNDL"
+      "CFBundlePackageType": "BNDL",
     ]
 
     switch platform {
-    case .macOS:
-      entries["LSMinimumSystemVersion"] = platformVersion
-      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-    case .iOS, .iOSSimulator:
-      // TODO: Make the produced Info.plist for iOS identical to Xcode's
-      entries["MinimumOSVersion"] = platformVersion
-      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      case .macOS:
+        entries["LSMinimumSystemVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
+      case .iOS, .iOSSimulator:
+        // TODO: Make the produced Info.plist for iOS identical to Xcode's
+        entries["MinimumOSVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      case .linux:
+        break
     }
 
     return Self.serialize(entries.compactMapValues { $0 })
@@ -142,7 +147,8 @@ enum PlistCreator {
   /// - Returns: The plist dictionary serialized as a string containing xml. If an error occurs, a failure is returned.
   static func serialize(_ entries: [String: Any]) -> Result<Data, PlistCreatorError> {
     do {
-      let data = try PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0)
+      let data = try PropertyListSerialization.data(
+        fromPropertyList: entries, format: .xml, options: 0)
       return .success(data)
     } catch {
       return .failure(.serializationFailed(error))

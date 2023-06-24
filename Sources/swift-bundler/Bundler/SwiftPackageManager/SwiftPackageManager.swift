@@ -168,10 +168,12 @@ enum SwiftPackageManager {
           ].flatMap { ["-Xcc", $0] }
       case .macOS:
         platformArguments = []
+      case .linux:
+        platformArguments = []
     }
 
-    let architectureArguments = architectures.flatMap {
-      ["--arch", $0.rawValue]
+    let architectureArguments = architectures.flatMap { architecture in
+      ["--arch", architecture.argument(for: platform)]
     }
 
     let productArguments: [String]
@@ -329,6 +331,12 @@ enum SwiftPackageManager {
       temporaryDirectory
       .appendingPathComponent("\(uuid)-PackageManifest").path
 
+    #if os(Linux)
+      let temporaryAutolinkFile =
+        temporaryDirectory
+        .appendingPathComponent("\(uuid)-PackageManifest.autolink").path
+    #endif
+
     let targetInfo: SwiftTargetInfo
     switch self.getTargetInfo() {
       case .success(let info):
@@ -355,6 +363,7 @@ enum SwiftPackageManager {
       }
     #endif
 
+    // Compile to object file
     let swiftArguments =
       [
         manifestPath,
@@ -374,6 +383,7 @@ enum SwiftPackageManager {
       return .failure(.failedToCompilePackageManifest(error))
     }
 
+    // Execute compiled manifest
     let process = Process.create(temporaryExecutableFile, arguments: ["-fileno", "1"])
     let json: String
     switch process.getOutput() {
@@ -383,6 +393,7 @@ enum SwiftPackageManager {
         return .failure(.failedToExecutePackageManifest(error))
     }
 
+    // Parse manifest output
     guard let jsonData = json.data(using: .utf8) else {
       return .failure(.failedToParsePackageManifestOutput(json: json, nil))
     }

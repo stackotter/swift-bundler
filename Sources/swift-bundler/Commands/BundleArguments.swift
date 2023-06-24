@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 struct BundleArguments: ParsableArguments {
   /// The name of the app to build.
@@ -31,7 +31,8 @@ struct BundleArguments: ParsableArguments {
   /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
   @Option(
     name: .long,
-    help: "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
+    help:
+      "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
     transform: URL.init(fileURLWithPath:))
   var productsDirectory: URL?
 
@@ -77,7 +78,7 @@ struct BundleArguments: ParsableArguments {
       }
       return platform
     })
-  var platform = Platform.macOS
+  var platform = Platform.currentPlatform
 
   /// A codesigning identity to use.
   @Option(
@@ -85,29 +86,33 @@ struct BundleArguments: ParsableArguments {
     help: "The identity to use for codesigning")
   var identity: String?
 
-  /// A provisioing profile to use.
-  @Option(
-    name: .customLong("provisioning-profile"),
-    help: "The provisioning profile to embed in the app (only applicable to iOS).",
-    transform: URL.init(fileURLWithPath:))
-  var provisioningProfile: URL?
+  #if os(macOS)
+    /// A provisioing profile to use.
+    @Option(
+      name: .customLong("provisioning-profile"),
+      help: "The provisioning profile to embed in the app (only applicable to iOS).",
+      transform: URL.init(fileURLWithPath:))
+    var provisioningProfile: URL?
 
-  /// If `true`, the application will be codesigned.
-  @Flag(
-    name: .customLong("codesign"),
-    help: "Codesign the application (use `--identity` to select the identity).")
-  var shouldCodesign = false
+    /// If `true`, the application will be codesigned.
+    @Flag(
+      name: .customLong("codesign"),
+      help: "Codesign the application (use `--identity` to select the identity).")
+    var shouldCodesign = false
 
-  /// If `true`, a universal application will be created (arm64 and x86_64).
-  @Flag(
-    name: .shortAndLong,
-    help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
-  var universal = false
+    /// If `true`, a universal application will be created (arm64 and x86_64).
+    @Flag(
+      name: .shortAndLong,
+      help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
+    var universal = false
 
-  /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
-  /// system-wide dynamic libraries being installed such as gtk).
-  @Flag(
-    name: .customLong("experimental-stand-alone"),
-    help: "Build an application which doesn't rely on any system-wide third-party libraries being installed (such as gtk). This features is experimental and potentially incompatible with '--universal', use with care.")
-  var standAlone = false
+    /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
+    /// system-wide dynamic libraries being installed such as gtk).
+    @Flag(
+      name: .customLong("experimental-stand-alone"),
+      help:
+        "Build an application which doesn't rely on any system-wide third-party libraries being installed (such as gtk). This features is experimental and potentially incompatible with '--universal', use with care."
+    )
+    var standAlone = false
+  #endif
 }

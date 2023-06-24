@@ -52,6 +52,9 @@ enum Runner {
           arguments: arguments,
           environmentVariables: environmentVariables
         )
+      case .linux:
+        // TODO: Implement linux app running
+        fatalError("TODO: Implement linux app running")
     }
   }
 
@@ -139,10 +142,11 @@ enum Runner {
         iosDeployExecutable,
         arguments: [
           "--noninteractive",
-          "--bundle", bundle.path
-        ] + environmentArguments + arguments.flatMap { argument in
-          return ["--args", argument]
-        },
+          "--bundle", bundle.path,
+        ] + environmentArguments
+          + arguments.flatMap { argument in
+            return ["--args", argument]
+          },
         runSilentlyWhenNotVerbose: false
       ).runAndWait().mapError { error in
         return .failedToRunIOSDeploy(error)

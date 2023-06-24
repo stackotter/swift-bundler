@@ -13,6 +13,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToGetTargetInfo(command: String, ProcessError)
   case failedToParseTargetInfo(json: String, Error?)
   case failedToCompilePackageManifest(Error)
+  case failedToExtractManifestAutolinkInfo(Error)
   case failedToLinkPackageManifest(Error)
   case failedToExecutePackageManifest(Error)
   case failedToParsePackageManifestOutput(json: String, Error?)
@@ -44,6 +45,9 @@ enum SwiftPackageManagerError: LocalizedError {
           "Failed to parse Swift target info: \(error?.localizedDescription ?? "Unknown error")"
       case .failedToCompilePackageManifest(let error):
         return "Failed to compile package manifest: \(error.localizedDescription)"
+      case .failedToExtractManifestAutolinkInfo(let error):
+        return
+          "Failed to extract autolink info from Package manifest object file: \(error.localizedDescription)"
       case .failedToLinkPackageManifest(let error):
         return "Failed to link package manifest: \(error.localizedDescription)"
       case .failedToExecutePackageManifest(let error):

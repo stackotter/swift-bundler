@@ -24,8 +24,11 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - bundleIdentifier: The identifier of the app bundle.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func signWithGeneratedEntitlements(bundle: URL, identityId: String, bundleIdentifier: String) -> Result<Void, CodeSignerError> {
-    let entitlements = bundle.deletingLastPathComponent().appendingPathComponent("entitlements.xcent")
+  static func signWithGeneratedEntitlements(
+    bundle: URL, identityId: String, bundleIdentifier: String
+  ) -> Result<Void, CodeSignerError> {
+    let entitlements = bundle.deletingLastPathComponent().appendingPathComponent(
+      "entitlements.xcent")
 
     return getTeamIdentifier(from: bundle).map { teamIdentifier -> String in
       generateEntitlementsContent(
@@ -49,14 +52,17 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func signAppBundle(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
+  static func signAppBundle(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<
+    Void, CodeSignerError
+  > {
     log.info("Codesigning app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
     if FileManager.default.itemExists(at: librariesDirectory, withType: .directory) {
       let contents: [URL]
       do {
-        contents = try FileManager.default.contentsOfDirectory(at: librariesDirectory, includingPropertiesForKeys: nil)
+        contents = try FileManager.default.contentsOfDirectory(
+          at: librariesDirectory, includingPropertiesForKeys: nil)
       } catch {
         return .failure(.failedToEnumerateDynamicLibraries(error))
       }
@@ -77,22 +83,25 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The entitlements to give the file (only valid for app bundles).
   /// - Returns: A failure if the `codesign` command fails.
-  static func sign(file: URL, identityId: String, entitlements: URL? = nil) -> Result<Void, CodeSignerError> {
+  static func sign(file: URL, identityId: String, entitlements: URL? = nil) -> Result<
+    Void, CodeSignerError
+  > {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
         "--entitlements", entitlements.path,
-        "--generate-entitlement-der"
+        "--generate-entitlement-der",
       ]
     } else {
       entitlementArguments = []
     }
 
-    let arguments = entitlementArguments + [
-      "--force", "--deep",
-      "--sign", identityId,
-      file.path
-    ]
+    let arguments =
+      entitlementArguments + [
+        "--force", "--deep",
+        "--sign", identityId,
+        file.path,
+      ]
 
     let process = Process.create(
       codesignToolPath,
@@ -172,7 +181,7 @@ enum CodeSigner {
       arguments: [
         "smime", "-verify",
         "-in", bundle.appendingPathComponent("embedded.mobileprovision").path,
-        "-inform", "der"
+        "-inform", "der",
       ]
     ).getOutput(excludeStdError: true).mapError { error in
       return .failedToVerifyProvisioningProfile(error)
@@ -196,20 +205,22 @@ enum CodeSigner {
   }
 
   /// Generates the contents of an entitlements file.
-  static func generateEntitlementsContent(teamIdentifier: String, bundleIdentifier: String) -> String {
+  static func generateEntitlementsContent(teamIdentifier: String, bundleIdentifier: String)
+    -> String
+  {
     return """
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>application-identifier</key>
-	<string>\(teamIdentifier).\(bundleIdentifier)</string>
-	<key>com.apple.developer.team-identifier</key>
-	<string>\(teamIdentifier)</string>
-	<key>get-task-allow</key>
-	<true/>
-</dict>
-</plist>
-"""
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+      	<key>application-identifier</key>
+      	<string>\(teamIdentifier).\(bundleIdentifier)</string>
+      	<key>com.apple.developer.team-identifier</key>
+      	<string>\(teamIdentifier)</string>
+      	<key>get-task-allow</key>
+      	<true/>
+      </dict>
+      </plist>
+      """
   }
 }

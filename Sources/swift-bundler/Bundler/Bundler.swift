@@ -24,5 +24,7 @@ func getBundler(for platform: Platform) -> any Bundler.Type {
       return MacOSBundler.self
     case .iOS, .iOSSimulator:
       return IOSBundler.self
+    case .linux:
+      fatalError("Unimplemented")
   }
 }

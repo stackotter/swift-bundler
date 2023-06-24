@@ -18,17 +18,19 @@ struct BundleCommand: AsyncCommand {
     help: "Skip the build step.")
   var skipBuild = false
 
-  /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
-  ///
-  /// Can only be `true` when ``skipBuild`` is `true`.
-  @Flag(
-    name: .long,
-    help: .init(
-      stringLiteral:
-        "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
-        + " Can only be set when `--skip-build` is supplied."
-    ))
-  var builtWithXcode = false
+  #if os(macOS)
+    /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
+    ///
+    /// Can only be `true` when ``skipBuild`` is `true`.
+    @Flag(
+      name: .long,
+      help: .init(
+        stringLiteral:
+          "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
+          + " Can only be set when `--skip-build` is supplied."
+      ))
+    var builtWithXcode = false
+  #endif
 
   /// Used to avoid loading configuration twice when RunCommand is used.
   static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
@@ -50,69 +52,82 @@ struct BundleCommand: AsyncCommand {
     builtWithXcode: Bool
   ) -> Bool {
     // Validate parameters
-    if !skipBuild {
-      guard arguments.productsDirectory == nil, !builtWithXcode else {
+    #if os(macOS)
+      if !skipBuild {
+        guard arguments.productsDirectory == nil, !builtWithXcode else {
+          log.error(
+            "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'"
+          )
+          return false
+        }
+      }
+    #endif
+
+    if Platform.currentPlatform == .linux && platform != .linux {
+      log.error("'--platform \(platform)' is not supported on Linux")
+      return false
+    }
+
+    // macOS-only arguments
+    #if os(macOS)
+      if platform == .iOS,
+        builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
+      {
         log.error(
-          "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'")
+          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'"
+        )
         return false
       }
-    }
 
-    if case .iOS = platform,
-      builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
-    {
-      log.error(
-        "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'")
-      return false
-    }
-
-    if arguments.shouldCodesign && arguments.identity == nil {
-      log.error("Please provide a codesigning identity with `--identity`")
-      Output {
-        ""
-        Section("Tip: Listing available identities") {
-          ExampleCommand("swift bundler list-identities")
-        }
-      }.show()
-      return false
-    }
-
-    if arguments.identity != nil && !arguments.shouldCodesign {
-      log.error("`--identity` can only be used with `--codesign`")
-      return false
-    }
-
-    if case .iOS = platform,
-      !arguments.shouldCodesign || arguments.identity == nil || arguments.provisioningProfile == nil
-    {
-      log.error(
-        "Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app"
-      )
-      if arguments.identity == nil {
+      if arguments.shouldCodesign && arguments.identity == nil {
+        log.error("Please provide a codesigning identity with `--identity`")
         Output {
           ""
           Section("Tip: Listing available identities") {
             ExampleCommand("swift bundler list-identities")
           }
         }.show()
+        return false
       }
-      return false
-    }
 
-    if platform != .macOS && arguments.standAlone {
-      log.error("'--experimental-stand-alone' only works on macOS")
-      return false
-    }
+      if arguments.identity != nil && !arguments.shouldCodesign {
+        log.error("`--identity` can only be used with `--codesign`")
+        return false
+      }
 
-    switch platform {
-      case .iOS:
-        break
-      default:
-        if arguments.provisioningProfile != nil {
-          log.error("`--provisioning-profile` is only available when building iOS apps")
-          return false
+      if case .iOS = platform,
+        !arguments.shouldCodesign || arguments.identity == nil
+          || arguments.provisioningProfile == nil
+      {
+        log.error(
+          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app"
+        )
+        if arguments.identity == nil {
+          Output {
+            ""
+            Section("Tip: Listing available identities") {
+              ExampleCommand("swift bundler list-identities")
+            }
+          }.show()
         }
-    }
+        return false
+      }
+
+      if platform != .macOS && arguments.standAlone {
+        log.error("'--experimental-stand-alone' only works on macOS")
+        return false
+      }
+
+      switch platform {
+        case .iOS:
+          break
+        default:
+          if arguments.provisioningProfile != nil {
+            log.error("`--provisioning-profile` is only available when building iOS apps")
+            return false
+          }
+      }
+    #endif
 
     return true
   }
@@ -129,6 +144,8 @@ struct BundleCommand: AsyncCommand {
       case .iOS:
         architectures = [.arm64]
       case .iOSSimulator:
+        architectures = [BuildArchitecture.current]
+      case .linux:
         architectures = [BuildArchitecture.current]
     }
 

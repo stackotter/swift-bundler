@@ -4,5 +4,6 @@ import Foundation
 enum Device {
   case macOS
   case iOS
+  case linux
   case iOSSimulator(id: String)
 }

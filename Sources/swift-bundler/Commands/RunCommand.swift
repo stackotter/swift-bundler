@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 /// The subcommand for running an app from a package.
 struct RunCommand: AsyncCommand {
@@ -60,9 +60,12 @@ struct RunCommand: AsyncCommand {
     ).unwrap()
 
     // Get the device to run on
-    let device = try Self.getDevice(for: arguments.platform, simulatorSearchTerm: simulatorSearchTerm)
+    let device = try Self.getDevice(
+      for: arguments.platform, simulatorSearchTerm: simulatorSearchTerm)
 
-    let bundleCommand = BundleCommand(arguments: _arguments, skipBuild: false, builtWithXcode: false)
+    let bundleCommand = BundleCommand(
+      arguments: _arguments, skipBuild: false, builtWithXcode: false
+    )
 
     if !skipBuild {
       await bundleCommand.run()
@@ -83,22 +86,27 @@ struct RunCommand: AsyncCommand {
         return .macOS
       case .iOS:
         return .iOS
+      case .linux:
+        return .linux
       case .iOSSimulator:
         if let searchTerm = simulatorSearchTerm {
           // Get matching simulators
-          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm).unwrap().sorted { first, second in
-            // Put booted simulators first and sort by name length
-            if first.state == .shutdown && second.state == .booted {
-              return false
-            } else if first.name.count > second.name.count {
-              return false
-            } else {
-              return true
+          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
+            .unwrap().sorted { first, second in
+              // Put booted simulators first and sort by name length
+              if first.state == .shutdown && second.state == .booted {
+                return false
+              } else if first.name.count > second.name.count {
+                return false
+              } else {
+                return true
+              }
             }
-          }
 
           guard let simulator = simulators.first else {
-            log.error("Search term '\(searchTerm)' did not match any simulators. To list available simulators, use the following command:")
+            log.error(
+              "Search term '\(searchTerm)' did not match any simulators. To list available simulators, use the following command:"
+            )
 
             Output {
               ""
@@ -121,7 +129,9 @@ struct RunCommand: AsyncCommand {
             return .iOSSimulator(id: "booted")
           } else {
             // swiftlint:disable:next line_length
-            log.error("To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:")
+            log.error(
+              "To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
+            )
 
             Output {
               ExampleCommand("swift bundler simulators list")

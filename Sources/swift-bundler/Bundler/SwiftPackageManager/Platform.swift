@@ -5,6 +5,7 @@ enum Platform: String, CaseIterable {
   case macOS
   case iOS
   case iOSSimulator
+  case linux
 
   /// The platform's name.
   var name: String {
@@ -20,6 +21,8 @@ enum Platform: String, CaseIterable {
         return "iphoneos"
       case .iOSSimulator:
         return "iphonesimulator"
+      case .linux:
+        return "linux"
     }
   }
 
@@ -28,7 +31,7 @@ enum Platform: String, CaseIterable {
     switch self {
       case .iOSSimulator:
         return true
-      case .macOS, .iOS:
+      case .macOS, .iOS, .linux:
         return false
     }
   }
@@ -36,10 +39,19 @@ enum Platform: String, CaseIterable {
   /// The platform's name in a SwiftPM manifest's JSON representation.
   var manifestName: String {
     switch self {
-      case .macOS, .iOS:
+      case .macOS, .iOS, .linux:
         return name.lowercased()
       case .iOSSimulator:
         return Platform.iOS.name.lowercased()
     }
+  }
+
+  /// The platform that Swift Bundler is currently being run on.
+  static var currentPlatform: Platform {
+    #if os(macOS)
+      return .macOS
+    #elseif os(Linux)
+      return .linux
+    #endif
   }
 }

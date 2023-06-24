@@ -25,7 +25,7 @@ enum ResourceBundler {
         "actool", assetCatalog.path,
         "--compile", destinationDirectory.path,
         "--platform", platform.sdkName,
-        "--minimum-deployment-target", platformVersion
+        "--minimum-deployment-target", platformVersion,
       ]
     ).runAndWait().mapError { error in
       return .failedToCompileXCAssets(error)
@@ -62,7 +62,8 @@ enum ResourceBundler {
   ) -> Result<Void, ResourceBundlerError> {
     let contents: [URL]
     do {
-      contents = try FileManager.default.contentsOfDirectory(at: sourceDirectory, includingPropertiesForKeys: nil, options: [])
+      contents = try FileManager.default.contentsOfDirectory(
+        at: sourceDirectory, includingPropertiesForKeys: nil, options: [])
     } catch {
       return .failure(.failedToEnumerateBundles(directory: sourceDirectory, error))
     }
@@ -104,7 +105,9 @@ enum ResourceBundler {
   ///   - bundle: The bundle to copy.
   ///   - destination: The directory to copy the bundle to.
   /// - Returns: If an error occurs, a failure is returned.
-  static func copyResourceBundle(_ bundle: URL, to destination: URL) -> Result<Void, ResourceBundlerError> {
+  static func copyResourceBundle(_ bundle: URL, to destination: URL) -> Result<
+    Void, ResourceBundlerError
+  > {
     log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
 
     let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
@@ -148,9 +151,13 @@ enum ResourceBundler {
 
       switch platform {
         case .macOS:
-          destinationBundleResources = destinationBundle.appendingPathComponent("Contents/Resources")
+          destinationBundleResources = destinationBundle.appendingPathComponent(
+            "Contents/Resources")
         case .iOS, .iOSSimulator:
           destinationBundleResources = destinationBundle
+        case .linux:
+          // TODO: Implement on linux
+          fatalError("TODO: Implement resource bundling for linux")
       }
     }
 
@@ -193,13 +200,14 @@ enum ResourceBundler {
     let copyBundle = flatten(
       {
         if !isMainBundle {
-          return createResourceBundleDirectoryStructure(at: destinationBundle, for: platform).flatMap { _ in
-            createResourceBundleInfoPlist(
-              in: destinationBundle,
-              platform: platform,
-              platformVersion: platformVersion
-            )
-          }
+          return createResourceBundleDirectoryStructure(at: destinationBundle, for: platform)
+            .flatMap { _ in
+              createResourceBundleInfoPlist(
+                in: destinationBundle,
+                platform: platform,
+                platformVersion: platformVersion
+              )
+            }
         }
         return .success()
       },
@@ -223,7 +231,9 @@ enum ResourceBundler {
   ///
   /// - Parameter bundle: The bundle to create.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createResourceBundleDirectoryStructure(at bundle: URL, for platform: Platform) -> Result<Void, ResourceBundlerError> {
+  private static func createResourceBundleDirectoryStructure(at bundle: URL, for platform: Platform)
+    -> Result<Void, ResourceBundlerError>
+  {
     let directory: URL
     switch platform {
       case .macOS:
@@ -232,6 +242,9 @@ enum ResourceBundler {
         directory = bundleResources
       case .iOS, .iOSSimulator:
         directory = bundle
+      case .linux:
+        // TODO: Implement for linux
+        fatalError("TODO: Implement resource bundling on linux")
     }
 
     do {
@@ -259,12 +272,17 @@ enum ResourceBundler {
     let infoPlist: URL
     switch platform {
       case .macOS:
-        infoPlist = bundle
+        infoPlist =
+          bundle
           .appendingPathComponent("Contents")
           .appendingPathComponent("Info.plist")
       case .iOS, .iOSSimulator:
-        infoPlist = bundle
+        infoPlist =
+          bundle
           .appendingPathComponent("Info.plist")
+      case .linux:
+        // TODO: Implement for linux
+        fatalError("Implement for linux")
     }
 
     let result = PlistCreator.createResourceBundleInfoPlist(
@@ -289,10 +307,13 @@ enum ResourceBundler {
   ///   - source: The source directory.
   ///   - destination: The destination directory.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func copyResources(from source: URL, to destination: URL) -> Result<Void, ResourceBundlerError> {
+  private static func copyResources(from source: URL, to destination: URL) -> Result<
+    Void, ResourceBundlerError
+  > {
     let contents: [URL]
     do {
-      contents = try FileManager.default.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
+      contents = try FileManager.default.contentsOfDirectory(
+        at: source, includingPropertiesForKeys: nil, options: [])
     } catch {
       return .failure(.failedToEnumerateBundleContents(directory: source, error))
     }
