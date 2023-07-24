@@ -318,17 +318,13 @@ enum SwiftPackageManager {
     // backwards compatability.
     //
     // Overview of loading a manifest manually:
-    // - Compile manifest with Swift compiler (to object file)
-    // - Link the output file with clang as the linker
+    // - Compile and link manifest with Swift driver
     // - Run the resulting executable with `-fileno 1` as its args
     // - Parse the JSON that the executable outputs to stdout
 
     let manifestPath = packageDirectory.appendingPathComponent("Package.swift").path
     let temporaryDirectory = FileManager.default.temporaryDirectory
     let uuid = UUID().uuidString
-    let temporaryObjectFile =
-      temporaryDirectory
-      .appendingPathComponent("\(uuid)-PackageManifest.o").path
     let temporaryExecutableFile =
       temporaryDirectory
       .appendingPathComponent("\(uuid)-PackageManifest").path
@@ -361,36 +357,21 @@ enum SwiftPackageManager {
 
     let swiftArguments =
       [
-        "-frontend", "-c", "-primary-file", manifestPath,
-        "-I",  // TODO: Fix this hardcoded url
-        "/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
-        "-I",
-        manifestAPIDirectory.path,
+        manifestPath,
+        "-I", manifestAPIDirectory.path,
+        "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
+        "-lPackageDescription",
         "-swift-version", "5", "-package-description-version", "5.5.0",  // TODO: Parse version from manifest comment
         "-disable-implicit-concurrency-module-import",
-        "-disable-implicit-string-processing-module-import", "-o", temporaryObjectFile,
-      ] + additionalSwiftArguments
-
-    let swiftProcess = Process.create("swift", arguments: swiftArguments)
-    if case let .failure(error) = swiftProcess.runAndWait() {
-      return .failure(.failedToCompilePackageManifest(error))
-    }
-
-    let clangArguments =
-      [
-        temporaryObjectFile,
-        "-lPackageDescription",
-        "-Xlinker", "-rpath", "-Xlinker",
-        manifestAPIDirectory.path,
+        "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,
       ]
-      + librariesPaths.flatMap { path in
-        ["-L", path]
-      }
+      + librariesPaths.flatMap { ["-L", $0] }
+      + additionalSwiftArguments
 
-    let clangProcess = Process.create("clang", arguments: clangArguments)
-    if case let .failure(error) = clangProcess.runAndWait() {
-      return .failure(.failedToLinkPackageManifest(error))
+    let swiftProcess = Process.create("swiftc", arguments: swiftArguments)
+    if case let .failure(error) = swiftProcess.runAndWait() {
+      return .failure(.failedToCompilePackageManifest(error))
     }
 
     let process = Process.create(temporaryExecutableFile, arguments: ["-fileno", "1"])
