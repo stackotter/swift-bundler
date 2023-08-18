@@ -1,11 +1,11 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 
 /// The subcommand for listing available simulators.
 struct SimulatorsListCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "list",
-    abstract: "List available iOS simulators."
+    abstract: "List available iOS and visionOS simulators."
   )
 
   /// A search term or terms to filter by.

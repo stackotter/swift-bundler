@@ -1,5 +1,5 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 
 /// The subcommand for listing available templates.
 struct TemplatesListCommand: Command {

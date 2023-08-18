@@ -1,5 +1,5 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 
 /// The subcommand for managing and listing available simulators.
 struct SimulatorsCommand: ParsableCommand {

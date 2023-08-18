@@ -155,6 +155,8 @@ enum ResourceBundler {
             "Contents/Resources")
         case .iOS, .iOSSimulator:
           destinationBundleResources = destinationBundle
+        case .visionOS, .visionOSSimulator:
+          destinationBundleResources = destinationBundle
         case .linux:
           // TODO: Implement on linux
           fatalError("TODO: Implement resource bundling for linux")
@@ -242,6 +244,8 @@ enum ResourceBundler {
         directory = bundleResources
       case .iOS, .iOSSimulator:
         directory = bundle
+      case .visionOS, .visionOSSimulator:
+        directory = bundle
       case .linux:
         // TODO: Implement for linux
         fatalError("TODO: Implement resource bundling on linux")
@@ -277,6 +281,10 @@ enum ResourceBundler {
           .appendingPathComponent("Contents")
           .appendingPathComponent("Info.plist")
       case .iOS, .iOSSimulator:
+        infoPlist =
+          bundle
+          .appendingPathComponent("Info.plist")
+      case .visionOS, .visionOSSimulator:
         infoPlist =
           bundle
           .appendingPathComponent("Info.plist")

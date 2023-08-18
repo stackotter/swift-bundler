@@ -1,6 +1,6 @@
-import ArgumentParser
 import Foundation
 import Parsing
+import StackOtterArgParser
 import Version
 
 /// A utility for interacting with the Swift package manager and performing some other package
@@ -157,6 +157,46 @@ enum SwiftPackageManager {
         // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
         let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
+        platformArguments =
+          [
+            "-sdk", sdkPath,
+            "-target", targetTriple,
+          ].flatMap { ["-Xswiftc", $0] }
+          + [
+            "--target=\(targetTriple)",
+            "-isysroot", sdkPath,
+          ].flatMap { ["-Xcc", $0] }
+      case .visionOS:
+        let sdkPath: String
+        switch getLatestSDKPath(for: platform) {
+        case let .success(path):
+          sdkPath = path
+        case let .failure(error):
+          return .failure(error)
+        }
+
+        let targetTriple = "arm64-apple-xros\(platformVersion)"
+        platformArguments =
+          [
+            "-sdk", sdkPath,
+            "-target", targetTriple,
+          ].flatMap { ["-Xswiftc", $0] }
+          + [
+            "--target=\(targetTriple)",
+            "-isysroot", sdkPath,
+          ].flatMap { ["-Xcc", $0] }
+      case .visionOSSimulator:
+        let sdkPath: String
+        switch getLatestSDKPath(for: platform) {
+        case let .success(path):
+          sdkPath = path
+        case let .failure(error):
+          return .failure(error)
+        }
+
+        // TODO: Make target triple generation generic
+        let architecture = BuildArchitecture.current.rawValue
+        let targetTriple = "\(architecture)-apple-xros\(platformVersion)-simulator"
         platformArguments =
           [
             "-sdk", sdkPath,

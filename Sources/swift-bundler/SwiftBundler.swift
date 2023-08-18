@@ -1,5 +1,5 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 import Version
 
 /// The root command of Swift Bundler.

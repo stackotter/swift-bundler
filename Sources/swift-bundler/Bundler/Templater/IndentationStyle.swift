@@ -1,5 +1,5 @@
-import ArgumentParser
 import Parsing
+import StackOtterArgParser
 
 /// A style of code indentation.
 enum IndentationStyle: Equatable {

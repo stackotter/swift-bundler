@@ -1,5 +1,5 @@
-import ArgumentParser
 import Foundation
+import StackOtterArgParser
 
 /// The subcommand for creating app bundles for a package.
 struct BundleCommand: AsyncCommand {
@@ -79,6 +79,15 @@ struct BundleCommand: AsyncCommand {
         return false
       }
 
+      if platform == .visionOS,
+        builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
+      {
+        log.error(
+          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform visionOS'"
+        )
+        return false
+      }
+
       if arguments.shouldCodesign && arguments.identity == nil {
         log.error("Please provide a codesigning identity with `--identity`")
         Output {
@@ -113,6 +122,24 @@ struct BundleCommand: AsyncCommand {
         return false
       }
 
+      if case .visionOS = platform,
+         !arguments.shouldCodesign || arguments.identity == nil
+         || arguments.provisioningProfile == nil
+      {
+        log.error(
+          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when building visionOS app"
+        )
+        if arguments.identity == nil {
+          Output {
+            ""
+            Section("Tip: Listing available identities") {
+              ExampleCommand("swift bundler list-identities")
+            }
+          }.show()
+        }
+        return false
+      }
+
       if platform != .macOS && arguments.standAlone {
         log.error("'--experimental-stand-alone' only works on macOS")
         return false
@@ -121,9 +148,11 @@ struct BundleCommand: AsyncCommand {
       switch platform {
         case .iOS:
           break
+        case .visionOS:
+          break
         default:
           if arguments.provisioningProfile != nil {
-            log.error("`--provisioning-profile` is only available when building iOS apps")
+            log.error("`--provisioning-profile` is only available when building visionOS and iOS apps")
             return false
           }
       }
@@ -144,6 +173,10 @@ struct BundleCommand: AsyncCommand {
       case .iOS:
         architectures = [.arm64]
       case .iOSSimulator:
+        architectures = [BuildArchitecture.current]
+      case .visionOS:
+        architectures = [.arm64]
+      case .visionOSSimulator:
         architectures = [BuildArchitecture.current]
       case .linux:
         architectures = [BuildArchitecture.current]

@@ -19,6 +19,8 @@ extension XcodeprojConverter {
     var macOSDeploymentVersion: String?
     /// The target's minimum iOS version.
     var iOSDeploymentVersion: String?
+    /// The target's minimum visionOS version.
+    var visionOSDeploymentVersion: String?
     /// The target's `Info.plist` file.
     var infoPlist: URL?
   }

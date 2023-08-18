@@ -27,6 +27,9 @@ enum SimulatorManager {
         if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
           simulators.append(contentsOf: platformSimulators)
         }
+        if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+          simulators.append(contentsOf: platformSimulators)
+        }
       }
 
       return .success(simulators)

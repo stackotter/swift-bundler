@@ -1,4 +1,4 @@
-import ArgumentParser
+import StackOtterArgParser
 import Foundation
 
 struct BundleArguments: ParsableArguments {
@@ -90,7 +90,7 @@ struct BundleArguments: ParsableArguments {
     /// A provisioing profile to use.
     @Option(
       name: .customLong("provisioning-profile"),
-      help: "The provisioning profile to embed in the app (only applicable to iOS).",
+      help: "The provisioning profile to embed in the app (only applicable to visionOS and iOS).",
       transform: URL.init(fileURLWithPath:))
     var provisioningProfile: URL?
 
