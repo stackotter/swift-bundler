@@ -5,8 +5,6 @@ enum RunnerError: LocalizedError {
   case failedToRunExecutable(ProcessError)
   case failedToLocateIOSDeploy(ProcessError)
   case failedToRunIOSDeploy(ProcessError)
-  case failedToLocateVisionOSDeploy(ProcessError)
-  case failedToRunVisionOSDeploy(ProcessError)
   case failedToReadEnvironmentFile(URL, Error)
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnIOSSimulator(SimulatorManagerError)
@@ -18,22 +16,12 @@ enum RunnerError: LocalizedError {
         return "Failed to run executable: \(error)"
       case .failedToLocateIOSDeploy:
         return Output {
-          "'ios-deploy' must be installed to run apps on iOS"
+          "'ios-deploy' must be installed to run apps on iOS and visionOS"
           ExampleCommand("brew install ios-deploy")
         }.body
       case .failedToRunIOSDeploy:
         return Output {
           "Failed to run 'ios-deploy'"
-          "Have you trusted the provisioning profile in settings? (General > VPN & Device Management)"
-        }.body
-      case .failedToLocateVisionOSDeploy:
-        return Output {
-          "'xros-deploy' must be installed to run apps on visionOS"
-          ExampleCommand("brew install xros-deploy")
-        }.body
-      case .failedToRunVisionOSDeploy:
-        return Output {
-          "Failed to run 'xros-deploy'"
           "Have you trusted the provisioning profile in settings? (General > VPN & Device Management)"
         }.body
       case let .failedToReadEnvironmentFile(file, _):

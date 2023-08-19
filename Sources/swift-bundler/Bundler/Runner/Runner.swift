@@ -219,7 +219,7 @@ enum Runner {
     // to handle running programs located on the user's PATH) so that a detailed
     // error message can be emitted for this easy misconfiguration issue.
     return Process.locate("ios-deploy").mapError { error in
-      .failedToLocateVisionOSDeploy(error)
+      .failedToLocateIOSDeploy(error)
     }.flatMap { xrosDeployExecutable in
       let environmentArguments: [String]
       if !environmentVariables.isEmpty {
@@ -243,7 +243,7 @@ enum Runner {
           },
         runSilentlyWhenNotVerbose: false
       ).runAndWait().mapError { error in
-        .failedToRunVisionOSDeploy(error)
+        .failedToRunIOSDeploy(error)
       }
     }
   }
