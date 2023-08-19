@@ -505,7 +505,7 @@ enum XcodeprojConverter {
     let source = SourceFileSyntax {
       DeclSyntax("import PackageDescription")
         .withLeadingTrivia(Trivia(pieces: [
-          .lineComment("// swift-tools-version: 5.6"),
+          .lineComment("// swift-tools-version: 5.7"),
           .newlines(1)
         ]))
         .withTrailingTrivia(Trivia.newline)

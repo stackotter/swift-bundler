@@ -404,13 +404,20 @@ enum SwiftPackageManager {
     #endif
 
     // Compile to object file
+    #if swift(>=5.9)
+      // Without this, visionOS is unable to target.
+      let pkgDescVersion = "5.9.0"
+    #else
+      // TODO: Parse version from manifest comment
+      let pkgDescVersion = "5.5.0"
+    #endif
     let swiftArguments =
       [
         manifestPath,
         "-I", manifestAPIDirectory.path,
         "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
         "-lPackageDescription",
-        "-swift-version", "5", "-package-description-version", "5.5.0",  // TODO: Parse version from manifest comment
+        "-swift-version", "5", "-package-description-version", pkgDescVersion,  
         "-disable-implicit-concurrency-module-import",
         "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,
