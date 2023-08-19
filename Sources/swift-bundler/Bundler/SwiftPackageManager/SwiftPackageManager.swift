@@ -126,7 +126,7 @@ enum SwiftPackageManager {
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch platform {
-      case .iOS:
+      case .iOS, .visionOS:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -135,7 +135,9 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        let targetTriple = "arm64-apple-ios\(platformVersion)"
+        let targetTriple = platform == .iOS
+          ? "arm64-apple-ios\(platformVersion)"
+          : "arm64-apple-xros\(platformVersion)"
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -145,7 +147,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .iOSSimulator:
+      case .iOSSimulator, .visionOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -154,9 +156,11 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        // TODO: Make target triple generation generic (be sure to do it for visionOS too)
+        // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
-        let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
+        let targetTriple = platform == .iOSSimulator 
+          ? "\(architecture)-apple-ios\(platformVersion)-simulator" 
+          : "\(architecture)-apple-xros\(platformVersion)-simulator" 
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -166,48 +170,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .visionOS:
-        let sdkPath: String
-        switch getLatestSDKPath(for: platform) {
-          case let .success(path):
-            sdkPath = path
-          case let .failure(error):
-            return .failure(error)
-        }
-
-        let targetTriple = "arm64-apple-xros\(platformVersion)"
-        platformArguments =
-          [
-            "-sdk", sdkPath,
-            "-target", targetTriple,
-          ].flatMap { ["-Xswiftc", $0] }
-          + [
-            "--target=\(targetTriple)",
-            "-isysroot", sdkPath,
-          ].flatMap { ["-Xcc", $0] }
-      case .visionOSSimulator:
-        let sdkPath: String
-        switch getLatestSDKPath(for: platform) {
-          case let .success(path):
-            sdkPath = path
-          case let .failure(error):
-            return .failure(error)
-        }
-
-        let architecture = BuildArchitecture.current.rawValue
-        let targetTriple = "\(architecture)-apple-xros\(platformVersion)-simulator"
-        platformArguments =
-          [
-            "-sdk", sdkPath,
-            "-target", targetTriple,
-          ].flatMap { ["-Xswiftc", $0] }
-          + [
-            "--target=\(targetTriple)",
-            "-isysroot", sdkPath,
-          ].flatMap { ["-Xcc", $0] }
-      case .macOS:
-        platformArguments = []
-      case .linux:
+      case .macOS, .linux:
         platformArguments = []
     }
 
