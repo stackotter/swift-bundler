@@ -90,7 +90,8 @@ struct RunCommand: AsyncCommand {
         return .visionOS
       case .linux:
         return .linux
-      case .iOSSimulator:
+      case .iOSSimulator, .visionOSSimulator:
+        // TODO: Refactor this into a separate function.
         if let searchTerm = simulatorSearchTerm {
           // Get matching simulators
           let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
@@ -122,70 +123,17 @@ struct RunCommand: AsyncCommand {
             log.info("Found multiple matching simulators, using '\(simulator.name)'")
           }
 
-          return .iOSSimulator(id: simulator.id)
+          return platform == .iOSSimulator ? .iOSSimulator(id: simulator.id) : .visionOSSimulator(id: simulator.id)
         } else {
           let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
 
           // If an iOS simulator is booted, use that
           if allSimulators.contains(where: { $0.state == .booted }) {
-            return .iOSSimulator(id: "booted")
+            return platform == .iOSSimulator ? .iOSSimulator(id: "booted") : .visionOSSimulator(id: "booted")
           } else {
             // swiftlint:disable:next line_length
             log.error(
               "To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
-            )
-
-            Output {
-              ExampleCommand("swift bundler simulators list")
-            }.show()
-
-            Foundation.exit(1)
-          }
-        }
-
-      case .visionOSSimulator:
-        if let searchTerm = simulatorSearchTerm {
-          // Get matching simulators
-          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
-            .unwrap().sorted { first, second in
-              // Put booted simulators first and sort by name length
-              if first.state == .shutdown, second.state == .booted {
-                return false
-              } else if first.name.count > second.name.count {
-                return false
-              } else {
-                return true
-              }
-            }
-
-          guard let simulator = simulators.first else {
-            log.error(
-              "Search term '\(searchTerm)' did not match any simulators. To list available simulators, use the following command:"
-            )
-
-            Output {
-              ""
-              ExampleCommand("swift bundler simulators list")
-            }.show()
-
-            Foundation.exit(1)
-          }
-
-          if simulators.count > 1 {
-            log.info("Found multiple matching simulators, using '\(simulator.name)'")
-          }
-
-          return .visionOSSimulator(id: simulator.id)
-        } else {
-          let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
-
-          // If an visionOS simulator is booted, use that
-          if allSimulators.contains(where: { $0.state == .booted }) {
-            return .visionOSSimulator(id: "booted")
-          } else {
-            // swiftlint:disable:next line_length
-            log.error(
-              "To run on the visionOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
             )
 
             Output {
