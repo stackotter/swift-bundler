@@ -215,10 +215,10 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
-    // `xros-deploy` is explicitly resolved (instead of allowing `Process.create`
+    // `ios-deploy` is explicitly resolved (instead of allowing `Process.create`
     // to handle running programs located on the user's PATH) so that a detailed
     // error message can be emitted for this easy misconfiguration issue.
-    return Process.locate("xros-deploy").mapError { error in
+    return Process.locate("ios-deploy").mapError { error in
       .failedToLocateVisionOSDeploy(error)
     }.flatMap { xrosDeployExecutable in
       let environmentArguments: [String]

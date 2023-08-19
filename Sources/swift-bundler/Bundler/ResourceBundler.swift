@@ -153,9 +153,7 @@ enum ResourceBundler {
         case .macOS:
           destinationBundleResources = destinationBundle.appendingPathComponent(
             "Contents/Resources")
-        case .iOS, .iOSSimulator:
-          destinationBundleResources = destinationBundle
-        case .visionOS, .visionOSSimulator:
+        case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator:
           destinationBundleResources = destinationBundle
         case .linux:
           // TODO: Implement on linux
@@ -242,9 +240,7 @@ enum ResourceBundler {
         let bundleContents = bundle.appendingPathComponent("Contents")
         let bundleResources = bundleContents.appendingPathComponent("Resources")
         directory = bundleResources
-      case .iOS, .iOSSimulator:
-        directory = bundle
-      case .visionOS, .visionOSSimulator:
+      case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator:
         directory = bundle
       case .linux:
         // TODO: Implement for linux
@@ -280,11 +276,7 @@ enum ResourceBundler {
           bundle
           .appendingPathComponent("Contents")
           .appendingPathComponent("Info.plist")
-      case .iOS, .iOSSimulator:
-        infoPlist =
-          bundle
-          .appendingPathComponent("Info.plist")
-      case .visionOS, .visionOSSimulator:
+      case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator:
         infoPlist =
           bundle
           .appendingPathComponent("Info.plist")

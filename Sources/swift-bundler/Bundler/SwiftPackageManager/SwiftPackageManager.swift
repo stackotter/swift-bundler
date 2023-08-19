@@ -154,7 +154,7 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        // TODO: Make target triple generation generic
+        // TODO: Make target triple generation generic (be sure to do it for visionOS too)
         let architecture = BuildArchitecture.current.rawValue
         let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
         platformArguments =
@@ -169,10 +169,10 @@ enum SwiftPackageManager {
       case .visionOS:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
-        case let .success(path):
-          sdkPath = path
-        case let .failure(error):
-          return .failure(error)
+          case let .success(path):
+            sdkPath = path
+          case let .failure(error):
+            return .failure(error)
         }
 
         let targetTriple = "arm64-apple-xros\(platformVersion)"
@@ -188,13 +188,12 @@ enum SwiftPackageManager {
       case .visionOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
-        case let .success(path):
-          sdkPath = path
-        case let .failure(error):
-          return .failure(error)
+          case let .success(path):
+            sdkPath = path
+          case let .failure(error):
+            return .failure(error)
         }
 
-        // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
         let targetTriple = "\(architecture)-apple-xros\(platformVersion)-simulator"
         platformArguments =
@@ -403,21 +402,37 @@ enum SwiftPackageManager {
       }
     #endif
 
+    let toolsVersionProcess = Process.create("swift", arguments: ["package", "tools-version"])
+    let toolsVersion: String
+    let swiftMajorVersion: String
+    switch toolsVersionProcess.getOutput() {
+      case .success(let output):
+        toolsVersion = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        swiftMajorVersion = String(toolsVersion.first!)
+      case .failure(let error):
+        // Provide a fallback tools version for when the tools version cannot be parsed.
+        #if swift(>=6.0)
+          // with Swift 6 just around the corner...
+          let pkgDescVersion = "6.0.0"
+        #elseif swift(>=5.9)
+          // targeting visionOS needs a minimum tools version of 5.9.
+          let pkgDescVersion = "5.9.0"
+        #else
+          let pkgDescVersion = "5.5.0"
+        #endif
+        toolsVersion = pkgDescVersion
+        swiftMajorVersion = String(toolsVersion.first!)
+        return .failure(.failedToParsePackageManifestToolsVersion(fallbackVersion: toolsVersion, error))
+    }
+
     // Compile to object file
-    #if swift(>=5.9)
-      // Without this, visionOS is unable to target.
-      let pkgDescVersion = "5.9.0"
-    #else
-      // TODO: Parse version from manifest comment
-      let pkgDescVersion = "5.5.0"
-    #endif
     let swiftArguments =
       [
         manifestPath,
         "-I", manifestAPIDirectory.path,
         "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
         "-lPackageDescription",
-        "-swift-version", "5", "-package-description-version", pkgDescVersion,  
+        "-swift-version", swiftMajorVersion, "-package-description-version", toolsVersion,  
         "-disable-implicit-concurrency-module-import",
         "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,

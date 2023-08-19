@@ -133,9 +133,6 @@ enum IOSBundler: Bundler {
   /// Creates the following structure:
   ///
   /// - `AppName.app`
-  ///   - `Contents`
-  ///     - `MacOS`
-  ///     - `Resources`
   ///     - `Libraries`
   ///
   /// If the app directory already exists, it is deleted before continuing.
