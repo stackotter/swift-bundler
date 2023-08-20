@@ -90,27 +90,28 @@ enum PlistCreator {
     ]
 
     switch platform {
-      case .macOS:
-        entries["LSMinimumSystemVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-      case .iOS, .iOSSimulator:
-        entries["MinimumOSVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
-        entries["UILaunchScreen"] = [String: Any]()
-      case .visionOS, .visionOSSimulator:
-        entries["MinimumOSVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["XROS"]
-        entries["UISceneConfigurations"] = [String: Any]()
-        entries["UIDeviceFamily"] = [7]
-      case .linux:
-        break
+    case .macOS:
+      entries["LSMinimumSystemVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
+    case .iOS, .iOSSimulator:
+      entries["MinimumOSVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      entries["UILaunchScreen"] = [String: Any]()
+    case .visionOS, .visionOSSimulator:
+      entries["MinimumOSVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["XROS"]
+      entries["UIApplicationSceneManifest"] = [String: Any]()
+      entries["UISceneConfigurations"] = [String: Any]()
+      entries["UIDeviceFamily"] = [7]
+    case .linux:
+      break
     }
 
     for (key, value) in configuration.plist ?? [:] {
       entries[key] = value.value
     }
 
-    return Self.serialize(entries.compactMapValues { $0 })
+    return serialize(entries.compactMapValues { $0 })
   }
 
   /// Creates the contents of a resource bundle's `Info.plist` file.
@@ -133,22 +134,22 @@ enum PlistCreator {
     ]
 
     switch platform {
-      case .macOS:
-        entries["LSMinimumSystemVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
-      case .iOS, .iOSSimulator:
-        // TODO: Make the produced Info.plist for iOS identical to Xcode's
-        entries["MinimumOSVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
-      case .visionOS, .visionOSSimulator:
-        // TODO: Make the produced Info.plist for visionOS identical to Xcode's
-        entries["MinimumOSVersion"] = platformVersion
-        entries["CFBundleSupportedPlatforms"] = ["XROS"]
-      case .linux:
-        break
+    case .macOS:
+      entries["LSMinimumSystemVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
+    case .iOS, .iOSSimulator:
+      // TODO: Make the produced Info.plist for iOS identical to Xcode's
+      entries["MinimumOSVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+    case .visionOS, .visionOSSimulator:
+      // TODO: Make the produced Info.plist for visionOS identical to Xcode's
+      entries["MinimumOSVersion"] = platformVersion
+      entries["CFBundleSupportedPlatforms"] = ["XROS"]
+    case .linux:
+      break
     }
 
-    return Self.serialize(entries.compactMapValues { $0 })
+    return serialize(entries.compactMapValues { $0 })
   }
 
   /// Serializes a plist dictionary into an `xml` format.
@@ -157,7 +158,8 @@ enum PlistCreator {
   static func serialize(_ entries: [String: Any]) -> Result<Data, PlistCreatorError> {
     do {
       let data = try PropertyListSerialization.data(
-        fromPropertyList: entries, format: .xml, options: 0)
+        fromPropertyList: entries, format: .xml, options: 0
+      )
       return .success(data)
     } catch {
       return .failure(.serializationFailed(error))
