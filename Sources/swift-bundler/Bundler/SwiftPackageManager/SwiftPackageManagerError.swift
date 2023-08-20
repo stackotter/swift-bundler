@@ -17,7 +17,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToLinkPackageManifest(Error)
   case failedToExecutePackageManifest(Error)
   case failedToParsePackageManifestOutput(json: String, Error?)
-  case failedToParsePackageManifestToolsVersion(fallbackVersion: String, Error?)
+  case failedToParsePackageManifestToolsVersion(Error?)
 
   var errorDescription: String? {
     switch self {
@@ -58,10 +58,9 @@ enum SwiftPackageManagerError: LocalizedError {
         // make that weak assumption about the implementation
         return
           "Failed to parse package manifest output: \(error?.localizedDescription ?? "Unknown error")"
-      case .failedToParsePackageManifestToolsVersion(let fallbackVersion, let error):
+      case .failedToParsePackageManifestToolsVersion(let error):
         return """
           Failed to parse package manifest tools version: \(error?.localizedDescription ?? "Unknown error")
-          Falling back to tools version \(fallbackVersion), which may fail to build with your target.
           """
     }
   }

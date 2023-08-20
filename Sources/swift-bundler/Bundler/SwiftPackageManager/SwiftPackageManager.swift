@@ -373,19 +373,7 @@ enum SwiftPackageManager {
         toolsVersion = output.trimmingCharacters(in: .whitespacesAndNewlines)
         swiftMajorVersion = String(toolsVersion.first!)
       case .failure(let error):
-        // Provide a fallback tools version for when the tools version cannot be parsed.
-        #if swift(>=6.0)
-          // with Swift 6 just around the corner...
-          let pkgDescVersion = "6.0.0"
-        #elseif swift(>=5.9)
-          // targeting visionOS needs a minimum tools version of 5.9.
-          let pkgDescVersion = "5.9.0"
-        #else
-          let pkgDescVersion = "5.5.0"
-        #endif
-        toolsVersion = pkgDescVersion
-        swiftMajorVersion = String(toolsVersion.first!)
-        return .failure(.failedToParsePackageManifestToolsVersion(fallbackVersion: toolsVersion, error))
+        return .failure(.failedToParsePackageManifestToolsVersion(error))
     }
 
     // Compile to object file
