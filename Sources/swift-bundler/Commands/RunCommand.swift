@@ -1,5 +1,5 @@
-import ArgumentParser
 import Foundation
+import StackOtterArgParser
 
 /// The subcommand for running an app from a package.
 struct RunCommand: AsyncCommand {
@@ -21,7 +21,7 @@ struct RunCommand: AsyncCommand {
 
   @Option(
     name: [.customLong("simulator")],
-    help: "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8').")
+    help: "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8' or 'Apple Vision Pro').")
   var simulatorSearchTerm: String?
 
   /// If `true`, the building and bundling step is skipped.
@@ -86,9 +86,12 @@ struct RunCommand: AsyncCommand {
         return .macOS
       case .iOS:
         return .iOS
+      case .visionOS:
+        return .visionOS
       case .linux:
         return .linux
-      case .iOSSimulator:
+      case .iOSSimulator, .visionOSSimulator:
+        // TODO: Refactor this into a separate function.
         if let searchTerm = simulatorSearchTerm {
           // Get matching simulators
           let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
@@ -120,13 +123,13 @@ struct RunCommand: AsyncCommand {
             log.info("Found multiple matching simulators, using '\(simulator.name)'")
           }
 
-          return .iOSSimulator(id: simulator.id)
+          return platform == .iOSSimulator ? .iOSSimulator(id: simulator.id) : .visionOSSimulator(id: simulator.id)
         } else {
           let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
 
           // If an iOS simulator is booted, use that
           if allSimulators.contains(where: { $0.state == .booted }) {
-            return .iOSSimulator(id: "booted")
+            return platform == .iOSSimulator ? .iOSSimulator(id: "booted") : .visionOSSimulator(id: "booted")
           } else {
             // swiftlint:disable:next line_length
             log.error(

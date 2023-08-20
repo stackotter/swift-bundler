@@ -8,6 +8,7 @@ enum RunnerError: LocalizedError {
   case failedToReadEnvironmentFile(URL, Error)
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnIOSSimulator(SimulatorManagerError)
+  case failedToRunOnVisionOSSimulator(SimulatorManagerError)
 
   var errorDescription: String? {
     switch self {
@@ -15,7 +16,7 @@ enum RunnerError: LocalizedError {
         return "Failed to run executable: \(error)"
       case .failedToLocateIOSDeploy:
         return Output {
-          "'ios-deploy' must be installed to run apps on iOS"
+          "'ios-deploy' must be installed to run apps on iOS and visionOS"
           ExampleCommand("brew install ios-deploy")
         }.body
       case .failedToRunIOSDeploy:
@@ -23,12 +24,14 @@ enum RunnerError: LocalizedError {
           "Failed to run 'ios-deploy'"
           "Have you trusted the provisioning profile in settings? (General > VPN & Device Management)"
         }.body
-      case .failedToReadEnvironmentFile(let file, _):
+      case let .failedToReadEnvironmentFile(file, _):
         return "Failed to read contents of environment file '\(file.relativePath)'"
-      case .failedToParseEnvironmentFileEntry(let line):
+      case let .failedToParseEnvironmentFileEntry(line):
         return "Failed to parse environment file, lines must contain '=': '\(line)'"
-      case .failedToRunOnIOSSimulator(let error):
+      case let .failedToRunOnIOSSimulator(error):
         return "Failed to run app on iOS simulator: \(error.localizedDescription)"
+      case let .failedToRunOnVisionOSSimulator(error):
+        return "Failed to run app on visionOS simulator: \(error.localizedDescription)"
     }
   }
 }

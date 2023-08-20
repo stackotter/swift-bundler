@@ -1,11 +1,11 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 
 /// The subcommand for booting simulators.
 struct SimulatorsBootCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "boot",
-    abstract: "Boot an iOS simulator."
+    abstract: "Boot an iOS or visionOS simulator."
   )
 
   /// The id or name of the simulator to start.

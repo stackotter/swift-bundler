@@ -1,6 +1,6 @@
-import ArgumentParser
 import Foundation
 import Parsing
+import StackOtterArgParser
 import Version
 
 /// A utility for interacting with the Swift package manager and performing some other package
@@ -126,7 +126,7 @@ enum SwiftPackageManager {
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch platform {
-      case .iOS:
+      case .iOS, .visionOS:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -135,7 +135,9 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        let targetTriple = "arm64-apple-ios\(platformVersion)"
+        let targetTriple = platform == .iOS
+          ? "arm64-apple-ios\(platformVersion)"
+          : "arm64-apple-xros\(platformVersion)"
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -145,7 +147,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .iOSSimulator:
+      case .iOSSimulator, .visionOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -156,7 +158,9 @@ enum SwiftPackageManager {
 
         // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
-        let targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
+        let targetTriple = platform == .iOSSimulator 
+          ? "\(architecture)-apple-ios\(platformVersion)-simulator" 
+          : "\(architecture)-apple-xros\(platformVersion)-simulator" 
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -166,9 +170,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .macOS:
-        platformArguments = []
-      case .linux:
+      case .macOS, .linux:
         platformArguments = []
     }
 
@@ -363,6 +365,17 @@ enum SwiftPackageManager {
       }
     #endif
 
+    let toolsVersionProcess = Process.create("swift", arguments: ["package", "tools-version"])
+    let toolsVersion: String
+    let swiftMajorVersion: String
+    switch toolsVersionProcess.getOutput() {
+      case .success(let output):
+        toolsVersion = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        swiftMajorVersion = String(toolsVersion.first!)
+      case .failure(let error):
+        return .failure(.failedToParsePackageManifestToolsVersion(error))
+    }
+
     // Compile to object file
     let swiftArguments =
       [
@@ -370,7 +383,7 @@ enum SwiftPackageManager {
         "-I", manifestAPIDirectory.path,
         "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
         "-lPackageDescription",
-        "-swift-version", "5", "-package-description-version", "5.5.0",  // TODO: Parse version from manifest comment
+        "-swift-version", swiftMajorVersion, "-package-description-version", toolsVersion,  
         "-disable-implicit-concurrency-module-import",
         "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,

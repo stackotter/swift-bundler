@@ -97,6 +97,17 @@ enum PlistCreator {
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
         entries["UILaunchScreen"] = [String: Any]()
+      case .visionOS, .visionOSSimulator:
+        // using Apple's HelloWorld visionOS demo as a reference
+        // ref: https://developer.apple.com/documentation/visionos/world
+        entries["MinimumOSVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["XROS"]
+        entries["UIApplicationSceneManifest"] = [
+          "UIApplicationSupportsMultipleScenes": true,
+          "UISceneConfigurations": [String: Any](),
+        ]
+        entries["UINativeSizeClass"] = 1
+        entries["UIDeviceFamily"] = [7]
       case .linux:
         break
     }
@@ -135,6 +146,10 @@ enum PlistCreator {
         // TODO: Make the produced Info.plist for iOS identical to Xcode's
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      case .visionOS, .visionOSSimulator:
+        // TODO: Make the produced Info.plist for visionOS identical to Xcode's
+        entries["MinimumOSVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["XROS"]
       case .linux:
         break
     }

@@ -1,5 +1,5 @@
-import ArgumentParser
 import Foundation
+import StackOtterArgParser
 
 /// An architecture to build for.
 enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {

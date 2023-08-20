@@ -1,8 +1,8 @@
 import Foundation
 
-/// The bundler for creating iOS apps.
-enum IOSBundler: Bundler {
-  /// Bundles the built executable and resources into an iOS app.
+/// The bundler for creating visionOS apps.
+enum VisionOSBundler: Bundler {
+  /// Bundles the built executable and resources into an visionOS app.
   ///
   /// ``build(product:in:buildConfiguration:universal:)`` should usually be called first.
   /// - Parameters:
@@ -12,8 +12,8 @@ enum IOSBundler: Bundler {
   ///   - packageDirectory: The root directory of the package containing the app.
   ///   - productsDirectory: The directory containing the products from the build step.
   ///   - outputDirectory: The directory to output the app into.
-  ///   - isXcodeBuild: Does nothing for iOS.
-  ///   - universal: Does nothing for iOS.
+  ///   - isXcodeBuild: Does nothing for visionOS.
+  ///   - universal: Does nothing for visionOS.
   ///   - standAlone: If `true`, the app bundle will not depend on any system-wide dependencies
   ///     being installed (such as gtk).
   ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
@@ -25,12 +25,12 @@ enum IOSBundler: Bundler {
     appName: String,
     packageName: String,
     appConfiguration: AppConfiguration,
-    packageDirectory: URL,
+    packageDirectory _: URL,
     productsDirectory: URL,
     outputDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
-    standAlone: Bool,
+    standAlone _: Bool,
     codesigningIdentity: String?,
     provisioningProfile: URL?,
     platformVersion: String,
@@ -44,7 +44,7 @@ enum IOSBundler: Bundler {
     let appExecutable = appBundle.appendingPathComponent(appName)
     let appDynamicLibrariesDirectory = appBundle.appendingPathComponent("Libraries")
 
-    // let createAppIconIfPresent: () -> Result<Void, IOSBundlerError> = {
+    // let createAppIconIfPresent: () -> Result<Void, VisionOSBundlerError> = {
     //   if let path = appConfiguration.icon {
     //     let icon = packageDirectory.appendingPathComponent(path)
     //     return Self.createAppIcon(icon: icon, outputDirectory: appAssets)
@@ -52,12 +52,12 @@ enum IOSBundler: Bundler {
     //   return .success()
     // }
 
-    let copyResourcesBundles: () -> Result<Void, IOSBundlerError> = {
+    let copyResourcesBundles: () -> Result<Void, VisionOSBundlerError> = {
       ResourceBundler.copyResources(
         from: productsDirectory,
         to: appBundle,
         fixBundles: !isXcodeBuild && !universal,
-        platform: targetingSimulator ? .iOSSimulator : .iOS,
+        platform: targetingSimulator ? .visionOSSimulator : .visionOS,
         platformVersion: platformVersion,
         packageName: packageName,
         productName: appConfiguration.product
@@ -66,7 +66,7 @@ enum IOSBundler: Bundler {
       }
     }
 
-    let copyDynamicLibraries: () -> Result<Void, IOSBundlerError> = {
+    let copyDynamicLibraries: () -> Result<Void, VisionOSBundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
         dependedOnBy: appExecutable,
         to: appDynamicLibrariesDirectory,
@@ -79,22 +79,22 @@ enum IOSBundler: Bundler {
       }
     }
 
-    let embedProfile: () -> Result<Void, IOSBundlerError> = {
+    let embedProfile: () -> Result<Void, VisionOSBundlerError> = {
       if let provisioningProfile = provisioningProfile {
-        return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
+        return embedProvisioningProfile(provisioningProfile, in: appBundle)
       } else {
         return .success()
       }
     }
 
-    let codesign: () -> Result<Void, IOSBundlerError> = {
+    let codesign: () -> Result<Void, VisionOSBundlerError> = {
       if let identity = codesigningIdentity {
         return CodeSigner.signWithGeneratedEntitlements(
           bundle: appBundle,
           identityId: identity,
           bundleIdentifier: appConfiguration.identifier
         ).mapError { error in
-          return .failedToCodesign(error)
+          .failedToCodesign(error)
         }
       } else {
         return .success()
@@ -103,14 +103,14 @@ enum IOSBundler: Bundler {
 
     // TODO: Why is app icon creation disabled?
     let bundleApp = flatten(
-      { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
-      { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
+      { createAppDirectoryStructure(at: outputDirectory, appName: appName) },
+      { copyExecutable(at: executableArtifact, to: appExecutable) },
       {
-        Self.createMetadataFiles(
+        createMetadataFiles(
           at: appBundle,
           appName: appName,
           appConfiguration: appConfiguration,
-          iOSVersion: platformVersion,
+          visionOSVersion: platformVersion,
           targetingSimulator: targetingSimulator
         )
       },
@@ -121,8 +121,8 @@ enum IOSBundler: Bundler {
       { codesign() }
     )
 
-    return bundleApp().mapError { (error: IOSBundlerError) -> Error in
-      return error
+    return bundleApp().mapError { (error: VisionOSBundlerError) -> Error in
+      error
     }
   }
 
@@ -141,7 +141,7 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
-  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, IOSBundlerError> {
+  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, VisionOSBundlerError> {
     log.info("Creating '\(appName).app'")
     let fileManager = FileManager.default
 
@@ -165,7 +165,7 @@ enum IOSBundler: Bundler {
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
-  private static func copyExecutable(at source: URL, to destination: URL) -> Result<Void, IOSBundlerError> {
+  private static func copyExecutable(at source: URL, to destination: URL) -> Result<Void, VisionOSBundlerError> {
     log.info("Copying executable")
     do {
       try FileManager.default.copyItem(at: source, to: destination)
@@ -180,20 +180,20 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Contents` directory.
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
-  ///   - iOSVersion: The iOS version to target.
+  ///   - visionOSVersion: The visionOS version to target.
   ///   - targetingSimulator: If `true`, the files will be created for running in a simulator.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createMetadataFiles(
     at outputDirectory: URL,
     appName: String,
     appConfiguration: AppConfiguration,
-    iOSVersion: String,
+    visionOSVersion: String,
     targetingSimulator: Bool
-  ) -> Result<Void, IOSBundlerError> {
+  ) -> Result<Void, VisionOSBundlerError> {
     log.info("Creating 'PkgInfo'")
     let pkgInfoFile = outputDirectory.appendingPathComponent("PkgInfo")
     do {
-      var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
+      var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4C, 0x3F, 0x3F, 0x3F, 0x3F]
       let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
       try pkgInfoData.write(to: pkgInfoFile)
     } catch {
@@ -206,8 +206,8 @@ enum IOSBundler: Bundler {
       at: infoPlistFile,
       appName: appName,
       configuration: appConfiguration,
-      platform: targetingSimulator ? .iOSSimulator : .iOS,
-      platformVersion: iOSVersion
+      platform: targetingSimulator ? .visionOSSimulator : .visionOS,
+      platformVersion: visionOSVersion
     ).mapError { error in
       .failedToCreateInfoPlist(error)
     }
@@ -221,7 +221,7 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
   ///            If the file is neither an `icns` or a `png`, a failure is also returned.
-  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, IOSBundlerError> {
+  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, VisionOSBundlerError> {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {
       log.info("Copying '\(icon.lastPathComponent)'")
@@ -243,7 +243,7 @@ enum IOSBundler: Bundler {
     return .failure(.invalidAppIconFile(icon))
   }
 
-  private static func embedProvisioningProfile(_ provisioningProfile: URL, in bundle: URL) -> Result<Void, IOSBundlerError> {
+  private static func embedProvisioningProfile(_ provisioningProfile: URL, in bundle: URL) -> Result<Void, VisionOSBundlerError> {
     log.info("Embedding provisioning profile")
 
     do {

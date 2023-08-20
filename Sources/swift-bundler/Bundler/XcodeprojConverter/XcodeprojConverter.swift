@@ -1,11 +1,11 @@
 import Foundation
+import SwiftFormat
+import SwiftFormatConfiguration
+import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftXcodeProj
 import TOMLKit
 import Version
-import SwiftSyntax
-import SwiftSyntaxBuilder
-import SwiftFormat
-import SwiftFormatConfiguration
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
@@ -201,12 +201,19 @@ enum XcodeprojConverter {
         // Extract the rest of the executable target
         let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
         var iOSDeploymentVersion = buildSettings?["IPHONEOS_DEPLOYMENT_TARGET"] as? String
+        var visionOSDeploymentVersion = buildSettings?["XROS_DEPLOYMENT_TARGET"] as? String
         let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
 
         // iOS deployment version doesn't always seem to be included, so we can just guess if iOS is supported
         if iOSDeploymentVersion == nil && buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
           iOSDeploymentVersion = "15.0"
           log.warning("Could not find target iOS version, assuming 15.0")
+        }
+
+        // visionOS deployment version doesn't always seem to be included, so we can just guess if visionOS is supported
+        if visionOSDeploymentVersion == nil, buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
+          visionOSDeploymentVersion = "1.0"
+          log.warning("Could not find target visionOS version, assuming 1.0")
         }
 
         let evaluate = { (value: String) -> String in
@@ -227,6 +234,7 @@ enum XcodeprojConverter {
           packageDependencies: packageDependencies,
           macOSDeploymentVersion: macOSDeploymentVersion,
           iOSDeploymentVersion: iOSDeploymentVersion,
+          visionOSDeploymentVersion: visionOSDeploymentVersion,
           infoPlist: infoPlist
         ))
       } else {
@@ -543,6 +551,11 @@ enum XcodeprojConverter {
       .compactMap(Version.init(tolerant:))
       .max()
 
+    let visionOSDeploymentVersion: Version? = executableTargets
+      .compactMap(\.visionOSDeploymentVersion)
+      .compactMap(Version.init(tolerant:))
+      .max()
+
     var platformStrings: [String] = []
     if let version = macOSDeploymentVersion?.underscoredMinimal {
       platformStrings.append(".macOS(.v\(version))")
@@ -553,6 +566,13 @@ enum XcodeprojConverter {
         version = "15"
       }
       platformStrings.append(".iOS(.v\(version))")
+    }
+
+    if var version = visionOSDeploymentVersion?.underscoredMinimal {
+      if visionOSDeploymentVersion?.major == 1 {
+        version = "1"
+      }
+      platformStrings.append(".visionOS(.v\(version))")
     }
 
     return platformStrings

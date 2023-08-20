@@ -1,5 +1,5 @@
-import ArgumentParser
 import Foundation
+import StackOtterArgParser
 
 /// The subcommand for creating app bundles for a package.
 struct BundleCommand: AsyncCommand {
@@ -70,11 +70,11 @@ struct BundleCommand: AsyncCommand {
 
     // macOS-only arguments
     #if os(macOS)
-      if platform == .iOS,
+      if (platform == .iOS || platform == .visionOS),
         builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
       {
         log.error(
-          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform iOS'"
+          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform \(platform.rawValue)'"
         )
         return false
       }
@@ -95,12 +95,12 @@ struct BundleCommand: AsyncCommand {
         return false
       }
 
-      if case .iOS = platform,
-        !arguments.shouldCodesign || arguments.identity == nil
-          || arguments.provisioningProfile == nil
+      if platform == .iOS || platform == .visionOS,
+         !arguments.shouldCodesign || arguments.identity == nil
+         || arguments.provisioningProfile == nil
       {
         log.error(
-          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when building iOS app"
+          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when '--platform \(platform.rawValue)'"
         )
         if arguments.identity == nil {
           Output {
@@ -119,11 +119,11 @@ struct BundleCommand: AsyncCommand {
       }
 
       switch platform {
-        case .iOS:
+        case .iOS, .visionOS:
           break
         default:
           if arguments.provisioningProfile != nil {
-            log.error("`--provisioning-profile` is only available when building iOS apps")
+            log.error("`--provisioning-profile` is only available when building visionOS and iOS apps")
             return false
           }
       }
@@ -141,11 +141,9 @@ struct BundleCommand: AsyncCommand {
           ? [.arm64, .x86_64]
           : (!arguments.architectures.isEmpty
             ? arguments.architectures : [BuildArchitecture.current])
-      case .iOS:
+      case .iOS, .visionOS:
         architectures = [.arm64]
-      case .iOSSimulator:
-        architectures = [BuildArchitecture.current]
-      case .linux:
+      case .linux, .iOSSimulator, .visionOSSimulator:
         architectures = [BuildArchitecture.current]
     }
 

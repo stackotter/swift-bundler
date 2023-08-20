@@ -52,6 +52,20 @@ enum Runner {
           arguments: arguments,
           environmentVariables: environmentVariables
         )
+      case .visionOS:
+        return runVisionOSApp(
+          bundle: bundle,
+          arguments: arguments,
+          environmentVariables: environmentVariables
+        )
+      case .visionOSSimulator(let id):
+        return runVisionOSSimulatorApp(
+          bundle: bundle,
+          bundleIdentifier: bundleIdentifier,
+          simulatorId: id,
+          arguments: arguments,
+          environmentVariables: environmentVariables
+        )
       case .linux:
         // TODO: Implement linux app running
         fatalError("TODO: Implement linux app running")
@@ -187,6 +201,86 @@ enum Runner {
       )
     }.mapError { error in
       return .failedToRunOnIOSSimulator(error)
+    }
+  }
+
+  /// Runs an app on the first connected visionOS device.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  /// - Returns: A failure if an error occurs.
+  static func runVisionOSApp(
+    bundle: URL,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    // `ios-deploy` is explicitly resolved (instead of allowing `Process.create`
+    // to handle running programs located on the user's PATH) so that a detailed
+    // error message can be emitted for this easy misconfiguration issue.
+    return Process.locate("ios-deploy").mapError { error in
+      .failedToLocateIOSDeploy(error)
+    }.flatMap { xrosDeployExecutable in
+      let environmentArguments: [String]
+      if !environmentVariables.isEmpty {
+        // TODO: correctly escape keys and values
+        let value = environmentVariables.map { key, value in
+          "\(key)=\(value)"
+        }.joined(separator: " ")
+        environmentArguments = ["--envs", "\(value)"]
+      } else {
+        environmentArguments = []
+      }
+
+      return Process.create(
+        xrosDeployExecutable,
+        arguments: [
+          "--noninteractive",
+          "--bundle", bundle.path,
+        ] + environmentArguments
+          + arguments.flatMap { argument in
+            ["--args", argument]
+          },
+        runSilentlyWhenNotVerbose: false
+      ).runAndWait().mapError { error in
+        .failedToRunIOSDeploy(error)
+      }
+    }
+  }
+
+  /// Runs an app on an visionOS simulator.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - bundleIdentifier: The app's identifier.
+  ///   - simulatorId: The id of the simulator to run.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  /// - Returns: A failure if an error occurs.
+  static func runVisionOSSimulatorApp(
+    bundle: URL,
+    bundleIdentifier: String,
+    simulatorId: String,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    log.info("Preparing simulator")
+    return SimulatorManager.bootSimulator(id: simulatorId).flatMap { _ in
+      log.info("Installing app")
+      return SimulatorManager.installApp(bundle, simulatorId: simulatorId)
+    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+      log.info("Opening Simulator")
+      return SimulatorManager.openSimulatorApp()
+    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+      log.info("Launching \(bundleIdentifier)")
+      return SimulatorManager.launchApp(
+        bundleIdentifier,
+        simulatorId: simulatorId,
+        connectConsole: true,
+        arguments: arguments,
+        environmentVariables: environmentVariables
+      )
+    }.mapError { error in
+      .failedToRunOnVisionOSSimulator(error)
     }
   }
 }

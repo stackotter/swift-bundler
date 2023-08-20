@@ -1,5 +1,5 @@
 import Foundation
-import ArgumentParser
+import StackOtterArgParser
 
 extension Array: ExpressibleByArgument where Element: ExpressibleByArgument {
   public var defaultValueDescription: String {
