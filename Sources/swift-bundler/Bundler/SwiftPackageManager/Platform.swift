@@ -26,7 +26,7 @@ enum Platform: String, CaseIterable {
       case .visionOS:
         return "xros"
       case .visionOSSimulator:
-        return "xrossimulator"
+        return "xrsimulator"
       case .linux:
         return "linux"
     }

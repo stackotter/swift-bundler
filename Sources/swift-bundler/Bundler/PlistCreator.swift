@@ -101,6 +101,7 @@ enum PlistCreator {
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["XROS"]
         entries["UISceneConfigurations"] = [String: Any]()
+        entries["UIDeviceFamily"] = [7]
       case .linux:
         break
     }
