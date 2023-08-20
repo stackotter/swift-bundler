@@ -32,7 +32,7 @@ struct RunCommand: AsyncCommand {
 
   /// Command line arguments that get passed through to the app.
   @Argument(
-    parsing: .unconditionalRemaining,
+    parsing: .captureForPassthrough,
     help: "Command line arguments to pass through to the app.")
   var passThroughArguments: [String] = []
 
