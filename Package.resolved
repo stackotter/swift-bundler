@@ -59,7 +59,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Wabi-Studios/swift-arg-parser.git",
       "state" : {
-        "revision" : "b3fd0205d8a11f3bd97c3162864b737257509cd5",
+        "revision" : "764c0d39c5aff50aa2e33d8d056aa0835ef446a4",
         "version" : "1.2.4"
       }
     },
