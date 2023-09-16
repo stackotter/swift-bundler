@@ -9,7 +9,7 @@ let package = Package(
     .executable(name: "swift-bundler", targets: ["swift-bundler"])
   ],
   dependencies: [
-    .package(url: "https://github.com/Wabi-Studios/stackotter-parser.git", branch: "main"),
+    .package(url: "https://github.com/Wabi-Studios/swift-arg-parser.git", from: "1.2.4"),
     .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
     .package(url: "https://github.com/pointfreeco/swift-parsing.git", from: "0.7.1"),
     .package(url: "https://github.com/LebJe/TOMLKit", branch: "main"),
@@ -27,7 +27,7 @@ let package = Package(
     .executableTarget(
       name: "swift-bundler",
       dependencies: [
-        .product(name: "StackOtterArgParser", package: "stackotter-parser"),
+        .product(name: "StackOtterArgParser", package: "swift-arg-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
         "TOMLKit",

@@ -55,12 +55,12 @@
       }
     },
     {
-      "identity" : "stackotter-parser",
+      "identity" : "swift-arg-parser",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Wabi-Studios/stackotter-parser.git",
+      "location" : "https://github.com/Wabi-Studios/swift-arg-parser.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "6639417d4da09cba76b2dea87362ce3ff1c157db"
+        "revision" : "764c0d39c5aff50aa2e33d8d056aa0835ef446a4",
+        "version" : "1.2.4"
       }
     },
     {
