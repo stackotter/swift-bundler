@@ -38,7 +38,7 @@ extension IndentationStyle: ExpressibleByArgument {
 
         Parse(IndentationStyle.spaces) {
           "spaces="
-          Int.parser(of: Substring.self, radix: 10)
+          Int.parser(radix: 10)
         }
       }
     }

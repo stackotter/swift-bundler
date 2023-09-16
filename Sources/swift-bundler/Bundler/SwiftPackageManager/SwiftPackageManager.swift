@@ -135,7 +135,8 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        let targetTriple = platform == .iOS
+        let targetTriple =
+          platform == .iOS
           ? "arm64-apple-ios\(platformVersion)"
           : "arm64-apple-xros\(platformVersion)"
         platformArguments =
@@ -158,9 +159,10 @@ enum SwiftPackageManager {
 
         // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
-        let targetTriple = platform == .iOSSimulator 
-          ? "\(architecture)-apple-ios\(platformVersion)-simulator" 
-          : "\(architecture)-apple-xros\(platformVersion)-simulator" 
+        let targetTriple =
+          platform == .iOSSimulator
+          ? "\(architecture)-apple-ios\(platformVersion)-simulator"
+          : "\(architecture)-apple-xros\(platformVersion)-simulator"
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -235,11 +237,11 @@ enum SwiftPackageManager {
             Prefix { $0 != "(" }
             "(swiftlang-"
             Parse({ Version(major: $0, minor: $1, patch: $2) }) {
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Substring, version: Version, _: Substring) in
@@ -252,9 +254,9 @@ enum SwiftPackageManager {
             }
             "Swift version "
             Parse({ Version(major: $0, minor: $1, patch: 0) }) {
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Void?, version: Version, _: Substring) in
@@ -383,7 +385,7 @@ enum SwiftPackageManager {
         "-I", manifestAPIDirectory.path,
         "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
         "-lPackageDescription",
-        "-swift-version", swiftMajorVersion, "-package-description-version", toolsVersion,  
+        "-swift-version", swiftMajorVersion, "-package-description-version", toolsVersion,
         "-disable-implicit-concurrency-module-import",
         "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,
