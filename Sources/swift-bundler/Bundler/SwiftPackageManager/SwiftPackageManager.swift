@@ -367,7 +367,11 @@ enum SwiftPackageManager {
       }
     #endif
 
-    let toolsVersionProcess = Process.create("swift", arguments: ["package", "tools-version"])
+    let toolsVersionProcess = Process.create(
+      "swift",
+      arguments: ["package", "tools-version"],
+      directory: packageDirectory
+    )
     let toolsVersion: String
     let swiftMajorVersion: String
     switch toolsVersionProcess.getOutput() {

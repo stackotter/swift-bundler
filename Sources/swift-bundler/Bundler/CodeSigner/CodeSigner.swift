@@ -181,6 +181,7 @@ enum CodeSigner {
       arguments: [
         "smime", "-verify",
         "-in", bundle.appendingPathComponent("embedded.mobileprovision").path,
+        "-noverify",
         "-inform", "der",
       ]
     ).getOutput(excludeStdError: true).mapError { error in
