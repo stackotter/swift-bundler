@@ -5,16 +5,19 @@ enum MetalCompiler {
   /// Compiles any metal shaders present in a directory into a `default.metallib` file (in the same directory).
   /// - Parameters:
   ///   - directory: The directory to compile shaders from.
-  ///   - minimumMacOSVersion: The macOS version that the built shaders should target.
-  ///   - keepSources: If `false`, the sources will get deleted after compilation.
   ///   - platform: The platform to compile for.
+  ///   - platformVersion: The platform version to target during compilation.
+  ///   - keepSources: If `false`, the sources will get deleted after compilation.
   /// - Returns: If an error occurs, a failure is returned.
   static func compileMetalShaders(
     in directory: URL,
     for platform: Platform,
+    platformVersion: String,
     keepSources: Bool
   ) -> Result<Void, MetalCompilerError> {
-    guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: []) else {
+    guard
+      let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: [])
+    else {
       return .failure(.failedToEnumerateShaders(directory: directory))
     }
 
@@ -30,7 +33,12 @@ enum MetalCompiler {
     log.info("Compiling metal shaders")
 
     // Compile metal shaders, and if successful, delete all shader sources
-    return compileMetalShaders(shaderSources, to: directory, for: platform).flatMap { _ in
+    return compileMetalShaders(
+      shaderSources,
+      to: directory,
+      for: platform,
+      platformVersion: platformVersion
+    ).flatMap { _ in
       if keepSources {
         return .success()
       }
@@ -52,11 +60,13 @@ enum MetalCompiler {
   ///   - sources: The source files to comile.
   ///   - destination: The directory to output `default.metallib` to.
   ///   - platform: The platform to compile for.
+  ///   - platformVersion: The platform version to target during compilation.
   /// - Returns: Returns the location of the resulting `metallib`. If an error occurs, a failure is returned.
   static func compileMetalShaders(
     _ sources: [URL],
     to destination: URL,
-    for platform: Platform
+    for platform: Platform,
+    platformVersion: String
   ) -> Result<URL, MetalCompilerError> {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory
@@ -70,9 +80,18 @@ enum MetalCompiler {
     // Compile the shaders into `.air` files
     var airFiles: [URL] = []
     for shaderSource in sources {
-      let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air").lastPathComponent
+      let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air")
+        .lastPathComponent
       let outputFile = tempDirectory.appendingPathComponent(outputFileName)
-      if case let .failure(error) = compileShader(shaderSource, to: outputFile, for: platform) {
+
+      let compilationResult = compileShader(
+        shaderSource,
+        to: outputFile,
+        for: platform,
+        platformVersion: platformVersion
+      )
+
+      if case let .failure(error) = compilationResult {
         return .failure(error)
       }
       airFiles.append(outputFile)
@@ -100,22 +119,35 @@ enum MetalCompiler {
   ///   - shader: The shader file to compile.
   ///   - outputFile: The resulting `air` file.
   ///   - platform: The platform to build for.
+  ///   - platformVersion: The platform version to target during compilation.
   /// - Returns: If an error occurs, a failure is returned.
   static func compileShader(
     _ shader: URL,
     to outputFile: URL,
-    for platform: Platform
+    for platform: Platform,
+    platformVersion: String
   ) -> Result<Void, MetalCompilerError> {
+    var arguments = [
+      "-sdk", platform.sdkName, "metal",
+      "-o", outputFile.path,
+      "-c", shader.path,
+      "-gline-tables-only",  // TODO: disable these in distribution builds
+      "-frecord-sources",
+    ]
+
+    switch platform {
+      case .macOS:
+        arguments.append("-mmacosx-version-min=\(platformVersion)")
+      case .iOS:
+        arguments.append("-mios-version-min=\(platformVersion)")
+      default:
+        // TODO: Figure out whether any other platforms require/have a minimum platform version option
+        break
+    }
+
     let process = Process.create(
       "/usr/bin/xcrun",
-      arguments: [
-        "-sdk", platform.sdkName, "metal",
-        // "-mmacosx-version-min=\(minimumMacOSVersion)", // TODO: re-enable this code and get it working with the new platform versioning system
-        "-o", outputFile.path,
-        "-c", shader.path,
-        "-gline-tables-only", // TODO: disable these in distribution builds
-        "-frecord-sources"
-      ]
+      arguments: arguments
     )
 
     let result = process.runAndWait()
@@ -141,7 +173,7 @@ enum MetalCompiler {
       "/usr/bin/xcrun",
       arguments: [
         "-sdk", platform.sdkName, "metal-ar",
-        "rcs", archive.path
+        "rcs", archive.path,
       ] + airFiles.map(\.path)
     )
 
@@ -169,7 +201,7 @@ enum MetalCompiler {
       arguments: [
         "-sdk", platform.sdkName, "metallib",
         archive.path,
-        "-o", library.path
+        "-o", library.path,
       ]
     )
 

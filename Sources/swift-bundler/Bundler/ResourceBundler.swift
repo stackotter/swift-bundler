@@ -180,6 +180,7 @@ enum ResourceBundler {
       return MetalCompiler.compileMetalShaders(
         in: destinationBundleResources,
         for: platform,
+        platformVersion: platformVersion,
         keepSources: false
       ).mapError { error in
         return .failedToCompileMetalShaders(error)
