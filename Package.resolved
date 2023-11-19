@@ -185,7 +185,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/LebJe/TOMLKit",
       "state" : {
-        "branch" : "main",
+        "branch" : "0.5.5",
         "revision" : "404c4dd011743461bff12d00a5118d0ed59d630c"
       }
     },
