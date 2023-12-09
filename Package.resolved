@@ -185,7 +185,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/furby-tm/TOMLKit",
       "state" : {
-        "revision" : "00aa7d07f61086a064666d67f46657da18faa5cb",
+        "revision" : "f2b3e80a19c7fb3d42e3cfda98076cef8f0d1bd7",
         "version" : "0.5.6"
       }
     },
