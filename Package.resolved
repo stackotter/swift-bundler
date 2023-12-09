@@ -183,10 +183,10 @@
     {
       "identity" : "tomlkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/LebJe/TOMLKit",
+      "location" : "https://github.com/furby-tm/TOMLKit",
       "state" : {
-        "branch" : "0.5.5",
-        "revision" : "404c4dd011743461bff12d00a5118d0ed59d630c"
+        "revision" : "00aa7d07f61086a064666d67f46657da18faa5cb",
+        "version" : "0.5.6"
       }
     },
     {
