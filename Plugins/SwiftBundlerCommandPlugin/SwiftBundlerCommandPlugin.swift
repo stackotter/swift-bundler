@@ -11,19 +11,6 @@ struct SwiftBundlerCommandPlugin: CommandPlugin {
   }
 }
 
-#if canImport(XcodeProjectPlugin)
-  import XcodeProjectPlugin
-
-  extension SwiftBundlerCommandPlugin: XcodeCommandPlugin {
-    /// This entry point is called when operating on an Xcode project.
-    func performCommand(context: XcodePluginContext, arguments: [String]) throws {
-      let bundler = try context.tool(named: "swift-bundler")
-
-      try run(command: bundler.path, with: arguments)
-    }
-  }
-#endif
-
 extension SwiftBundlerCommandPlugin {
   /// Run a command with the given arguments.
   func run(command: Path, with arguments: [String]) throws {
@@ -36,7 +23,7 @@ extension SwiftBundlerCommandPlugin {
     if process.terminationReason == .exit,
       process.terminationStatus == 0
     {
-      print("SwiftBundlerCommandPlugin succesfully completed.")
+      print("SwiftBundlerCommandPlugin successfully completed.")
     } else {
       let problem = "\(process.terminationReason):\(process.terminationStatus)"
       Diagnostics.error("SwiftBundlerCommandPlugin failed: \(problem)")
