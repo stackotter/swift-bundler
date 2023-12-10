@@ -6,13 +6,14 @@ let package = Package(
   name: "swift-bundler",
   platforms: [.macOS(.v11)],
   products: [
-    .executable(name: "swift-bundler", targets: ["swift-bundler"])
+    .executable(name: "swift-bundler", targets: ["swift-bundler"]),
+    .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
     .package(url: "https://github.com/stackotter/swift-arg-parser", from: "1.2.3"),
     .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.7.1"),
-    .package(url: "https://github.com/LebJe/TOMLKit", branch: "0.5.5"),
+    .package(url: "https://github.com/furby-tm/TOMLKit", from: "0.5.6"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
@@ -58,6 +59,23 @@ let package = Package(
       name: "SwiftBundler",
       path: "Documentation",
       exclude: ["preview_docs.sh"]
+    ),
+
+    .plugin(
+      name: "SwiftBundlerCommandPlugin",
+      capability: .command(
+        intent: .custom(
+          verb: "bundler",
+          description: "Run a package as an app."
+        ),
+        permissions: [
+          .writeToPackageDirectory(
+            reason: "Creating an app bundle requires writing to the package directory.")
+        ]
+      ),
+      dependencies: [
+        .target(name: "swift-bundler")
+      ]
     ),
   ]
 )
