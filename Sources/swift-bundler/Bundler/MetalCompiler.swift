@@ -147,7 +147,8 @@ enum MetalCompiler {
 
     let process = Process.create(
       "/usr/bin/xcrun",
-      arguments: arguments
+      arguments: arguments,
+      runSilentlyWhenNotVerbose: false
     )
 
     let result = process.runAndWait()
