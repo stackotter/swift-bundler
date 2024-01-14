@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(Darwin)
+  import Darwin
+#endif
+
 /// A utility for running apps.
 enum Runner {
   /// Runs the given app.
@@ -109,19 +113,87 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
-    let appName = bundle.deletingPathExtension().lastPathComponent
-    let executable = bundle.appendingPathComponent("Contents/MacOS/\(appName)")
+    #if canImport(Darwin)
+      let tmp = FileManager.default.temporaryDirectory
+      let uuid = UUID().uuidString
+      let stdinPipe = tmp.appendingPathComponent("stdin_\(uuid)")
+      let stdoutPipe = tmp.appendingPathComponent("stdout_\(uuid)")
+      let stderrPipe = tmp.appendingPathComponent("stderr_\(uuid)")
 
-    let process = Process.create(
-      executable.path,
-      runSilentlyWhenNotVerbose: false
-    )
-    process.arguments = arguments
-    process.addEnvironmentVariables(environmentVariables)
+      guard
+        mkfifo(stdinPipe.path, 0o777) == 0,
+        mkfifo(stdoutPipe.path, 0o777) == 0,
+        mkfifo(stderrPipe.path, 0o777) == 0
+      else {
+        return .failure(.failedToCreateNamedPipes(errno: Int(errno)))
+      }
 
-    return process.runAndWait().mapError { error in
-      return .failedToRunExecutable(error)
-    }
+      let process = Process.create(
+        "open",
+        arguments: [
+          "-a", bundle.path,
+          "-W",
+          "--stdin", stdinPipe.path,
+          "--stdout", stdoutPipe.path,
+          "--stderr", stderrPipe.path,
+          "--args",
+        ] + arguments,
+        runSilentlyWhenNotVerbose: false
+      )
+      process.addEnvironmentVariables(environmentVariables)
+
+      do {
+        try process.run()
+      } catch {
+        return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
+      }
+
+      let stdinFlags = fcntl(STDIN_FILENO, F_GETFL, 0)
+      guard fcntl(STDIN_FILENO, F_SETFL, stdinFlags | O_NONBLOCK) != -1 else {
+        return .failure(.failedToMakeStdinNonBlocking(errno: Int(errno)))
+      }
+      let appStdin = open(stdinPipe.path, O_WRONLY)
+      let appStdout = open(stdoutPipe.path, O_RDONLY | O_NONBLOCK)
+      let appStderr = open(stderrPipe.path, O_RDONLY | O_NONBLOCK)
+      let events = Int16(POLLIN | POLLHUP)
+      var readFDs = [
+        pollfd(fd: appStdout, events: events, revents: 0),
+        pollfd(fd: appStderr, events: events, revents: 0),
+        pollfd(fd: STDIN_FILENO, events: events, revents: 0),
+      ]
+
+      var buffer: [UInt8] = Array(repeating: 0, count: 1024)
+      while process.isRunning {
+        _ = poll(&readFDs, nfds_t(readFDs.count), 0)
+
+        let stdinCount = read(STDIN_FILENO, &buffer, buffer.count)
+        if stdinCount > 0 {
+          print("success")
+          write(appStdin, &buffer, stdinCount)
+        }
+
+        let appStdoutCount = read(appStdout, &buffer, buffer.count)
+        if appStdoutCount > 0 {
+          print("success")
+          write(STDOUT_FILENO, &buffer, appStdoutCount)
+        }
+
+        let appStderrCount = read(appStderr, &buffer, buffer.count)
+        if appStderrCount > 0 {
+          print("success")
+          write(STDERR_FILENO, &buffer, appStderrCount)
+        }
+      }
+
+      let exitStatus = Int(process.terminationStatus)
+      if exitStatus != 0 {
+        return .failure(.failedToRunExecutable(.nonZeroExitStatus(exitStatus)))
+      } else {
+        return .success()
+      }
+    #else
+      return .failure(.cannotRunMacOSAppWithoutDarwin)
+    #endif
   }
 
   /// Runs an app on the first connected iOS device.

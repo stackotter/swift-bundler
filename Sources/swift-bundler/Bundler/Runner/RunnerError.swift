@@ -9,6 +9,9 @@ enum RunnerError: LocalizedError {
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnIOSSimulator(SimulatorManagerError)
   case failedToRunOnVisionOSSimulator(SimulatorManagerError)
+  case cannotRunMacOSAppWithoutDarwin
+  case failedToCreateNamedPipes(errno: Int)
+  case failedToMakeStdinNonBlocking(errno: Int)
 
   var errorDescription: String? {
     switch self {
@@ -32,6 +35,13 @@ enum RunnerError: LocalizedError {
         return "Failed to run app on iOS simulator: \(error.localizedDescription)"
       case let .failedToRunOnVisionOSSimulator(error):
         return "Failed to run app on visionOS simulator: \(error.localizedDescription)"
+      case .cannotRunMacOSAppWithoutDarwin:
+        return
+          "Cannot run a macOS app without Darwin available (this error should never occur, please open an issue on GitHub)"
+      case let .failedToCreateNamedPipes(errno):
+        return "Failed to create named pipes for IO redirection (errno \(errno))"
+      case let .failedToMakeStdinNonBlocking(errno):
+        return "Failed to make stdin non-blocking (errno \(errno))"
     }
   }
 }
