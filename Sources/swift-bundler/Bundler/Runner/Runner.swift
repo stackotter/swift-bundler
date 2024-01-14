@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(AppKit)
+  import AppKit
+#endif
+
 /// A utility for running apps.
 enum Runner {
   /// Runs the given app.
@@ -119,8 +123,39 @@ enum Runner {
     process.arguments = arguments
     process.addEnvironmentVariables(environmentVariables)
 
-    return process.runAndWait().mapError { error in
-      return .failedToRunExecutable(error)
+    #if canImport(AppKit)
+      // Bring the app to the foreground once launched.
+      let center = NSWorkspace.shared.notificationCenter
+      center.addObserver(
+        forName: NSWorkspace.didLaunchApplicationNotification,
+        object: nil,
+        queue: OperationQueue.main
+      ) { (notification: Notification) in
+        guard
+          let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+            as? NSRunningApplication,
+          app.bundleURL == bundle
+        else {
+          return
+        }
+
+        app.activate()
+      }
+    #endif
+
+    do {
+      try process.run()
+    } catch {
+      return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
+    }
+
+    process.waitUntilExit()
+
+    let exitStatus = Int(process.terminationStatus)
+    if exitStatus != 0 {
+      return .failure(.failedToRunExecutable(.nonZeroExitStatus(exitStatus)))
+    } else {
+      return .success()
     }
   }
 
