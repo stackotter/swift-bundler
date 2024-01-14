@@ -75,16 +75,26 @@ struct CreateCommand: Command {
   /// If `true`, force creation of the package even if the template does not support the current OS and installed Swift version.
   @Flag(
     name: .shortAndLong,
-    help: "Force creation even if the template does not support the current OS and installed Swift version.")
+    help:
+      "Force creation even if the template does not support the current OS and installed Swift version."
+  )
   var force = false
+
+  @Flag(
+    name: .customLong("vscode"),
+    help: "Add vscode configuration files necessary to enable ergonomic debugging.")
+  var addVSCodeOverlay = false
 
   func wrappedValidate() throws {
     guard Self.isValidAppName(appName) else {
-      throw ValidationError("Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet")
+      throw ValidationError(
+        "Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet"
+      )
     }
 
     if templateName == nil && templateRepository != nil {
-      throw ValidationError("The '--template-repository' option can only be used with the '--template' option")
+      throw ValidationError(
+        "The '--template-repository' option can only be used with the '--template' option")
     }
   }
 
@@ -112,7 +122,8 @@ struct CreateCommand: Command {
           packageName: appName,
           configuration: configuration,
           forceCreation: force,
-          indentationStyle: indentation
+          indentationStyle: indentation,
+          addVSCodeOverlay: addVSCodeOverlay
         ).unwrap()
       } else {
         template = try Templater.createPackage(
@@ -121,7 +132,8 @@ struct CreateCommand: Command {
           packageName: appName,
           configuration: configuration,
           forceCreation: force,
-          indentationStyle: indentation
+          indentationStyle: indentation,
+          addVSCodeOverlay: addVSCodeOverlay
         ).unwrap()
       }
 
@@ -135,7 +147,8 @@ struct CreateCommand: Command {
       }
     }
 
-    log.info("Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
+    log.info(
+      "Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
 
     Self.printNextSteps(packageDirectory: packageDirectory, template: template)
   }

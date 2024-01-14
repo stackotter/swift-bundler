@@ -1,6 +1,6 @@
 import Foundation
-import Version
 import TOMLKit
+import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
@@ -17,6 +17,8 @@ enum Templater {
   ///   - configuration: The app's configuration.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
+  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
+  ///     will be added to the package (enabling ergonomic debugging with VSCode).
   /// - Returns: The template that the package was created from (or nil if none were used), or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
@@ -24,7 +26,8 @@ enum Templater {
     packageName: String,
     configuration: AppConfiguration,
     forceCreation: Bool,
-    indentationStyle: IndentationStyle
+    indentationStyle: IndentationStyle,
+    addVSCodeOverlay: Bool
   ) -> Result<Template?, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
@@ -52,7 +55,8 @@ enum Templater {
           configuration: configuration
         )
       }.map { (_: Void) -> Template? in
-        return nil // No template was used
+        // No template was used
+        return nil
       }
     }
 
@@ -65,7 +69,8 @@ enum Templater {
         packageName: packageName,
         configuration: configuration,
         forceCreation: forceCreation,
-        indentationStyle: indentationStyle
+        indentationStyle: indentationStyle,
+        addVSCodeOverlay: addVSCodeOverlay
       )
     }.map { template in
       return .some(template)
@@ -81,6 +86,8 @@ enum Templater {
   ///   - configuration: The package's configuration.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
+  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
+  ///     will be added to the package (enabling ergonomic debugging with VSCode).
   /// - Returns: The template that the package was created from, or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
@@ -89,7 +96,8 @@ enum Templater {
     packageName: String,
     configuration: AppConfiguration,
     forceCreation: Bool,
-    indentationStyle: IndentationStyle
+    indentationStyle: IndentationStyle,
+    addVSCodeOverlay: Bool
   ) -> Result<Template, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
@@ -142,7 +150,27 @@ enum Templater {
         to: outputDirectory,
         packageName: packageName,
         identifier: configuration.identifier,
-        indentationStyle: .tabs
+        indentationStyle: indentationStyle
+      )
+
+      if case let .failure(error) = result {
+        attemptCleanup(outputDirectory)
+        return .failure(error)
+      }
+    }
+
+    if addVSCodeOverlay {
+      let vsCodeOverlay = templatesDirectory.appendingPathComponent("VSCode")
+      guard FileManager.default.itemExists(at: vsCodeOverlay, withType: .directory) else {
+        return .failure(.missingVSCodeOverlay)
+      }
+
+      let result = applyTemplate(
+        vsCodeOverlay,
+        to: outputDirectory,
+        packageName: packageName,
+        identifier: configuration.identifier,
+        indentationStyle: indentationStyle
       )
 
       if case let .failure(error) = result {
@@ -203,11 +231,12 @@ enum Templater {
     switch SwiftPackageManager.getSwiftVersion() {
       case .success(let version):
         if version < manifest.minimumSwiftVersion {
-          return .failure(.templateDoesNotSupportInstalledSwiftVersion(
-            template: name,
-            version: version,
-            minimumSupportedVersion: manifest.minimumSwiftVersion
-          ))
+          return .failure(
+            .templateDoesNotSupportInstalledSwiftVersion(
+              template: name,
+              version: version,
+              minimumSupportedVersion: manifest.minimumSwiftVersion
+            ))
         }
       case .failure(let error):
         return .failure(.failedToCheckSwiftVersion(error))
@@ -219,7 +248,8 @@ enum Templater {
   /// Gets the default templates directory.
   /// - Parameter downloadIfNecessary: If `true` the default templates repository is downloaded if the templates directory doesn't exist.
   /// - Returns: The default templates directory, or a failure if the templates directory doesn't exist and couldn't be downloaded.
-  static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError> {
+  static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError>
+  {
     // Get the templates directory
     let templatesDirectory: URL
     switch System.getApplicationSupportDirectory() {
@@ -256,7 +286,7 @@ enum Templater {
             return Process.create(
               "git",
               arguments: [
-                "checkout", "v\(SwiftBundler.version.major)"
+                "checkout", "v\(SwiftBundler.version.major)",
               ],
               directory: templatesDirectory
             ).runAndWait()
@@ -292,7 +322,8 @@ enum Templater {
   /// - Returns: The available templates, or an error if template enumeration fails.
   static func enumerateTemplates(in templatesDirectory: URL) -> Result<[Template], TemplaterError> {
     do {
-      let contents = try FileManager.default.contentsOfDirectory(at: templatesDirectory, includingPropertiesForKeys: nil, options: [])
+      let contents = try FileManager.default.contentsOfDirectory(
+        at: templatesDirectory, includingPropertiesForKeys: nil, options: [])
       var templates: [Template] = []
 
       // Enumerate templates
@@ -343,7 +374,7 @@ enum Templater {
       arguments: [
         "clone", "-b", "v\(SwiftBundler.version.major)",
         "\(defaultTemplateRepository)",
-        directory.path
+        directory.path,
       ]
     )
 
@@ -370,13 +401,18 @@ enum Templater {
   ) -> Result<Void, TemplaterError> {
     log.info("Applying '\(templateDirectory.lastPathComponent)' template")
 
-    guard let enumerator = FileManager.default.enumerator(at: templateDirectory, includingPropertiesForKeys: nil) else {
-      return .failure(.failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
+    guard
+      let enumerator = FileManager.default.enumerator(
+        at: templateDirectory, includingPropertiesForKeys: nil)
+    else {
+      return .failure(
+        .failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
     }
 
     // Enumerate the template's files
     let excluded = Set(["Template.toml"])
-    let files = enumerator
+    let files =
+      enumerator
       .compactMap { $0 as? URL }
       .filter { !excluded.contains($0.lastPathComponent) }
       .filter { FileManager.default.itemExists(at: $0, withType: .file) }
@@ -419,8 +455,13 @@ enum Templater {
       return .success()
     }
 
-    guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil) else {
-      return .failure(.failedToUpdateIndentationStyle(directory: directory, TemplaterError.failedToEnumerateOutputFiles))
+    guard
+      let enumerator = FileManager.default.enumerator(
+        at: directory, includingPropertiesForKeys: nil)
+    else {
+      return .failure(
+        .failedToUpdateIndentationStyle(
+          directory: directory, TemplaterError.failedToEnumerateOutputFiles))
     }
 
     do {
@@ -465,7 +506,7 @@ enum Templater {
   ) -> Result<Void, TemplaterError> {
     let variables: [String: String] = [
       "PACKAGE": packageName,
-      "IDENTIFIER": identifier
+      "IDENTIFIER": identifier,
     ]
 
     // Read the file's contents
@@ -473,7 +514,8 @@ enum Templater {
     do {
       contents = try String(contentsOf: file)
     } catch {
-      return .failure(.failedToReadFile(template: templateDirectory.lastPathComponent, file: file, error))
+      return .failure(
+        .failedToReadFile(template: templateDirectory.lastPathComponent, file: file, error))
     }
 
     var file = file

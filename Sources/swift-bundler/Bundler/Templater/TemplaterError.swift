@@ -11,7 +11,9 @@ enum TemplaterError: LocalizedError {
   case failedToCreateOutputDirectory(URL, Error)
   case failedToDecodeTemplateManifest(template: String, manifest: URL, Error)
   case failedToReadTemplateManifest(template: String, manifest: URL, Error)
-  case templateDoesNotSupportInstalledSwiftVersion(template: String, version: Version, minimumSupportedVersion: Version)
+  case templateDoesNotSupportInstalledSwiftVersion(
+    template: String, version: Version, minimumSupportedVersion: Version
+  )
   case failedToEnumerateTemplateContents(template: String)
   case failedToReadFile(template: String, file: URL, Error)
   case failedToGetRelativePath(file: URL, base: URL)
@@ -23,13 +25,15 @@ enum TemplaterError: LocalizedError {
   case failedToUpdateIndentationStyle(directory: URL, Error)
   case failedToCheckSwiftVersion(SwiftPackageManagerError)
   case failedToCreateConfigurationFile(PackageConfiguration, URL, Error)
+  case missingVSCodeOverlay
 
   var errorDescription: String? {
     switch self {
       case .packageDirectoryAlreadyExists(let directory):
         return "A directory already exists at '\(directory.relativePath)'"
       case .failedToCloneTemplateRepository(let processError):
-        return "Failed to clone the default template repository from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
+        return
+          "Failed to clone the default template repository from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
       case .failedToGetApplicationSupportDirectory(let error):
         return error.localizedDescription
       case .cannotCreatePackageFromBaseTemplate:
@@ -49,11 +53,13 @@ enum TemplaterError: LocalizedError {
         }.description
       case .failedToReadTemplateManifest(let template, _, _):
         return "Failed to read the contents of the manifest for the '\(template)' template"
-      case .templateDoesNotSupportInstalledSwiftVersion(let template, let version, let minimumSupportedVersion):
+      case .templateDoesNotSupportInstalledSwiftVersion(
+        let template, let version, let minimumSupportedVersion):
         let tip = "Provide the '-f' flag to create the package anyway"
         let version = version.description
         let minimumVersion = minimumSupportedVersion.description
-        return "The '\(template)' template supports a minimum Swift version of \(minimumVersion) but \(version) is installed. \(tip)"
+        return
+          "The '\(template)' template supports a minimum Swift version of \(minimumVersion) but \(version) is installed. \(tip)"
       case .failedToEnumerateTemplateContents(let template):
         return "Failed to enumerate the contents of the '\(template)' template"
       case .failedToReadFile(let template, let file, _):
@@ -67,15 +73,26 @@ enum TemplaterError: LocalizedError {
       case .failedToEnumerateTemplates:
         return "Failed to enumerate templates"
       case .failedToPullLatestTemplates(let processError):
-        return "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
+        return
+          "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
       case .failedToEnumerateOutputFiles:
         return "Failed to enumerate the files in the output directory"
       case .failedToUpdateIndentationStyle(let directory, _):
-        return "Failed to update the indentation style of the package in '\(directory.relativePath)'"
+        return
+          "Failed to update the indentation style of the package in '\(directory.relativePath)'"
       case .failedToCheckSwiftVersion(let swiftPackageManagerError):
         return "Failed to check Swift version: \(swiftPackageManagerError.localizedDescription)"
       case .failedToCreateConfigurationFile(_, let file, _):
         return "Failed to create configuration file at '\(file.relativePath)'"
+      case .missingVSCodeOverlay:
+        return Output {
+          "Missing VSCode overlay."
+          ""
+          Section("Troubleshooting") {
+            "Your templates may be outdated"
+            ExampleCommand("swift bundler templates update")
+          }
+        }.description
     }
   }
 }
