@@ -145,7 +145,7 @@ enum StringCatalogCompiler {
       to: outputDirectory
     )
 
-    guard case .success(_) = result else {
+    guard case .success = result else {
       return result
     }
 
@@ -228,7 +228,7 @@ enum StringCatalogCompiler {
         let stringsDictFileURL = lprojDirectory
           .appendingPathComponent(tableName)
           .appendingPathExtension("stringsdict")
-        
+
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .xml
 
