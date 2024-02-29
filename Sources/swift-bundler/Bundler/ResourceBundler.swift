@@ -220,7 +220,12 @@ enum ResourceBundler {
             }
         }
         return .success()
-      }, { copyResources(from: bundle, to: destinationBundleResources) }, { compileAssetCatalog() }, { compileMetalShaders() }, { compileStoryboards() }, { compileStringCatalogs() }
+      },
+      { copyResources(from: bundle, to: destinationBundleResources) },
+      { compileAssetCatalog() },
+      { compileMetalShaders() },
+      { compileStoryboards() },
+      { compileStringCatalogs() }
     )
 
     return copyBundle()

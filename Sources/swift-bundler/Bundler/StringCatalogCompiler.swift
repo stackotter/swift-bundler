@@ -121,6 +121,7 @@ enum StringCatalogCompiler {
   /// - Parameters:
   ///  - directory: The directory to search for string catalog files.
   ///  - outputDirectory: The directory to output the strings files to.
+  ///  - keepSources: Whether to keep the source string catalog files.
   /// - Returns: A failure if an error occurs.
   static func compileStringCatalogs(
     in directory: URL,
