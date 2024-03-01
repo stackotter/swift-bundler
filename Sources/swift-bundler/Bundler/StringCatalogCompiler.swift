@@ -5,7 +5,7 @@ enum StringCatalogCompiler {
   /// A state for a string unit to be in.
   enum StringUnitState: String, Decodable {
     case translated = "translated"
-    case needsReview = "needs-review"
+    case needsReview = "needs_review"
   }
 
   /// A string unit containg a value and a state.
@@ -58,7 +58,7 @@ enum StringCatalogCompiler {
   /// A translation unit in a string catalog.
   struct TranslationUnit: Decodable {
     let comment: String?
-    let localizations: [String: StringOutlet]
+    let localizations: [String: StringOutlet]?
   }
 
   /// The root of a `.xcstrings` file.
@@ -92,6 +92,7 @@ enum StringCatalogCompiler {
   /// A plural variation in a strings file.
   struct StringsFilePluralVariation: Encodable {
     let spec = "NSStringPluralRuleType"
+    let formatValueType: String?
     let other: String
     let zero: String?
     let one: String?
@@ -99,6 +100,7 @@ enum StringCatalogCompiler {
     // Coding keys for the plural variations.
     private enum CodingKeys: String, CodingKey {
       case spec = "NSStringFormatSpecTypeKey"
+      case formatValueType = "NSStringFormatValueTypeKey"
       case other
       case zero
       case one
@@ -114,6 +116,17 @@ enum StringCatalogCompiler {
     private enum CodingKeys: String, CodingKey {
       case format = "NSStringLocalizedFormatKey"
       case value
+    }
+  }
+
+  /// Gets the regex to match format value types.
+  /// - Returns: The regex to match format value types.
+  private static func getFormatValueTypeRegex() -> Result<NSRegularExpression, StringCatalogCompilerError> {
+    // The regex to match format value types.
+    do {
+      return .success(try NSRegularExpression(pattern: "\\%([0-9]\\$)?[0 #+-]?[0-9*]*\\.?\\d*[hl]{0,2}[jztL]?[@%dDuUxXoOfeEgGcCsSpaAF]", options: []))
+    } catch {
+      return .failure(.failedToCreateFormatStringRegex(error))
     }
   }
 
@@ -220,7 +233,12 @@ enum StringCatalogCompiler {
           }
         }
 
-        let (stringsFile, stringsDictFile) = generateStringsFile(from: data, locale: locale)
+        // Get the regex to match format value types.
+        guard case let .success(regex) = getFormatValueTypeRegex() else {
+          return .failure(.failedToCreateFormatStringRegex(NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoSuchFileError, userInfo: nil)))
+        }
+
+        let (stringsFile, stringsDictFile) = generateStringsFile(from: data, locale: locale, regex: regex)
 
         // The paths for the strings and strings dict files.
         let stringsFileURL = lprojDirectory
@@ -281,7 +299,11 @@ enum StringCatalogCompiler {
     // Loop through all the strings and get the keys.
     var locales: [String] = []
     for (_, translationUnit) in files.strings {
-      for (locale, _) in translationUnit.localizations {
+      guard let localizations = translationUnit.localizations else {
+        continue
+      } 
+
+      for (locale, _) in localizations {
         locales.append(locale)
       }
     }
@@ -293,15 +315,16 @@ enum StringCatalogCompiler {
   /// - Parameters:
   ///  - data: String Catalog file data.
   ///  - locale: The locale to generate the strings file for.
+  ///  - regex: The regex to match format value types.
   /// - Returns: The strings file and the strings dict file.
-  private static func generateStringsFile(from data: StringsCatalogFile, locale: String) -> ([String: String], [String: StringDictionaryItem]) {
+  private static func generateStringsFile(from data: StringsCatalogFile, locale: String, regex: NSRegularExpression) -> ([String: String], [String: StringDictionaryItem]) {
     // Loop through the strings and generate the strings file.
     var stringsFile = [String: String]()
     var stringsDictFile = [String: StringDictionaryItem]()
 
     for (key, translationUnit) in data.strings {
       // Get the translation for the locale.
-      let translation = translationUnit.localizations[locale] ?? translationUnit.localizations[data.sourceLanguage]
+      let translation = translationUnit.localizations?[locale] ?? translationUnit.localizations?[data.sourceLanguage]
 
       if let translation = translation {
         // Match the translation to the correct outlet.
@@ -309,9 +332,17 @@ enum StringCatalogCompiler {
           case .unit(let unit):
             stringsFile[key] = unit.value
           case .variation(let variation):
+            // Get all the format value types and convert them to a string.
+            let formatSpecifiers = regex.matches(in: variation.plural.other.stringUnit.value, options: [], range: NSRange(location: 0, length: key.count))
+              .map { (key as NSString).substring(with: $0.range) }
+
+            // Loop through and look for a value starting with %1$. If it doesn't exist, use the first one that does not contain a $.
+            let formatValueType = formatSpecifiers.first { $0.hasPrefix("%1$") } ?? formatSpecifiers.first { !$0.contains("$") }
+
             // Add the other, zero, and one variations to the strings dict file.
             stringsDictFile[key] = StringDictionaryItem(
               value: StringsFilePluralVariation(
+                formatValueType: formatValueType,
                 other: variation.plural.other.stringUnit.value,
                 zero: variation.plural.zero?.stringUnit.value,
                 one: variation.plural.one?.stringUnit.value

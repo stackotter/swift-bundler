@@ -1,6 +1,7 @@
 import Foundation
 /// An error returned by ``StringCatalogCompiler``.
 enum StringCatalogCompilerError: LocalizedError {
+  case failedToCreateFormatStringRegex(Error)
   case failedToEnumerateStringsCatalogs(URL, Error)
   case failedToDeleteStringsCatalog(URL, Error)
   case failedToCreateOutputDirectory(URL, Error)
@@ -13,6 +14,8 @@ enum StringCatalogCompilerError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
+      case .failedToCreateFormatStringRegex(let error):
+        return "Failed to create format string regex with error '\(error)'"
       case .failedToEnumerateStringsCatalogs(let directory, _):
         return "Failed to enumerate strings catalogs in directory at '\(directory.relativePath)'"
       case .failedToDeleteStringsCatalog(let file, _):
