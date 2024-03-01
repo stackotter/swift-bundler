@@ -12,6 +12,7 @@ enum ResourceBundlerError: LocalizedError {
   case failedToCompileXCAssets(ProcessError)
   case failedToDeleteAssetCatalog(Error)
   case failedToCompileStoryboards(StoryboardCompilerError)
+  case failedToBuildStringsCatalogs(StringCatalogCompilerError)
 
   var errorDescription: String? {
     switch self {
@@ -33,6 +34,8 @@ enum ResourceBundlerError: LocalizedError {
         return "Failed to compile XCAssets with 'actool': \(error)"
       case .failedToDeleteAssetCatalog:
         return "Failed to delete asset catalog after compilation"
+      case .failedToBuildStringsCatalogs(let error):
+        return "Failed to build strings catalogs: \(error.localizedDescription)"
       case .failedToCompileStoryboards(let error):
         return error.localizedDescription
     }
