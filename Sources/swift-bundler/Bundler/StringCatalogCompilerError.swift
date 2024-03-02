@@ -11,6 +11,7 @@ enum StringCatalogCompilerError: LocalizedError {
   case failedToEncodePlistStringsDictFile(URL, Error)
   case failedToWriteStringsFile(URL, Error)
   case failedToWriteStringsDictFile(URL, Error)
+  case invalidNonMatchingFormatString(URL, String)
 
   var errorDescription: String? {
     switch self {
@@ -34,6 +35,8 @@ enum StringCatalogCompilerError: LocalizedError {
         return "Failed to write strings file at '\(file.relativePath)'"
       case .failedToWriteStringsDictFile(let file, _):
         return "Failed to write strings dict file at '\(file.relativePath)'"
+      case .invalidNonMatchingFormatString(let file, let string):
+        return "Two or more format strings in the same string do not match in file '\(file.relativePath)' with string '\(string)'"
     }
   }
 }
