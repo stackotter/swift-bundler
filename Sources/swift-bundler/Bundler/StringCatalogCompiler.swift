@@ -317,7 +317,8 @@ enum StringCatalogCompiler {
   /// - Returns: The order of format specifiers in the string.
   private static func selectFormatSpecifierOrder(
     fileURL: URL,
-    from string: String) -> Result<[Int: (String, String)], StringCatalogCompilerError> {
+    from string: String
+  ) -> Result<[Int: (String, String)], StringCatalogCompilerError> {
     // Initialize the format specifier regex.
     let regex = getFormatValueTypeRegex()
     guard case let .success(regex) = regex else {
