@@ -1,6 +1,7 @@
 import Foundation
 /// An error returned by ``StringCatalogCompiler``.
 enum StringCatalogCompilerError: LocalizedError {
+  case failedToCreateFormatStringRegex(Error)
   case failedToEnumerateStringsCatalogs(URL, Error)
   case failedToDeleteStringsCatalog(URL, Error)
   case failedToCreateOutputDirectory(URL, Error)
@@ -10,9 +11,12 @@ enum StringCatalogCompilerError: LocalizedError {
   case failedToEncodePlistStringsDictFile(URL, Error)
   case failedToWriteStringsFile(URL, Error)
   case failedToWriteStringsDictFile(URL, Error)
+  case invalidNonMatchingFormatString(URL, String)
 
   var errorDescription: String? {
     switch self {
+      case .failedToCreateFormatStringRegex(let error):
+        return "Failed to create format string regex with error '\(error)'"
       case .failedToEnumerateStringsCatalogs(let directory, _):
         return "Failed to enumerate strings catalogs in directory at '\(directory.relativePath)'"
       case .failedToDeleteStringsCatalog(let file, _):
@@ -31,6 +35,8 @@ enum StringCatalogCompilerError: LocalizedError {
         return "Failed to write strings file at '\(file.relativePath)'"
       case .failedToWriteStringsDictFile(let file, _):
         return "Failed to write strings dict file at '\(file.relativePath)'"
+      case .invalidNonMatchingFormatString(let file, let string):
+        return "Two or more format strings in the same string do not match in file '\(file.relativePath)' with string '\(string)'"
     }
   }
 }

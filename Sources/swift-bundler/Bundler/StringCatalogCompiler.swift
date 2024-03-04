@@ -5,7 +5,7 @@ enum StringCatalogCompiler {
   /// A state for a string unit to be in.
   enum StringUnitState: String, Decodable {
     case translated = "translated"
-    case needsReview = "needs-review"
+    case needsReview = "needs_review"
   }
 
   /// A string unit containg a value and a state.
@@ -58,7 +58,7 @@ enum StringCatalogCompiler {
   /// A translation unit in a string catalog.
   struct TranslationUnit: Decodable {
     let comment: String?
-    let localizations: [String: StringOutlet]
+    let localizations: [String: StringOutlet]?
   }
 
   /// The root of a `.xcstrings` file.
@@ -92,6 +92,7 @@ enum StringCatalogCompiler {
   /// A plural variation in a strings file.
   struct StringsFilePluralVariation: Encodable {
     let spec = "NSStringPluralRuleType"
+    let formatValueType: String?
     let other: String
     let zero: String?
     let one: String?
@@ -99,6 +100,7 @@ enum StringCatalogCompiler {
     // Coding keys for the plural variations.
     private enum CodingKeys: String, CodingKey {
       case spec = "NSStringFormatSpecTypeKey"
+      case formatValueType = "NSStringFormatValueTypeKey"
       case other
       case zero
       case one
@@ -220,7 +222,11 @@ enum StringCatalogCompiler {
           }
         }
 
-        let (stringsFile, stringsDictFile) = generateStringsFile(from: data, locale: locale)
+        let data = generateStringsFile(url: file, from: data, locale: locale)
+
+        guard case let .success((stringsFile, stringsDictFile)) = data else {
+          return data.eraseSuccessValue()
+        }
 
         // The paths for the strings and strings dict files.
         let stringsFileURL = lprojDirectory
@@ -281,7 +287,11 @@ enum StringCatalogCompiler {
     // Loop through all the strings and get the keys.
     var locales: [String] = []
     for (_, translationUnit) in files.strings {
-      for (locale, _) in translationUnit.localizations {
+      guard let localizations = translationUnit.localizations else {
+        continue
+      } 
+
+      for (locale, _) in localizations {
         locales.append(locale)
       }
     }
@@ -289,19 +299,90 @@ enum StringCatalogCompiler {
     return locales
   }
 
+  // Gets the regex to match format value types.
+  /// - Returns: The regex to match format value types.
+  private static func getFormatValueTypeRegex() -> Result<NSRegularExpression, StringCatalogCompilerError> {
+    // The regex to match format value types.
+    do {
+      return .success(try NSRegularExpression(pattern: "%([0-9]+\\$)?[0 #+-]?[0-9*]*\\.?\\d*[hl]{0,2}[jztL]?[dDiuUxXoOeEfgGaAcCsSpF]", options: []))
+    } catch {
+      return .failure(.failedToCreateFormatStringRegex(error))
+    }
+  }
+
+  /// Selects and returns the order of format specifiers in a string.
+  /// - Parameter
+  ///  - fileURL: The file URL to select the order of format specifiers from.
+  ///  - string: The string to select the order of format specifiers from.
+  /// - Returns: The order of format specifiers in the string.
+  private static func selectFormatSpecifierOrder(
+    fileURL: URL,
+    from string: String
+  ) -> Result<[Int: (String, String)], StringCatalogCompilerError> {
+    // Initialize the format specifier regex.
+    let regex = getFormatValueTypeRegex()
+    guard case let .success(regex) = regex else {
+      return .failure(regex.failure ?? .failedToCreateFormatStringRegex(NSError()))
+    }
+
+    // Get the format specifiers.
+    let formatSpecifiers = regex.matches(in: string, options: [], range: NSRange(location: 0, length: string.count))
+      .map { (string as NSString).substring(with: $0.range) }
+    
+    // Create a dictionary with the order of the format specifiers.
+    var currentOrder = 1
+
+    var formatSpecifierOrder = [Int: (String, String)]()
+
+    for formatSpecifier in formatSpecifiers {
+      // Trim the first character (%)
+      let formatSpecifierStrip = String(formatSpecifier.dropFirst())
+      // The last character is the format specifier type.
+      let formatSpecifierType = String(formatSpecifierStrip[formatSpecifierStrip.index(before: formatSpecifierStrip.endIndex)])
+      // If there is an $, get the number before it.
+      let formatSpecifierOrderSplit = formatSpecifierStrip.split(separator: "$")
+      let intBeforeDollar = formatSpecifierOrderSplit.count > 1 ? Int(formatSpecifierOrderSplit[0]) : nil
+      
+      // If there is a number before the $, use it as the order.
+      if let intBeforeDollar = intBeforeDollar {
+        if formatSpecifierOrder[intBeforeDollar] == nil {
+          formatSpecifierOrder[intBeforeDollar] = (String(formatSpecifierType), formatSpecifier)
+        } else if formatSpecifierOrder[intBeforeDollar]?.0 != String(formatSpecifierType) {
+          return .failure(.invalidNonMatchingFormatString(URL(fileURLWithPath: ""), string))
+        }
+      } else {
+        // If there is no number before the $, use the current order.
+        if formatSpecifierOrder[currentOrder] == nil {
+          formatSpecifierOrder[currentOrder] = (String(formatSpecifierType), formatSpecifier)
+        } else if formatSpecifierOrder[currentOrder]?.0 != String(formatSpecifierType) {
+          print(formatSpecifierOrder[currentOrder] ?? "nil")
+          return .failure(.invalidNonMatchingFormatString(URL(fileURLWithPath: ""), string))
+        }
+        currentOrder += 1
+      }
+    }
+
+    return .success(formatSpecifierOrder)
+  }
+
   /// Generate a strings file from a String Catalog file.
   /// - Parameters:
+  ///  - fileURL: The URL of the string catalog file.
   ///  - data: String Catalog file data.
   ///  - locale: The locale to generate the strings file for.
   /// - Returns: The strings file and the strings dict file.
-  private static func generateStringsFile(from data: StringsCatalogFile, locale: String) -> ([String: String], [String: StringDictionaryItem]) {
+  private static func generateStringsFile(
+    url fileURL: URL,
+    from data: StringsCatalogFile,
+    locale: String
+  ) -> Result<([String: String], [String: StringDictionaryItem]), StringCatalogCompilerError> {
     // Loop through the strings and generate the strings file.
     var stringsFile = [String: String]()
     var stringsDictFile = [String: StringDictionaryItem]()
 
     for (key, translationUnit) in data.strings {
       // Get the translation for the locale.
-      let translation = translationUnit.localizations[locale] ?? translationUnit.localizations[data.sourceLanguage]
+      let translation = translationUnit.localizations?[locale] ?? translationUnit.localizations?[data.sourceLanguage]
 
       if let translation = translation {
         // Match the translation to the correct outlet.
@@ -309,9 +390,27 @@ enum StringCatalogCompiler {
           case .unit(let unit):
             stringsFile[key] = unit.value
           case .variation(let variation):
+            // Get all the format value
+            let formatValueType = selectFormatSpecifierOrder(fileURL: fileURL, from: variation.plural.other.stringUnit.value)
+            guard case let .success(formatValueType) = formatValueType else {
+              return .failure(formatValueType.failure ?? .failedToCreateFormatStringRegex(NSError()))
+            }
+
+            // Get the format value type.
+            var formatSpecifer = ""
+            var formatSpeciferIndex: Double = .infinity
+            let acceptedFormatValueTypeForNumber = ["d", "D", "u", "U", "x", "X", "o", "O", "f", "e", "E", "g", "G", "a", "A", "F", "i"]
+            for (order, type) in formatValueType {
+              if Double(order) < formatSpeciferIndex && acceptedFormatValueTypeForNumber.contains(type.0) {
+                formatSpecifer = type.0
+                formatSpeciferIndex = Double(order)
+              }
+            }
+
             // Add the other, zero, and one variations to the strings dict file.
             stringsDictFile[key] = StringDictionaryItem(
               value: StringsFilePluralVariation(
+                formatValueType: "\(Int(formatSpeciferIndex))$\(formatSpecifer)",
                 other: variation.plural.other.stringUnit.value,
                 zero: variation.plural.zero?.stringUnit.value,
                 one: variation.plural.one?.stringUnit.value
@@ -324,6 +423,6 @@ enum StringCatalogCompiler {
       }
     }
 
-    return (stringsFile, stringsDictFile)
+    return .success((stringsFile, stringsDictFile))
   }
 }
