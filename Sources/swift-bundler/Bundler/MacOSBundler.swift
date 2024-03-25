@@ -32,6 +32,7 @@ enum MacOSBundler: Bundler {
     universal: Bool,
     standAlone: Bool,
     codesigningIdentity: String?,
+    codesigningEntitlements: URL?,
     provisioningProfile: URL?,
     platformVersion: String,
     targetingSimulator: Bool
@@ -83,7 +84,11 @@ enum MacOSBundler: Bundler {
 
     let sign: () -> Result<Void, MacOSBundlerError> = {
       if let identity = codesigningIdentity {
-        return CodeSigner.signAppBundle(bundle: appBundle, identityId: identity).mapError { error in
+        return CodeSigner.signAppBundle(
+          bundle: appBundle,
+          identityId: identity,
+          entitlements: codesigningEntitlements
+        ).mapError { error in
           return .failedToCodesign(error)
         }
       } else {

@@ -12,6 +12,7 @@ protocol Bundler {
     universal: Bool,
     standAlone: Bool,
     codesigningIdentity: String?,
+    codesigningEntitlements: URL?,
     provisioningProfile: URL?,
     platformVersion: String,
     targetingSimulator: Bool
