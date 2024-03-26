@@ -32,6 +32,7 @@ enum VisionOSBundler: Bundler {
     universal: Bool,
     standAlone _: Bool,
     codesigningIdentity: String?,
+    codesigningEntitlements: URL?,
     provisioningProfile: URL?,
     platformVersion: String,
     targetingSimulator: Bool

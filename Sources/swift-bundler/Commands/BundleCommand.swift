@@ -229,6 +229,7 @@ struct BundleCommand: AsyncCommand {
           universal: universal,
           standAlone: arguments.standAlone,
           codesigningIdentity: arguments.identity,
+          codesigningEntitlements: arguments.entitlements,
           provisioningProfile: arguments.provisioningProfile,
           platformVersion: platformVersion,
           targetingSimulator: arguments.platform.isSimulator

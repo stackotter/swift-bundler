@@ -100,6 +100,13 @@ struct BundleArguments: ParsableArguments {
       help: "Codesign the application (use `--identity` to select the identity).")
     var shouldCodesign = false
 
+    /// A codesigning entitlements file to use.
+    @Option(
+      name: .customLong("entitlements"),
+      help: "The entitlements file to use for codesigning",
+      transform: URL.init(fileURLWithPath:))
+    var entitlements: URL?
+
     /// If `true`, a universal application will be created (arm64 and x86_64).
     @Flag(
       name: .shortAndLong,
