@@ -136,7 +136,7 @@ enum StringCatalogCompiler {
 
     // If there are no string catalog files, return an error.
     guard let files = stringCatalogFiles else {
-      return .failure(.failedToEnumerateStringsCatalogs(directory, NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoSuchFileError, userInfo: nil)))
+      return .failure(.failedToEnumerateStringsCatalogs(directory))
     }
 
     // Compile the string catalog files.
@@ -320,9 +320,12 @@ enum StringCatalogCompiler {
     from string: String
   ) -> Result<[Int: (String, String)], StringCatalogCompilerError> {
     // Initialize the format specifier regex.
-    let regex = getFormatValueTypeRegex()
-    guard case let .success(regex) = regex else {
-      return .failure(regex.failure ?? .failedToCreateFormatStringRegex(NSError()))
+    let regex: NSRegularExpression
+    switch getFormatValueTypeRegex() {
+      case .success(let result):
+        regex = result
+      case .failure(let error):
+        return .failure(error)
     }
 
     // Get the format specifiers.
@@ -391,9 +394,12 @@ enum StringCatalogCompiler {
             stringsFile[key] = unit.value
           case .variation(let variation):
             // Get all the format value
-            let formatValueType = selectFormatSpecifierOrder(fileURL: fileURL, from: variation.plural.other.stringUnit.value)
-            guard case let .success(formatValueType) = formatValueType else {
-              return .failure(formatValueType.failure ?? .failedToCreateFormatStringRegex(NSError()))
+            let formatValueType: [Int: (String, String)]
+            switch selectFormatSpecifierOrder(fileURL: fileURL, from: variation.plural.other.stringUnit.value) {
+              case .success(let type):
+                formatValueType = type
+              case .failure(let error):
+                return .failure(error)
             }
 
             // Get the format value type.

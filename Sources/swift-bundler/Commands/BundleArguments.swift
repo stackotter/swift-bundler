@@ -86,40 +86,48 @@ struct BundleArguments: ParsableArguments {
     help: "The identity to use for codesigning")
   var identity: String?
 
+  /// A provisioning profile to use.
   #if os(macOS)
-    /// A provisioing profile to use.
     @Option(
       name: .customLong("provisioning-profile"),
       help: "The provisioning profile to embed in the app (only applicable to visionOS and iOS).",
       transform: URL.init(fileURLWithPath:))
-    var provisioningProfile: URL?
+  #endif
+  var provisioningProfile: URL?
 
-    /// If `true`, the application will be codesigned.
+  /// If `true`, the application will be codesigned.
+  #if os(macOS)
     @Flag(
       name: .customLong("codesign"),
       help: "Codesign the application (use `--identity` to select the identity).")
-    var shouldCodesign = false
+  #endif
+  var shouldCodesign = false
 
-    /// A codesigning entitlements file to use.
+  /// A codesigning entitlements file to use.
+  #if os(macOS)
     @Option(
       name: .customLong("entitlements"),
       help: "The entitlements file to use for codesigning",
       transform: URL.init(fileURLWithPath:))
-    var entitlements: URL?
+  #endif
+  var entitlements: URL?
 
-    /// If `true`, a universal application will be created (arm64 and x86_64).
+  /// If `true`, a universal application will be created (arm64 and x86_64).
+  #if os(macOS)
     @Flag(
       name: .shortAndLong,
       help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
-    var universal = false
+  #endif
+  var universal = false
 
-    /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
-    /// system-wide dynamic libraries being installed such as gtk).
+  /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
+  /// system-wide dynamic libraries being installed such as gtk).
+  #if os(macOS)
     @Flag(
       name: .customLong("experimental-stand-alone"),
       help:
         "Build an application which doesn't rely on any system-wide third-party libraries being installed (such as gtk). This features is experimental and potentially incompatible with '--universal', use with care."
     )
-    var standAlone = false
   #endif
+  var standAlone = false
 }

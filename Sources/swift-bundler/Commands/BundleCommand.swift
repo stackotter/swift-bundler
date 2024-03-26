@@ -29,8 +29,8 @@ struct BundleCommand: AsyncCommand {
           "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
           + " Can only be set when `--skip-build` is supplied."
       ))
-    var builtWithXcode = false
   #endif
+  var builtWithXcode = false
 
   /// Used to avoid loading configuration twice when RunCommand is used.
   static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
