@@ -71,8 +71,11 @@ enum Runner {
           environmentVariables: environmentVariables
         )
       case .linux:
-        // TODO: Implement linux app running
-        fatalError("TODO: Implement linux app running")
+        return runLinuxExecutable(
+          bundle: bundle,
+          arguments: arguments,
+          environmentVariables: environmentVariables
+        )
     }
   }
 
@@ -316,6 +319,35 @@ enum Runner {
       )
     }.mapError { error in
       .failedToRunOnVisionOSSimulator(error)
+    }
+  }
+
+  static func runLinuxExecutable(
+    bundle: URL,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    print("Creating")
+    let process = Process.create(
+      bundle.path,
+      arguments: arguments,
+      runSilentlyWhenNotVerbose: false
+    )
+    process.addEnvironmentVariables(environmentVariables)
+
+    do {
+      try process.run()
+    } catch {
+      return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
+    }
+
+    process.waitUntilExit()
+
+    let exitStatus = Int(process.terminationStatus)
+    if exitStatus != 0 {
+      return .failure(.failedToRunExecutable(.nonZeroExitStatus(exitStatus)))
+    } else {
+      return .success()
     }
   }
 }

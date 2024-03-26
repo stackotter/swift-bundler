@@ -28,6 +28,6 @@ func getBundler(for platform: Platform) -> any Bundler.Type {
     case .visionOS, .visionOSSimulator:
       return VisionOSBundler.self
     case .linux:
-      fatalError("Unimplemented")
+      return AppImageBundler.self
   }
 }

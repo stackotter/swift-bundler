@@ -42,6 +42,12 @@ extension Result {
         return .failure(error)
     }
   }
+
+  func intoAnyError() -> Result<Success, any Error> {
+    mapError { error in
+      error
+    }
+  }
 }
 
 extension Result where Success == Void {

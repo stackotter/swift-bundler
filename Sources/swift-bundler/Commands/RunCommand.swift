@@ -71,8 +71,14 @@ struct RunCommand: AsyncCommand {
       await bundleCommand.run()
     }
 
+    let bundle: URL
+    if device == .linux {
+      bundle = outputDirectory.appendingPathComponent("\(appName).AppImage")
+    } else {
+      bundle = outputDirectory.appendingPathComponent("\(appName).app")
+    }
     try Runner.run(
-      bundle: outputDirectory.appendingPathComponent("\(appName).app"),
+      bundle: bundle,
       bundleIdentifier: appConfiguration.identifier,
       device: device,
       arguments: passThroughArguments,

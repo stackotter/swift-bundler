@@ -1,7 +1,7 @@
 import Foundation
 
 /// A device that can be used to run apps.
-enum Device {
+enum Device: Equatable {
   case macOS
   case iOS
   case visionOS
