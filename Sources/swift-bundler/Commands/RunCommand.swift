@@ -21,7 +21,9 @@ struct RunCommand: AsyncCommand {
 
   @Option(
     name: [.customLong("simulator")],
-    help: "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8' or 'Apple Vision Pro').")
+    help:
+      "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8' or 'Apple Vision Pro')."
+  )
   var simulatorSearchTerm: String?
 
   /// If `true`, the building and bundling step is skipped.
@@ -94,10 +96,23 @@ struct RunCommand: AsyncCommand {
         return .iOS
       case .visionOS:
         return .visionOS
+      case .tvOS:
+        return .tvOS
       case .linux:
         return .linux
-      case .iOSSimulator, .visionOSSimulator:
-        // TODO: Refactor this into a separate function.
+      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+        // TODO: Refactor this whole case block into a separate function.
+        let device: (String) -> Device
+        switch platform {
+          case .iOSSimulator:
+            device = Device.iOSSimulator
+          case .visionOSSimulator:
+            device = Device.visionOSSimulator
+          case .tvOSSimulator:
+            device = Device.tvOSSimulator
+          default:
+            fatalError("Unreachable (supposedly)")
+        }
         if let searchTerm = simulatorSearchTerm {
           // Get matching simulators
           let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
@@ -129,17 +144,17 @@ struct RunCommand: AsyncCommand {
             log.info("Found multiple matching simulators, using '\(simulator.name)'")
           }
 
-          return platform == .iOSSimulator ? .iOSSimulator(id: simulator.id) : .visionOSSimulator(id: simulator.id)
+          return device(simulator.id)
         } else {
           let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
 
           // If an iOS simulator is booted, use that
           if allSimulators.contains(where: { $0.state == .booted }) {
-            return platform == .iOSSimulator ? .iOSSimulator(id: "booted") : .visionOSSimulator(id: "booted")
+            return device("booted")
           } else {
             // swiftlint:disable:next line_length
             log.error(
-              "To run on the iOS simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
+              "To run on a simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
             )
 
             Output {

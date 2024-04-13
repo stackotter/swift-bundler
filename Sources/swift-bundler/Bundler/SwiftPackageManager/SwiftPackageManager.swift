@@ -126,7 +126,7 @@ enum SwiftPackageManager {
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch platform {
-      case .iOS, .visionOS:
+      case .iOS, .visionOS, .tvOS:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -135,10 +135,17 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        let targetTriple =
-          platform == .iOS
-          ? "arm64-apple-ios\(platformVersion)"
-          : "arm64-apple-xros\(platformVersion)"
+        let targetTriple: String
+        switch platform {
+          case .iOS:
+            targetTriple = "arm64-apple-ios\(platformVersion)"
+          case .visionOS:
+            targetTriple = "arm64-apple-xros\(platformVersion)"
+          case .tvOS:
+            targetTriple = "arm64-apple-tvos\(platformVersion)"
+          default:
+            fatalError("Unreachable (supposedly)")
+        }
         platformArguments =
           [
             "-sdk", sdkPath,
@@ -148,7 +155,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .iOSSimulator, .visionOSSimulator:
+      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         let sdkPath: String
         switch getLatestSDKPath(for: platform) {
           case .success(let path):
@@ -159,10 +166,17 @@ enum SwiftPackageManager {
 
         // TODO: Make target triple generation generic
         let architecture = BuildArchitecture.current.rawValue
-        let targetTriple =
-          platform == .iOSSimulator
-          ? "\(architecture)-apple-ios\(platformVersion)-simulator"
-          : "\(architecture)-apple-xros\(platformVersion)-simulator"
+        let targetTriple: String
+        switch platform {
+          case .iOSSimulator:
+            targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
+          case .visionOSSimulator:
+            targetTriple = "\(architecture)-apple-xros\(platformVersion)-simulator"
+          case .tvOSSimulator:
+            targetTriple = "\(architecture)-apple-tvos\(platformVersion)-simulator"
+          default:
+            fatalError("Unreachable (supposedly)")
+        }
         platformArguments =
           [
             "-sdk", sdkPath,

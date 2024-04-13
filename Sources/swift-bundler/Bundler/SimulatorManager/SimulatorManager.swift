@@ -5,12 +5,14 @@ enum SimulatorManager {
   /// Lists available simulators.
   /// - Parameter searchTerm: If provided, the simulators will be filtered using the search term.
   /// - Returns: A list of available simulators matching the search term (if provided), or a failure if an error occurs.
-  static func listAvailableSimulators(searchTerm: String? = nil) -> Result<[Simulator], SimulatorManagerError> {
+  static func listAvailableSimulators(searchTerm: String? = nil) -> Result<
+    [Simulator], SimulatorManagerError
+  > {
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "simctl", "list", "devices",
-        searchTerm, "available", "--json"
+        searchTerm, "available", "--json",
       ].compactMap { $0 }
     ).getOutputData().mapError { error in
       return .failedToRunSimCTL(error)
@@ -26,8 +28,9 @@ enum SimulatorManager {
       for (platform, platformSimulators) in result.devices {
         if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
           simulators.append(contentsOf: platformSimulators)
-        }
-        if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+        } else if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+          simulators.append(contentsOf: platformSimulators)
+        } else if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS") {
           simulators.append(contentsOf: platformSimulators)
         }
       }
@@ -43,9 +46,10 @@ enum SimulatorManager {
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "simctl", "boot", id
+        "simctl", "boot", id,
       ]
-    ).getOutputData().eraseSuccessValue().flatMapError { error -> Result<Void, SimulatorManagerError> in
+    ).getOutputData().eraseSuccessValue().flatMapError {
+      error -> Result<Void, SimulatorManagerError> in
       // If the device is already booted, count it as a success
       guard
         case let ProcessError.nonZeroExitStatusWithOutput(data, _) = error,
@@ -78,7 +82,7 @@ enum SimulatorManager {
       "/usr/bin/xcrun",
       arguments: [
         "simctl", "launch", connectConsole ? "--console" : nil,
-        simulatorId, bundleIdentifier
+        simulatorId, bundleIdentifier,
       ].compactMap { $0 } + arguments,
       runSilentlyWhenNotVerbose: false
     )
@@ -108,7 +112,7 @@ enum SimulatorManager {
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "simctl", "install", simulatorId, bundle.path
+        "simctl", "install", simulatorId, bundle.path,
       ]
     ).runAndWait().mapError { error in
       return .failedToRunSimCTL(error)
@@ -121,7 +125,7 @@ enum SimulatorManager {
     return Process.create(
       "/usr/bin/open",
       arguments: [
-        "-a", "Simulator"
+        "-a", "Simulator",
       ]
     ).runAndWait().mapError { error in
       return .failedToOpenSimulator(error)

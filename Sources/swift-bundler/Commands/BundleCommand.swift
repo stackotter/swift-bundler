@@ -70,7 +70,7 @@ struct BundleCommand: AsyncCommand {
 
     // macOS-only arguments
     #if os(macOS)
-      if (platform == .iOS || platform == .visionOS),
+      if platform == .iOS || platform == .visionOS,
         builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
       {
         log.error(
@@ -96,8 +96,8 @@ struct BundleCommand: AsyncCommand {
       }
 
       if platform == .iOS || platform == .visionOS,
-         !arguments.shouldCodesign || arguments.identity == nil
-         || arguments.provisioningProfile == nil
+        !arguments.shouldCodesign || arguments.identity == nil
+          || arguments.provisioningProfile == nil
       {
         log.error(
           "Must specify `--identity`, `--codesign` and `--provisioning-profile` when '--platform \(platform.rawValue)'"
@@ -123,7 +123,8 @@ struct BundleCommand: AsyncCommand {
           break
         default:
           if arguments.provisioningProfile != nil {
-            log.error("`--provisioning-profile` is only available when building visionOS and iOS apps")
+            log.error(
+              "`--provisioning-profile` is only available when building visionOS and iOS apps")
             return false
           }
       }
@@ -141,9 +142,9 @@ struct BundleCommand: AsyncCommand {
           ? [.arm64, .x86_64]
           : (!arguments.architectures.isEmpty
             ? arguments.architectures : [BuildArchitecture.current])
-      case .iOS, .visionOS:
+      case .iOS, .visionOS, .tvOS:
         architectures = [.arm64]
-      case .linux, .iOSSimulator, .visionOSSimulator:
+      case .linux, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         architectures = [BuildArchitecture.current]
     }
 
