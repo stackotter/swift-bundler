@@ -56,29 +56,30 @@ struct PropertyDecl {
     }
 
     var documentation: String?
-    if let leadingTrivia = variable.leadingTrivia, leadingTrivia.count >= 3 {
-      var lines: [String] = []
-      for trivia in leadingTrivia {
-        let triviaString = String(describing: trivia)
-          .trimmingCharacters(in: .whitespaces)
+    let leadingTrivia = variable.leadingTrivia
+    guard (leadingTrivia.count >= 3)
+    else { return .failure(.notIdentifierBinding) }
 
-        if triviaString.hasPrefix("/// ") {
-          lines.append(String(triviaString.dropFirst(4)))
-        } else if triviaString == "///" {
-          lines.append("")
-        }
-      }
+    var lines: [String] = []
+    for trivia in leadingTrivia {
+      let triviaString = String(describing: trivia)
+        .trimmingCharacters(in: .whitespaces)
 
-      if !lines.isEmpty {
-        documentation = lines.joined(separator: "\n")
+      if triviaString.hasPrefix("/// ") {
+        lines.append(String(triviaString.dropFirst(4)))
+      } else if triviaString == "///" {
+        lines.append("")
       }
     }
 
+    if !lines.isEmpty {
+      documentation = lines.joined(separator: "\n")
+    }
+
     var modifiers: [String] = []
-    if let modifierList = variable.modifiers {
-      for modifier in modifierList {
-        modifiers.append(modifier.name.withoutTrivia().text)
-      }
+    let modifierList = variable.modifiers
+    for modifier in modifierList {
+      modifiers.append(modifier.name.text)
     }
 
     guard let binding = parseBindings(variable.bindings) else {
@@ -116,7 +117,7 @@ struct PropertyDecl {
       return ParsedBinding(
         patternBinding: binding,
         identifier: identifierPattern.identifier.text,
-        type: binding.typeAnnotation?.type.withoutTrivia().description
+        type: binding.typeAnnotation?.type.description
       )
     }
 

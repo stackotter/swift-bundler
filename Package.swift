@@ -10,8 +10,8 @@ let package = Package(
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/stackotter/swift-arg-parser", from: "1.2.3"),
-    .package(url: "https://github.com/apple/swift-log", from: "1.4.2"),
+    .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
+    .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.7.1"),
     .package(url: "https://github.com/furby-tm/TOMLKit", from: "0.5.6"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
@@ -19,10 +19,10 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/stackotter/XcodeGen", exact: "2.35.1"),
     .package(
-      url: "https://github.com/apple/swift-syntax", exact: "0.50800.0-SNAPSHOT-2022-12-29-a"
+      url: "https://github.com/apple/swift-syntax", exact: "510.0.1"
     ),
     .package(
-      url: "https://github.com/apple/swift-format", exact: "0.50800.0-SNAPSHOT-2022-12-29-a"
+      url: "https://github.com/apple/swift-format", exact: "510.0.1"
     ),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
   ],
