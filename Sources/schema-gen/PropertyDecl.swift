@@ -57,8 +57,9 @@ struct PropertyDecl {
 
     var documentation: String?
     let leadingTrivia = variable.leadingTrivia
-    guard (leadingTrivia.count >= 3)
-    else { return .failure(.notIdentifierBinding) }
+    guard leadingTrivia.count >= 3 else {
+      return .failure(.notIdentifierBinding)
+    }
 
     var lines: [String] = []
     for trivia in leadingTrivia {
@@ -117,7 +118,7 @@ struct PropertyDecl {
       return ParsedBinding(
         patternBinding: binding,
         identifier: identifierPattern.identifier.text,
-        type: binding.typeAnnotation?.type.description
+        type: binding.typeAnnotation?.type.trimmedDescription
       )
     }
 
