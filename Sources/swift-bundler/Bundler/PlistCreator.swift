@@ -97,6 +97,9 @@ enum PlistCreator {
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
         entries["UILaunchScreen"] = [String: Any]()
+      case .tvOS, .tvOSSimulator:
+        entries["MinimumOSVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["AppleTVOS"]
       case .visionOS, .visionOSSimulator:
         // using Apple's HelloWorld visionOS demo as a reference
         // ref: https://developer.apple.com/documentation/visionos/world
@@ -138,6 +141,9 @@ enum PlistCreator {
       "CFBundlePackageType": "BNDL",
     ]
 
+    // TODO: Clean this up, there's a lot of repetition. Also it could be reused by
+    //   `createAppInfoPlistContents` which contains all these key-value pairs and just
+    //   a few extra ones.
     switch platform {
       case .macOS:
         entries["LSMinimumSystemVersion"] = platformVersion
@@ -146,6 +152,9 @@ enum PlistCreator {
         // TODO: Make the produced Info.plist for iOS identical to Xcode's
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
+      case .tvOS, .tvOSSimulator:
+        entries["MinimumOSVersion"] = platformVersion
+        entries["CFBundleSupportedPlatforms"] = ["AppleTVOS"]
       case .visionOS, .visionOSSimulator:
         // TODO: Make the produced Info.plist for visionOS identical to Xcode's
         entries["MinimumOSVersion"] = platformVersion

@@ -7,6 +7,8 @@ enum Platform: String, CaseIterable {
   case iOSSimulator
   case visionOS
   case visionOSSimulator
+  case tvOS
+  case tvOSSimulator
   case linux
 
   /// The platform's name.
@@ -27,6 +29,10 @@ enum Platform: String, CaseIterable {
         return "xros"
       case .visionOSSimulator:
         return "xrsimulator"
+      case .tvOS:
+        return "appletvos"
+      case .tvOSSimulator:
+        return "appletvsimulator"
       case .linux:
         return "linux"
     }
@@ -35,9 +41,9 @@ enum Platform: String, CaseIterable {
   /// Whether the platform is a simulator or not.
   var isSimulator: Bool {
     switch self {
-      case .iOSSimulator, .visionOSSimulator:
+      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         return true
-      case .macOS, .iOS, .visionOS, .linux:
+      case .macOS, .iOS, .visionOS, .tvOS, .linux:
         return false
     }
   }
@@ -45,12 +51,14 @@ enum Platform: String, CaseIterable {
   /// The platform's name in a SwiftPM manifest's JSON representation.
   var manifestName: String {
     switch self {
-      case .macOS, .iOS, .visionOS, .linux:
+      case .macOS, .iOS, .visionOS, .tvOS, .linux:
         return name.lowercased()
       case .iOSSimulator:
         return Platform.iOS.name.lowercased()
       case .visionOSSimulator:
         return Platform.visionOS.name.lowercased()
+      case .tvOSSimulator:
+        return Platform.tvOS.name.lowercased()
     }
   }
 

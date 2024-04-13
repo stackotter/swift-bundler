@@ -25,6 +25,8 @@ func getBundler(for platform: Platform) -> any Bundler.Type {
       return MacOSBundler.self
     case .iOS, .iOSSimulator:
       return IOSBundler.self
+    case .tvOS, .tvOSSimulator:
+      return TVOSBundler.self
     case .visionOS, .visionOSSimulator:
       return VisionOSBundler.self
     case .linux:
