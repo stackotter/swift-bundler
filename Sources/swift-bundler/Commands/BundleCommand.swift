@@ -95,7 +95,7 @@ struct BundleCommand: AsyncCommand {
         return false
       }
 
-      if platform == .iOS || platform == .visionOS,
+      if platform == .iOS || platform == .visionOS || platform == .tvOS,
         !arguments.shouldCodesign || arguments.identity == nil
           || arguments.provisioningProfile == nil
       {
@@ -119,7 +119,7 @@ struct BundleCommand: AsyncCommand {
       }
 
       switch platform {
-        case .iOS, .visionOS:
+        case .iOS, .visionOS, .tvOS:
           break
         default:
           if arguments.provisioningProfile != nil {
