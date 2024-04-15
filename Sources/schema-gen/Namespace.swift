@@ -34,12 +34,12 @@ struct Namespace {
         }
 
         if let structDecl = decl as? StructDeclSyntax {
-          guard structDecl.identifier.text == identifier else {
+          guard structDecl.name.text == identifier else {
             continue
           }
           return .success(.structDecl(structDecl))
         } else if let enumDecl = decl as? EnumDeclSyntax {
-          guard enumDecl.identifier.text == identifier else {
+          guard enumDecl.name.text == identifier else {
             continue
           }
           return .success(.enumDecl(enumDecl))
