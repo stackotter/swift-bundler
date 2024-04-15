@@ -110,11 +110,11 @@ struct PropertyDecl {
   /// - Returns: The documentation comment if any.
   private static func parseDocumentation(from variable: VariableDeclSyntax) -> String? {
     var lines: [String] = []
-    for trivia in variable.leadingTrivia {
-      guard variable.leadingTrivia.count >= 3 else {
-        return nil
-      }
+    guard variable.leadingTrivia.count >= 3 else {
+      return nil
+    }
 
+    for trivia in variable.leadingTrivia {
       let triviaString = String(describing: trivia)
         .trimmingCharacters(in: .whitespaces)
 
