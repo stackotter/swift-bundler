@@ -16,6 +16,7 @@ import TOMLKit
 /// }
 /// ```
 enum PlistValue: Codable, Equatable {
+  /// The JSON schema for a plist value.
   private static var schema = """
   {
     "type": ["number", "string", "object", "array", "boolean"]

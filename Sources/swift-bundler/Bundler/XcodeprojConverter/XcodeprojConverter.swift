@@ -469,12 +469,12 @@ enum XcodeprojConverter {
 
     let targetsSource = ArrayExprSyntax {
       for target in targets {
-        ArrayElement(
+        ArrayElementSyntax(
           expression: FunctionCallExprSyntax(
             callee: ExprSyntax(".\(raw: target.targetType.manifestName)")
           ) {
-            TupleExprElement(label: "name", expression: ExprSyntax("\(literal: target.name)"))
-            TupleExprElement(
+            LabeledExprSyntax(label: "name", expression: ExprSyntax("\(literal: target.name)"))
+            LabeledExprSyntax(
               label: "dependencies",
               expression: ExprSyntax(ArrayExprSyntax {
                 for dependency in target.dependencies {
@@ -488,7 +488,7 @@ enum XcodeprojConverter {
                 }
               })
             )
-            TupleExprElement(
+            LabeledExprSyntax(
               label: "resources",
               expression: ExprSyntax(ArrayExprSyntax {
                 for resource in target.resources {
@@ -503,12 +503,13 @@ enum XcodeprojConverter {
     }
 
     let source = SourceFileSyntax {
-      DeclSyntax("import PackageDescription")
-        .withLeadingTrivia(Trivia(pieces: [
-          .lineComment("// swift-tools-version: 5.6"),
-          .newlines(1)
-        ]))
-        .withTrailingTrivia(Trivia.newline)
+      DeclSyntax(
+        """
+        // swift-tools-version: 5.6
+        import PackageDescription
+
+        """
+      )
 
       DeclSyntax(
         """

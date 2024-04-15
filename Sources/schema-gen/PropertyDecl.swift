@@ -46,39 +46,21 @@ struct PropertyDecl {
     return words.joined(separator: "_")
   }
 
-  /// Converts a `MemberDeclListItemSyntax` (the most useless thing in existence) into a
+  /// Converts a `MemberBlockItemSyntax` (the most useless thing in existence) into a
   /// ``PropertyDecl`` (much better).
   /// - Parameter decl: A declaration to convert.
   /// - Returns: A success if the declaration was a property, and a failure otherwise.
-  static func parse(from decl: MemberDeclListItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
+  static func parse(from decl: MemberBlockItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
     guard let variable = decl.decl.as(VariableDeclSyntax.self) else {
       return .failure(.notVariable)
     }
 
-    var documentation: String?
-    if let leadingTrivia = variable.leadingTrivia, leadingTrivia.count >= 3 {
-      var lines: [String] = []
-      for trivia in leadingTrivia {
-        let triviaString = String(describing: trivia)
-          .trimmingCharacters(in: .whitespaces)
-
-        if triviaString.hasPrefix("/// ") {
-          lines.append(String(triviaString.dropFirst(4)))
-        } else if triviaString == "///" {
-          lines.append("")
-        }
-      }
-
-      if !lines.isEmpty {
-        documentation = lines.joined(separator: "\n")
-      }
-    }
+    let doc = parseDocumentation(from: variable)
 
     var modifiers: [String] = []
-    if let modifierList = variable.modifiers {
-      for modifier in modifierList {
-        modifiers.append(modifier.name.withoutTrivia().text)
-      }
+    let modifierList = variable.modifiers
+    for modifier in modifierList {
+      modifiers.append(modifier.name.text)
     }
 
     guard let binding = parseBindings(variable.bindings) else {
@@ -90,7 +72,7 @@ struct PropertyDecl {
       .children(viewMode: .all).last
 
     return .success(PropertyDecl(
-      documentation: documentation,
+      documentation: doc,
       modifiers: modifiers,
       identifier: binding.identifier,
       type: binding.type,
@@ -116,8 +98,35 @@ struct PropertyDecl {
       return ParsedBinding(
         patternBinding: binding,
         identifier: identifierPattern.identifier.text,
-        type: binding.typeAnnotation?.type.withoutTrivia().description
+        type: binding.typeAnnotation?.type.trimmedDescription
       )
+    }
+
+    return nil
+  }
+
+  /// Parses a variable declaration to extract the documentation (if any).
+  /// - Parameter variable: The variable declaration syntax to parse for documentation.
+  /// - Returns: The documentation comment if any.
+  private static func parseDocumentation(from variable: VariableDeclSyntax) -> String? {
+    guard variable.leadingTrivia.count >= 3 else {
+      return nil
+    }
+
+    var lines: [String] = []
+    for trivia in variable.leadingTrivia {
+      let triviaString = String(describing: trivia)
+        .trimmingCharacters(in: .whitespaces)
+
+      if triviaString.hasPrefix("/// ") {
+        lines.append(String(triviaString.dropFirst(4)))
+      } else if triviaString == "///" {
+        lines.append("")
+      }
+    }
+
+    if !lines.isEmpty {
+      return lines.joined(separator: "\n")
     }
 
     return nil

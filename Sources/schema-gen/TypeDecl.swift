@@ -15,13 +15,13 @@ enum TypeDecl {
     }
   }
 
-  /// The type's identifier.
+  /// The type's name.
   var identifier: String {
     switch self {
       case .structDecl(let decl):
-        return decl.identifier.text
+        return decl.name.text
       case .enumDecl(let decl):
-        return decl.identifier.text
+        return decl.name.text
     }
   }
 
@@ -29,12 +29,12 @@ enum TypeDecl {
   var properties: [PropertyDecl] {
     var properties: [PropertyDecl] = []
     for child in children {
-      guard let memberBlock = child.as(MemberDeclBlockSyntax.self) else {
+      guard let memberBlock = child.as(MemberBlockSyntax.self) else {
         continue
       }
 
       for member in memberBlock.members.children(viewMode: .all) {
-        guard let item = member.as(MemberDeclListItemSyntax.self) else {
+        guard let item = member.as(MemberBlockItemSyntax.self) else {
           continue
         }
 
