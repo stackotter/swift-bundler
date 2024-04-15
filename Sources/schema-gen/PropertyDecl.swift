@@ -46,11 +46,11 @@ struct PropertyDecl {
     return words.joined(separator: "_")
   }
 
-  /// Converts a `MemberDeclListItemSyntax` (the most useless thing in existence) into a
+  /// Converts a `MemberBlockItemSyntax` (the most useless thing in existence) into a
   /// ``PropertyDecl`` (much better).
   /// - Parameter decl: A declaration to convert.
   /// - Returns: A success if the declaration was a property, and a failure otherwise.
-  static func parse(from decl: MemberDeclListItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
+  static func parse(from decl: MemberBlockItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
     guard let variable = decl.decl.as(VariableDeclSyntax.self) else {
       return .failure(.notVariable)
     }
