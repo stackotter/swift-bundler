@@ -55,27 +55,7 @@ struct PropertyDecl {
       return .failure(.notVariable)
     }
 
-    var documentation: String?
-    let leadingTrivia = variable.leadingTrivia
-    guard leadingTrivia.count >= 3 else {
-      return .failure(.notIdentifierBinding)
-    }
-
-    var lines: [String] = []
-    for trivia in leadingTrivia {
-      let triviaString = String(describing: trivia)
-        .trimmingCharacters(in: .whitespaces)
-
-      if triviaString.hasPrefix("/// ") {
-        lines.append(String(triviaString.dropFirst(4)))
-      } else if triviaString == "///" {
-        lines.append("")
-      }
-    }
-
-    if !lines.isEmpty {
-      documentation = lines.joined(separator: "\n")
-    }
+    let doc = parseDocumentation(from: variable)
 
     var modifiers: [String] = []
     let modifierList = variable.modifiers
@@ -92,7 +72,7 @@ struct PropertyDecl {
       .children(viewMode: .all).last
 
     return .success(PropertyDecl(
-      documentation: documentation,
+      documentation: doc,
       modifiers: modifiers,
       identifier: binding.identifier,
       type: binding.type,
@@ -120,6 +100,33 @@ struct PropertyDecl {
         identifier: identifierPattern.identifier.text,
         type: binding.typeAnnotation?.type.trimmedDescription
       )
+    }
+
+    return nil
+  }
+
+  /// Parses a variable declaration to extract the documentation (if any).
+  /// - Parameter variable: The variable declaration syntax to parse for documentation.
+  /// - Returns: The documentation comment if any.
+  private static func parseDocumentation(from variable: VariableDeclSyntax) -> String? {
+    var lines: [String] = []
+    for trivia in variable.leadingTrivia {
+      guard variable.leadingTrivia.count >= 3 else {
+        return nil
+      }
+
+      let triviaString = String(describing: trivia)
+        .trimmingCharacters(in: .whitespaces)
+
+      if triviaString.hasPrefix("/// ") {
+        lines.append(String(triviaString.dropFirst(4)))
+      } else if triviaString == "///" {
+        lines.append("")
+      }
+    }
+
+    if !lines.isEmpty {
+      return lines.joined(separator: "\n")
     }
 
     return nil
