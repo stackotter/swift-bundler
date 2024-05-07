@@ -74,8 +74,7 @@ struct BundleArguments: ParsableArguments {
     }(),
     transform: { string in
       // also support getting a platform by its apple sdk equivalent.
-      if let appleSDK = AppleSDKPlatform(rawValue: string)
-      {
+      if let appleSDK = AppleSDKPlatform(rawValue: string) {
         return appleSDK.platform
       }
 
