@@ -111,10 +111,8 @@ enum AppleSDKPlatform: String, CaseIterable {
   }
 }
 
-extension Platform: Equatable
-{
-  public static func == (lhs: Platform, rhs: AppleSDKPlatform) -> Bool
-  {
-    lhs.rawValue == rhs.rawValue
+extension Platform: Equatable {
+  public static func ==(lhs: Platform, rhs: AppleSDKPlatform) -> Bool {
+    lhs == rhs.platform
   }
 }
