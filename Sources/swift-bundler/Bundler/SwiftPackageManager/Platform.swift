@@ -71,3 +71,9 @@ enum Platform: String, CaseIterable {
     #endif
   }
 }
+
+extension Platform: Equatable {
+  public static func ==(lhs: Platform, rhs: AppleSDKPlatform) -> Bool {
+    lhs == rhs.platform
+  }
+}
