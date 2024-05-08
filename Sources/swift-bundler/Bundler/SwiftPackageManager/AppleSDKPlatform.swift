@@ -20,21 +20,21 @@ enum AppleSDKPlatform: String, CaseIterable {
   var platform: Platform {
     switch self {
       case .macosx:
-        .macOS
+        return .macOS
       case .iphoneos:
-        .iOS
+        return .iOS
       case .iphonesimulator:
-        .iOSSimulator
+        return .iOSSimulator
       case .xros:
-        .visionOS
+        return .visionOS
       case .xrsimulator:
-        .visionOSSimulator
+        return .visionOSSimulator
       case .appletvos:
-        .tvOS
+        return .tvOS
       case .appletvsimulator:
-        .tvOSSimulator
+        return .tvOSSimulator
       case .linux:
-        .linux
+        return .linux
     }
   }
 }
