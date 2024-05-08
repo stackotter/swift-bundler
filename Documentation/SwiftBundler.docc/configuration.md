@@ -23,9 +23,9 @@ postbuild_script = "./utils/postbuild.sh"
 
 [apps.HelloWorld.plist]
 commit = "{COMMIT_HASH}" # This could be any key-value pair, 'commit' is just an example
-# You can also define many other kinds of platform-specific fields, as an example, below is
-# how you would specify a list of URL schemes (http, ftp, and so on) supported by the app,
-# in this example, to allow opening your app from the URL: (ex. helloworld://open)
+# You can also define many other kinds of complex fields that you want, as an example, below
+# is how you would specify a list of URL schemes (http, ftp, and so on) supported by the app,
+# on macOS in this example, to allow opening your app from the URL: (ex. helloworld://open)
 CFBundleURLTypes = [ { type = "dict", value = { CFBundleTypeRole = 'Viewer', CFBundleURLName = 'HelloWorld', CFBundleURLSchemes = [ 'helloworld' ] } } ]
 ```
 
