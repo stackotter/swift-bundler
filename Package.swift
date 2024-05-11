@@ -7,6 +7,7 @@ let package = Package(
   platforms: [.macOS(.v11)],
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
+    .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
@@ -18,13 +19,10 @@ let package = Package(
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/stackotter/XcodeGen", exact: "2.35.1"),
-    .package(
-      url: "https://github.com/apple/swift-syntax", exact: "510.0.1"
-    ),
-    .package(
-      url: "https://github.com/apple/swift-format", exact: "510.0.1"
-    ),
+    .package(url: "https://github.com/apple/swift-syntax", exact: "510.0.1"),
+    .package(url: "https://github.com/apple/swift-format", exact: "510.0.1"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
+    .package(url: "https://github.com/stackotter/Socket", from: "0.3.3"),
   ],
   targets: [
     .executableTarget(
@@ -36,6 +34,8 @@ let package = Package(
         "TOMLKit",
         "Rainbow",
         "Version",
+        "Socket",
+        "HotReloadingProtocol",
         .product(name: "XcodeGenKit", package: "XcodeGen"),
         .product(name: "ProjectSpec", package: "XcodeGen"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
@@ -51,6 +51,21 @@ let package = Package(
       dependencies: [
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    ),
+
+    .target(
+      name: "SwiftBundlerRuntime",
+      dependencies: [
+        "Socket",
+        "HotReloadingProtocol",
+      ]
+    ),
+
+    .target(
+      name: "HotReloadingProtocol",
+      dependencies: [
+        "Socket"
       ]
     ),
 

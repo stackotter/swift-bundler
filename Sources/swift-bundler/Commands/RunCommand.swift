@@ -1,4 +1,6 @@
 import Foundation
+import HotReloadingProtocol
+import Socket
 import StackOtterArgParser
 
 /// The subcommand for running an app from a package.
@@ -32,6 +34,11 @@ struct RunCommand: AsyncCommand {
     help: "Skips the building and bundling steps.")
   var skipBuild = false
 
+  /// If `true`, the app gets rebuilt whenever code changes occur, and a hot reloading server is
+  /// hosted in the background to notify the running app of the new build.
+  @Flag(name: .long, help: "Enables hot reloading.")
+  var hot = false
+
   /// Command line arguments that get passed through to the app.
   @Argument(
     parsing: .captureForPassthrough,
@@ -42,8 +49,13 @@ struct RunCommand: AsyncCommand {
 
   func wrappedRun() async throws {
     // Validate arguments
-    if !arguments.platform.isSimulator && simulatorSearchTerm != nil {
+    guard arguments.platform.isSimulator || simulatorSearchTerm == nil else {
       log.error("'--simulator' can only be used when the selected platform is a simulator")
+      Foundation.exit(1)
+    }
+
+    guard !(skipBuild && hot) else {
+      log.error("'--skip-build' is incompatible with '--hot' (nonsensical)")
       Foundation.exit(1)
     }
 
@@ -63,10 +75,14 @@ struct RunCommand: AsyncCommand {
 
     // Get the device to run on
     let device = try Self.getDevice(
-      for: arguments.platform, simulatorSearchTerm: simulatorSearchTerm)
+      for: arguments.platform,
+      simulatorSearchTerm: simulatorSearchTerm
+    )
 
     let bundleCommand = BundleCommand(
-      arguments: _arguments, skipBuild: false, builtWithXcode: false
+      arguments: _arguments,
+      skipBuild: false,
+      builtWithXcode: false
     )
 
     if !skipBuild {
@@ -79,13 +95,51 @@ struct RunCommand: AsyncCommand {
     } else {
       bundle = outputDirectory.appendingPathComponent("\(appName).app")
     }
-    try Runner.run(
-      bundle: bundle,
-      bundleIdentifier: appConfiguration.identifier,
-      device: device,
-      arguments: passThroughArguments,
-      environmentFile: environmentFile
-    ).unwrap()
+
+    let environmentVariables =
+      try environmentFile.map { file in
+        try Runner.loadEnvironmentVariables(from: file).unwrap()
+      } ?? [:]
+
+    if hot {
+      let port: UInt16 = 7977
+      let hotReloadingVariables = [
+        "SWIFT_BUNDLER_HOT_RELOADING": "1",
+        "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
+      ]
+
+      let socket = try await Socket.init(
+        IPv4Protocol.tcp,
+        bind: IPv4SocketAddress(address: .any, port: port)
+      )
+      try await socket.listen()
+
+      Task {
+        var client = try await socket.accept()
+        log.info("Received connection from runtime")
+        let packet = try await Packet.read(from: &client)
+        log.info("Received packet from client: \(packet)")
+        try await Packet.pong.write(to: &client)
+      }
+
+      try Runner.run(
+        bundle: bundle,
+        bundleIdentifier: appConfiguration.identifier,
+        device: device,
+        arguments: passThroughArguments,
+        environmentVariables: environmentVariables.merging(
+          hotReloadingVariables, uniquingKeysWith: { x, _ in x }
+        )
+      ).unwrap()
+    } else {
+      try Runner.run(
+        bundle: bundle,
+        bundleIdentifier: appConfiguration.identifier,
+        device: device,
+        arguments: passThroughArguments,
+        environmentVariables: environmentVariables
+      ).unwrap()
+    }
   }
 
   static func getDevice(for platform: Platform, simulatorSearchTerm: String?) throws -> Device {

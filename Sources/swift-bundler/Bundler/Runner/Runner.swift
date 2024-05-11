@@ -12,28 +12,17 @@ enum Runner {
   ///   - bundleIdentifier: The app's bundle identifier.
   ///   - device: The device to run the app on.
   ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentFile: A file containing environment variables to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: Returns a failure if the app fails to run.
   static func run(
     bundle: URL,
     bundleIdentifier: String,
     device: Device,
     arguments: [String] = [],
-    environmentFile: URL? = nil
+    environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
     // TODO: Test `arguments` on an actual iOS when I get the chance
     log.info("Running '\(bundle.lastPathComponent)'")
-    let environmentVariables: [String: String]
-    if let environmentFile = environmentFile {
-      switch loadEnvironmentVariables(from: environmentFile) {
-        case .success(let variables):
-          environmentVariables = variables
-        case .failure(let error):
-          return .failure(error)
-      }
-    } else {
-      environmentVariables = [:]
-    }
 
     switch device {
       case .macOS:
