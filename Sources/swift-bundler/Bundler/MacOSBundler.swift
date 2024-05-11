@@ -133,7 +133,9 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
-  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String)
+  private static func createAppDirectoryStructure(
+    at outputDirectory: URL, appName: String
+  )
     -> Result<Void, MacOSBundlerError>
   {
     log.info("Creating '\(appName).app'")
@@ -164,7 +166,9 @@ enum MacOSBundler: Bundler {
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
-  private static func copyExecutable(at source: URL, to destination: URL) -> Result<
+  private static func copyExecutable(
+    at source: URL, to destination: URL
+  ) -> Result<
     Void, MacOSBundlerError
   > {
     log.info("Copying executable")
@@ -220,7 +224,9 @@ enum MacOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
   ///   If the file is neither an `icns` or a `png`, a failure is also returned.
-  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<
+  private static func createAppIcon(
+    icon: URL, outputDirectory: URL
+  ) -> Result<
     Void, MacOSBundlerError
   > {
     // Copy `AppIcon.icns` if present

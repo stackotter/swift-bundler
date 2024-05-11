@@ -11,7 +11,8 @@ enum PlistCreatorError: LocalizedError {
       case .failedToWriteAppInfoPlist(let file, _):
         return "Failed to write to the app's 'Info.plist' at '\(file.relativePath)'"
       case .failedToWriteResourceBundleInfoPlist(let bundle, let file, _):
-        return "Failed to write to the '\(bundle)' resource bundle's 'Info.plist' at '\(file.relativePath)'"
+        return
+          "Failed to write to the '\(bundle)' resource bundle's 'Info.plist' at '\(file.relativePath)'"
       case .serializationFailed:
         return "Failed to serialize a plist dictionary"
     }

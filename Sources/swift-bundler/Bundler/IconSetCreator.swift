@@ -7,7 +7,10 @@ enum IconSetCreator {
   ///   - icon: The 1024x1024 input icon. Must be a png. An error is returned if the icon's path extension is not `png` (case insensitive).
   ///   - outputDirectory: The output directory to put the generated `AppIcon.icns` in.
   /// - Returns: If an error occurs, a failure is returned.
-  static func createIcns(from icon: URL, outputDirectory: URL) -> Result<Void, IconSetCreatorError> {
+  static func createIcns(
+    from icon: URL,
+    outputDirectory: URL
+  ) -> Result<Void, IconSetCreatorError> {
     guard icon.pathExtension.lowercased() == "png" else {
       return .failure(.notPNG(icon))
     }
@@ -57,13 +60,17 @@ enum IconSetCreator {
   ///   - dimension: The new dimension for the icon.
   ///   - output: The output file.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createScaledIcon(_ icon: URL, dimension: Int, output: URL) -> Result<Void, IconSetCreatorError> {
+  private static func createScaledIcon(
+    _ icon: URL,
+    dimension: Int,
+    output: URL
+  ) -> Result<Void, IconSetCreatorError> {
     let process = Process.create(
       "/usr/bin/sips",
       arguments: [
         "-z", String(dimension), String(dimension),
         icon.path,
-        "--out", output.path
+        "--out", output.path,
       ],
       pipe: Pipe())
 

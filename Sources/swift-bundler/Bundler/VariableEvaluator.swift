@@ -124,15 +124,17 @@ enum VariableEvaluator {
   ///   - variable: The variable to evaluate.
   ///   - context: The context required to evaluate variables.
   /// - Returns: The variable's value, or a failure if an error occurs.
-  static func evaluateVariable( // swiftlint:disable:this cyclomatic_complexity
+  static func evaluateVariable(  // swiftlint:disable:this cyclomatic_complexity
     _ variable: String,
     with context: Context
   ) -> Result<String, VariableEvaluatorError> {
     // TODO: Make text macros more generic
     let rfc1034Characters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-    let productRFC1034Identifier = String(context.productName.map { character in
-      return rfc1034Characters.contains(character) ? character : "-"
-    })
+    let productRFC1034Identifier = String(
+      context.productName.map { character in
+        return rfc1034Characters.contains(character) ? character : "-"
+      }
+    )
 
     let value: String?
     switch variable {
@@ -168,7 +170,7 @@ enum VariableEvaluator {
       case "PRODUCT_MODULE_NAME":
         value = productRFC1034Identifier.replacingOccurrences(of: "-", with: "_")
       case "SRCROOT":
-        value = "." // Swift Bundler avoids using absolute paths
+        value = "."  // Swift Bundler avoids using absolute paths
       default:
         value = nil
     }

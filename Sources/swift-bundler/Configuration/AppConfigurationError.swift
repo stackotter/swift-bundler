@@ -7,7 +7,8 @@ enum AppConfigurationError: LocalizedError {
   var errorDescription: String? {
     switch self {
       case .failedToLoadInfoPlistEntries(let file, let error):
-        return "Failed to load '\(file.relativePath)' for appending to app configuration: \(error.localizedDescription)"
+        return
+          "Failed to load '\(file.relativePath)' for appending to app configuration: \(error.localizedDescription)"
     }
   }
 }

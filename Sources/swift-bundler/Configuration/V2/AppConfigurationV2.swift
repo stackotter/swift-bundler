@@ -62,28 +62,38 @@ struct AppConfigurationV2: Codable {
   static func updateVariableDelimeters(_ value: PlistValue) -> PlistValue {
     switch value {
       case .string(let string):
-        let result = VariableEvaluator.evaluateVariables(in: string, with: .custom { variable in
-          return .success("$(\(variable))")
-        }, openingDelimeter: "{", closingDelimeter: "}")
+        let result = VariableEvaluator.evaluateVariables(
+          in: string,
+          with: .custom { variable in
+            return .success("$(\(variable))")
+          },
+          openingDelimeter: "{",
+          closingDelimeter: "}"
+        )
 
         switch result {
           case .success(let newValue):
             return .string(newValue)
           case .failure(let error):
-            log.warning("Failed to update variable delimeters in plist value '\(string)': \(error.localizedDescription)")
+            log.warning(
+              "Failed to update variable delimeters in plist value '\(string)': \(error.localizedDescription)"
+            )
             return value
         }
       case .array(let array):
-        return .array(array.map { value in
-          return updateVariableDelimeters(value)
-        })
+        return .array(
+          array.map { value in
+            return updateVariableDelimeters(value)
+          }
+        )
       case .dictionary(let dictionary):
-        return .dictionary(dictionary.mapValues { value in
-          return updateVariableDelimeters(value)
-        })
+        return .dictionary(
+          dictionary.mapValues { value in
+            return updateVariableDelimeters(value)
+          }
+        )
       default:
         return value
     }
   }
 }
-

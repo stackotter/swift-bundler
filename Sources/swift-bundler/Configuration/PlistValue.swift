@@ -18,10 +18,10 @@ import TOMLKit
 enum PlistValue: Codable, Equatable {
   /// The JSON schema for a plist value.
   private static var schema = """
-  {
-    "type": ["number", "string", "object", "array", "boolean"]
-  }
-  """
+    {
+      "type": ["number", "string", "object", "array", "boolean"]
+    }
+    """
 
   case dictionary([String: PlistValue])
   case array([PlistValue])
@@ -148,7 +148,7 @@ enum PlistValue: Codable, Equatable {
   ///   "value": "2022-05-18T00:54:55Z"
   /// }
   /// ```
-  static func decodeExplicitlyTypedValue( // swiftlint:disable:this cyclomatic_complexity
+  static func decodeExplicitlyTypedValue(  // swiftlint:disable:this cyclomatic_complexity
     from container: KeyedDecodingContainer<CodingKeys>
   ) throws -> PlistValue? {
     let type: String
@@ -173,19 +173,25 @@ enum PlistValue: Codable, Equatable {
         case "date":
           let string = try container.decode(String.self, forKey: .value)
           guard let date = ISO8601DateFormatter().date(from: string) else {
-            throw PlistError.invalidValue(string, type: "ISO8601 date", codingPath: container.codingPath)
+            throw PlistError.invalidValue(
+              string, type: "ISO8601 date", codingPath: container.codingPath
+            )
           }
           return .date(date)
         case "data":
           let base64 = try container.decode(String.self, forKey: .value)
           guard let data = Data(base64Encoded: base64) else {
-            throw PlistError.invalidValue(base64, type: "base64 data", codingPath: container.codingPath)
+            throw PlistError.invalidValue(
+              base64, type: "base64 data", codingPath: container.codingPath
+            )
           }
           return .data(data)
         case "string":
           return .string(try container.decode(String.self, forKey: .value))
         default:
-          throw PlistError.invalidValue(type, type: "plist data type", codingPath: container.codingPath)
+          throw PlistError.invalidValue(
+            type, type: "plist data type", codingPath: container.codingPath
+          )
       }
     } catch {
       if let error = error as? PlistError {
@@ -230,7 +236,9 @@ enum PlistValue: Codable, Equatable {
   /// Loads a dictionary of ``PlistValue``s from a plist file.
   /// - Parameter plistFile: The plist file to load the dictionary from.
   /// - Returns: The loaded plist dictionary, or a failure if an error occurs.
-  static func loadDictionary(fromPlistFile plistFile: URL) -> Result<[String: PlistValue], PlistError> {
+  static func loadDictionary(
+    fromPlistFile plistFile: URL
+  ) -> Result<[String: PlistValue], PlistError> {
     let contents: Data
     do {
       contents = try Data(contentsOf: plistFile)
@@ -241,11 +249,13 @@ enum PlistValue: Codable, Equatable {
     let dictionary: [String: Any]
     do {
       var propertyListFormat = PropertyListSerialization.PropertyListFormat.xml
-      guard let plist = try PropertyListSerialization.propertyList(
-        from: contents,
-        options: .mutableContainersAndLeaves,
-        format: &propertyListFormat
-      ) as? [String: Any] else {
+      guard
+        let plist = try PropertyListSerialization.propertyList(
+          from: contents,
+          options: .mutableContainersAndLeaves,
+          format: &propertyListFormat
+        ) as? [String: Any]
+      else {
         return .failure(.failedToDeserializePlistFileContents(contents, nil))
       }
 
@@ -276,7 +286,7 @@ enum PlistValue: Codable, Equatable {
   /// Converts a Swift value to a ``PlistValue``.
   /// - Parameter value: The value to convert.
   /// - Returns: The converted value, or a failure if the value is invalid.
-  static func convert(_ value: Any) -> Result<PlistValue, PlistError> { // swiftlint:disable:this cyclomatic_complexity
+  static func convert(_ value: Any) -> Result<PlistValue, PlistError> {  // swiftlint:disable:this cyclomatic_complexity
     let convertedValue: PlistValue
     if let string = value as? String {
       convertedValue = .string(string)

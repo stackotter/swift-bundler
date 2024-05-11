@@ -105,7 +105,9 @@ enum ResourceBundler {
   ///   - bundle: The bundle to copy.
   ///   - destination: The directory to copy the bundle to.
   /// - Returns: If an error occurs, a failure is returned.
-  static func copyResourceBundle(_ bundle: URL, to destination: URL) -> Result<
+  static func copyResourceBundle(
+    _ bundle: URL, to destination: URL
+  ) -> Result<
     Void, ResourceBundlerError
   > {
     log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
@@ -243,7 +245,9 @@ enum ResourceBundler {
   ///
   /// - Parameter bundle: The bundle to create.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func createResourceBundleDirectoryStructure(at bundle: URL, for platform: Platform)
+  private static func createResourceBundleDirectoryStructure(
+    at bundle: URL, for platform: Platform
+  )
     -> Result<Void, ResourceBundlerError>
   {
     let directory: URL
@@ -319,7 +323,9 @@ enum ResourceBundler {
   ///   - source: The source directory.
   ///   - destination: The destination directory.
   /// - Returns: If an error occurs, a failure is returned.
-  private static func copyResources(from source: URL, to destination: URL) -> Result<
+  private static func copyResources(
+    from source: URL, to destination: URL
+  ) -> Result<
     Void, ResourceBundlerError
   > {
     let contents: [URL]

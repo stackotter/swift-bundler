@@ -1,6 +1,6 @@
 import Foundation
-import SwiftSyntax
 import SwiftParser
+import SwiftSyntax
 
 enum NamespaceError: LocalizedError {
   case missingSourceFile(type: String)

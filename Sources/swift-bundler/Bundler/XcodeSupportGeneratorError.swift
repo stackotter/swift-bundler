@@ -13,7 +13,8 @@ enum XcodeSupportGeneratorError: LocalizedError {
       case .failedToGetApplicationSupportDirectory(let error):
         return error.localizedDescription
       case .applicationSupportDirectoryCannotContainSingleQuote(let directory):
-        return "The build application support directory (\"\(directory.relativePath)\") must not contain single quotes"
+        return
+          "The build application support directory (\"\(directory.relativePath)\") must not contain single quotes"
       case .failedToCreateSchemesDirectory(let directory, _):
         return "Failed to create schemes directory at '\(directory.relativePath)'"
       case .failedToWriteToAppScheme(let app, _):

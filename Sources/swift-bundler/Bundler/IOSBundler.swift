@@ -142,7 +142,10 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
-  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String) -> Result<Void, IOSBundlerError> {
+  private static func createAppDirectoryStructure(
+    at outputDirectory: URL,
+    appName: String
+  ) -> Result<Void, IOSBundlerError> {
     log.info("Creating '\(appName).app'")
     let fileManager = FileManager.default
 
@@ -157,7 +160,8 @@ enum IOSBundler: Bundler {
       try fileManager.createDirectory(at: appDynamicLibrariesDirectory)
       return .success()
     } catch {
-      return .failure(.failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
+      return .failure(
+        .failedToCreateAppBundleDirectoryStructure(bundleDirectory: appBundleDirectory, error))
     }
   }
 
@@ -166,7 +170,10 @@ enum IOSBundler: Bundler {
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
-  private static func copyExecutable(at source: URL, to destination: URL) -> Result<Void, IOSBundlerError> {
+  private static func copyExecutable(
+    at source: URL,
+    to destination: URL
+  ) -> Result<Void, IOSBundlerError> {
     log.info("Copying executable")
     do {
       try FileManager.default.copyItem(at: source, to: destination)
@@ -222,7 +229,10 @@ enum IOSBundler: Bundler {
   ///   - outputDirectory: Should be the app's `Resources` directory.
   /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
   ///            If the file is neither an `icns` or a `png`, a failure is also returned.
-  private static func createAppIcon(icon: URL, outputDirectory: URL) -> Result<Void, IOSBundlerError> {
+  private static func createAppIcon(
+    icon: URL,
+    outputDirectory: URL
+  ) -> Result<Void, IOSBundlerError> {
     // Copy `AppIcon.icns` if present
     if icon.pathExtension == "icns" {
       log.info("Copying '\(icon.lastPathComponent)'")
@@ -244,11 +254,17 @@ enum IOSBundler: Bundler {
     return .failure(.invalidAppIconFile(icon))
   }
 
-  private static func embedProvisioningProfile(_ provisioningProfile: URL, in bundle: URL) -> Result<Void, IOSBundlerError> {
+  private static func embedProvisioningProfile(
+    _ provisioningProfile: URL,
+    in bundle: URL
+  ) -> Result<Void, IOSBundlerError> {
     log.info("Embedding provisioning profile")
 
     do {
-      try FileManager.default.copyItem(at: provisioningProfile, to: bundle.appendingPathComponent("embedded.mobileprovision"))
+      try FileManager.default.copyItem(
+        at: provisioningProfile,
+        to: bundle.appendingPathComponent("embedded.mobileprovision")
+      )
     } catch {
       return .failure(.failedToCopyProvisioningProfile(error))
     }

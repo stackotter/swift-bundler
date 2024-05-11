@@ -5,7 +5,9 @@ enum SimulatorManager {
   /// Lists available simulators.
   /// - Parameter searchTerm: If provided, the simulators will be filtered using the search term.
   /// - Returns: A list of available simulators matching the search term (if provided), or a failure if an error occurs.
-  static func listAvailableSimulators(searchTerm: String? = nil) -> Result<
+  static func listAvailableSimulators(
+    searchTerm: String? = nil
+  ) -> Result<
     [Simulator], SimulatorManagerError
   > {
     return Process.create(

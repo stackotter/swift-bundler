@@ -8,7 +8,7 @@ struct SimulatorsCommand: ParsableCommand {
     abstract: "Manage and list available simulators.",
     subcommands: [
       SimulatorsListCommand.self,
-      SimulatorsBootCommand.self
+      SimulatorsBootCommand.self,
     ],
     defaultSubcommand: SimulatorsListCommand.self
   )

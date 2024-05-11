@@ -71,13 +71,15 @@ struct PropertyDecl {
       .children(viewMode: .all).last?
       .children(viewMode: .all).last
 
-    return .success(PropertyDecl(
-      documentation: doc,
-      modifiers: modifiers,
-      identifier: binding.identifier,
-      type: binding.type,
-      initialValue: initialValue
-    ))
+    return .success(
+      PropertyDecl(
+        documentation: doc,
+        modifiers: modifiers,
+        identifier: binding.identifier,
+        type: binding.type,
+        initialValue: initialValue
+      )
+    )
   }
 
   /// Parses a pattern binding list to extract the identifier, type annotation and pattern binding.

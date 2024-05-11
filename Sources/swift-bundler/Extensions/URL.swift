@@ -16,10 +16,9 @@ extension URL {
 
     // Find number of common path components:
     var commonComponentCount = 0
-    while
-      commonComponentCount < destComponents.count
-        && commonComponentCount < baseComponents.count
-        && destComponents[commonComponentCount] == baseComponents[commonComponentCount]
+    while commonComponentCount < destComponents.count
+      && commonComponentCount < baseComponents.count
+      && destComponents[commonComponentCount] == baseComponents[commonComponentCount]
     {
       commonComponentCount += 1
     }

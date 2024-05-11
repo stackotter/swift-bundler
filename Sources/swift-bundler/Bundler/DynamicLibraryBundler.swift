@@ -68,7 +68,9 @@ enum DynamicLibraryBundler {
           to: outputLibrary
         )
       } catch {
-        return .failure(.failedToCopyDynamicLibrary(source: library, destination: outputLibrary, error))
+        return .failure(
+          .failedToCopyDynamicLibrary(source: library, destination: outputLibrary, error)
+        )
       }
 
       // Update the install name of the library to reflect the change of location relative to the executable
@@ -85,7 +87,11 @@ enum DynamicLibraryBundler {
     }
 
     if makeStandAlone {
-      return moveSystemWideLibraryDependencies(of: appExecutable, to: outputDirectory, for: appExecutable)
+      return moveSystemWideLibraryDependencies(
+        of: appExecutable,
+        to: outputDirectory,
+        for: appExecutable
+      )
     } else {
       return .success()
     }
@@ -133,16 +139,25 @@ enum DynamicLibraryBundler {
             to: outputLibrary
           )
         } catch {
-          return .failure(.failedToCopyDynamicLibrary(source: resolvedDependency, destination: outputLibrary, error))
+          return .failure(
+            .failedToCopyDynamicLibrary(
+              source: resolvedDependency, destination: outputLibrary, error
+            )
+          )
         }
       }
 
-      guard let newRelativePath = outputLibrary.relativePath(from: executable.deletingLastPathComponent()) else {
-        return .failure(.failedToGetNewPathRelativeToExecutable(
-          library: resolvedDependency.lastPathComponent,
-          newPath: outputLibrary,
-          executable: binary
-        ))
+      guard
+        let newRelativePath = outputLibrary.relativePath(
+          from: executable.deletingLastPathComponent())
+      else {
+        return .failure(
+          .failedToGetNewPathRelativeToExecutable(
+            library: resolvedDependency.lastPathComponent,
+            newPath: outputLibrary,
+            executable: binary
+          )
+        )
       }
 
       if case let .failure(error) = updateLibraryInstallName(
@@ -154,7 +169,11 @@ enum DynamicLibraryBundler {
       }
 
       if !libraryAlreadyCopied {
-        let result = moveSystemWideLibraryDependencies(of: outputLibrary, to: directory, for: executable)
+        let result = moveSystemWideLibraryDependencies(
+          of: outputLibrary,
+          to: directory,
+          for: executable
+        )
         if case let .failure(error) = result {
           return .failure(error)
         }
@@ -183,20 +202,29 @@ enum DynamicLibraryBundler {
     newLibraryLocation: URL,
     librarySearchDirectory: URL
   ) -> Result<Void, DynamicLibraryBundlerError> {
-    guard let originalRelativePath = originalLibraryLocation.relativePath(from: librarySearchDirectory) else {
-      return .failure(.failedToGetOriginalPathRelativeToSearchDirectory(
-        library: library,
-        originalPath: originalLibraryLocation,
-        searchDirectory: librarySearchDirectory
-      ))
+    guard
+      let originalRelativePath = originalLibraryLocation.relativePath(from: librarySearchDirectory)
+    else {
+      return .failure(
+        .failedToGetOriginalPathRelativeToSearchDirectory(
+          library: library,
+          originalPath: originalLibraryLocation,
+          searchDirectory: librarySearchDirectory
+        )
+      )
     }
 
-    guard let newRelativePath = newLibraryLocation.relativePath(from: executable.deletingLastPathComponent()) else {
-      return .failure(.failedToGetNewPathRelativeToExecutable(
-        library: library,
-        newPath: newLibraryLocation,
-        executable: executable
-      ))
+    guard
+      let newRelativePath = newLibraryLocation.relativePath(
+        from: executable.deletingLastPathComponent())
+    else {
+      return .failure(
+        .failedToGetNewPathRelativeToExecutable(
+          library: library,
+          newPath: newLibraryLocation,
+          executable: executable
+        )
+      )
     }
 
     return updateLibraryInstallName(
@@ -220,8 +248,10 @@ enum DynamicLibraryBundler {
     let process = Process.create(
       "/usr/bin/install_name_tool",
       arguments: [
-        "-change", originalInstallName, newInstallName,
-        executable.path
+        "-change",
+        originalInstallName,
+        newInstallName,
+        executable.path,
       ]
     )
 
@@ -262,14 +292,16 @@ enum DynamicLibraryBundler {
 
     // Locate dylibs and parse library names from paths
     if isXcodeBuild {
-      libraries = contents
+      libraries =
+        contents
         .filter { $0.pathExtension == "framework" }
         .map { framework in
           let name = framework.deletingPathExtension().lastPathComponent
           return (name: name, file: framework.appendingPathComponent("Versions/A/\(name)"))
         }
     } else {
-      libraries = contents
+      libraries =
+        contents
         .filter { $0.pathExtension == "dylib" }
         .map { library in
           let name = library.deletingPathExtension().lastPathComponent.dropFirst(3)

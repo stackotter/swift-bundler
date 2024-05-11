@@ -15,7 +15,10 @@ struct Handler: LogHandler {
     set { metadata[key] = newValue }
   }
 
-  func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+  func log(
+    level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String,
+    file: String, function: String, line: UInt
+  ) {
     let output = "\(level.coloring(level.rawValue + ":")) \(message)"
 
     switch level {

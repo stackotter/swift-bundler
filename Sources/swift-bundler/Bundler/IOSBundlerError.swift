@@ -30,15 +30,18 @@ enum IOSBundlerError: LocalizedError {
       case .failedToCreateInfoPlist(let plistCreatorError):
         return "Failed to create 'Info.plist': \(plistCreatorError.localizedDescription)"
       case .failedToCopyExecutable(let source, let destination, _):
-        return "Failed to copy executable from '\(source.relativePath)' to '\(destination.relativePath)'"
+        return
+          "Failed to copy executable from '\(source.relativePath)' to '\(destination.relativePath)'"
       case .failedToCreateIcon(let iconSetCreatorError):
         return "Failed to create app icon: \(iconSetCreatorError.localizedDescription)"
       case .failedToCopyICNS(let source, let destination, _):
-        return "Failed to copy 'icns' file from '\(source.relativePath)' to '\(destination.relativePath)'"
+        return
+          "Failed to copy 'icns' file from '\(source.relativePath)' to '\(destination.relativePath)'"
       case .failedToCopyResourceBundles(let resourceBundlerError):
         return "Failed to copy resource bundles: \(resourceBundlerError.localizedDescription)"
       case .failedToCopyDynamicLibraries(let dynamicLibraryBundlerError):
-        return "Failed to copy dynamic libraries: \(dynamicLibraryBundlerError.localizedDescription)"
+        return
+          "Failed to copy dynamic libraries: \(dynamicLibraryBundlerError.localizedDescription)"
       case .failedToRunExecutable(let processError):
         return "Failed to run app executable: \(processError.localizedDescription)"
       case .invalidAppIconFile(let file):
@@ -52,7 +55,8 @@ enum IOSBundlerError: LocalizedError {
       case .failedToLoadManifest(let error):
         return error.localizedDescription
       case .failedToGetMinimumIOSVersion(let manifest):
-        return "To build for iOS, please specify a iOS deployment version in the platforms field of '\(manifest.relativePath)'"
+        return
+          "To build for iOS, please specify a iOS deployment version in the platforms field of '\(manifest.relativePath)'"
     }
   }
 }

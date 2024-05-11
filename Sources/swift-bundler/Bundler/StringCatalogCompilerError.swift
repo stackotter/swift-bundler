@@ -1,4 +1,5 @@
 import Foundation
+
 /// An error returned by ``StringCatalogCompiler``.
 enum StringCatalogCompilerError: LocalizedError {
   case failedToCreateFormatStringRegex(Error)
@@ -36,7 +37,8 @@ enum StringCatalogCompilerError: LocalizedError {
       case .failedToWriteStringsDictFile(let file, _):
         return "Failed to write strings dict file at '\(file.relativePath)'"
       case .invalidNonMatchingFormatString(let file, let string):
-        return "Two or more format strings in the same string do not match in file '\(file.relativePath)' with string '\(string)'"
+        return
+          "Two or more format strings in the same string do not match in file '\(file.relativePath)' with string '\(string)'"
     }
   }
 }

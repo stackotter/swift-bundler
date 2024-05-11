@@ -72,10 +72,12 @@ struct AppConfiguration: Codable {
       icon: iconFile?.lastPathComponent
     )
 
-    return .success(configuration.appendingInfoPlistEntries(
-      plist,
-      excludeHandledKeys: true
-    ))
+    return .success(
+      configuration.appendingInfoPlistEntries(
+        plist,
+        excludeHandledKeys: true
+      )
+    )
   }
 
   /// Appends the contents of a plist dictionary to the app's Info.plist entries.
@@ -99,22 +101,23 @@ struct AppConfiguration: Codable {
         "CFBundleShortVersionString",
         "CFBundleSignature",
         "CFBundleVersion",
-        "LSRequiresIPhoneOS"
+        "LSRequiresIPhoneOS",
       ]
 
-      filteredDictionary = dictionary.filter { key, value in
-        return !(excludedKeys.contains(key) || (key == "CFBundleDevelopmentRegion" && value == .string("en")))
+      filteredDictionary = dictionary.filter { key, _ in
+        !excludedKeys.contains(key)
       }
     }
 
     var configuration = self
-    configuration.plist = configuration.plist.map { plist in
-      var plist = plist
-      for (key, value) in filteredDictionary {
-        plist[key] = value
-      }
-      return plist
-    } ?? filteredDictionary
+    configuration.plist =
+      configuration.plist.map { plist in
+        var plist = plist
+        for (key, value) in filteredDictionary {
+          plist[key] = value
+        }
+        return plist
+      } ?? filteredDictionary
 
     return configuration
   }

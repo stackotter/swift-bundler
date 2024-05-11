@@ -27,9 +27,9 @@ enum XcodeSupportGenerator {
   /// Gets the location to create Xcode schemes for a given package.
   /// - Parameter packageDirectory: The root directory of the package.
   /// - Returns: The package's schemes directory. If an error occurs, a failure is returned.
-  private static func getSchemesDirectory(in packageDirectory: URL) -> Result<
-    URL, XcodeSupportGeneratorError
-  > {
+  private static func getSchemesDirectory(
+    in packageDirectory: URL
+  ) -> Result<URL, XcodeSupportGeneratorError> {
     let schemesDirectory = packageDirectory.appendingPathComponent(
       ".swiftpm/xcode/xcshareddata/xcschemes")
     do {

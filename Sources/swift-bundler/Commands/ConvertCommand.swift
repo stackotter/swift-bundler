@@ -38,7 +38,9 @@ struct ConvertCommand: Command {
     // - [ ] Handle tests
 
     if !dontWarn {
-      log.warning("Converting xcodeprojs is currently an experimental feature. Proceed with caution.")
+      log.warning(
+        "Converting xcodeprojs is currently an experimental feature. Proceed with caution."
+      )
       print("[press ENTER to continue]", terminator: "")
       _ = readLine()
     }
@@ -47,9 +49,12 @@ struct ConvertCommand: Command {
       case "xcodeproj":
         try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory).unwrap()
       case "xcworkspace":
-        try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory).unwrap()
+        try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
+          .unwrap()
       default:
-        log.error("Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'")
+        log.error(
+          "Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'"
+        )
         Foundation.exit(1)
     }
   }

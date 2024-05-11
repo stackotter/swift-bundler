@@ -9,7 +9,7 @@ struct TemplatesCommand: ParsableCommand {
     subcommands: [
       TemplatesListCommand.self,
       TemplatesInfoCommand.self,
-      TemplatesUpdateCommand.self
+      TemplatesUpdateCommand.self,
     ],
     defaultSubcommand: TemplatesListCommand.self
   )

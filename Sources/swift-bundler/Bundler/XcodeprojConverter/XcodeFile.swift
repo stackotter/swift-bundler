@@ -61,11 +61,12 @@ extension XcodeprojConverter {
       let navigatorPath = file.name ?? file.path ?? ""
 
       let simpleCase: () -> Result<XcodeFile, XcodeprojConverterError> = {
-        return .success(XcodeFile(
-          relativePath: relativePath,
-          base: rootDirectory,
-          navigatorPath: navigatorPath
-        ))
+        return .success(
+          XcodeFile(
+            relativePath: relativePath,
+            base: rootDirectory,
+            navigatorPath: navigatorPath
+          ))
       }
 
       guard let sourceTree = file.sourceTree else {
@@ -75,11 +76,12 @@ extension XcodeprojConverter {
       switch sourceTree {
         case .absolute:
           let absolute = URL(fileURLWithPath: relativePath)
-          return .success(XcodeFile(
-            relativePath: absolute.lastPathComponent,
-            base: absolute.deletingLastPathComponent(),
-            navigatorPath: navigatorPath
-          ))
+          return .success(
+            XcodeFile(
+              relativePath: absolute.lastPathComponent,
+              base: absolute.deletingLastPathComponent(),
+              navigatorPath: navigatorPath
+            ))
         case .sourceRoot:
           return simpleCase()
         case .group:

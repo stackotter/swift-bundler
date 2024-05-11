@@ -139,12 +139,14 @@ enum XcodeprojConverter {
         absoluteURL = rootDirectory.appendingPathComponent(url)
       }
 
-      packageDependencies.append(XcodePackageDependency(
-        product: dependency.productName,
-        package: packageName,
-        url: absoluteURL,
-        version: version
-      ))
+      packageDependencies.append(
+        XcodePackageDependency(
+          product: dependency.productName,
+          package: packageName,
+          url: absoluteURL,
+          version: version
+        )
+      )
     }
 
     return packageDependencies
@@ -190,7 +192,10 @@ enum XcodeprojConverter {
       }
 
       let dependencies = target.dependencies.compactMap(\.target?.name)
-      let packageDependencies = extractPackageDependencies(from: target, rootDirectory: rootDirectory)
+      let packageDependencies = extractPackageDependencies(
+        from: target,
+        rootDirectory: rootDirectory
+      )
 
       // Extract target settings
       let buildSettings = target.buildConfigurationList?.buildConfigurations.first?.buildSettings
@@ -224,30 +229,34 @@ enum XcodeprojConverter {
           return rootDirectory.appendingPathComponent(evaluate(path))
         }
 
-        targets.append(ExecutableTarget(
-          name: name,
-          identifier: identifier.map(evaluate),
-          version: version,
-          sources: sources,
-          resources: resources ?? [],
-          dependencies: dependencies,
-          packageDependencies: packageDependencies,
-          macOSDeploymentVersion: macOSDeploymentVersion,
-          iOSDeploymentVersion: iOSDeploymentVersion,
-          visionOSDeploymentVersion: visionOSDeploymentVersion,
-          infoPlist: infoPlist
-        ))
+        targets.append(
+          ExecutableTarget(
+            name: name,
+            identifier: identifier.map(evaluate),
+            version: version,
+            sources: sources,
+            resources: resources ?? [],
+            dependencies: dependencies,
+            packageDependencies: packageDependencies,
+            macOSDeploymentVersion: macOSDeploymentVersion,
+            iOSDeploymentVersion: iOSDeploymentVersion,
+            visionOSDeploymentVersion: visionOSDeploymentVersion,
+            infoPlist: infoPlist
+          )
+        )
       } else {
         // Extract the rest of the library target
-        targets.append(LibraryTarget(
-          name: name,
-          identifier: identifier,
-          version: version,
-          sources: sources,
-          resources: resources ?? [],
-          dependencies: dependencies,
-          packageDependencies: packageDependencies
-        ))
+        targets.append(
+          LibraryTarget(
+            name: name,
+            identifier: identifier,
+            version: version,
+            sources: sources,
+            resources: resources ?? [],
+            dependencies: dependencies,
+            packageDependencies: packageDependencies
+          )
+        )
       }
     }
 
@@ -284,16 +293,23 @@ enum XcodeprojConverter {
   ///   - targetName: The name of the target the value is from.
   /// - Returns: The evaluated string, or the original string if there are unknown variables.
   static func evaluateBuildSetting(_ value: String, targetName: String) -> String {
-    let result = VariableEvaluator.evaluateVariables(in: value, with: .default(.init(
-      appName: targetName,
-      productName: targetName
-    )))
+    let result = VariableEvaluator.evaluateVariables(
+      in: value,
+      with: .default(
+        .init(
+          appName: targetName,
+          productName: targetName
+        )
+      )
+    )
 
     switch result {
       case .success(let evaluatedValue):
         return evaluatedValue
       case .failure:
-        log.warning("Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'.")
+        log.warning(
+          "Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'."
+        )
         return value
     }
   }
@@ -333,7 +349,9 @@ enum XcodeprojConverter {
       // Get source and destination
       let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
       let source = file.location
-      let destination = targetDirectory.appendingPathComponent(file.bundlerPath(target: target.name))
+      let destination =
+        targetDirectory
+        .appendingPathComponent(file.bundlerPath(target: target.name))
 
       // Create output directory
       do {
@@ -449,8 +467,8 @@ enum XcodeprojConverter {
     let platformStrings = minimalPlatformStrings(for: targets)
 
     var names: Set<String> = []
-    let uniquePackageDependencies = targets
-      .flatMap { target in
+    let uniquePackageDependencies =
+      targets.flatMap { target in
         target.packageDependencies
       }
       .filter { dependency in
@@ -461,9 +479,10 @@ enum XcodeprojConverter {
       for dependency in uniquePackageDependencies {
         let url = dependency.url.absoluteString
         let requirement = dependency.requirementParameterSource
-        ArrayElementSyntax(expression: ExprSyntax(
-          ".package(url: \(literal: url), \(raw: requirement))"
-        ))
+        ArrayElementSyntax(
+          expression: ExprSyntax(
+            ".package(url: \(literal: url), \(raw: requirement))"
+          ))
       }
     }
 
@@ -476,26 +495,32 @@ enum XcodeprojConverter {
             LabeledExprSyntax(label: "name", expression: ExprSyntax("\(literal: target.name)"))
             LabeledExprSyntax(
               label: "dependencies",
-              expression: ExprSyntax(ArrayExprSyntax {
-                for dependency in target.dependencies {
-                  ArrayElementSyntax(expression: ExprSyntax("\(literal: dependency)"))
-                }
+              expression: ExprSyntax(
+                ArrayExprSyntax {
+                  for dependency in target.dependencies {
+                    ArrayElementSyntax(expression: ExprSyntax("\(literal: dependency)"))
+                  }
 
-                for dependency in target.packageDependencies {
-                  ArrayElementSyntax(expression: ExprSyntax(
-                    ".product(name: \(literal: dependency.product), package: \(literal: dependency.package))"
-                  ))
+                  for dependency in target.packageDependencies {
+                    ArrayElementSyntax(
+                      expression: ExprSyntax(
+                        ".product(name: \(literal: dependency.product), package: \(literal: dependency.package))"
+                      )
+                    )
+                  }
                 }
-              })
+              )
             )
             LabeledExprSyntax(
               label: "resources",
-              expression: ExprSyntax(ArrayExprSyntax {
-                for resource in target.resources {
-                  let path = resource.bundlerPath(target: target.name)
-                  ArrayElementSyntax(expression: ExprSyntax(".copy(\(literal: path))"))
+              expression: ExprSyntax(
+                ArrayExprSyntax {
+                  for resource in target.resources {
+                    let path = resource.bundlerPath(target: target.name)
+                    ArrayElementSyntax(expression: ExprSyntax(".copy(\(literal: path))"))
+                  }
                 }
-              })
+              )
             )
           }
         )
@@ -542,17 +567,20 @@ enum XcodeprojConverter {
       return target as? ExecutableTarget
     }
 
-    let macOSDeploymentVersion: Version? = executableTargets
+    let macOSDeploymentVersion: Version? =
+      executableTargets
       .compactMap(\.macOSDeploymentVersion)
       .compactMap(Version.init(tolerant:))
       .max()
 
-    let iOSDeploymentVersion: Version? = executableTargets
+    let iOSDeploymentVersion: Version? =
+      executableTargets
       .compactMap(\.iOSDeploymentVersion)
       .compactMap(Version.init(tolerant:))
       .max()
 
-    let visionOSDeploymentVersion: Version? = executableTargets
+    let visionOSDeploymentVersion: Version? =
+      executableTargets
       .compactMap(\.visionOSDeploymentVersion)
       .compactMap(Version.init(tolerant:))
       .max()

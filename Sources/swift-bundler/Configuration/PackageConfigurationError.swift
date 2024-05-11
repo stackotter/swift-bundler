@@ -28,7 +28,8 @@ enum PackageConfigurationError: LocalizedError {
       case .failedToEvaluateVariables(let error):
         return "Failed to evaluate all expressions: \(error.localizedDescription)"
       case .failedToReadConfigurationFile(let file, _):
-        return "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
+        return
+          "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
       case .failedToDeserializeConfiguration(let error):
         let deserializationError = Self.deserializationErrorDescription(error)
         return "Failed to deserialize configuration: \(deserializationError)"
@@ -50,8 +51,9 @@ enum PackageConfigurationError: LocalizedError {
         let deserializationError = Self.deserializationErrorDescription(error)
         return "Failed to deserialize configuration for migration: \(deserializationError)"
       case .unsupportedFormatVersion(let formatVersion):
-        return "Package configuration file has an invalid format version '\(formatVersion)' and could not"
-             + " be automatically migrated. The latest format version is '\(PackageConfiguration.currentFormatVersion)'"
+        return
+          "Package configuration file has an invalid format version '\(formatVersion)' and could not"
+          + " be automatically migrated. The latest format version is '\(PackageConfiguration.currentFormatVersion)'"
       case .configurationIsAlreadyUpToDate:
         return "Configuration file is already up-to-date"
     }

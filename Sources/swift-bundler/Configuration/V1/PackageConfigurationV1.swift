@@ -39,7 +39,9 @@ struct PackageConfigurationV1: Codable {
 
       // Load the `extraInfoPlistEntries` property if present
       let json = try JSONSerialization.jsonObject(with: data)
-      if let json = json as? [String: Any], let extraEntries = json["extraInfoPlistEntries"] as? [String: Any] {
+      if let json = json as? [String: Any],
+        let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
+      {
         configuration.extraInfoPlistEntries = extraEntries
       }
     } catch {

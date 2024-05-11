@@ -34,9 +34,11 @@ struct TemplatesInfoCommand: Command {
       Foundation.exit(1)
     }
 
-    var exampleCommand = "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
+    var exampleCommand =
+      "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
-      exampleCommand += " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
+      exampleCommand +=
+        " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     }
 
     Output {
@@ -44,7 +46,10 @@ struct TemplatesInfoCommand: Command {
         KeyedList {
           KeyedList.Entry("Name", template.name)
           KeyedList.Entry("Description", template.manifest.description)
-          KeyedList.Entry("Minimum Swift version", template.manifest.minimumSwiftVersion.description)
+          KeyedList.Entry(
+            "Minimum Swift version",
+            template.manifest.minimumSwiftVersion.description
+          )
           KeyedList.Entry("Platforms") {
             InlineList(template.manifest.platforms)
           }

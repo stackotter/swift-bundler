@@ -14,7 +14,8 @@ enum ProcessError: LocalizedError {
       case .nonZeroExitStatus(let status):
         return "The process returned a non-zero exit status (\(status))"
       case .nonZeroExitStatusWithOutput(let data, let status):
-        return "The process returned a non-zero exit status (\(status))\n\(String(data: data, encoding: .utf8) ?? "invalid utf8")"
+        return
+          "The process returned a non-zero exit status (\(status))\n\(String(data: data, encoding: .utf8) ?? "invalid utf8")"
       case .failedToRunProcess:
         return "The process failed to run"
     }

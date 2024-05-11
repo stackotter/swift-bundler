@@ -99,7 +99,9 @@ enum AppImageBundler: Bundler {
   ///   - outputDirectory: The directory to output the app to.
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
-  private static func createAppDirectoryStructure(at outputDirectory: URL, appName: String)
+  private static func createAppDirectoryStructure(
+    at outputDirectory: URL, appName: String
+  )
     -> Result<Void, AppImageBundlerError>
   {
     log.info("Creating '\(appName).AppDir'")
@@ -131,7 +133,9 @@ enum AppImageBundler: Bundler {
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
-  private static func copyExecutable(at source: URL, to destination: URL) -> Result<
+  private static func copyExecutable(
+    at source: URL, to destination: URL
+  ) -> Result<
     Void, AppImageBundlerError
   > {
     log.info("Copying executable")
@@ -164,7 +168,7 @@ enum AppImageBundler: Bundler {
       ("Exec", "\(appName) %F"),
       ("Icon", appName),
       ("Terminal", "false"),
-      ("Categories", "")
+      ("Categories", ""),
     ]
 
     let contents =
@@ -192,31 +196,39 @@ enum AppImageBundler: Bundler {
     at appDir: URL,
     appName: String
   ) -> Result<Void, AppImageBundlerError> {
-    let icon = appDir.appendingPathComponent("usr/share/icons/hicolor/1024x1024/apps/\(appName).png")
+    let icon = appDir.appendingPathComponent(
+      "usr/share/icons/hicolor/1024x1024/apps/\(appName).png"
+    )
 
     // Create `.DirIcon` and `AppName.png` if an icon is present.
     var operation: () -> Result<Void, AppImageBundlerError> = { .success() }
     if FileManager.default.fileExists(atPath: icon.path) {
       operation = flatten(
         operation,
-        { Self.createSymlink(
-          at: appDir.appendingPathComponent("\(appName).png"),
-          withDestination: icon
-        ) },
-        { Self.createSymlink(
-          at: appDir.appendingPathComponent(".DirIcon"),
-          withDestination: appDir.appendingPathComponent("\(appName).png")
-        ) }
+        {
+          Self.createSymlink(
+            at: appDir.appendingPathComponent("\(appName).png"),
+            withDestination: icon
+          )
+        },
+        {
+          Self.createSymlink(
+            at: appDir.appendingPathComponent(".DirIcon"),
+            withDestination: appDir.appendingPathComponent("\(appName).png")
+          )
+        }
       )
     }
 
     // Create `AppRun` pointing to executable
     operation = flatten(
       operation,
-      { Self.createSymlink(
-        at: appDir.appendingPathComponent("AppRun"),
-        withDestination: appDir.appendingPathComponent("usr/bin/\(appName)")
-      ) }
+      {
+        Self.createSymlink(
+          at: appDir.appendingPathComponent("AppRun"),
+          withDestination: appDir.appendingPathComponent("usr/bin/\(appName)")
+        )
+      }
     )
 
     return operation()

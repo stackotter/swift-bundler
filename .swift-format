@@ -3,5 +3,6 @@
     "indentation": {
         "spaces": 2
     },
-    "indentSwitchCaseLabels": true
+    "indentSwitchCaseLabels": true,
+    "prioritizeKeepingFunctionOutputTogether": true
 }

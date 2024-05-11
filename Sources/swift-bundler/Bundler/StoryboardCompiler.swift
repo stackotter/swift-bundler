@@ -15,7 +15,10 @@ enum StoryboardCompiler {
   ) -> Result<Void, StoryboardCompilerError> {
     let contents: [URL]
     do {
-      contents = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+      contents = try FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil
+      )
     } catch {
       return .failure(.failedToEnumerateStoryboards(directory, error))
     }
@@ -62,7 +65,8 @@ enum StoryboardCompiler {
     _ storyboard: URL,
     to directory: URL
   ) -> Result<Void, StoryboardCompilerError> {
-    let outputFile = directory
+    let outputFile =
+      directory
       .appendingPathComponent(storyboard.deletingPathExtension().lastPathComponent)
       .appendingPathExtension("storyboardc")
 
@@ -70,7 +74,7 @@ enum StoryboardCompiler {
       "/usr/bin/ibtool",
       arguments: [
         "--compile", outputFile.path,
-        storyboard.path
+        storyboard.path,
       ]
     )
 

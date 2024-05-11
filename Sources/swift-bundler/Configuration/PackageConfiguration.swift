@@ -44,8 +44,14 @@ struct PackageConfiguration: Codable {
     let shouldAttemptJSONMigration = customFile == nil
     if shouldAttemptJSONMigration {
       let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
-      let configurationExists = FileManager.default.itemExists(at: configurationFile, withType: .file)
-      let oldConfigurationExists = FileManager.default.itemExists(at: oldConfigurationFile, withType: .file)
+      let configurationExists = FileManager.default.itemExists(
+        at: configurationFile,
+        withType: .file
+      )
+      let oldConfigurationExists = FileManager.default.itemExists(
+        at: oldConfigurationFile,
+        withType: .file
+      )
       if oldConfigurationExists && !configurationExists {
         return migrateV1Configuration(
           from: oldConfigurationFile,
@@ -72,8 +78,7 @@ struct PackageConfiguration: Codable {
       }
     } catch {
       // Maybe the configuration is a Swift Bundler v2 configuration. Attempt to migrate it.
-    migrationAttempt:
-      do {
+      migrationAttempt: do {
         let table = try TOMLTable(string: contents)
         guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
           break migrationAttempt
@@ -191,13 +196,17 @@ struct PackageConfiguration: Codable {
       }
 
       if extraPlistEntries.count != oldConfiguration.extraInfoPlistEntries.count {
-        log.warning(.init(stringLiteral:
-          "Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings)." +
-          " These will have to be manually converted"
-        ))
+        log.warning(
+          .init(
+            stringLiteral:
+              "Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings)."
+              + " These will have to be manually converted"
+          )
+        )
       }
 
-      log.warning("Discarding 'buildNumber' because the latest config format has no build number field")
+      log.warning(
+        "Discarding 'buildNumber' because the latest config format has no build number field")
 
       let appConfiguration = AppConfiguration(
         identifier: oldConfiguration.bundleIdentifier,
@@ -222,8 +231,12 @@ struct PackageConfiguration: Codable {
           return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
         }
 
-        log.info("Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need")
-        log.info("'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it")
+        log.info(
+          "Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need"
+        )
+        log.info(
+          "'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it"
+        )
       }
 
       return .success(configuration)

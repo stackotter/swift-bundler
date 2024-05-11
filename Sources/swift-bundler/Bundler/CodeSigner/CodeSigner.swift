@@ -52,7 +52,9 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func signAppBundle(bundle: URL, identityId: String, entitlements: URL? = nil) -> Result<
+  static func signAppBundle(
+    bundle: URL, identityId: String, entitlements: URL? = nil
+  ) -> Result<
     Void, CodeSignerError
   > {
     log.info("Codesigning app bundle")
@@ -83,7 +85,9 @@ enum CodeSigner {
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The entitlements to give the file (only valid for app bundles).
   /// - Returns: A failure if the `codesign` command fails.
-  static func sign(file: URL, identityId: String, entitlements: URL? = nil) -> Result<
+  static func sign(
+    file: URL, identityId: String, entitlements: URL? = nil
+  ) -> Result<
     Void, CodeSignerError
   > {
     let entitlementArguments: [String]
@@ -206,7 +210,9 @@ enum CodeSigner {
   }
 
   /// Generates the contents of an entitlements file.
-  static func generateEntitlementsContent(teamIdentifier: String, bundleIdentifier: String)
+  static func generateEntitlementsContent(
+    teamIdentifier: String, bundleIdentifier: String
+  )
     -> String
   {
     return """

@@ -25,7 +25,8 @@ struct TemplatesListCommand: Command {
 
     let repositoryOption: String
     if let templateRepository = templateRepository {
-      repositoryOption = " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
+      repositoryOption =
+        " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
     } else {
       repositoryOption = ""
     }

@@ -1,6 +1,6 @@
 import Foundation
-import SwiftSyntax
 import SwiftParser
+import SwiftSyntax
 
 extension FileHandle: TextOutputStream {
   public func write(_ string: String) {
@@ -18,7 +18,7 @@ struct SchemaGenerator {
     "Int": "integer",
     "Float": "number",
     "Double": "number",
-    "String": "string"
+    "String": "string",
   ]
 
   static func main() {

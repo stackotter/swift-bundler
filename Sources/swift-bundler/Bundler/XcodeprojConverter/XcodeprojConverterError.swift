@@ -38,7 +38,8 @@ enum XcodeprojConverterError: LocalizedError {
       case .invalidBuildFile(let file):
         return "Encountered invalid build file with uuid '\(file.uuid)'"
       case .failedToLoadXcodeWorkspace(let file, let error):
-        return "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
+        return
+          "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
       case .failedToGetRelativePath(let file, _):
         return "Failed to get relative path of '\(file.name ?? "unknown file")'"
       case .failedToCreateAppConfiguration(let target, let error):
