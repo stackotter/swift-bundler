@@ -1,3 +1,4 @@
+import FileSystemWatcher
 import Foundation
 import HotReloadingProtocol
 import Socket
@@ -82,7 +83,8 @@ struct RunCommand: AsyncCommand {
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
-      builtWithXcode: false
+      builtWithXcode: false,
+      hotReloadingEnabled: hot
     )
 
     if !skipBuild {
@@ -102,49 +104,87 @@ struct RunCommand: AsyncCommand {
       } ?? [:]
 
     if hot {
-      let port: UInt16 = 7979
+      var port: UInt16 = 7000
+
+      /// Attempt to create the socket and retry with a new port if the address is
+      /// already in use.
+      func createSocket() async throws -> Socket {
+        do {
+          return try await Socket.init(
+            IPv4Protocol.tcp,
+            bind: IPv4SocketAddress(address: .any, port: port)
+          )
+        } catch Errno.addressInUse {
+          port += 1
+          return try await createSocket()
+        }
+      }
+
+      let socket = try await createSocket()
+      try await socket.listen()
+
       let hotReloadingVariables = [
         "SWIFT_BUNDLER_HOT_RELOADING": "1",
         "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
       ]
 
-      let socket = try await Socket.init(
-        IPv4Protocol.tcp,
-        bind: IPv4SocketAddress(address: .any, port: port)
-      )
-      try await socket.listen()
-
       Task {
         var client = try await socket.accept()
         log.info("Received connection from runtime")
-        let packet = try await Packet.read(from: &client)
-        log.info("Received packet from client: \(packet)")
-        try await Packet.pong.write(to: &client)
-      }
 
-      // TODO: Avoid loading manifest twice
-      log.info("Building 'lib\(appConfiguration.product).dylib'")
-      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
-        .unwrap()
+        // Just a sanity check
+        try await Packet.ping.write(to: &client)
+        let response = try await Packet.read(from: &client)
+        guard case Packet.pong = response else {
+          log.error("Expected pong, got \(response)")
+          return
+        }
 
-      guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
-        let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
-        throw CLIError.failedToGetPlatformVersion(
-          platform: arguments.platform,
-          manifest: manifestFile
+        // TODO: Avoid loading manifest twice
+        log.info("Building 'lib\(appConfiguration.product).dylib'")
+        let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+          .unwrap()
+
+        guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
+          let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
+          throw CLIError.failedToGetPlatformVersion(
+            platform: arguments.platform,
+            manifest: manifestFile
+          )
+        }
+
+        let architectures = bundleCommand.getArchitectures(
+          platform: bundleCommand.arguments.platform
         )
-      }
 
-      let architectures = bundleCommand.getArchitectures(platform: bundleCommand.arguments.platform)
-      let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
-        product: appConfiguration.product,
-        packageDirectory: packageDirectory,
-        configuration: arguments.buildConfiguration,
-        architectures: architectures,
-        platform: arguments.platform,
-        platformVersion: platformVersion
-      ).unwrap()
-      log.info("Successfully built dylib to '\(dylibFile.relativeString)'")
+        try await FileSystemWatcher.watch(
+          paths: [packageDirectory.appendingPathComponent("Sources").path],
+          with: {
+            let client = client
+            Task {
+              do {
+                var client = client
+                let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
+                  product: appConfiguration.product,
+                  packageDirectory: packageDirectory,
+                  configuration: arguments.buildConfiguration,
+                  architectures: architectures,
+                  platform: arguments.platform,
+                  platformVersion: platformVersion,
+                  hotReloadingEnabled: true
+                ).unwrap()
+                log.info("Successfully built dylib to '\(dylibFile.relativeString)'")
+
+                try await Packet.reloadDylib(path: dylibFile).write(to: &client)
+              } catch {
+                print("Hot reloading: \(error)")
+              }
+            }
+          },
+          errorHandler: { error in
+            print("Hot reloading: \(error)")
+          })
+      }
 
       try Runner.run(
         bundle: bundle,

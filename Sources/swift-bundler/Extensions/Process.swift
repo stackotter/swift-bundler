@@ -32,18 +32,33 @@ extension Process {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
-    return runAndWait().map { _ in
-      let data = pipe.fileHandleForReading.readDataToEndOfFile()
-      return data
-    }.mapError { error in
-      switch error {
-        case .nonZeroExitStatus(let status):
-          let data = pipe.fileHandleForReading.readDataToEndOfFile()
-          return .nonZeroExitStatusWithOutput(data, status)
-        default:
-          return error
+    // Thanks Martin! https://forums.swift.org/t/the-problem-with-a-frozen-process-in-swift-process-class/39579/6
+    var output = Data()
+    let group = DispatchGroup()
+    group.enter()
+    pipe.fileHandleForReading.readabilityHandler = { fh in
+      let newData = fh.availableData
+      if newData.isEmpty {
+        pipe.fileHandleForReading.readabilityHandler = nil
+        group.leave()
+      } else {
+        output.append(contentsOf: newData)
       }
     }
+
+    return runAndWait()
+      .map { _ in
+        group.wait()
+        return output
+      }
+      .mapError { error in
+        switch error {
+          case .nonZeroExitStatus(let status):
+            return .nonZeroExitStatusWithOutput(output, status)
+          default:
+            return error
+        }
+      }
   }
 
   /// Gets the process's stdout and stderr as a string.
@@ -84,14 +99,11 @@ extension Process {
   /// Adds environment variables to the process's environment.
   /// - Parameter variables: The key value pairs to add.
   func addEnvironmentVariables(_ variables: [String: String]) {
-    if var environment = environment {
-      for (key, value) in variables {
-        environment[key] = value
-      }
-      self.environment = environment
-    } else {
-      environment = variables
+    var environment = environment ?? ProcessInfo.processInfo.environment
+    for (key, value) in variables {
+      environment[key] = value
     }
+    self.environment = environment
   }
 
   /// Creates a new process (but doesn't run it).

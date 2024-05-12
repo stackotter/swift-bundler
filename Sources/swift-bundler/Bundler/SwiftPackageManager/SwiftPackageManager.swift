@@ -75,6 +75,8 @@ enum SwiftPackageManager {
   ///   - architectures: The set of architectures to build for.
   ///   - platform: The platform to build for.
   ///   - platformVersion: The platform version to build for.
+  ///   - hotReloadingEnabled: Controls whether the hot reloading environment variables
+  ///     are added to the build command or not.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
@@ -82,7 +84,8 @@ enum SwiftPackageManager {
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
-    platformVersion: String
+    platformVersion: String,
+    hotReloadingEnabled: Bool = false
   ) -> Result<Void, SwiftPackageManagerError> {
     log.info("Starting \(configuration.rawValue) build")
 
@@ -99,6 +102,11 @@ enum SwiftPackageManager {
         directory: packageDirectory,
         runSilentlyWhenNotVerbose: false
       )
+      if hotReloadingEnabled {
+        process.addEnvironmentVariables([
+          "SWIFT_BUNDLER_HOT_RELOADING": "1"
+        ])
+      }
 
       return process.runAndWait().mapError { error in
         return .failedToRunSwiftBuild(
@@ -118,6 +126,8 @@ enum SwiftPackageManager {
   ///   - architectures: The set of architectures to build for.
   ///   - platform: The platform to build for.
   ///   - platformVersion: The platform version to build for.
+  ///   - hotReloadingEnabled: Controls whether the hot reloading environment variables
+  ///     are added to the build command or not.
   /// - Returns: If an error occurs, returns a failure.
   static func buildExecutableAsDylib(
     product: String,
@@ -125,7 +135,8 @@ enum SwiftPackageManager {
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
-    platformVersion: String
+    platformVersion: String,
+    hotReloadingEnabled: Bool = false
   ) -> Result<URL, SwiftPackageManagerError> {
     #if os(macOS)
       log.info("Starting \(configuration.rawValue) build")
@@ -160,6 +171,11 @@ enum SwiftPackageManager {
           directory: packageDirectory,
           runSilentlyWhenNotVerbose: false
         )
+        if hotReloadingEnabled {
+          process.addEnvironmentVariables([
+            "SWIFT_BUNDLER_HOT_RELOADING": "1"
+          ])
+        }
 
         return process.getOutputData().mapError { error in
           return .failedToRunSwiftBuild(
@@ -173,10 +189,14 @@ enum SwiftPackageManager {
         }
 
         let lines = string.split(separator: "\n")
-        guard lines.count >= 2 else {
-          return .failure(.failedToParseBuildCommandSteps(details: "Not enough lines"))
+        guard
+          let linkCommandString = lines.last(where: { line in
+            line.hasPrefix("/")
+          })
+        else {
+          return .failure(.failedToParseBuildCommandSteps(details: "Couldn't locate link command"))
         }
-        let linkCommand = CommandLine.lenientParse(String(lines[lines.count - 2]))
+        let linkCommand = CommandLine.lenientParse(String(linkCommandString))
 
         guard linkCommand.arguments.count >= 1 else {
           return .failure(.failedToParseBuildCommandSteps(details: "No arguments"))
@@ -185,6 +205,7 @@ enum SwiftPackageManager {
         let modifiedArguments =
           Array(linkCommand.arguments.dropLast()) + [dylibFile.path, "-dynamiclib"]
 
+        print("Running linking command")
         let process = Process.create(
           linkCommand.command,
           arguments: modifiedArguments,

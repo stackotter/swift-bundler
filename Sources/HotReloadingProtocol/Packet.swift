@@ -3,9 +3,11 @@ import Foundation
 public enum Packet {
   static let pingId: UInt64 = 0
   static let pongId: UInt64 = 1
+  static let reloadDylibId: UInt64 = 2
 
   case ping
   case pong
+  case reloadDylib(path: URL)
 
   var id: UInt64 {
     switch self {
@@ -13,6 +15,8 @@ public enum Packet {
         return Self.pingId
       case .pong:
         return Self.pongId
+      case .reloadDylib:
+        return Self.reloadDylibId
     }
   }
 
@@ -23,6 +27,9 @@ public enum Packet {
         return .ping
       case Self.pongId:
         return .pong
+      case Self.reloadDylibId:
+        let path = URL(fileURLWithPath: try await stream.readVariableString())
+        return .reloadDylib(path: path)
       default:
         throw PacketError.unknownPacketId(id)
     }
@@ -33,6 +40,8 @@ public enum Packet {
     switch self {
       case .ping, .pong:
         break
+      case let .reloadDylib(path):
+        try await stream.writeVariableString(path.path)
     }
   }
 }

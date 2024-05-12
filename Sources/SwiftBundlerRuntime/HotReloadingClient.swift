@@ -40,9 +40,38 @@ public struct HotReloadingClient {
     } catch Errno.socketIsConnected {}
   }
 
-  public mutating func ping() async throws {
-    try await Packet.ping.write(to: &server)
-    print(try await Packet.read(from: &server))
+  public mutating func handlePackets(handleDylib: (Dylib) -> Void) async throws {
+    while true {
+      let packet: Packet
+      do {
+        packet = try await Packet.read(from: &server)
+      } catch Errno.timedOut {
+        continue
+      }
+
+      switch packet {
+        case .ping:
+          print("client: Received ping")
+          try await Packet.pong.write(to: &server)
+        case let .reloadDylib(path):
+          print("client: Received new dylib")
+          // Copy dylib to new partially randomized path to avoid `dlopen` just giving
+          // us back the same pointer again.
+          let newPath =
+            path
+            .deletingLastPathComponent()
+            .appendingPathComponent(UUID().uuidString + ".dylib")
+          try FileManager.default.copyItem(
+            at: path,
+            to: newPath
+          )
+          let dylib = try Dylib.open(newPath)
+          handleDylib(dylib)
+          try FileManager.default.removeItem(at: newPath)
+        case .pong:
+          print("client: Received pong")
+      }
+    }
   }
 
   /// Parses an IPv4 address of the form `x.x.x.x:yyyyy`.
@@ -65,7 +94,8 @@ public struct HotReloadingClient {
 
     guard bytes.count == 4 else {
       throw HotReloadingClientError.invalidAddress(
-        details: "IP address must have exactly four valid UInt8's separated by periods")
+        details: "IP address must have exactly four valid UInt8's separated by periods"
+      )
     }
 
     return IPv4SocketAddress(

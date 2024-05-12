@@ -23,6 +23,11 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-format", exact: "510.0.1"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
     .package(url: "https://github.com/stackotter/Socket", from: "0.3.3"),
+
+    // File watcher dependencies
+    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", from: "0.4.0"),
+    .package(url: "https://github.com/apple/swift-system.git", from: "1.2.0"),
+    .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "0.1.0"),
   ],
   targets: [
     .executableTarget(
@@ -36,6 +41,7 @@ let package = Package(
         "Version",
         "Socket",
         "HotReloadingProtocol",
+        "FileSystemWatcher",
         .product(name: "XcodeGenKit", package: "XcodeGen"),
         .product(name: "ProjectSpec", package: "XcodeGen"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
@@ -66,6 +72,27 @@ let package = Package(
       name: "HotReloadingProtocol",
       dependencies: [
         "Socket"
+      ]
+    ),
+
+    .target(
+      name: "FileSystemWatcher",
+      dependencies: [
+        .product(
+          name: "Inotify",
+          package: "swift-inotify",
+          condition: .when(platforms: [.linux])
+        ),
+        .product(
+          name: "SystemPackage",
+          package: "swift-system",
+          condition: .when(platforms: [.linux])
+        ),
+        .product(
+          name: "AsyncAlgorithms",
+          package: "swift-async-algorithms",
+          condition: .when(platforms: [.linux])
+        ),
       ]
     ),
 

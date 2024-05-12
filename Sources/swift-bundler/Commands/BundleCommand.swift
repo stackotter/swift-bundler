@@ -32,6 +32,8 @@ struct BundleCommand: AsyncCommand {
   #endif
   var builtWithXcode = false
 
+  var hotReloadingEnabled = false
+
   /// Used to avoid loading configuration twice when RunCommand is used.
   static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
 
@@ -39,10 +41,16 @@ struct BundleCommand: AsyncCommand {
     _arguments = OptionGroup()
   }
 
-  init(arguments: OptionGroup<BundleArguments>, skipBuild: Bool, builtWithXcode: Bool) {
+  init(
+    arguments: OptionGroup<BundleArguments>,
+    skipBuild: Bool,
+    builtWithXcode: Bool,
+    hotReloadingEnabled: Bool
+  ) {
     _arguments = arguments
     self.skipBuild = skipBuild
     self.builtWithXcode = builtWithXcode
+    self.hotReloadingEnabled = hotReloadingEnabled
   }
 
   static func validateArguments(
@@ -212,7 +220,8 @@ struct BundleCommand: AsyncCommand {
           configuration: arguments.buildConfiguration,
           architectures: architectures,
           platform: arguments.platform,
-          platformVersion: platformVersion
+          platformVersion: platformVersion,
+          hotReloadingEnabled: hotReloadingEnabled
         ).mapError { error in
           return error
         }
