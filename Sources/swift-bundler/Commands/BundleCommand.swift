@@ -188,7 +188,9 @@ struct BundleCommand: AsyncCommand {
       guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
         let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
         throw CLIError.failedToGetPlatformVersion(
-          platform: arguments.platform, manifest: manifestFile)
+          platform: arguments.platform,
+          manifest: manifestFile
+        )
       }
 
       // Get build output directory

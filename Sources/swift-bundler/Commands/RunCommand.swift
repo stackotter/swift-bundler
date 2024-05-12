@@ -102,7 +102,7 @@ struct RunCommand: AsyncCommand {
       } ?? [:]
 
     if hot {
-      let port: UInt16 = 7977
+      let port: UInt16 = 7979
       let hotReloadingVariables = [
         "SWIFT_BUNDLER_HOT_RELOADING": "1",
         "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
@@ -121,6 +121,30 @@ struct RunCommand: AsyncCommand {
         log.info("Received packet from client: \(packet)")
         try await Packet.pong.write(to: &client)
       }
+
+      // TODO: Avoid loading manifest twice
+      log.info("Building 'lib\(appConfiguration.product).dylib'")
+      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+        .unwrap()
+
+      guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
+        let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
+        throw CLIError.failedToGetPlatformVersion(
+          platform: arguments.platform,
+          manifest: manifestFile
+        )
+      }
+
+      let architectures = bundleCommand.getArchitectures(platform: bundleCommand.arguments.platform)
+      let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
+        product: appConfiguration.product,
+        packageDirectory: packageDirectory,
+        configuration: arguments.buildConfiguration,
+        architectures: architectures,
+        platform: arguments.platform,
+        platformVersion: platformVersion
+      ).unwrap()
+      log.info("Successfully built dylib to '\(dylibFile.relativeString)'")
 
       try Runner.run(
         bundle: bundle,

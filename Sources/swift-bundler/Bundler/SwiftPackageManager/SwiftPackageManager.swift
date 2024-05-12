@@ -109,6 +109,104 @@ enum SwiftPackageManager {
     }
   }
 
+  /// Builds the specified executable product of a Swift package as a dynamic library.
+  /// Used in hot reloading, should not be relied upon for producing production builds.
+  /// - Parameters:
+  ///   - product: The product to build.
+  ///   - packageDirectory: The root directory of the package containing the product.
+  ///   - configuration: The build configuration to use.
+  ///   - architectures: The set of architectures to build for.
+  ///   - platform: The platform to build for.
+  ///   - platformVersion: The platform version to build for.
+  /// - Returns: If an error occurs, returns a failure.
+  static func buildExecutableAsDylib(
+    product: String,
+    packageDirectory: URL,
+    configuration: BuildConfiguration,
+    architectures: [BuildArchitecture],
+    platform: Platform,
+    platformVersion: String
+  ) -> Result<URL, SwiftPackageManagerError> {
+    #if os(macOS)
+      log.info("Starting \(configuration.rawValue) build")
+
+      // TODO: Package up 'build options' into a struct so that it can be passed around
+      //   more easily
+      let productsDirectory: URL
+      switch SwiftPackageManager.getProductsDirectory(
+        in: packageDirectory,
+        configuration: configuration,
+        architectures: architectures,
+        platform: platform,
+        platformVersion: platformVersion
+      ) {
+        case let .success(value):
+          productsDirectory = value
+        case let .failure(error):
+          return .failure(error)
+      }
+      let dylibFile = productsDirectory.appendingPathComponent("lib\(product).dylib")
+
+      return createBuildArguments(
+        product: product,
+        configuration: configuration,
+        architectures: architectures,
+        platform: platform,
+        platformVersion: platformVersion
+      ).flatMap { arguments in
+        let process = Process.create(
+          "swift",
+          arguments: arguments + ["-v"],
+          directory: packageDirectory,
+          runSilentlyWhenNotVerbose: false
+        )
+
+        return process.getOutputData().mapError { error in
+          return .failedToRunSwiftBuild(
+            command: "swift \(arguments.joined(separator: " "))",
+            error
+          )
+        }
+      }.flatMap { (verboseOutput: Data) in
+        guard let string = String(data: verboseOutput, encoding: .utf8) else {
+          return .failure(.failedToParseBuildCommandSteps(details: "Invalid UTF-8"))
+        }
+
+        let lines = string.split(separator: "\n")
+        guard lines.count >= 2 else {
+          return .failure(.failedToParseBuildCommandSteps(details: "Not enough lines"))
+        }
+        let linkCommand = CommandLine.lenientParse(String(lines[lines.count - 2]))
+
+        guard linkCommand.arguments.count >= 1 else {
+          return .failure(.failedToParseBuildCommandSteps(details: "No arguments"))
+        }
+
+        let modifiedArguments =
+          Array(linkCommand.arguments.dropLast()) + [dylibFile.path, "-dynamiclib"]
+
+        let process = Process.create(
+          linkCommand.command,
+          arguments: modifiedArguments,
+          directory: packageDirectory,
+          runSilentlyWhenNotVerbose: false
+        )
+
+        return process.runAndWait()
+          .map { _ in dylibFile }
+          .mapError { error in
+            return .failedToRunSwiftBuild(
+              command: linkCommand.description,
+              error
+            )
+          }
+      }
+    #else
+      fatalError("buildExecutableAsDylib not implemented for current platform")
+      #warning("buildExecutableAsDylib not implemented for current platform")
+    #endif
+  }
+
   /// Creates the arguments for the Swift build command.
   /// - Parameters:
   ///   - product: The product to build.

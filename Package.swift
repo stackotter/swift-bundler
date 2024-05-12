@@ -69,6 +69,11 @@ let package = Package(
       ]
     ),
 
+    .testTarget(
+      name: "SwiftBundlerTests",
+      dependencies: ["swift-bundler"]
+    ),
+
     // The target containing documentation
     .target(
       name: "SwiftBundler",

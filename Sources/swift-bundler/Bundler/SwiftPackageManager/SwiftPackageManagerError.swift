@@ -18,6 +18,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToExecutePackageManifest(Error)
   case failedToParsePackageManifestOutput(json: String, Error?)
   case failedToParsePackageManifestToolsVersion(Error?)
+  case failedToParseBuildCommandSteps(details: String)
 
   var errorDescription: String? {
     switch self {
@@ -62,6 +63,8 @@ enum SwiftPackageManagerError: LocalizedError {
         return """
           Failed to parse package manifest tools version: \(error?.localizedDescription ?? "Unknown error")
           """
+      case .failedToParseBuildCommandSteps(let details):
+        return "Failed to parse build command steps: \(details)"
     }
   }
 }
