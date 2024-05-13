@@ -26,29 +26,53 @@ extension Process {
   }
 
   /// Gets the process's stdout and stderr as `Data`.
-  /// - Parameter excludeStdError: If `true`, only stdout is returned.
+  /// - Parameters:
+  ///   - excludeStdError: If `true`, only stdout is returned.
+  ///   - handleLine: A handler to run every time that a line is received.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutputData(excludeStdError: Bool = false) -> Result<Data, ProcessError> {
+  func getOutputData(
+    excludeStdError: Bool = false,
+    handleLine: ((String) -> Void)? = nil
+  ) -> Result<Data, ProcessError> {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
     // Thanks Martin! https://forums.swift.org/t/the-problem-with-a-frozen-process-in-swift-process-class/39579/6
     var output = Data()
+    var currentLine: String?
     let group = DispatchGroup()
     group.enter()
     pipe.fileHandleForReading.readabilityHandler = { fh in
+      // TODO: All of this Process code is getting pretty ridiculous and janky, we should switch to
+      //   the experimental proposed Subprocess API (swift-experimental-subprocess)
       let newData = fh.availableData
       if newData.isEmpty {
         pipe.fileHandleForReading.readabilityHandler = nil
         group.leave()
       } else {
         output.append(contentsOf: newData)
+        if let handleLine = handleLine, let string = String(data: newData, encoding: .utf8) {
+          let lines = ((currentLine ?? "") + string).split(
+            separator: "\n", omittingEmptySubsequences: false)
+          if let lastLine = lines.last, lastLine != "" {
+            currentLine = String(lastLine)
+          } else {
+            currentLine = nil
+          }
+
+          for line in lines.dropLast() {
+            handleLine(String(line))
+          }
+        }
       }
     }
 
     return runAndWait()
       .map { _ in
         group.wait()
+        if let currentLine = currentLine {
+          handleLine?(currentLine)
+        }
         return output
       }
       .mapError { error in

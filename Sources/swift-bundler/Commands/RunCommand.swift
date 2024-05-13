@@ -141,7 +141,6 @@ struct RunCommand: AsyncCommand {
         }
 
         // TODO: Avoid loading manifest twice
-        log.info("Building 'lib\(appConfiguration.product).dylib'")
         let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
           .unwrap()
 
@@ -160,6 +159,7 @@ struct RunCommand: AsyncCommand {
         try await FileSystemWatcher.watch(
           paths: [packageDirectory.appendingPathComponent("Sources").path],
           with: {
+            log.info("Building 'lib\(appConfiguration.product).dylib'")
             let client = client
             Task {
               do {
@@ -173,16 +173,16 @@ struct RunCommand: AsyncCommand {
                   platformVersion: platformVersion,
                   hotReloadingEnabled: true
                 ).unwrap()
-                log.info("Successfully built dylib to '\(dylibFile.relativeString)'")
+                log.info("Successfully built dylib")
 
                 try await Packet.reloadDylib(path: dylibFile).write(to: &client)
               } catch {
-                print("Hot reloading: \(error)")
+                log.error("Hot reloading: \(error.localizedDescription)")
               }
             }
           },
           errorHandler: { error in
-            print("Hot reloading: \(error)")
+            log.error("Hot reloading: \(error.localizedDescription)")
           })
       }
 

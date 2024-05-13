@@ -386,7 +386,6 @@ enum StringCatalogCompiler {
         if formatSpecifierOrder[currentOrder] == nil {
           formatSpecifierOrder[currentOrder] = (String(formatSpecifierType), formatSpecifier)
         } else if formatSpecifierOrder[currentOrder]?.0 != String(formatSpecifierType) {
-          print(formatSpecifierOrder[currentOrder] ?? "nil")
           return .failure(.invalidNonMatchingFormatString(URL(fileURLWithPath: ""), string))
         }
         currentOrder += 1

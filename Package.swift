@@ -23,6 +23,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-format", exact: "510.0.1"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
     .package(url: "https://github.com/stackotter/Socket", from: "0.3.3"),
+    .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.2"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", from: "0.4.0"),
@@ -42,6 +43,7 @@ let package = Package(
         "Socket",
         "HotReloadingProtocol",
         "FileSystemWatcher",
+        "Yams",
         .product(name: "XcodeGenKit", package: "XcodeGen"),
         .product(name: "ProjectSpec", package: "XcodeGen"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),

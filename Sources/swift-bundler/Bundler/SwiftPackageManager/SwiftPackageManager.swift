@@ -2,6 +2,7 @@ import Foundation
 import Parsing
 import StackOtterArgParser
 import Version
+import Yams
 
 /// A utility for interacting with the Swift package manager and performing some other package
 /// related operations.
@@ -139,8 +140,6 @@ enum SwiftPackageManager {
     hotReloadingEnabled: Bool = false
   ) -> Result<URL, SwiftPackageManagerError> {
     #if os(macOS)
-      log.info("Starting \(configuration.rawValue) build")
-
       // TODO: Package up 'build options' into a struct so that it can be passed around
       //   more easily
       let productsDirectory: URL
@@ -158,56 +157,65 @@ enum SwiftPackageManager {
       }
       let dylibFile = productsDirectory.appendingPathComponent("lib\(product).dylib")
 
-      return createBuildArguments(
+      return build(
         product: product,
+        packageDirectory: packageDirectory,
         configuration: configuration,
         architectures: architectures,
         platform: platform,
-        platformVersion: platformVersion
-      ).flatMap { arguments in
-        let process = Process.create(
-          "swift",
-          arguments: arguments + ["-v"],
-          directory: packageDirectory,
-          runSilentlyWhenNotVerbose: false
-        )
-        if hotReloadingEnabled {
-          process.addEnvironmentVariables([
-            "SWIFT_BUNDLER_HOT_RELOADING": "1"
-          ])
+        platformVersion: platformVersion,
+        hotReloadingEnabled: hotReloadingEnabled
+      ).flatMap { _ in
+        let buildPlanFile = packageDirectory.appendingPathComponent(".build/\(configuration).yaml")
+        let buildPlanString: String
+        do {
+          buildPlanString = try String(contentsOf: buildPlanFile)
+        } catch {
+          return .failure(.failedToReadBuildPlan(path: buildPlanFile, error))
         }
 
-        return process.getOutputData().mapError { error in
-          return .failedToRunSwiftBuild(
-            command: "swift \(arguments.joined(separator: " "))",
-            error
+        let buildPlan: BuildPlan
+        do {
+          buildPlan = try YAMLDecoder().decode(BuildPlan.self, from: buildPlanString)
+        } catch {
+          return .failure(.failedToDecodeBuildPlan(error))
+        }
+
+        let commandName = "C.\(product)-\(configuration).exe"
+        guard
+          let linkCommand = buildPlan.commands[commandName],
+          linkCommand.tool == "shell",
+          let commandExecutable = linkCommand.arguments?.first,
+          let arguments = linkCommand.arguments?.dropFirst()
+        else {
+          return .failure(
+            .failedToComputeLinkingCommand(
+              details: "Couldn't find valid command for \(commandName)"
+            )
           )
         }
-      }.flatMap { (verboseOutput: Data) in
-        guard let string = String(data: verboseOutput, encoding: .utf8) else {
-          return .failure(.failedToParseBuildCommandSteps(details: "Invalid UTF-8"))
-        }
 
-        let lines = string.split(separator: "\n")
+        var modifiedArguments = Array(arguments)
         guard
-          let linkCommandString = lines.last(where: { line in
-            line.hasPrefix("/")
-          })
+          let index = modifiedArguments.firstIndex(of: "-o"),
+          index < modifiedArguments.count - 1
         else {
-          return .failure(.failedToParseBuildCommandSteps(details: "Couldn't locate link command"))
-        }
-        let linkCommand = CommandLine.lenientParse(String(linkCommandString))
-
-        guard linkCommand.arguments.count >= 1 else {
-          return .failure(.failedToParseBuildCommandSteps(details: "No arguments"))
+          return .failure(
+            .failedToComputeLinkingCommand(details: "Couldn't find '-o' argument to replace")
+          )
         }
 
-        let modifiedArguments =
-          Array(linkCommand.arguments.dropLast()) + [dylibFile.path, "-dynamiclib"]
+        modifiedArguments.remove(at: index)
+        modifiedArguments.remove(at: index)
+        modifiedArguments.append(contentsOf: [
+          "-o",
+          dylibFile.path,
+          "-Xcc",
+          "-dynamiclib",
+        ])
 
-        print("Running linking command")
         let process = Process.create(
-          linkCommand.command,
+          commandExecutable,
           arguments: modifiedArguments,
           directory: packageDirectory,
           runSilentlyWhenNotVerbose: false
@@ -216,8 +224,17 @@ enum SwiftPackageManager {
         return process.runAndWait()
           .map { _ in dylibFile }
           .mapError { error in
-            return .failedToRunSwiftBuild(
-              command: linkCommand.description,
+            // TODO: Make a more robust way of converting commands to strings for display (keeping
+            //   correctness in mind in case users want to copy-paste commands from errors).
+            return .failedToRunLinkingCommand(
+              command: ([commandExecutable]
+                + modifiedArguments.map { argument in
+                  if argument.contains(" ") {
+                    return "\"\(argument)\""
+                  } else {
+                    return argument
+                  }
+                }).joined(separator: " "),
               error
             )
           }

@@ -268,7 +268,6 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
-    print("Creating")
     let process = Process.create(
       bundle.path,
       arguments: arguments,

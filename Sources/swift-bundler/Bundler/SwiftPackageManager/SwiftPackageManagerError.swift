@@ -18,7 +18,10 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToExecutePackageManifest(Error)
   case failedToParsePackageManifestOutput(json: String, Error?)
   case failedToParsePackageManifestToolsVersion(Error?)
-  case failedToParseBuildCommandSteps(details: String)
+  case failedToReadBuildPlan(path: URL, Error)
+  case failedToDecodeBuildPlan(Error)
+  case failedToComputeLinkingCommand(details: String)
+  case failedToRunLinkingCommand(command: String, Error)
 
   var errorDescription: String? {
     switch self {
@@ -63,8 +66,15 @@ enum SwiftPackageManagerError: LocalizedError {
         return """
           Failed to parse package manifest tools version: \(error?.localizedDescription ?? "Unknown error")
           """
-      case .failedToParseBuildCommandSteps(let details):
-        return "Failed to parse build command steps: \(details)"
+      case .failedToReadBuildPlan(let path, let error):
+        return
+          "Failed to read build plan file at '\(path.relativePath(from: URL(fileURLWithPath: ".")) ?? path.path))': \(error.localizedDescription)"
+      case .failedToDecodeBuildPlan(let error):
+        return "Failed to decode build plain: \(error.localizedDescription)"
+      case .failedToComputeLinkingCommand(let details):
+        return "Failed to compute linking command: \(details)"
+      case .failedToRunLinkingCommand(let command, let error):
+        return "Failed to run linking commmand '\(command)': \(error.localizedDescription)"
     }
   }
 }
