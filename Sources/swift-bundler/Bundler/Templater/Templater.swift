@@ -334,8 +334,10 @@ enum Templater {
 
         let templateName = directory.lastPathComponent
 
-        // Skip `Base` template and `.git` directory
-        guard templateName != "Base" && !templateName.starts(with: ".") else {
+        // Skip `Base` template, `VSCode` template, and `.git` directory
+        guard
+          templateName != "Base" && templateName != "VSCode" && !templateName.starts(with: ".")
+        else {
           continue
         }
 
