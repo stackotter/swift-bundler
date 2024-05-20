@@ -260,17 +260,18 @@
               )
             }
 
-            for i in 0..<numEvents {
-              let eventPath = eventPaths2[i]
-              let eventFlag = eventFlags[i]
+            for index in 0..<numEvents {
+              let eventPath = eventPaths2[index]
+              let eventFlag = eventFlags[index]
               let eventFlag1 = CoreServicesFileSystemWatcher.EventFlags(
                 rawValue: eventFlag)
-              let eventId = eventIds[i]
+              let eventId = eventIds[index]
               let eventId1 = CoreServicesFileSystemWatcher.EventID(rawValue: eventId)
               let event = CoreServicesFileSystemWatcher.Event(
                 path: eventPath,
                 flags: eventFlag1,
-                id: eventId1)
+                id: eventId1
+              )
               self1.handler(event)
             }
           } catch {
@@ -326,8 +327,8 @@
         FSEventStreamUnscheduleFromRunLoop(rawref, runLoop.getCFRunLoop(), runLoopMode1)
       }
 
-      func setDispatchQueue(_ q: DispatchQueue?) {
-        FSEventStreamSetDispatchQueue(rawref, q)
+      func setDispatchQueue(_ queue: DispatchQueue?) {
+        FSEventStreamSetDispatchQueue(rawref, queue)
       }
 
       func invalidate() {

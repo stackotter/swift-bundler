@@ -192,7 +192,7 @@ struct RunCommand: AsyncCommand {
         device: device,
         arguments: passThroughArguments,
         environmentVariables: environmentVariables.merging(
-          hotReloadingVariables, uniquingKeysWith: { x, _ in x }
+          hotReloadingVariables, uniquingKeysWith: { key, _ in key }
         )
       ).unwrap()
     } else {
