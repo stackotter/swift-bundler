@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 import SwiftXcodeProj
 
@@ -49,3 +50,5 @@ enum XcodeprojConverterError: LocalizedError {
     }
   }
 }
+
+#endif /* macOS */

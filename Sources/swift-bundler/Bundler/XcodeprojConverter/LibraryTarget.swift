@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 
 extension XcodeprojConverter {
@@ -16,3 +17,5 @@ extension XcodeprojConverter {
     }
   }
 }
+
+#endif /* macOS */

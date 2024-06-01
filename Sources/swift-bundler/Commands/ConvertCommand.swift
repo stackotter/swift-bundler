@@ -1,6 +1,8 @@
 import Foundation
 import StackOtterArgParser
+#if os(macOS)
 import SwiftXcodeProj
+#endif
 import TOMLKit
 
 /// The command for converting xcodeprojs to Swift Bundler projects.
@@ -45,6 +47,7 @@ struct ConvertCommand: Command {
       _ = readLine()
     }
 
+#if os(macOS)
     switch xcodeFile.pathExtension {
       case "xcodeproj":
         try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory).unwrap()
@@ -57,5 +60,6 @@ struct ConvertCommand: Command {
         )
         Foundation.exit(1)
     }
+#endif /* macOS */
   }
 }
