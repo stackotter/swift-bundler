@@ -78,19 +78,24 @@ struct PackageConfiguration: Codable {
       }
     } catch {
       // Maybe the configuration is a Swift Bundler v2 configuration. Attempt to migrate it.
-      migrationAttempt: do {
+      do {
         let table = try TOMLTable(string: contents)
         guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-          break migrationAttempt
+          return .failure(.failedToDeserializeConfiguration(error))
         }
 
-        return migrateV2Configuration(
+        switch migrateV2Configuration(
           configurationFile,
           mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
-        )
-      } catch {}
-
-      return .failure(.failedToDeserializeConfiguration(error))
+        ) {
+          case let .failure(error):
+            return .failure(error)
+          case let .success(config):
+            configuration = config
+        }
+      } catch {
+        return .failure(.failedToDeserializeConfiguration(error))
+      }
     }
 
     if configuration.formatVersion != PackageConfiguration.currentFormatVersion {

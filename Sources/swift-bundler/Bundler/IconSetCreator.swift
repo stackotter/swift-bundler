@@ -5,17 +5,18 @@ enum IconSetCreator {
   /// Creates an `AppIcon.icns` in the given directory from the given 1024x1024 input png.
   /// - Parameters:
   ///   - icon: The 1024x1024 input icon. Must be a png. An error is returned if the icon's path extension is not `png` (case insensitive).
-  ///   - outputDirectory: The output directory to put the generated `AppIcon.icns` in.
+  ///   - outputFile: The location of the output `icns` file.
   /// - Returns: If an error occurs, a failure is returned.
   static func createIcns(
     from icon: URL,
-    outputDirectory: URL
+    outputFile: URL
   ) -> Result<Void, IconSetCreatorError> {
     guard icon.pathExtension.lowercased() == "png" else {
       return .failure(.notPNG(icon))
     }
 
-    let iconSet = outputDirectory.appendingPathComponent("AppIcon.iconset")
+    let temporaryDirectory = FileManager.default.temporaryDirectory
+    let iconSet = temporaryDirectory.appendingPathComponent("AppIcon.iconset")
     do {
       try FileManager.default.createDirectory(at: iconSet)
     } catch {
@@ -39,8 +40,8 @@ enum IconSetCreator {
 
     let process = Process.create(
       "/usr/bin/iconutil",
-      arguments: ["-c", "icns", iconSet.path],
-      directory: outputDirectory)
+      arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
+    )
     if case let .failure(error) = process.runAndWait() {
       return .failure(.failedToConvertToICNS(error))
     }

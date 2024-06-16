@@ -62,6 +62,46 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// Gets the platform as an ``ApplePlatform`` if it is in fact an Apple
+  /// platform.
+  var asApplePlatform: ApplePlatform? {
+    switch self {
+      case .macOS: return .macOS
+      case .iOS: return .iOS
+      case .iOSSimulator: return .iOSSimulator
+      case .visionOS: return .visionOS
+      case .visionOSSimulator: return .visionOSSimulator
+      case .tvOS: return .tvOS
+      case .tvOSSimulator: return .tvOSSimulator
+      case .linux: return nil
+    }
+  }
+
+  /// The platform's os (e.g. ``Platform/iOS`` and ``Platform/iOSSimulator``
+  /// are both ``OS/iOS``).
+  var os: OS {
+    switch self {
+      case .macOS: return .macOS
+      case .iOS, .iOSSimulator: return .iOS
+      case .visionOS, .visionOSSimulator: return .visionOS
+      case .tvOS, .tvOSSimulator: return .tvOS
+      case .linux: return .linux
+    }
+  }
+
+  /// A simple lossless conversion.
+  init(_ applePlatform: ApplePlatform) {
+    switch applePlatform {
+      case .macOS: self = .macOS
+      case .iOS: self = .iOS
+      case .iOSSimulator: self = .iOSSimulator
+      case .visionOS: self = .visionOS
+      case .visionOSSimulator: self = .visionOSSimulator
+      case .tvOS: self = .tvOS
+      case .tvOSSimulator: self = .tvOSSimulator
+    }
+  }
+
   /// The platform that Swift Bundler is currently being run on.
   static var currentPlatform: Platform {
     #if os(macOS)
@@ -73,7 +113,7 @@ enum Platform: String, CaseIterable {
 }
 
 extension Platform: Equatable {
-  public static func ==(lhs: Platform, rhs: AppleSDKPlatform) -> Bool {
+  public static func == (lhs: Platform, rhs: AppleSDKPlatform) -> Bool {
     lhs == rhs.platform
   }
 }

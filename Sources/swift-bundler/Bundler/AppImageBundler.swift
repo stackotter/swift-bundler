@@ -2,58 +2,30 @@ import Foundation
 
 /// The bundler for creating Linux AppImage's.
 enum AppImageBundler: Bundler {
-  /// Bundles the built executable and resources into a Linux AppImage.
-  ///
-  /// ``build(product:in:buildConfiguration:universal:)`` should usually be called first.
-  /// - Parameters:
-  ///   - appName: The name to give the bundled app.
-  ///   - packageName: The name of the package.
-  ///   - appConfiguration: The app's configuration.
-  ///   - packageDirectory: The root directory of the package containing the app.
-  ///   - productsDirectory: The directory containing the products from the build step.
-  ///   - outputDirectory: The directory to output the app into.
-  ///   - isXcodeBuild: Whether the build products were created by Xcode or not.
-  ///   - universal: Whether the build products were built as universal binaries or not.
-  ///   - standAlone: If `true`, the app bundle will not depend on any system-wide dependencies
-  ///     being installed (such as gtk).
-  ///   - codesigningIdentity: If not `nil`, the app will be codesigned using the given identity.
-  ///   - provisioningProfile: If not `nil`, this provisioning profile will get embedded in the app.
-  ///   - platformVersion: The platform version that the executable was built for.
-  ///   - targetingSimulator: Does nothing for Linux builds.
-  /// - Returns: If a failure occurs, it is returned.
+  typealias Context = Void
+
   static func bundle(
-    appName: String,
-    packageName: String,
-    appConfiguration: AppConfiguration,
-    packageDirectory: URL,
-    productsDirectory: URL,
-    outputDirectory: URL,
-    isXcodeBuild: Bool,
-    universal: Bool,
-    standAlone: Bool,
-    codesigningIdentity: String?,
-    codesigningEntitlements: URL?,
-    provisioningProfile: URL?,
-    platformVersion: String,
-    targetingSimulator: Bool
-  ) -> Result<Void, Error> {
-    log.info("Bundling '\(appName).AppImage'")
+    _ context: BundlerContext,
+    _ additionalContext: Context
+  ) -> Result<Void, AppImageBundlerError> {
+    log.info("Bundling '\(context.appName).AppImage'")
 
-    let executableArtifact = productsDirectory.appendingPathComponent(appConfiguration.product)
+    let executableArtifact = context.productsDirectory.appendingPathComponent(
+      context.appConfiguration.product)
 
-    let appDir = outputDirectory.appendingPathComponent("\(appName).AppDir")
-    let appExecutable = appDir.appendingPathComponent("usr/bin/\(appName)")
+    let appDir = context.outputDirectory.appendingPathComponent("\(context.appName).AppDir")
+    let appExecutable = appDir.appendingPathComponent("usr/bin/\(context.appName)")
     let appIconDirectory = appDir.appendingPathComponent("usr/share/icons/hicolor/1024x1024/apps")
 
     let copyAppIconIfPresent: () -> Result<Void, AppImageBundlerError> = {
-      let destination = appIconDirectory.appendingPathComponent("\(appName).png")
-      guard let path = appConfiguration.icon else {
+      let destination = appIconDirectory.appendingPathComponent("\(context.appName).png")
+      guard let path = context.appConfiguration.icon else {
         // TODO: Synthesize the icon a bit smarter (e.g. maybe an svg would be better to synthesize)
         FileManager.default.createFile(atPath: destination.path, contents: nil)
         return .success()
       }
 
-      let icon = packageDirectory.appendingPathComponent(path)
+      let icon = context.packageDirectory.appendingPathComponent(path)
       do {
         try FileManager.default.copyItem(at: icon, to: destination)
       } catch {
@@ -63,25 +35,25 @@ enum AppImageBundler: Bundler {
     }
 
     let bundleApp = flatten(
-      { Self.createAppDirectoryStructure(at: outputDirectory, appName: appName) },
+      { Self.createAppDirectoryStructure(at: context.outputDirectory, appName: context.appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       {
         Self.createDesktopFile(
           at: appDir,
-          appName: appName,
-          appConfiguration: appConfiguration
+          appName: context.appName,
+          appConfiguration: context.appConfiguration
         )
       },
       copyAppIconIfPresent,
-      { Self.createSymlinks(at: appDir, appName: appName) },
+      { Self.createSymlinks(at: appDir, appName: context.appName) },
       {
-        log.info("Converting '\(appName).AppDir' to '\(appName).AppImage'")
+        log.info("Converting '\(context.appName).AppDir' to '\(context.appName).AppImage'")
         return AppImageTool.bundle(appDir: appDir)
           .mapError { .failedToBundleAppDir($0) }
       }
     )
 
-    return bundleApp().intoAnyError()
+    return bundleApp()
   }
 
   // MARK: Private methods

@@ -228,24 +228,42 @@ struct BundleCommand: AsyncCommand {
       }
 
       // Create bundle job
-      let bundler = getBundler(for: arguments.platform)
+      let bundlerContext = BundlerContext(
+        appName: appName,
+        packageName: manifest.displayName,
+        appConfiguration: appConfiguration,
+        packageDirectory: packageDirectory,
+        productsDirectory: productsDirectory,
+        outputDirectory: outputDirectory,
+        platform: arguments.platform
+      )
       let bundle = {
-        bundler.bundle(
-          appName: appName,
-          packageName: manifest.displayName,
-          appConfiguration: appConfiguration,
-          packageDirectory: packageDirectory,
-          productsDirectory: productsDirectory,
-          outputDirectory: outputDirectory,
-          isXcodeBuild: builtWithXcode,
-          universal: universal,
-          standAlone: arguments.standAlone,
-          codesigningIdentity: arguments.identity,
-          codesigningEntitlements: arguments.entitlements,
-          provisioningProfile: arguments.provisioningProfile,
-          platformVersion: platformVersion,
-          targetingSimulator: arguments.platform.isSimulator
-        )
+        if let applePlatform = arguments.platform.asApplePlatform {
+          let codeSigningContext: DarwinBundler.Context.CodeSigningContext?
+          if let identity = arguments.identity {
+            codeSigningContext = DarwinBundler.Context.CodeSigningContext(
+              identity: identity,
+              entitlements: arguments.entitlements,
+              provisioningProfile: arguments.provisioningProfile
+            )
+          } else {
+            codeSigningContext = nil
+          }
+
+          return DarwinBundler.bundle(
+            bundlerContext,
+            DarwinBundler.Context(
+              isXcodeBuild: builtWithXcode,
+              universal: universal,
+              standAlone: arguments.standAlone,
+              platform: applePlatform,
+              platformVersion: platformVersion,
+              codeSigningContext: codeSigningContext
+            )
+          ).intoAnyError()
+        } else {
+          return AppImageBundler.bundle(bundlerContext, ()).intoAnyError()
+        }
       }
 
       // Build pipeline
