@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 import SwiftXcodeProj
 
@@ -33,3 +34,5 @@ extension XcodeprojConverter {
     }
   }
 }
+
+#endif

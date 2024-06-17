@@ -44,14 +44,12 @@ let package = Package(
         "HotReloadingProtocol",
         "FileSystemWatcher",
         "Yams",
-        .product(name: "XcodeGenKit", package: "XcodeGen"),
-        .product(name: "ProjectSpec", package: "XcodeGen"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftFormat", package: "swift-format"),
         .product(name: "SwiftFormatConfiguration", package: "swift-format"),
         .product(name: "Overture", package: "swift-overture"),
-      ]
+      ] + Arch.products()
     ),
 
     .executableTarget(
@@ -128,3 +126,18 @@ let package = Package(
     ),
   ]
 )
+
+enum Arch
+{
+  public static func products() -> [Target.Dependency]
+  {
+    #if os(macOS)
+    return [
+      .product(name: "XcodeGenKit", package: "XcodeGen"),
+      .product(name: "ProjectSpec", package: "XcodeGen"),
+    ]
+    #else /* os(macOS) */
+    return []
+    #endif
+  }
+}

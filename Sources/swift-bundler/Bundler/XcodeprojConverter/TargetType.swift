@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftXcodeProj
 
 extension XcodeprojConverter {
@@ -30,3 +31,5 @@ extension XcodeprojConverter {
     }
   }
 }
+
+#endif /* macOS */

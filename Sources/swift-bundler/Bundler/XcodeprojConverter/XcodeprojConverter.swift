@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 import SwiftFormat
 import SwiftFormatConfiguration
@@ -607,3 +608,5 @@ enum XcodeprojConverter {
     return platformStrings
   }
 }
+
+#endif /* macOS */

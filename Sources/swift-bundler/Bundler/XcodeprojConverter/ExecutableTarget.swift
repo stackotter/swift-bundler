@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 
 extension XcodeprojConverter {
@@ -25,3 +26,5 @@ extension XcodeprojConverter {
     var infoPlist: URL?
   }
 }
+
+#endif

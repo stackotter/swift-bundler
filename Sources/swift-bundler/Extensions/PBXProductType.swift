@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftXcodeProj
 
 extension PBXProductType {
@@ -11,3 +12,5 @@ extension PBXProductType {
     return self == .staticLibrary || self == .dynamicLibrary
   }
 }
+
+#endif

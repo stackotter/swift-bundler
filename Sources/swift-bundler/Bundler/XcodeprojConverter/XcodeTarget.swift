@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 
 /// A target in an Xcode project.
@@ -26,3 +27,5 @@ extension XcodeTarget {
     return sources + resources
   }
 }
+
+#endif /* macOS */
