@@ -109,6 +109,19 @@ enum SwiftPackageManager {
         ])
       }
 
+      // pipe xcodebuild output to xcbeautify.
+      if let xcbeautify = xcbeautify {
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        xcbeautify.standardInput = pipe
+      }
+
+      do {
+        try xcbeautify?.run()
+      } catch {
+        print("error: \(error)")
+      }
+
       return process.runAndWait().mapError { error in
         .failedToRunSwiftBuild(
           command: "swift \(arguments.joined(separator: " "))",
