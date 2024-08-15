@@ -89,6 +89,45 @@ enum SwiftPackageManager {
     return create()
   }
 
+  struct XcodeDestinations: Codable {
+    var name: String = ""
+    var platform: String? = nil
+    var id: String? = nil
+    var OS: String? = nil
+    var arch: String? = nil
+    var variant: String? = nil
+    var error: String? = nil
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+      case platform = "platform"
+      case name = "name"
+      case id = "id"
+      case OS = "OS"
+      case arch = "arch"
+      case variant = "variant"
+      case error = "error"
+    }
+
+    subscript(_ keyPath: CodingKeys) -> String? {
+      get {
+        if let data = try? JSONEncoder().encode(self), var dict = try? JSONSerialization.jsonObject(with: data) as? [CodingKeys: String?] {
+          return dict[keyPath] ?? nil
+        } else {
+          return nil
+        }
+      }
+
+      set {
+        if let data = try? JSONEncoder().encode(self), var dict = try? JSONSerialization.jsonObject(with: data) as? [CodingKeys: String?] {
+          dict[keyPath] = newValue
+          if let newData = try? JSONSerialization.data(withJSONObject: dict), let newObj = try? JSONDecoder().decode(Self.self, from: newData) {
+            self = newObj
+          }
+        }
+      }
+    }
+  }
+
   /// Builds the specified product of a Swift package.
   /// - Parameters:
   ///   - product: The product to build.
@@ -119,7 +158,7 @@ enum SwiftPackageManager {
 
       return process.runAndWait().mapError { error in
         return .failedToRunSwiftBuild(
-          command: "swift \(arguments.joined(separator: " "))",
+          command: "\(isUsingXcodeBuild ? "xcodebuild" : "swift") \(arguments.joined(separator: " "))",
           error
         )
       }

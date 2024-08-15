@@ -228,7 +228,9 @@ struct BundleCommand: AsyncCommand {
       // support, because macOS cannot cross-compile for any of the other
       // darwin platforms like it can with linux, and thus we need to use
       // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
-      if isUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
+      if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
+        forceUsingXcodeBuild = true
+
         let configuration = try PackageConfiguration.load(
           fromDirectory: packageDirectory,
           customFile: arguments.configurationFileOverride
