@@ -104,26 +104,10 @@ enum SimulatorManager {
     _ bundle: URL,
     simulatorId: String
   ) -> Result<Void, SimulatorManagerError> {
-    let wrongBundlePath = bundle.path.replacingOccurrences(of: "Application Support", with: "Application\\ Support")
-
-    let codesignRemove = Process.create(
-      "/usr/bin/codesign",
-      arguments: [
-        "--remove-signature", wrongBundlePath
-      ]
-    ).runAndWait()
-
-    let codesign = Process.create(
-      "/usr/bin/codesign",
-      arguments: [
-        "--sign", "-", wrongBundlePath
-      ]
-    ).runAndWait()
-
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "simctl", "install", simulatorId, wrongBundlePath,
+        "simctl", "install", simulatorId, bundle.path,
       ]
     ).runAndWait().mapError { error in
       return .failedToRunSimCTL(error)
