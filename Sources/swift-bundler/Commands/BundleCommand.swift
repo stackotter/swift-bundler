@@ -293,7 +293,7 @@ struct BundleCommand: AsyncCommand {
 
           if !forceUsingXcodeBuild {
             let darwinContext = DarwinBundler.Context(
-              isXcodeBuild: builtWithXcode,
+              isXcodeBuild: builtWithXcode || forceUsingXcodeBuild,
               universal: universal,
               standAlone: arguments.standAlone,
               platform: applePlatform,

@@ -86,6 +86,7 @@ enum DarwinBundler: Bundler {
     }
 
     let sign: () -> Result<Void, DarwinBundlerError> = {
+      // if credentials are supplied for codesigning, use them.
       if let codeSigningContext = additionalContext.codeSigningContext {
         return CodeSigner.signAppBundle(
           bundle: appBundle,
@@ -95,7 +96,14 @@ enum DarwinBundler: Bundler {
           return .failedToCodesign(error)
         }
       } else {
-        return .success()
+        // otherwise codesign using an adhoc signature.
+        return CodeSigner.signAppBundle(
+          bundle: appBundle,
+          identityId: "-",
+          entitlements: nil
+        ).mapError { error in
+          return .failedToCodesign(error)
+        }
       }
     }
 
