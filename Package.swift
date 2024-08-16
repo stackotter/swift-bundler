@@ -51,9 +51,6 @@ let package = Package(
         .product(name: "SwiftFormat", package: "swift-format"),
         .product(name: "SwiftFormatConfiguration", package: "swift-format"),
         .product(name: "Overture", package: "swift-overture"),
-      ],
-      resources: [
-        .process("Resources")
       ]
     ),
 
