@@ -264,6 +264,15 @@ struct BundleCommand: AsyncCommand
       // Get relevant configuration
       let architectures = getArchitectures(platform: arguments.platform)
 
+      var forceUsingXcodeBuild = isUsingXcodeBuild
+      // For all apple platforms (not including macOS), we generate xcode
+      // support, because macOS cannot cross-compile for any of the other
+      // darwin platforms like it can with linux, and thus we need to use
+      // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
+      if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
+        forceUsingXcodeBuild = true
+      }
+
       let outputDirectory = Self.getOutputDirectory(
         arguments.outputDirectory,
         scratchDirectory: scratchDirectory
