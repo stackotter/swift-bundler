@@ -111,7 +111,6 @@ enum SwiftPackageManager {
 
       // pipe xcodebuild output to xcbeautify.
       if let xcbeautify = xcbeautify {
-        let pipe = Pipe()
         process.standardOutput = pipe
         xcbeautify.standardInput = pipe
       }
@@ -119,7 +118,7 @@ enum SwiftPackageManager {
       do {
         try xcbeautify?.run()
       } catch {
-        print("error: \(error)")
+        log.warning("xcbeautify error: \(error)")
       }
 
       return process.runAndWait().mapError { error in
