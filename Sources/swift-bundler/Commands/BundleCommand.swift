@@ -230,16 +230,6 @@ struct BundleCommand: AsyncCommand {
       // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
       if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
         forceUsingXcodeBuild = true
-
-        let configuration = try PackageConfiguration.load(
-          fromDirectory: packageDirectory,
-          customFile: arguments.configurationFileOverride
-        ).unwrap()
-
-        try XcodeSupportGenerator.generateXcodeSupport(
-          for: configuration,
-          in: packageDirectory
-        ).unwrap()
       }
 
       // Create build job
