@@ -89,7 +89,7 @@ enum SwiftPackageManager {
     return create()
   }
 
-  struct XcodeDestinations: Codable {
+  struct XcodeDestination: Codable {
     var name: String = ""
     var platform: String = ""
     var OS: String = ""

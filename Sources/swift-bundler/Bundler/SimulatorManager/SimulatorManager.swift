@@ -4,6 +4,7 @@ import Foundation
 enum SimulatorManager {
   /// Lists available simulators.
   /// - Parameter searchTerm: If provided, the simulators will be filtered using the search term.
+  /// - Parameter platform: If provided, the simulators will be filtered using the platform.
   /// - Returns: A list of available simulators matching the search term (if provided), or a failure if an error occurs.
   static func listAvailableSimulators(
     searchTerm: String? = nil
@@ -38,6 +39,65 @@ enum SimulatorManager {
       }
 
       return .success(simulators)
+    }
+  }
+
+  struct OSSimulator {
+    var OS: String
+    var simulators: [Simulator] = []
+  }
+
+  static func listAvailableOSSimulators(
+    for platform: Platform
+  ) -> Result<
+    [OSSimulator], SimulatorManagerError
+  > {
+    return Process.create(
+      "/usr/bin/xcrun",
+      arguments: [
+        "simctl", "list", "devices", "available", "--json",
+      ]
+    ).getOutputData().mapError { error in
+      return .failedToRunSimCTL(error)
+    }.flatMap { data in
+      let result: SimulatorList
+      do {
+        result = try JSONDecoder().decode(SimulatorList.self, from: data)
+      } catch {
+        return .failure(.failedToDecodeJSON(error))
+      }
+
+      var osSimulators: [OSSimulator] = []
+      for (runtime, platformSimulators) in result.devices {
+
+        switch platform
+        {
+          case .iOS, .iOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
+              if !platformSimulators.isEmpty {
+                var osRuntime = runtime
+                osRuntime.removeFirst("com.apple.CoreSimulator.SimRuntime.iOS-".count)
+
+                let os = osRuntime.replacingOccurrences(of: "-", with: ".")
+                osSimulators.append(.init(OS: os, simulators: platformSimulators))
+              }
+            }
+          case .visionOS, .visionOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+              if !platformSimulators.isEmpty {
+                var osRuntime = runtime
+                osRuntime.removeFirst("com.apple.CoreSimulator.SimRuntime.xrOS-".count)
+
+                let os = osRuntime.replacingOccurrences(of: "-", with: ".")
+                osSimulators.append(.init(OS: os, simulators: platformSimulators))
+              }
+            }
+          default:
+            break
+        }
+      }
+
+      return .success(osSimulators)
     }
   }
 
