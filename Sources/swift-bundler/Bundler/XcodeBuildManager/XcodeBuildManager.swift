@@ -93,7 +93,7 @@ enum XcodeBuildManager {
       ))
     }
 
-    let archString = architectures.flatMap(\.rawValue).joined(separator: "_")
+    let archString = architectures.flatMap({ $0.rawValue }).joined(separator: "_")
 
     process = Process.create(
       "xcodebuild",
