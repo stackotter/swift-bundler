@@ -32,11 +32,6 @@ enum SimulatorManager {
     }
   }
 
-  struct OSSimulator {
-    var OS: String
-    var simulators: [Simulator] = []
-  }
-
   /// Lists all available simulators per OS.
   /// - Parameter platform: Filters the simulators by platform.
   /// - Returns: A list of available simulators matching the platform, or a failure if an error occurs.
