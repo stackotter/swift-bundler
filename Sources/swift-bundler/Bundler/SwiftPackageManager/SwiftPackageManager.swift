@@ -89,12 +89,6 @@ enum SwiftPackageManager {
     return create()
   }
 
-  struct XcodeDestination: Codable {
-    var name: String = ""
-    var platform: String = ""
-    var OS: String = ""
-  }
-
   /// Builds the specified product of a Swift package.
   /// - Parameters:
   ///   - product: The product to build.
@@ -137,7 +131,7 @@ enum SwiftPackageManager {
 
       return process.runAndWait().mapError { error in
         return .failedToRunSwiftBuild(
-          command: "\(isUsingXcodeBuild ? "xcodebuild" : "swift") \(arguments.joined(separator: " "))",
+          command: "swift \(arguments.joined(separator: " "))",
           error
         )
       }

@@ -4,7 +4,6 @@ import Foundation
 enum SimulatorManager {
   /// Lists available simulators.
   /// - Parameter searchTerm: If provided, the simulators will be filtered using the search term.
-  /// - Parameter platform: If provided, the simulators will be filtered using the platform.
   /// - Returns: A list of available simulators matching the search term (if provided), or a failure if an error occurs.
   static func listAvailableSimulators(
     searchTerm: String? = nil
@@ -47,6 +46,9 @@ enum SimulatorManager {
     var simulators: [Simulator] = []
   }
 
+  /// Lists all available simulators per OS.
+  /// - Parameter platform: Filters the simulators by platform.
+  /// - Returns: A list of available simulators matching the platform, or a failure if an error occurs.
   static func listAvailableOSSimulators(
     for platform: Platform
   ) -> Result<
