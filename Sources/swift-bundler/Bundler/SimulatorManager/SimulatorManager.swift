@@ -32,6 +32,37 @@ enum SimulatorManager {
     }
   }
 
+  struct OSSimulator {
+    var OS: String
+    var simulators: [Simulator] = []
+  }
+
+  static func listAvailableOSSimulators(
+    for platform: Platform
+  ) -> Result<
+    [OSSimulator], SimulatorManagerError
+  > {
+    return Process.create(
+      "/usr/bin/xcrun",
+      arguments: [
+        "simctl", "list", "devices", "available", "--json",
+      ]
+    ).getOutputData().mapError { error in
+      .failedToRunSimCTL(error)
+    }.andThen { data in
+      JSONDecoder().decode(SimulatorList.self, from: data)
+        .mapError(SimulatorManagerError.failedToDecodeJSON)
+    }.map { simulatorList in
+      simulatorList.devices
+        .filter { (platform, platformSimulators) in
+          platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS")
+            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS")
+            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS")
+        }
+        .flatMap(\.value)
+    }
+  }
+
   /// Boots a simulator. If it's already running, nothing is done.
   /// - Parameter id: The name or id of the simulator to start.
   /// - Returns: A failure if an error occurs.
