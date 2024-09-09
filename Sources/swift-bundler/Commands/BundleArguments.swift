@@ -167,4 +167,14 @@ struct BundleArguments: ParsableArguments {
     )
   #endif
   var standAlone = false
+
+  /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
+  /// system-wide dynamic libraries being installed such as gtk).
+  #if os(macOS)
+    @Flag(
+      name: .customLong("xcodebuild"),
+      help: "Builds with xcodebuild instead of swiftpm."
+    )
+  #endif
+  var xcodebuild = false
 }

@@ -76,22 +76,12 @@ struct RunCommand: AsyncCommand {
       for: arguments.platform,
       simulatorSearchTerm: simulatorSearchTerm
     )
-    
-    var usingXcodeBuild = false
-    // For all apple platforms (not including macOS), we generate xcode
-    // support, because macOS cannot cross-compile for any of the other
-    // darwin platforms like it can with linux, and thus we need to use
-    // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
-    if ![Platform.linux, Platform.macOS].contains(arguments.platform) {
-      usingXcodeBuild = true
-    }
 
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
       builtWithXcode: false,
-      hotReloadingEnabled: hot,
-      isUsingXcodeBuild: usingXcodeBuild
+      hotReloadingEnabled: hot
     )
 
     // Perform bundling, or do a dry run if instructed to skip building (so

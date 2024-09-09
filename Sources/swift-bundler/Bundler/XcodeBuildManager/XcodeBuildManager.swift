@@ -58,39 +58,47 @@ enum XcodeBuildManager {
         """)
     }
 
-    guard let simulators = try? SimulatorManager.listAvailableOSSimulators(for: platform).unwrap() else {
-      return .failure(.failedToRunXcodeBuild(
-        command: "xcodebuild: could not retrieve list of available destinations.",
-        .nonZeroExitStatus(-1)
-      ))
-    }
+    var additionalArgs: [String] = []
+    if platform != .macOS {
+      // retrieving simulators for the -destination argument is only relevant for non-macOS platforms.
+      guard let simulators = try? SimulatorManager.listAvailableOSSimulators(for: platform).unwrap() else {
+        return .failure(.failedToRunXcodeBuild(
+          command: "xcodebuild: could not retrieve list of available destinations.",
+          .nonZeroExitStatus(-1)
+        ))
+      }
 
-    var destinations: [XcodeBuildDestination] = []
-    for os in simulators.map(\.OS) {
-      for simulators in simulators.filter({ $0.OS == os }).map(\.simulators) {
-        for simulator in simulators {
-          destinations.append(
-            XcodeBuildDestination(
-              name: simulator.name, 
-              platform: platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"),
-              OS: os
+      var destinations: [XcodeBuildDestination] = []
+      for os in simulators.map(\.OS) {
+        for simulators in simulators.filter({ $0.OS == os }).map(\.simulators) {
+          for simulator in simulators {
+            destinations.append(
+              XcodeBuildDestination(
+                name: simulator.name, 
+                platform: platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"),
+                OS: os
+              )
             )
-          )
+          }
         }
       }
-    }
 
-    var destination: XcodeBuildDestination? = nil
-    for dest in destinations.filter({ $0.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator")) }) {
-      destination = dest
-      break
-    }
+      var destination: XcodeBuildDestination? = nil
+      for dest in destinations.filter({ $0.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator")) }) {
+        destination = dest
+        break
+      }
 
-    guard let buildDest = destination else {
-      return .failure(.failedToRunXcodeBuild(
-        command: "xcodebuild: could not retrieve a valid build destination.",
-        .nonZeroExitStatus(-1)
-      ))
+      guard let buildDest = destination else {
+        return .failure(.failedToRunXcodeBuild(
+          command: "xcodebuild: could not retrieve a valid build destination.",
+          .nonZeroExitStatus(-1)
+        ))
+      }
+
+      additionalArgs += [
+        "-destination", "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)"
+      ]
     }
 
     let archString = architectures.flatMap({ $0.rawValue }).joined(separator: "_")
@@ -99,12 +107,11 @@ enum XcodeBuildManager {
       "xcodebuild",
       arguments: [
         "-scheme", product,
-        "-destination", "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)",
         "-configuration", configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
         "-derivedDataPath", packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(platform.sdkName)").path,
         "-archivePath", outputDirectory.appendingPathComponent(product).path
-      ],
+      ] + additionalArgs,
       directory: packageDirectory,
       runSilentlyWhenNotVerbose: false
     )
