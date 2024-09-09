@@ -255,9 +255,9 @@
     {
       "identity" : "xcodegen",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/wabiverse/XcodeGen",
+      "location" : "https://github.com/stackotter/XcodeGen",
       "state" : {
-        "revision" : "91d0082c55124d1c1eb3d4272f253e89a6a0f5c1",
+        "revision" : "8f562268f8b54461b6ddfe817d624bc4e307a30e",
         "version" : "2.35.2"
       }
     },
