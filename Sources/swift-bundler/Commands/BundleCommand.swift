@@ -34,8 +34,6 @@ struct BundleCommand: AsyncCommand {
 
   var hotReloadingEnabled = false
 
-  var isUsingXcodeBuild = false
-
   /// Used to avoid loading configuration twice when RunCommand is used.
   static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
 
@@ -47,14 +45,12 @@ struct BundleCommand: AsyncCommand {
     arguments: OptionGroup<BundleArguments>,
     skipBuild: Bool,
     builtWithXcode: Bool,
-    hotReloadingEnabled: Bool,
-    isUsingXcodeBuild: Bool
+    hotReloadingEnabled: Bool
   ) {
     _arguments = arguments
     self.skipBuild = skipBuild
     self.builtWithXcode = builtWithXcode
     self.hotReloadingEnabled = hotReloadingEnabled
-    self.isUsingXcodeBuild = isUsingXcodeBuild
   }
 
   static func validateArguments(
@@ -190,7 +186,7 @@ struct BundleCommand: AsyncCommand {
       let universal = arguments.universal || arguments.architectures.count > 1
       let architectures = getArchitectures(platform: arguments.platform)
 
-      var forceUsingXcodeBuild = isUsingXcodeBuild
+      var forceUsingXcodeBuild = arguments.xcodebuild
       // For all apple platforms (not including macOS), we generate xcode
       // support, because macOS cannot cross-compile for any of the other
       // darwin platforms like it can with linux, and thus we need to use
