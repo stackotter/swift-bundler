@@ -58,6 +58,8 @@ enum XcodeBuildManager {
         """)
     }
 
+    let archString = architectures.flatMap({ $0.rawValue }).joined(separator: "_")
+
     var additionalArgs: [String] = []
     if platform != .macOS {
       // retrieving simulators for the -destination argument is only relevant for non-macOS platforms.
@@ -99,9 +101,11 @@ enum XcodeBuildManager {
       additionalArgs += [
         "-destination", "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)"
       ]
+    } else {
+      additionalArgs += [
+        "-destination", "platform=macOS,arch=\(archString)"
+      ]
     }
-
-    let archString = architectures.flatMap({ $0.rawValue }).joined(separator: "_")
 
     process = Process.create(
       "xcodebuild",
