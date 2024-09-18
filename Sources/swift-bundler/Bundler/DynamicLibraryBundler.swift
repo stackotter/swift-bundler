@@ -26,16 +26,20 @@ enum DynamicLibraryBundler {
   ) -> Result<Void, DynamicLibraryBundlerError> {
     log.info("Copying dynamic libraries")
 
-    // Update the app's rpath
-    if universal || isXcodeBuild {
-      let original = "@executable_path/../lib"
-      let new = "@executable_path"
-      let process = Process.create(
-        "/usr/bin/install_name_tool",
-        arguments: ["-rpath", original, new, appExecutable.path]
-      )
-      if case let .failure(error) = process.runAndWait() {
-        return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
+    // if the app was pre-bundled by xcodebuild, the rpath does not need to be modified.
+    let prebundledPath = productsDirectory.appendingPathComponent("\(appExecutable.lastPathComponent).app")
+    if !FileManager.default.fileExists(atPath: prebundledPath.path) {
+      // Update the app's rpath
+      if universal || isXcodeBuild {
+        let original = "@executable_path/../lib"
+        let new = "@executable_path"
+        let process = Process.create(
+          "/usr/bin/install_name_tool",
+          arguments: ["-rpath", original, new, appExecutable.path]
+        )
+        if case let .failure(error) = process.runAndWait() {
+          return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
+        }
       }
     }
 
