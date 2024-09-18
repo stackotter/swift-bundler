@@ -201,11 +201,22 @@ enum DarwinBundler: Bundler {
     at source: URL, to destination: URL
   ) -> Result<Void, DarwinBundlerError> {
     log.info("Copying executable")
+
+    var exeSource = source
+
+    // for some reason, xcodebuild may randomly decide to build the
+    // executable inside of an app bundle at this location, so we use
+    // this location for the built executable instead, if it exists.
+    let bundlePath = "\(source.path).app/\(source.lastPathComponent)"
+    if FileManager.default.fileExists(atPath: bundlePath) {
+      exeSource = URL(fileURLWithPath: bundlePath)
+    }
+
     do {
-      try FileManager.default.copyItem(at: source, to: destination)
+      try FileManager.default.copyItem(at: exeSource, to: destination)
       return .success()
     } catch {
-      return .failure(.failedToCopyExecutable(source: source, destination: destination, error))
+      return .failure(.failedToCopyExecutable(source: exeSource, destination: destination, error))
     }
   }
 
