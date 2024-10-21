@@ -72,21 +72,22 @@ enum SimulatorManager {
           case .iOS, .iOSSimulator:
             if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
               if !platformSimulators.isEmpty {
-                var osRuntime = runtime
-                osRuntime.removeFirst("com.apple.CoreSimulator.SimRuntime.iOS-".count)
-
-                let os = osRuntime.replacingOccurrences(of: "-", with: ".")
-                osSimulators.append(.init(OS: os, simulators: platformSimulators))
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
               }
             }
           case .visionOS, .visionOSSimulator:
             if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
               if !platformSimulators.isEmpty {
-                var osRuntime = runtime
-                osRuntime.removeFirst("com.apple.CoreSimulator.SimRuntime.xrOS-".count)
-
-                let os = osRuntime.replacingOccurrences(of: "-", with: ".")
-                osSimulators.append(.init(OS: os, simulators: platformSimulators))
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          case .tvOS, .tvOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
               }
             }
           default:
