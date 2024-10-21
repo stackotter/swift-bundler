@@ -85,8 +85,12 @@ enum XcodeBuildManager {
         }
       }
 
+      // 1. sort from highest to lowest semantic versions...
+      destinations.sort { OSVersion($0.OS) > OSVersion($1.OS) }
+
       var destination: XcodeBuildDestination? = nil
       for dest in destinations.filter({ $0.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator")) }) {
+        // 2. because we grab the latest semantic version available here.
         destination = dest
         break
       }
