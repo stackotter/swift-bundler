@@ -85,11 +85,24 @@ enum XcodeBuildManager {
         }
       }
 
+      // ----- some filters -----
+
+      // we only care about matching the specifed platform name.
+      let forPlatform: (XcodeBuildDestination) -> Bool = { simulator in
+        return simulator.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
+      }
+      // we prefer to ignore iPhone SE models.
+      let removeBlacklisted: (XcodeBuildDestination) -> Bool = { simulator in
+        return !simulator.name.contains("iPhone SE")
+      }
+
+      // ------------------------
+
       // 1. sort from highest to lowest semantic versions...
       destinations.sort { OSVersion($0.OS) > OSVersion($1.OS) }
 
       var destination: XcodeBuildDestination? = nil
-      for dest in destinations.filter({ $0.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator")) }) {
+      for dest in destinations.filter({ forPlatform($0) && removeBlacklisted($0) }) {
         // 2. because we grab the latest semantic version available here.
         destination = dest
         break

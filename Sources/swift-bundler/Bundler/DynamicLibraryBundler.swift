@@ -43,17 +43,26 @@ enum DynamicLibraryBundler {
       }
     }
 
-    // Select directory to enumerate
+    // Select directory to enumerate.
     let searchDirectory: URL
-    if isXcodeBuild {
+    let isPrebundled = FileManager.default.fileExists(atPath: prebundledPath.path)
+
+    // if the app was pre-bundled by xcodebuild we ignore PackageFrameworks.
+    if isXcodeBuild && !isPrebundled {
       searchDirectory = productsDirectory.appendingPathComponent("PackageFrameworks")
+    // if the app was pre-bundled by xcodebuild on macOS we search MyApp.app/Contents/MacOS.
+    } else if FileManager.default.fileExists(atPath: "\(prebundledPath.path)/Contents/MacOS") {
+      searchDirectory = URL(fileURLWithPath: "\(prebundledPath.path)/Contents/MacOS")
+    // if the app was pre-bundled by xcodebuild on embedded devices we search MyApp.app.
+    } else if FileManager.default.fileExists(atPath: "\(prebundledPath.path)") {
+      searchDirectory = URL(fileURLWithPath: "\(prebundledPath.path)")
     } else {
       searchDirectory = productsDirectory
     }
 
     // Enumerate dynamic libraries
     let libraries: [(name: String, file: URL)]
-    switch enumerateDynamicLibraries(searchDirectory, isXcodeBuild: isXcodeBuild) {
+    switch enumerateDynamicLibraries(searchDirectory, isXcodeBuild: isXcodeBuild && !isPrebundled) {
       case let .success(value):
         libraries = value
       case let .failure(error):
