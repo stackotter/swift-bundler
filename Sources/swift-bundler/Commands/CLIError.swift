@@ -55,7 +55,9 @@ enum CLIError: LocalizedError {
           remove any .xcodeproj and .xcworkspace directories listed above and try again.
 
           If you cannot remove the xcodeproj or xcworkspace, you must stick to Swift Bundler's
-          default SwiftPM-based build system.
+          default SwiftPM-based build system, you may pass the --no-xcodebuild flag to the bundler
+          to override embedded Darwin platforms such as iOS, visionOS, tvOS, and watchOS to use the
+          SwiftPM-based build system instead of the xcodebuild one.
           """
     }
   }
