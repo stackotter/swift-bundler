@@ -270,6 +270,24 @@ struct BundleCommand: AsyncCommand
         forceUsingXcodeBuild = true
       }
 
+      if forceUsingXcodeBuild {
+        // Terminate the program if the project is an Xcodeproj based project.
+        let xcodeprojs = try FileManager.default.contentsOfDirectory(
+          at: packageDirectory,
+          includingPropertiesForKeys: nil
+        ).filter({ $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace") })
+        guard xcodeprojs.isEmpty else {
+          for xcodeproj in xcodeprojs {
+            if xcodeproj.path.contains("xcodeproj") {
+              log.error("An xcodeproj was located at the following path: \(xcodeproj.path)")
+            } else if xcodeproj.path.contains("xcworkspace") {
+              log.error("An xcworkspace was located at the following path: \(xcodeproj.path)")
+            }
+          }
+          throw CLIError.invalidXcodeprojDetected
+        }
+      }
+
       let outputDirectory = Self.getOutputDirectory(
         arguments.outputDirectory,
         scratchDirectory: scratchDirectory

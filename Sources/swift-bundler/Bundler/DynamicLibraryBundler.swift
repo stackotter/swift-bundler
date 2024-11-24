@@ -26,43 +26,30 @@ enum DynamicLibraryBundler {
   ) -> Result<Void, DynamicLibraryBundlerError> {
     log.info("Copying dynamic libraries")
 
-    // if the app was pre-bundled by xcodebuild, the rpath does not need to be modified.
-    let prebundledPath = productsDirectory.appendingPathComponent("\(appExecutable.lastPathComponent).app")
-    if !FileManager.default.fileExists(atPath: prebundledPath.path) {
-      // Update the app's rpath
-      if universal || isXcodeBuild {
-        let original = "@executable_path/../lib"
-        let new = "@executable_path"
-        let process = Process.create(
-          "/usr/bin/install_name_tool",
-          arguments: ["-rpath", original, new, appExecutable.path]
-        )
-        if case let .failure(error) = process.runAndWait() {
-          return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
-        }
+    // Update the app's rpath
+    if universal || isXcodeBuild {
+      let original = "@executable_path/../lib"
+      let new = "@executable_path"
+      let process = Process.create(
+        "/usr/bin/install_name_tool",
+        arguments: ["-rpath", original, new, appExecutable.path]
+      )
+      if case let .failure(error) = process.runAndWait() {
+        return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
       }
     }
 
-    // Select directory to enumerate.
+    // Select directory to enumerate
     let searchDirectory: URL
-    let isPrebundled = FileManager.default.fileExists(atPath: prebundledPath.path)
-
-    // if the app was pre-bundled by xcodebuild we ignore PackageFrameworks.
-    if isXcodeBuild && !isPrebundled {
+    if isXcodeBuild {
       searchDirectory = productsDirectory.appendingPathComponent("PackageFrameworks")
-    // if the app was pre-bundled by xcodebuild on macOS we search MyApp.app/Contents/MacOS.
-    } else if FileManager.default.fileExists(atPath: "\(prebundledPath.path)/Contents/MacOS") {
-      searchDirectory = URL(fileURLWithPath: "\(prebundledPath.path)/Contents/MacOS")
-    // if the app was pre-bundled by xcodebuild on embedded devices we search MyApp.app.
-    } else if FileManager.default.fileExists(atPath: "\(prebundledPath.path)") {
-      searchDirectory = URL(fileURLWithPath: "\(prebundledPath.path)")
     } else {
       searchDirectory = productsDirectory
     }
 
     // Enumerate dynamic libraries
     let libraries: [(name: String, file: URL)]
-    switch enumerateDynamicLibraries(searchDirectory, isXcodeBuild: isXcodeBuild && !isPrebundled) {
+    switch enumerateDynamicLibraries(searchDirectory, isXcodeBuild: isXcodeBuild) {
       case let .success(value):
         libraries = value
       case let .failure(error):
@@ -74,7 +61,15 @@ enum DynamicLibraryBundler {
       log.info("Copying dynamic library '\(name)'")
 
       // Copy and rename the library
-      let outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib".contains("liblib") ? "\(name).dylib" : "lib\(name).dylib")
+      let outputLibrary: URL
+      if name.prefix(3).contains("lib") {
+        // do not add a 'lib' prefix to the dynamic library if it's already prefixed with 'lib'.
+        outputLibrary = outputDirectory.appendingPathComponent("\(name).dylib")
+      } else {
+        // add a 'lib' prefix to the dynamic library if it's not already prefixed with 'lib'.
+        outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib")
+      }
+
       do {
         try FileManager.default.copyItem(
           at: library,
