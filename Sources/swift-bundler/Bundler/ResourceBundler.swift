@@ -63,7 +63,10 @@ enum ResourceBundler {
     let contents: [URL]
     do {
       contents = try FileManager.default.contentsOfDirectory(
-        at: sourceDirectory, includingPropertiesForKeys: nil, options: [])
+        at: sourceDirectory,
+        includingPropertiesForKeys: nil,
+        options: []
+      )
     } catch {
       return .failure(.failedToEnumerateBundles(directory: sourceDirectory, error))
     }
@@ -106,10 +109,9 @@ enum ResourceBundler {
   ///   - destination: The directory to copy the bundle to.
   /// - Returns: If an error occurs, a failure is returned.
   static func copyResourceBundle(
-    _ bundle: URL, to destination: URL
-  ) -> Result<
-    Void, ResourceBundlerError
-  > {
+    _ bundle: URL,
+    to destination: URL
+  ) -> Result<Void, ResourceBundlerError> {
     log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
 
     let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)

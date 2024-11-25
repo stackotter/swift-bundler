@@ -8,6 +8,8 @@ enum AppImageBundlerError: LocalizedError {
   case failedToCreateDesktopFile(URL, Error?)
   case failedToCreateSymlink(source: URL, destination: URL, Error)
   case failedToBundleAppDir(AppImageToolError)
+  case failedToCopyResourceBundle(source: URL, destination: URL, Error)
+  case failedToEnumerateResourceBundles(directory: URL, Error)
 
   var errorDescription: String? {
     switch self {
@@ -26,6 +28,13 @@ enum AppImageBundlerError: LocalizedError {
           "Failed to create symlink from '\(source.relativePath)' to '\(destination.relativePath)'"
       case .failedToBundleAppDir(let error):
         return "Failed to convert AppDir to AppImage: \(error)"
+      case .failedToCopyResourceBundle(let source, let destination, _):
+        return """
+          Failed to copy resource bundle at '\(source.relativePath)' to \
+          '\(destination.relativePath)'
+          """
+      case .failedToEnumerateResourceBundles(let directory, _):
+        return "Failed to enumerate resource bundles in '\(directory.relativePath)'"
     }
   }
 }

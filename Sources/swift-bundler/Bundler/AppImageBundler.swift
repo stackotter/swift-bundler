@@ -38,6 +38,13 @@ enum AppImageBundler: Bundler {
       { Self.createAppDirectoryStructure(at: context.outputDirectory, appName: context.appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       {
+        print(context.outputDirectory.path)
+        return Self.copyResources(
+          from: context.productsDirectory,
+          to: appDir.appendingPathComponent("usr/bin")
+        )
+      },
+      {
         Self.createDesktopFile(
           at: appDir,
           appName: context.appName,
@@ -58,6 +65,47 @@ enum AppImageBundler: Bundler {
 
   // MARK: Private methods
 
+  private static func copyResources(
+    from sourceDirectory: URL,
+    to destinationDirectory: URL
+  ) -> Result<Void, AppImageBundlerError> {
+    let contents: [URL]
+    do {
+      contents = try FileManager.default.contentsOfDirectory(
+        at: sourceDirectory,
+        includingPropertiesForKeys: nil,
+        options: []
+      )
+    } catch {
+      return .failure(.failedToEnumerateResourceBundles(directory: sourceDirectory, error))
+    }
+
+    for bundle in contents where bundle.pathExtension == "resources" {
+      guard FileManager.default.itemExists(at: bundle, withType: .directory) else {
+        continue
+      }
+
+      log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
+      let destinationBundle = destinationDirectory.appendingPathComponent(
+        "\(bundle.deletingPathExtension().lastPathComponent).bundle"
+      )
+
+      do {
+        try FileManager.default.copyItem(at: bundle, to: destinationBundle)
+      } catch {
+        return .failure(
+          .failedToCopyResourceBundle(
+            source: bundle,
+            destination: destinationBundle,
+            error
+          )
+        )
+      }
+    }
+
+    return .success()
+  }
+
   /// Creates the directory structure for an app.
   ///
   /// Creates the following structure:
@@ -72,10 +120,9 @@ enum AppImageBundler: Bundler {
   ///   - appName: The name of the app.
   /// - Returns: A failure if directory creation fails.
   private static func createAppDirectoryStructure(
-    at outputDirectory: URL, appName: String
-  )
-    -> Result<Void, AppImageBundlerError>
-  {
+    at outputDirectory: URL,
+    appName: String
+  ) -> Result<Void, AppImageBundlerError> {
     log.info("Creating '\(appName).AppDir'")
     let fileManager = FileManager.default
 
