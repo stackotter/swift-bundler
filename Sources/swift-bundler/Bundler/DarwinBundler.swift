@@ -31,25 +31,15 @@ enum DarwinBundler: Bundler {
     _ context: BundlerContext,
     _ additionalContext: Context
   ) -> Result<Void, DarwinBundlerError> {
-    log.info("Bundling '\(context.appName).app'")
+    let appBundleName = appBundleName(forAppName: context.appName)
+    log.info("Bundling '\(appBundleName)'")
 
-    let appBundle = context.outputDirectory.appendingPathComponent("\(context.appName).app")
+    let appBundle = context.outputDirectory.appendingPathComponent(appBundleName)
     let bundleStructure = DarwinAppBundleStructure(
       at: appBundle,
       platform: additionalContext.platform
     )
     let appExecutable = bundleStructure.executableDirectory.appendingPathComponent(context.appName)
-
-    let removeExistingAppBundle: () -> Result<Void, DarwinBundlerError> = {
-      if FileManager.default.itemExists(at: appBundle, withType: .directory) {
-        do {
-          try FileManager.default.removeItem(at: appBundle)
-        } catch {
-          return .failure(.failedToRemoveExistingAppBundle(bundle: appBundle, error))
-        }
-      }
-      return .success()
-    }
 
     let createAppIconIfPresent: () -> Result<Void, DarwinBundlerError> = {
       if let path = context.appConfiguration.icon {
@@ -110,7 +100,6 @@ enum DarwinBundler: Bundler {
     }
 
     let bundleApp = flatten(
-      removeExistingAppBundle,
       bundleStructure.createDirectories,
       { Self.copyExecutable(at: context.executableArtifact, to: appExecutable) },
       { Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile) },
@@ -131,6 +120,10 @@ enum DarwinBundler: Bundler {
     )
 
     return bundleApp()
+  }
+
+  static func appBundleName(forAppName appName: String) -> String {
+    "\(appName).app"
   }
 
   // MARK: Private methods

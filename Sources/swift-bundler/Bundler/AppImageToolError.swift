@@ -2,7 +2,7 @@ import Foundation
 
 /// An error returned by ``AppImageTool``.
 enum AppImageToolError: LocalizedError {
-  case failedToRunAppImageTool(command: String, Error)
+  case failedToRunAppImageTool(command: String, ProcessError)
 
   var errorDescription: String? {
     switch self {

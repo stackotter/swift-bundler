@@ -191,8 +191,6 @@ struct BundleCommand: AsyncCommand {
         scratchDirectory: scratchDirectory
       )
 
-      appBundle = outputDirectory.appendingPathComponent("\(appName).app")
-
       // Load package manifest
       log.info("Loading package manifest")
       let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
@@ -244,6 +242,23 @@ struct BundleCommand: AsyncCommand {
         outputDirectory: outputDirectory,
         platform: arguments.platform
       )
+
+      let removeExistingOutputs: () -> Result<Void, Error> = {
+        if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
+          do {
+            try FileManager.default.removeItem(at: outputDirectory)
+          } catch {
+            return .failure(
+              CLIError.failedToRemoveExistingOutputs(
+                outputDirectory: outputDirectory,
+                error
+              ) as Error
+            )
+          }
+        }
+        return .success()
+      }
+
       let bundle = {
         if let applePlatform = arguments.platform.asApplePlatform {
           let codeSigningContext: DarwinBundler.Context.CodeSigningContext?
@@ -257,18 +272,26 @@ struct BundleCommand: AsyncCommand {
             codeSigningContext = nil
           }
 
+          let darwinContext = DarwinBundler.Context(
+            isXcodeBuild: builtWithXcode,
+            universal: universal,
+            standAlone: arguments.standAlone,
+            platform: applePlatform,
+            platformVersion: platformVersion,
+            codeSigningContext: codeSigningContext
+          )
+
+          appBundle = outputDirectory.appendingPathComponent(
+            DarwinBundler.appBundleName(forAppName: appName)
+          )
           return DarwinBundler.bundle(
             bundlerContext,
-            DarwinBundler.Context(
-              isXcodeBuild: builtWithXcode,
-              universal: universal,
-              standAlone: arguments.standAlone,
-              platform: applePlatform,
-              platformVersion: platformVersion,
-              codeSigningContext: codeSigningContext
-            )
+            darwinContext
           ).intoAnyError()
         } else {
+          appBundle = outputDirectory.appendingPathComponent(
+            AppImageBundler.appBundleName(forAppName: appName)
+          )
           return AppImageBundler.bundle(bundlerContext, ()).intoAnyError()
         }
       }
@@ -276,10 +299,14 @@ struct BundleCommand: AsyncCommand {
       // Build pipeline
       let task: () async -> Result<Void, Error>
       if skipBuild {
-        task = bundle
+        task = flatten(
+          removeExistingOutputs,
+          bundle
+        )
       } else {
         task = flatten(
           build,
+          removeExistingOutputs,
           bundle
         )
       }
@@ -290,7 +317,10 @@ struct BundleCommand: AsyncCommand {
 
     // Output the time elapsed and app bundle location
     log.info(
-      "Done in \(elapsed.secondsString). App bundle located at '\(appBundle?.relativePath ?? "unknown")'"
+      """
+      Done in \(elapsed.secondsString). App bundle located at \
+      '\(appBundle?.relativePath ?? "unknown")'
+      """
     )
   }
 

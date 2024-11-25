@@ -495,12 +495,6 @@ enum SwiftPackageManager {
       temporaryDirectory
       .appendingPathComponent("\(uuid)-PackageManifest").path
 
-    #if os(Linux)
-      let temporaryAutolinkFile =
-        temporaryDirectory
-        .appendingPathComponent("\(uuid)-PackageManifest.autolink").path
-    #endif
-
     let targetInfo: SwiftTargetInfo
     switch self.getTargetInfo() {
       case .success(let info):

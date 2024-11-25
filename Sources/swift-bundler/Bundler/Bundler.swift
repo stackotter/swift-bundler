@@ -8,10 +8,18 @@ protocol Bundler {
   /// - Parameters:
   ///   - context: The general context passed to all bundlers.
   ///   - additionalContext: The bundler-specific context for this bundler.
+  /// - Returns: The URL of the produced app bundle on success.
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
   ) -> Result<Void, Error>
+
+  // TODO: This documentation is akwardly worded. I can't really think of a
+  //   name for this method that roles off the tongue.
+  /// - Parameters:
+  ///   - appName: The name of the app.
+  /// - Returns: The name of the app bundler that will be produced.
+  static func appBundleName(forAppName appName: String) -> String
 }
 
 struct BundlerContext {
@@ -38,15 +46,10 @@ struct BundlerContext {
   }
 }
 
+/// Gets the bundler to use when targeting the specified platform.
 func getBundler(for platform: Platform) -> any Bundler.Type {
   switch platform {
-    case .macOS:
-      return DarwinBundler.self
-    case .iOS, .iOSSimulator:
-      return DarwinBundler.self
-    case .tvOS, .tvOSSimulator:
-      return DarwinBundler.self
-    case .visionOS, .visionOSSimulator:
+    case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
       return DarwinBundler.self
     case .linux:
       return AppImageBundler.self

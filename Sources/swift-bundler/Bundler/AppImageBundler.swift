@@ -8,10 +8,13 @@ enum AppImageBundler: Bundler {
     _ context: BundlerContext,
     _ additionalContext: Context
   ) -> Result<Void, AppImageBundlerError> {
-    log.info("Bundling '\(context.appName).AppImage'")
+    let appBundleName = appBundleName(forAppName: context.appName)
+    let appBundle = context.outputDirectory.appendingPathComponent(appBundleName)
 
-    let executableArtifact = context.productsDirectory.appendingPathComponent(
-      context.appConfiguration.product)
+    log.info("Bundling '\(appBundleName)'")
+
+    let executableArtifact = context.productsDirectory
+      .appendingPathComponent(context.appConfiguration.product)
 
     let appDir = context.outputDirectory.appendingPathComponent("\(context.appName).AppDir")
     let appExecutable = appDir.appendingPathComponent("usr/bin/\(context.appName)")
@@ -38,8 +41,7 @@ enum AppImageBundler: Bundler {
       { Self.createAppDirectoryStructure(at: context.outputDirectory, appName: context.appName) },
       { Self.copyExecutable(at: executableArtifact, to: appExecutable) },
       {
-        print(context.outputDirectory.path)
-        return Self.copyResources(
+        Self.copyResources(
           from: context.productsDirectory,
           to: appDir.appendingPathComponent("usr/bin")
         )
@@ -54,13 +56,17 @@ enum AppImageBundler: Bundler {
       copyAppIconIfPresent,
       { Self.createSymlinks(at: appDir, appName: context.appName) },
       {
-        log.info("Converting '\(context.appName).AppDir' to '\(context.appName).AppImage'")
-        return AppImageTool.bundle(appDir: appDir)
+        log.info("Converting '\(context.appName).AppDir' to '\(appBundleName)'")
+        return AppImageTool.bundle(appDir: appDir, to: appBundle)
           .mapError { .failedToBundleAppDir($0) }
       }
     )
 
     return bundleApp()
+  }
+
+  static func appBundleName(forAppName appName: String) -> String {
+    "\(appName).AppImage"
   }
 
   // MARK: Private methods

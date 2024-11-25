@@ -1,5 +1,9 @@
 import Foundation
 
+#if os(Linux)
+  import Glibc
+#endif
+
 /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
 ///
 /// If the program is killed, all processes in this array are terminated before the program exits.
@@ -194,5 +198,51 @@ extension Process {
     ).getOutput().map { path in
       return path.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+  }
+
+  /// Runs an app image. For some reason ``Foundation/Process`` can't handle
+  /// app images. It just keeps waiting indefinitely even once the process
+  /// has clearly finished. It also can't terminate them. App images probably
+  /// just do some weird forking or something, but doing the process management
+  /// ourselves seems to fix the issues.
+  ///
+  /// The issue occurs even without any pipes attached, so it's not the classic
+  /// full pipes issue.
+  static func runAppImage(_ appImage: String, arguments: [String]) -> Result<Void, ProcessError> {
+    #if os(Linux)
+      let selfPid = getpid()
+      setpgid(0, selfPid)
+      let childPid = fork()
+      if childPid == 0 {
+        setpgid(0, selfPid)
+        let cArguments =
+          (["/usr/bin/env", appImage] + arguments).map { strdup($0) }
+          + [UnsafeMutablePointer<CChar>(bitPattern: 0)]
+        execv("/usr/bin/env", cArguments)
+        // We only ever get here if the execv fails
+        Foundation.exit(-1)
+      } else {
+        var status: Int32 = 0
+        waitpid(childPid, &status, 0)
+        if status != 0 {
+          return .failure(
+            .nonZeroExitStatus(Int(status))
+          )
+        } else {
+          return .success()
+        }
+      }
+    #else
+      let process = Process.create(
+        appImage,
+        arguments: arguments,
+        runSilentlyWhenNotVerbose: false
+      )
+
+      return process.runAndWait()
+        .mapError { error in
+          .failedToRunProcess(error)
+        }
+    #endif
   }
 }

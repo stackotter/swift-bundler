@@ -93,12 +93,9 @@ struct RunCommand: AsyncCommand {
       await bundleCommand.run()
     }
 
-    let bundle: URL
-    if device == .linux {
-      bundle = outputDirectory.appendingPathComponent("\(appName).AppImage")
-    } else {
-      bundle = outputDirectory.appendingPathComponent("\(appName).app")
-    }
+    let bundleName = getBundler(for: arguments.platform)
+      .appBundleName(forAppName: appName)
+    let bundle = outputDirectory.appendingPathComponent(bundleName)
 
     let environmentVariables =
       try environmentFile.map { file in
