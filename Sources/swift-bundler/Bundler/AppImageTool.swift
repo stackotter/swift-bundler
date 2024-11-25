@@ -9,6 +9,7 @@ import Foundation
 enum AppImageTool {
   static func bundle(appDir: URL) -> Result<Void, AppImageToolError> {
     let appImage = appDir.deletingPathExtension().appendingPathExtension("AppImage")
+    let arguments = [appDir.path, appImage.path]
 
     // I have no clue why `appimagetool` specifically has this issue, but if
     // run `appimagetool` via `Swift.Process` on Linux, then the tool's process
@@ -41,7 +42,6 @@ enum AppImageTool {
         }
       }
     #else
-      let arguments = [appDir.path, appImage.path]
       let process = Process.create(
         "bash",
         arguments: ["-c", "appimagetool " + arguments.joined(separator: " ")],
