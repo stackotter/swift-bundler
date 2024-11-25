@@ -22,7 +22,7 @@ jobs:
         run: swift build -c release --arch arm64 --arch x86_64
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: swift-bundler
           path: ./.build/apple/Products/Release/swift-bundler
