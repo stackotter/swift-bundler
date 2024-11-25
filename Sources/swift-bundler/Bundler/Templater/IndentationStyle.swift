@@ -30,16 +30,14 @@ extension IndentationStyle: ExpressibleByArgument {
   }
 
   init?(argument: String) {
-    let parser = Parse {
-      OneOf {
-        Parse(IndentationStyle.tabs) {
-          "tabs"
-        }
+    let parser = OneOf {
+      Parse(IndentationStyle.tabs) {
+        "tabs"
+      }
 
-        Parse(IndentationStyle.spaces) {
-          "spaces="
-          Int.parser(radix: 10)
-        }
+      Parse(IndentationStyle.spaces) {
+        "spaces="
+        Int.parser(of: Substring.self, radix: 10)
       }
     }
 

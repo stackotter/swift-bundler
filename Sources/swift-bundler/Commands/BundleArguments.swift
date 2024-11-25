@@ -10,7 +10,11 @@ struct BundleArguments: ParsableArguments {
   /// The directory containing the package to build.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to build.",
+    help:
+      """
+      The directory containing the package to build. This changes the working \
+      directory before any other operation
+      """,
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
@@ -64,6 +68,12 @@ struct BundleArguments: ParsableArguments {
       return arch
     })
   var architectures: [BuildArchitecture] = []
+
+  @Option(
+    name: .customLong("scratch-path"),
+    help: "A custom scratch directory path (default: .build)",
+    transform: URL.init(fileURLWithPath:))
+  var scratchDirectory: URL?
 
   /// The platform to build for.
   @Option(

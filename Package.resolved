@@ -95,8 +95,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-case-paths",
       "state" : {
-        "revision" : "bc92c4b27f9a84bfb498cdbfdf35d5a357e9161f",
-        "version" : "1.5.6"
+        "revision" : "fc45e7b2cfece9dd80b5a45e6469ffe67fe67984",
+        "version" : "0.14.1"
       }
     },
     {
@@ -140,8 +140,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-filestreamer",
       "state" : {
-        "revision" : "05723be208971c7738a729f9136e4605cc3b3ea5",
-        "version" : "0.9.0"
+        "revision" : "3505dfa1e2fdba28d0b8a599ac979240d970a362",
+        "version" : "0.8.1"
       }
     },
     {
@@ -158,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-inotify",
       "state" : {
-        "revision" : "c0d9233df3a1e87b323a4969933dfc06903ed14c",
-        "version" : "0.7.2"
+        "revision" : "cdfd330424b976416722ee28d1ccbb2c74059dd7",
+        "version" : "0.6.0"
       }
     },
     {
@@ -194,8 +194,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-parsing.git",
       "state" : {
-        "revision" : "a0e7d73f462c1c38c59dc40a3969ac40cea42950",
-        "version" : "0.13.0"
+        "revision" : "4bb9192468c1a8be57f46b7d6fd4f561c88b2195",
+        "version" : "0.11.0"
       }
     },
     {
@@ -266,8 +266,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
       "state" : {
-        "revision" : "a3f634d1a409c7979cabc0a71b3f26ffa9fc8af1",
-        "version" : "1.4.3"
+        "revision" : "50843cbb8551db836adec2290bb4bc6bac5c1865",
+        "version" : "0.9.0"
       }
     },
     {

@@ -72,6 +72,7 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - product: The product to build.
   ///   - packageDirectory: The root directory of the package containing the product.
+  ///   - scratchDirectory: The SwiftPM scratch directory in use.
   ///   - configuration: The build configuration to use.
   ///   - architectures: The set of architectures to build for.
   ///   - platform: The platform to build for.
@@ -82,6 +83,7 @@ enum SwiftPackageManager {
   static func build(
     product: String,
     packageDirectory: URL,
+    scratchDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
@@ -92,6 +94,7 @@ enum SwiftPackageManager {
 
     return createBuildArguments(
       product: product,
+      scratchDirectory: scratchDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform,
@@ -133,6 +136,7 @@ enum SwiftPackageManager {
   static func buildExecutableAsDylib(
     product: String,
     packageDirectory: URL,
+    scratchDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
@@ -145,6 +149,7 @@ enum SwiftPackageManager {
       let productsDirectory: URL
       switch SwiftPackageManager.getProductsDirectory(
         in: packageDirectory,
+        scratchDirectory: scratchDirectory,
         configuration: configuration,
         architectures: architectures,
         platform: platform,
@@ -160,13 +165,14 @@ enum SwiftPackageManager {
       return build(
         product: product,
         packageDirectory: packageDirectory,
+        scratchDirectory: scratchDirectory,
         configuration: configuration,
         architectures: architectures,
         platform: platform,
         platformVersion: platformVersion,
         hotReloadingEnabled: hotReloadingEnabled
       ).flatMap { _ in
-        let buildPlanFile = packageDirectory.appendingPathComponent(".build/\(configuration).yaml")
+        let buildPlanFile = scratchDirectory.appendingPathComponent("\(configuration).yaml")
         let buildPlanString: String
         do {
           buildPlanString = try String(contentsOf: buildPlanFile)
@@ -248,6 +254,7 @@ enum SwiftPackageManager {
   /// Creates the arguments for the Swift build command.
   /// - Parameters:
   ///   - product: The product to build.
+  ///   - scratchDirectory: The SwiftPM scratch directory in use.
   ///   - configuration: The build configuration to use.
   ///   - architectures: The architectures to build for.
   ///   - platform: The platform to build for.
@@ -255,6 +262,7 @@ enum SwiftPackageManager {
   /// - Returns: The build arguments, or a failure if an error occurs.
   static func createBuildArguments(
     product: String?,
+    scratchDirectory: URL?,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
@@ -330,18 +338,17 @@ enum SwiftPackageManager {
       ["--arch", architecture.argument(for: platform)]
     }
 
-    let productArguments: [String]
-    if let product = product {
-      productArguments = ["--product", product]
-    } else {
-      productArguments = []
-    }
-
+    let productArguments = product.map { ["--product", $0] } ?? []
+    let scratchDirectoryArguments = scratchDirectory.map { ["--scratch-path", $0.path] } ?? []
     let arguments =
       [
         "build",
         "-c", configuration.rawValue,
-      ] + productArguments + architectureArguments + platformArguments
+      ]
+      + productArguments
+      + architectureArguments
+      + platformArguments
+      + scratchDirectoryArguments
 
     return .success(arguments)
   }
@@ -387,11 +394,11 @@ enum SwiftPackageManager {
             Prefix { $0 != "(" }
             "(swiftlang-"
             Parse({ Version(major: $0, minor: $1, patch: $2) }) {
-              Int.parser(radix: 10)
+              Int.parser(of: Substring.self, radix: 10)
               "."
-              Int.parser(radix: 10)
+              Int.parser(of: Substring.self, radix: 10)
               "."
-              Int.parser(radix: 10)
+              Int.parser(of: Substring.self, radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Substring, version: Version, _: Substring) in
@@ -404,9 +411,9 @@ enum SwiftPackageManager {
             }
             "Swift version "
             Parse({ Version(major: $0, minor: $1, patch: 0) }) {
-              Int.parser(radix: 10)
+              Int.parser(of: Substring.self, radix: 10)
               "."
-              Int.parser(radix: 10)
+              Int.parser(of: Substring.self, radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Void?, version: Version, _: Substring) in
@@ -426,6 +433,7 @@ enum SwiftPackageManager {
   /// Gets the default products directory for the specified package and configuration.
   /// - Parameters:
   ///   - packageDirectory: The package's root directory.
+  ///   - scratchDirectory: The SwiftPM scratch directory in use.
   ///   - configuration: The current build configuration.
   ///   - architectures: The architectures that the build was for.
   ///   - platform: The platform that was built for.
@@ -434,6 +442,7 @@ enum SwiftPackageManager {
   ///   fails, a failure is returned.
   static func getProductsDirectory(
     in packageDirectory: URL,
+    scratchDirectory: URL,
     configuration: BuildConfiguration,
     architectures: [BuildArchitecture],
     platform: Platform,
@@ -441,6 +450,7 @@ enum SwiftPackageManager {
   ) -> Result<URL, SwiftPackageManagerError> {
     return createBuildArguments(
       product: nil,
+      scratchDirectory: scratchDirectory,
       configuration: configuration,
       architectures: architectures,
       platform: platform,

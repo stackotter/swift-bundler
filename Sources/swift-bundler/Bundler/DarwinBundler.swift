@@ -53,7 +53,7 @@ enum DarwinBundler: Bundler {
 
     let createAppIconIfPresent: () -> Result<Void, DarwinBundlerError> = {
       if let path = context.appConfiguration.icon {
-        let icon = context.packageDirectory.appendingPathComponent(path)
+        let icon = URL(fileURLWithPath: path)
         return Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
       }
       return .success()

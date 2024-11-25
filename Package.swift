@@ -13,7 +13,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
-    .package(url: "https://github.com/pointfreeco/swift-parsing", from: "0.7.1"),
+    .package(url: "https://github.com/pointfreeco/swift-parsing", "0.11.0"..<"0.12.0"),
     .package(url: "https://github.com/furby-tm/TOMLKit", from: "0.5.6"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
@@ -26,7 +26,7 @@ let package = Package(
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.2"),
 
     // File watcher dependencies
-    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", from: "0.4.0"),
+    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.6.0"..<"0.7.0"),
     .package(url: "https://github.com/apple/swift-system.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "0.1.0"),
   ],

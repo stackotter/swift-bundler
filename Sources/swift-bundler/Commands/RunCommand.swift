@@ -62,10 +62,12 @@ struct RunCommand: AsyncCommand {
 
     // Load configuration
     let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
+    let scratchDirectory =
+      arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
 
     let outputDirectory = BundleCommand.getOutputDirectory(
       arguments.outputDirectory,
-      packageDirectory: packageDirectory
+      scratchDirectory: scratchDirectory
     )
 
     let (appName, appConfiguration) = try BundleCommand.getAppConfiguration(
@@ -167,6 +169,7 @@ struct RunCommand: AsyncCommand {
                 let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
                   product: appConfiguration.product,
                   packageDirectory: packageDirectory,
+                  scratchDirectory: scratchDirectory,
                   configuration: arguments.buildConfiguration,
                   architectures: architectures,
                   platform: arguments.platform,

@@ -166,6 +166,9 @@ struct BundleCommand: AsyncCommand {
     let elapsed = try await Stopwatch.time {
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
+      let scratchDirectory =
+        arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
+
       let (appName, appConfiguration) = try Self.getAppConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
@@ -184,7 +187,9 @@ struct BundleCommand: AsyncCommand {
       let architectures = getArchitectures(platform: arguments.platform)
 
       let outputDirectory = Self.getOutputDirectory(
-        arguments.outputDirectory, packageDirectory: packageDirectory)
+        arguments.outputDirectory,
+        scratchDirectory: scratchDirectory
+      )
 
       appBundle = outputDirectory.appendingPathComponent("\(appName).app")
 
@@ -206,6 +211,7 @@ struct BundleCommand: AsyncCommand {
         try arguments.productsDirectory
         ?? SwiftPackageManager.getProductsDirectory(
           in: packageDirectory,
+          scratchDirectory: scratchDirectory,
           configuration: arguments.buildConfiguration,
           architectures: architectures,
           platform: arguments.platform,
@@ -217,6 +223,7 @@ struct BundleCommand: AsyncCommand {
         SwiftPackageManager.build(
           product: appConfiguration.product,
           packageDirectory: packageDirectory,
+          scratchDirectory: scratchDirectory,
           configuration: arguments.buildConfiguration,
           architectures: architectures,
           platform: arguments.platform,
@@ -318,9 +325,9 @@ struct BundleCommand: AsyncCommand {
   /// Unwraps an optional output directory and returns the default output directory if it's `nil`.
   /// - Parameters:
   ///   - outputDirectory: The output directory. Returned as-is if not `nil`.
-  ///   - packageDirectory: The root directory of the package.
+  ///   - scratchDirectory: The configured scratch directory.
   /// - Returns: The output directory to use.
-  static func getOutputDirectory(_ outputDirectory: URL?, packageDirectory: URL) -> URL {
-    return outputDirectory ?? packageDirectory.appendingPathComponent(".build/bundler")
+  static func getOutputDirectory(_ outputDirectory: URL?, scratchDirectory: URL) -> URL {
+    return outputDirectory ?? scratchDirectory.appendingPathComponent("bundler")
   }
 }
