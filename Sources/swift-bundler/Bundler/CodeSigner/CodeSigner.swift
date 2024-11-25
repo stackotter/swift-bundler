@@ -145,7 +145,9 @@ enum CodeSigner {
       // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
       let identityParser = Parse {
         PrefixThrough(") ")
-        PrefixUpTo(" ").map(String.init)
+        PrefixUpTo(" ").map { (id: Substring) in
+          String(id)
+        }
         " "
         OneOf {
           PrefixUpTo("\n")
