@@ -1,0 +1,19 @@
+name: Build Linux
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Version
+        run: swift --version
+
+      - name: Build
+        run: swift build
