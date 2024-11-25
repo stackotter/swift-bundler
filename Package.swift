@@ -1,4 +1,4 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.7
 
 import PackageDescription
 
@@ -26,7 +26,7 @@ let package = Package(
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.2"),
 
     // File watcher dependencies
-    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.6.0"..<"0.7.0"),
+    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
     .package(url: "https://github.com/apple/swift-system.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "0.1.0"),
   ],

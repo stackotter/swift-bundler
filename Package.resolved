@@ -140,8 +140,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-filestreamer",
       "state" : {
-        "revision" : "3505dfa1e2fdba28d0b8a599ac979240d970a362",
-        "version" : "0.8.1"
+        "revision" : "b01ff214cc629718a8729f33d2a8b88e47532dbd",
+        "version" : "0.6.0"
       }
     },
     {
@@ -158,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-inotify",
       "state" : {
-        "revision" : "cdfd330424b976416722ee28d1ccbb2c74059dd7",
-        "version" : "0.6.0"
+        "revision" : "aaaaff43d5ddfe05f18c373fd811cc45f9301c86",
+        "version" : "0.4.0"
       }
     },
     {
