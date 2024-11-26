@@ -263,31 +263,20 @@ enum Runner {
     }
   }
 
+  /// Runs a linux executable.
+  /// - Parameters:
+  ///   - bundle: The app bundle to run.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  /// - Returns: A failure if an error occurs.
   static func runLinuxExecutable(
     bundle: URL,
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
-    let process = Process.create(
-      bundle.path,
-      arguments: arguments,
-      runSilentlyWhenNotVerbose: false
-    )
-    process.addEnvironmentVariables(environmentVariables)
-
-    do {
-      try process.run()
-    } catch {
-      return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
-    }
-
-    process.waitUntilExit()
-
-    let exitStatus = Int(process.terminationStatus)
-    if exitStatus != 0 {
-      return .failure(.failedToRunExecutable(.nonZeroExitStatus(exitStatus)))
-    } else {
-      return .success()
-    }
+    Process.runAppImage(bundle.path, arguments: arguments)
+      .mapError { error in
+        .failedToRunExecutable(error)
+      }
   }
 }

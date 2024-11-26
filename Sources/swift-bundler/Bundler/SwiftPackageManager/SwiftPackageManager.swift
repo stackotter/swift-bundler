@@ -330,7 +330,10 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .macOS, .linux:
+      case .linux:
+        // Force statically linking against the Swift runtime libraries
+        platformArguments = ["--static-swift-stdlib"]
+      case .macOS:
         platformArguments = []
     }
 

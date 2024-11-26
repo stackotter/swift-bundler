@@ -195,14 +195,32 @@ extension Process {
   /// - Parameter tool: The tool to expand into a full path.
   /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
   static func locate(_ tool: String) -> Result<String, ProcessError> {
-    Process.create(
+    // Restrict the set of inputs to avoid command injection. This is very dodgy but there
+    // doesn't seem to be any nice way to call bash built-ins directly with an argument
+    // vector. Better approaches are extremely welcome!!
+    guard
+      tool.allSatisfy({ character in
+        character.isASCII
+          && (character.isLetter
+            || character.isNumber || character == "-" || character == "_")
+      })
+    else {
+      return .failure(.invalidToolName(tool))
+    }
+
+    return Process.create(
       "/bin/sh",
       arguments: [
         "-c",
         "which \(tool)",
       ]
-    ).getOutput().map { path in
-      return path.trimmingCharacters(in: .whitespacesAndNewlines)
+    )
+    .getOutput()
+    .map { path in
+      path.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    .mapError { error in
+      .failedToLocateTool(tool, error)
     }
   }
 
@@ -214,17 +232,46 @@ extension Process {
   ///
   /// The issue occurs even without any pipes attached, so it's not the classic
   /// full pipes issue.
-  static func runAppImage(_ appImage: String, arguments: [String]) -> Result<Void, ProcessError> {
+  static func runAppImage(
+    _ appImage: String,
+    arguments: [String],
+    additionalEnvironmentVariables: [String: String] = [:]
+  ) -> Result<Void, ProcessError> {
     #if os(Linux)
+      var environment = ProcessInfo.processInfo.environment
+      for (key, value) in additionalEnvironmentVariables {
+        guard isValidEnvironmentVariableKey(key) else {
+          return .failure(.invalidEnvironmentVariableKey(key))
+        }
+        environment[key] = value
+      }
+
+      let environmentArray =
+        environment.map { key, value in
+          strdup("\(key)=\(value)")
+        } + [UnsafeMutablePointer<CChar>(bitPattern: 0)]
+
+      // Locate the tool or interpret it as a relative/absolute path.
+      let executablePath: String
+      switch locate(appImage) {
+        case .success(let path):
+          executablePath = path
+        case .failure(.invalidToolName):
+          executablePath = appImage
+        case .failure(let error):
+          return .failure(error)
+      }
+
+      let cArguments =
+        ([executablePath] + arguments).map { strdup($0) }
+        + [UnsafeMutablePointer<CChar>(bitPattern: 0)]
+
       let selfPID = getpid()
       setpgid(0, selfPID)
       let childPID = fork()
       if childPID == 0 {
         setpgid(0, selfPID)
-        let cArguments =
-          (["/usr/bin/env", appImage] + arguments).map { strdup($0) }
-          + [UnsafeMutablePointer<CChar>(bitPattern: 0)]
-        execv("/usr/bin/env", cArguments)
+        execve(executablePath, cArguments, environmentArray)
         // We only ever get here if the execv fails
         Foundation.exit(-1)
       } else {
@@ -251,5 +298,14 @@ extension Process {
           .failedToRunProcess(error)
         }
     #endif
+  }
+
+  /// Validates an environment variable key. Currently only used by a Linux workaround
+  /// that has to interface with low-level APIs.
+  private static func isValidEnvironmentVariableKey(_ key: String) -> Bool {
+    key.allSatisfy({ character in
+      character.isASCII
+        && (character.isLetter || character.isNumber || character == "_")
+    }) && key.first?.isNumber == false
   }
 }
