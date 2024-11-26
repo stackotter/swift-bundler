@@ -113,7 +113,7 @@ enum AppImageBundler: Bundler {
         )
         do {
           try FileManager.default.copyItem(
-            at: libraryURL,
+            at: libraryURL.resolvingSymlinksInPath(),
             to: destination
           )
         } catch {
