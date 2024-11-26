@@ -306,26 +306,22 @@ struct BundleCommand: AsyncCommand {
             codeSigningContext = nil
           }
 
-          if !forceUsingXcodeBuild {
-            let darwinContext = DarwinBundler.Context(
-              isXcodeBuild: builtWithXcode || forceUsingXcodeBuild,
-              universal: universal,
-              standAlone: arguments.standAlone,
-              platform: applePlatform,
-              platformVersion: platformVersion,
-              codeSigningContext: codeSigningContext
-            )
+          let darwinContext = DarwinBundler.Context(
+            isXcodeBuild: builtWithXcode || forceUsingXcodeBuild,
+            universal: universal,
+            standAlone: arguments.standAlone,
+            platform: applePlatform,
+            platformVersion: platformVersion,
+            codeSigningContext: codeSigningContext
+          )
 
-            appBundle = outputDirectory.appendingPathComponent(
-              DarwinBundler.appBundleName(forAppName: appName)
-            )
-            return DarwinBundler.bundle(
-              bundlerContext,
-              darwinContext
-            ).intoAnyError()
-          } else {
-            return .success()
-          }
+          appBundle = outputDirectory.appendingPathComponent(
+            DarwinBundler.appBundleName(forAppName: appName)
+          )
+          return DarwinBundler.bundle(
+            bundlerContext,
+            darwinContext
+          ).intoAnyError()
         } else {
           appBundle = outputDirectory.appendingPathComponent(
             AppImageBundler.appBundleName(forAppName: appName)
