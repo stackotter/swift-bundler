@@ -69,11 +69,19 @@ struct BundleArguments: ParsableArguments {
     })
   var architectures: [BuildArchitecture] = []
 
+  /// A custom scratch directory to use. Defaults to `.build`.
   @Option(
     name: .customLong("scratch-path"),
     help: "A custom scratch directory path (default: .build)",
     transform: URL.init(fileURLWithPath:))
   var scratchDirectory: URL?
+
+  /// Additional arguments to pass to SwiftPM when building.
+  @Option(
+    name: .customLong("Xswiftpm"),
+    parsing: .unconditionalSingleValue,
+    help: "Additional arguments to pass to SwiftPM when building.")
+  var additionalSwiftPMArguments: [String] = []
 
   /// The platform to build for.
   @Option(

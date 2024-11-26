@@ -204,29 +204,27 @@ struct BundleCommand: AsyncCommand {
         )
       }
 
+      let buildContext = SwiftPackageManager.BuildContext(
+        packageDirectory: packageDirectory,
+        scratchDirectory: scratchDirectory,
+        configuration: arguments.buildConfiguration,
+        architectures: architectures,
+        platform: arguments.platform,
+        platformVersion: platformVersion,
+        additionalArguments: arguments.additionalSwiftPMArguments,
+        hotReloadingEnabled: hotReloadingEnabled
+      )
+
       // Get build output directory
       let productsDirectory =
         try arguments.productsDirectory
-        ?? SwiftPackageManager.getProductsDirectory(
-          in: packageDirectory,
-          scratchDirectory: scratchDirectory,
-          configuration: arguments.buildConfiguration,
-          architectures: architectures,
-          platform: arguments.platform,
-          platformVersion: platformVersion
-        ).unwrap()
+        ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
 
       // Create build job
       let build: () async -> Result<Void, Error> = {
         SwiftPackageManager.build(
           product: appConfiguration.product,
-          packageDirectory: packageDirectory,
-          scratchDirectory: scratchDirectory,
-          configuration: arguments.buildConfiguration,
-          architectures: architectures,
-          platform: arguments.platform,
-          platformVersion: platformVersion,
-          hotReloadingEnabled: hotReloadingEnabled
+          buildContext: buildContext
         ).mapError { error in
           return error
         }

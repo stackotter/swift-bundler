@@ -165,13 +165,16 @@ struct RunCommand: AsyncCommand {
                 var client = client
                 let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
                   product: appConfiguration.product,
-                  packageDirectory: packageDirectory,
-                  scratchDirectory: scratchDirectory,
-                  configuration: arguments.buildConfiguration,
-                  architectures: architectures,
-                  platform: arguments.platform,
-                  platformVersion: platformVersion,
-                  hotReloadingEnabled: true
+                  buildContext: SwiftPackageManager.BuildContext(
+                    packageDirectory: packageDirectory,
+                    scratchDirectory: scratchDirectory,
+                    configuration: arguments.buildConfiguration,
+                    architectures: architectures,
+                    platform: arguments.platform,
+                    platformVersion: platformVersion,
+                    additionalArguments: arguments.additionalSwiftPMArguments,
+                    hotReloadingEnabled: true
+                  )
                 ).unwrap()
                 log.info("Successfully built dylib")
 

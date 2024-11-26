@@ -7,6 +7,27 @@ import Yams
 /// A utility for interacting with the Swift package manager and performing some other package
 /// related operations.
 enum SwiftPackageManager {
+  /// The context for a build.
+  struct BuildContext {
+    /// The root directory of the package containing the product.
+    var packageDirectory: URL
+    /// The SwiftPM scratch directory in use.
+    var scratchDirectory: URL
+    /// The build configuration to use.
+    var configuration: BuildConfiguration
+    /// The set of architectures to build for.
+    var architectures: [BuildArchitecture]
+    /// The platform to build for.
+    var platform: Platform
+    /// The platform version to build for.
+    var platformVersion: String
+    /// Additional arguments to be passed to SwiftPM.
+    var additionalArguments: [String]
+    /// Controls whether the hot reloading environment variables are added to
+    /// the build command or not.
+    var hotReloadingEnabled: Bool = false
+  }
+
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
@@ -71,42 +92,26 @@ enum SwiftPackageManager {
   /// Builds the specified product of a Swift package.
   /// - Parameters:
   ///   - product: The product to build.
-  ///   - packageDirectory: The root directory of the package containing the product.
-  ///   - scratchDirectory: The SwiftPM scratch directory in use.
-  ///   - configuration: The build configuration to use.
-  ///   - architectures: The set of architectures to build for.
-  ///   - platform: The platform to build for.
-  ///   - platformVersion: The platform version to build for.
-  ///   - hotReloadingEnabled: Controls whether the hot reloading environment variables
-  ///     are added to the build command or not.
+  ///   - buildContext: The context to build in.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
-    packageDirectory: URL,
-    scratchDirectory: URL,
-    configuration: BuildConfiguration,
-    architectures: [BuildArchitecture],
-    platform: Platform,
-    platformVersion: String,
-    hotReloadingEnabled: Bool = false
+    buildContext: BuildContext
   ) -> Result<Void, SwiftPackageManagerError> {
-    log.info("Starting \(configuration.rawValue) build")
+    log.info("Starting \(buildContext.configuration.rawValue) build")
 
     return createBuildArguments(
       product: product,
-      scratchDirectory: scratchDirectory,
-      configuration: configuration,
-      architectures: architectures,
-      platform: platform,
-      platformVersion: platformVersion
+      buildContext: buildContext
     ).flatMap { arguments in
       let process = Process.create(
         "swift",
         arguments: arguments,
-        directory: packageDirectory,
+        directory: buildContext.packageDirectory,
         runSilentlyWhenNotVerbose: false
       )
-      if hotReloadingEnabled {
+
+      if buildContext.hotReloadingEnabled {
         process.addEnvironmentVariables([
           "SWIFT_BUNDLER_HOT_RELOADING": "1"
         ])
@@ -125,36 +130,17 @@ enum SwiftPackageManager {
   /// Used in hot reloading, should not be relied upon for producing production builds.
   /// - Parameters:
   ///   - product: The product to build.
-  ///   - packageDirectory: The root directory of the package containing the product.
-  ///   - configuration: The build configuration to use.
-  ///   - architectures: The set of architectures to build for.
-  ///   - platform: The platform to build for.
-  ///   - platformVersion: The platform version to build for.
-  ///   - hotReloadingEnabled: Controls whether the hot reloading environment variables
-  ///     are added to the build command or not.
+  ///   - buildContext: The context to build in.
   /// - Returns: If an error occurs, returns a failure.
   static func buildExecutableAsDylib(
     product: String,
-    packageDirectory: URL,
-    scratchDirectory: URL,
-    configuration: BuildConfiguration,
-    architectures: [BuildArchitecture],
-    platform: Platform,
-    platformVersion: String,
-    hotReloadingEnabled: Bool = false
+    buildContext: BuildContext
   ) -> Result<URL, SwiftPackageManagerError> {
     #if os(macOS)
       // TODO: Package up 'build options' into a struct so that it can be passed around
       //   more easily
       let productsDirectory: URL
-      switch SwiftPackageManager.getProductsDirectory(
-        in: packageDirectory,
-        scratchDirectory: scratchDirectory,
-        configuration: configuration,
-        architectures: architectures,
-        platform: platform,
-        platformVersion: platformVersion
-      ) {
+      switch SwiftPackageManager.getProductsDirectory(buildContext) {
         case let .success(value):
           productsDirectory = value
         case let .failure(error):
@@ -164,15 +150,10 @@ enum SwiftPackageManager {
 
       return build(
         product: product,
-        packageDirectory: packageDirectory,
-        scratchDirectory: scratchDirectory,
-        configuration: configuration,
-        architectures: architectures,
-        platform: platform,
-        platformVersion: platformVersion,
-        hotReloadingEnabled: hotReloadingEnabled
+        buildContext: buildContext
       ).flatMap { _ in
-        let buildPlanFile = scratchDirectory.appendingPathComponent("\(configuration).yaml")
+        let buildPlanFile = buildContext.scratchDirectory
+          .appendingPathComponent("\(buildContext.configuration).yaml")
         let buildPlanString: String
         do {
           buildPlanString = try String(contentsOf: buildPlanFile)
@@ -187,7 +168,7 @@ enum SwiftPackageManager {
           return .failure(.failedToDecodeBuildPlan(error))
         }
 
-        let commandName = "C.\(product)-\(configuration).exe"
+        let commandName = "C.\(product)-\(buildContext.configuration).exe"
         guard
           let linkCommand = buildPlan.commands[commandName],
           linkCommand.tool == "shell",
@@ -223,7 +204,7 @@ enum SwiftPackageManager {
         let process = Process.create(
           commandExecutable,
           arguments: modifiedArguments,
-          directory: packageDirectory,
+          directory: buildContext.packageDirectory,
           runSilentlyWhenNotVerbose: false
         )
 
@@ -254,104 +235,73 @@ enum SwiftPackageManager {
   /// Creates the arguments for the Swift build command.
   /// - Parameters:
   ///   - product: The product to build.
-  ///   - scratchDirectory: The SwiftPM scratch directory in use.
-  ///   - configuration: The build configuration to use.
-  ///   - architectures: The architectures to build for.
-  ///   - platform: The platform to build for.
-  ///   - platformVersion: The platform version to target.
+  ///   - buildContext: The context to build in.
   /// - Returns: The build arguments, or a failure if an error occurs.
   static func createBuildArguments(
     product: String?,
-    scratchDirectory: URL?,
-    configuration: BuildConfiguration,
-    architectures: [BuildArchitecture],
-    platform: Platform,
-    platformVersion: String
+    buildContext: BuildContext
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
-    switch platform {
-      case .iOS, .visionOS, .tvOS:
+    switch buildContext.platform {
+      case .iOS, .visionOS, .tvOS, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         let sdkPath: String
-        switch getLatestSDKPath(for: platform) {
+        switch getLatestSDKPath(for: buildContext.platform) {
           case .success(let path):
             sdkPath = path
           case .failure(let error):
             return .failure(error)
         }
 
-        let targetTriple: String
-        switch platform {
+        let platformVersion = buildContext.platformVersion
+        let hostArchitecture = BuildArchitecture.current
+
+        let targetTriple: LLVMTargetTriple
+        switch buildContext.platform {
           case .iOS:
-            targetTriple = "arm64-apple-ios\(platformVersion)"
+            targetTriple = .apple(.arm64, .iOS(platformVersion))
           case .visionOS:
-            targetTriple = "arm64-apple-xros\(platformVersion)"
+            targetTriple = .apple(.arm64, .visionOS(platformVersion))
           case .tvOS:
-            targetTriple = "arm64-apple-tvos\(platformVersion)"
+            targetTriple = .apple(.arm64, .tvOS(platformVersion))
+          case .iOSSimulator:
+            targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
+          case .visionOSSimulator:
+            targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
+          case .tvOSSimulator:
+            targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
           default:
             fatalError("Unreachable (supposedly)")
-        }
-        platformArguments =
-          [
-            "-sdk", sdkPath,
-            "-target", targetTriple,
-          ].flatMap { ["-Xswiftc", $0] }
-          + [
-            "--target=\(targetTriple)",
-            "-isysroot", sdkPath,
-          ].flatMap { ["-Xcc", $0] }
-      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        let sdkPath: String
-        switch getLatestSDKPath(for: platform) {
-          case .success(let path):
-            sdkPath = path
-          case .failure(let error):
-            return .failure(error)
         }
 
-        // TODO: Make target triple generation generic
-        let architecture = BuildArchitecture.current.rawValue
-        let targetTriple: String
-        switch platform {
-          case .iOSSimulator:
-            targetTriple = "\(architecture)-apple-ios\(platformVersion)-simulator"
-          case .visionOSSimulator:
-            targetTriple = "\(architecture)-apple-xros\(platformVersion)-simulator"
-          case .tvOSSimulator:
-            targetTriple = "\(architecture)-apple-tvos\(platformVersion)-simulator"
-          default:
-            fatalError("Unreachable (supposedly)")
-        }
         platformArguments =
           [
             "-sdk", sdkPath,
-            "-target", targetTriple,
+            "-target", targetTriple.description,
           ].flatMap { ["-Xswiftc", $0] }
           + [
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .linux:
-        // Force statically linking against the Swift runtime libraries
-        platformArguments = ["--static-swift-stdlib"]
-      case .macOS:
+      case .macOS, .linux:
         platformArguments = []
     }
 
-    let architectureArguments = architectures.flatMap { architecture in
-      ["--arch", architecture.argument(for: platform)]
+    let architectureArguments = buildContext.architectures.flatMap { architecture in
+      ["--arch", architecture.argument(for: buildContext.platform)]
     }
 
     let productArguments = product.map { ["--product", $0] } ?? []
-    let scratchDirectoryArguments = scratchDirectory.map { ["--scratch-path", $0.path] } ?? []
+    let scratchDirectoryArguments = ["--scratch-path", buildContext.scratchDirectory.path]
     let arguments =
       [
         "build",
-        "-c", configuration.rawValue,
+        "-c", buildContext.configuration.rawValue,
       ]
       + productArguments
       + architectureArguments
       + platformArguments
       + scratchDirectoryArguments
+      + buildContext.additionalArguments
 
     return .success(arguments)
   }
@@ -433,36 +383,23 @@ enum SwiftPackageManager {
       }
   }
 
-  /// Gets the default products directory for the specified package and configuration.
+  /// Gets the default products directory for builds occuring within the given
+  /// context.
   /// - Parameters:
-  ///   - packageDirectory: The package's root directory.
-  ///   - scratchDirectory: The SwiftPM scratch directory in use.
-  ///   - configuration: The current build configuration.
-  ///   - architectures: The architectures that the build was for.
-  ///   - platform: The platform that was built for.
-  ///   - platformVersion: The platform version that was built for.
+  ///   - buildContext: The context the build is occuring within.
   /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args`
   ///   fails, a failure is returned.
   static func getProductsDirectory(
-    in packageDirectory: URL,
-    scratchDirectory: URL,
-    configuration: BuildConfiguration,
-    architectures: [BuildArchitecture],
-    platform: Platform,
-    platformVersion: String
+    _ buildContext: BuildContext
   ) -> Result<URL, SwiftPackageManagerError> {
     return createBuildArguments(
       product: nil,
-      scratchDirectory: scratchDirectory,
-      configuration: configuration,
-      architectures: architectures,
-      platform: platform,
-      platformVersion: platformVersion
+      buildContext: buildContext
     ).flatMap { arguments in
       let process = Process.create(
         "swift",
         arguments: arguments + ["--show-bin-path"],
-        directory: packageDirectory
+        directory: buildContext.packageDirectory
       )
 
       return process.getOutput().map { output in
