@@ -25,7 +25,6 @@ enum XcodeBuildManager {
     architectures: [BuildArchitecture],
     platform: Platform,
     platformVersion: String,
-    outputDirectory: URL,
     hotReloadingEnabled: Bool = false
   ) -> Result<Void, XcodeBuildManagerError> {
     log.info("Starting \(configuration.rawValue) build")
@@ -46,7 +45,7 @@ enum XcodeBuildManager {
           directory: packageDirectory,
           runSilentlyWhenNotVerbose: false
         )
-      case .failure(let error):
+      case .failure(_):
         #if os(macOS)
           let helpMsg = "brew install xcbeautify"
         #else
@@ -58,7 +57,7 @@ enum XcodeBuildManager {
         """)
     }
 
-    let archString = architectures.flatMap({ $0.rawValue }).joined(separator: "_")
+    let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
 
     var additionalArgs: [String] = []
     if platform != .macOS {
@@ -130,8 +129,7 @@ enum XcodeBuildManager {
         "-scheme", product,
         "-configuration", configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
-        "-derivedDataPath", packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(platform.sdkName)").path,
-        "-archivePath", outputDirectory.appendingPathComponent(product).path
+        "-derivedDataPath", packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(platform.sdkName)").path
       ] + additionalArgs,
       directory: packageDirectory,
       runSilentlyWhenNotVerbose: false
