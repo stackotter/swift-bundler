@@ -1,6 +1,10 @@
 import Foundation
 import Parsing
 
+#if os(Linux)
+  import Glibc
+#endif
+
 /// The bundler for creating Linux AppImage's.
 enum AppImageBundler: Bundler {
   typealias Context = Void
@@ -111,9 +115,21 @@ enum AppImageBundler: Bundler {
         let destination = destination.appendingPathComponent(
           libraryURL.lastPathComponent
         )
+
+        #if os(Linux)
+          // URL.resolvingSymlinksInPath is broken on Linux
+          let resolvedLibraryPath = String(unsafeUninitializedCapacity: 4097) { buffer in
+            realpath(libraryPath, buffer.baseAddress)
+            return strlen(UnsafePointer(buffer.baseAddress!))
+          }
+          let resolvedLibraryURL = URL(fileURLWithPath: resolvedLibraryPath)
+        #else
+          let resolvedLibraryURL = libraryURL.resolvingSymlinksInPath()
+        #endif
+
         do {
           try FileManager.default.copyItem(
-            at: libraryURL.resolvingSymlinksInPath(),
+            at: resolvedLibraryURL,
             to: destination
           )
         } catch {
