@@ -1,6 +1,10 @@
 import Foundation
 import Rainbow
 
+#if os(Linux)
+  import Glibc
+#endif
+
 @main
 struct AsyncMain {
   static func main() async {
@@ -11,6 +15,11 @@ struct AsyncMain {
           for process in processes {
             process.terminate()
           }
+          #if os(Linux)
+            for pid in appImagePIDs {
+              kill(pid, SIGKILL)
+            }
+          #endif
           Foundation.exit(1)
         }
       }

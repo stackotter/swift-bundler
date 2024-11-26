@@ -9,6 +9,12 @@ import Foundation
 /// If the program is killed, all processes in this array are terminated before the program exits.
 var processes: [Process] = []
 
+#if os(Linux)
+  /// The PIDs of all AppImage processes started manually (due to the weird
+  /// workaround required).
+  var appImagePIDs: [pid_t] = []
+#endif
+
 extension Process {
   /// A string created by concatenating all of the program's arguments together. Suitable for error messages,
   /// but not necessarily 100% correct.
@@ -210,11 +216,11 @@ extension Process {
   /// full pipes issue.
   static func runAppImage(_ appImage: String, arguments: [String]) -> Result<Void, ProcessError> {
     #if os(Linux)
-      let selfPid = getpid()
-      setpgid(0, selfPid)
-      let childPid = fork()
-      if childPid == 0 {
-        setpgid(0, selfPid)
+      let selfPID = getpid()
+      setpgid(0, selfPID)
+      let childPID = fork()
+      if childPID == 0 {
+        setpgid(0, selfPID)
         let cArguments =
           (["/usr/bin/env", appImage] + arguments).map { strdup($0) }
           + [UnsafeMutablePointer<CChar>(bitPattern: 0)]
@@ -222,8 +228,9 @@ extension Process {
         // We only ever get here if the execv fails
         Foundation.exit(-1)
       } else {
+        appImagePIDs.append(childPID)
         var status: Int32 = 0
-        waitpid(childPid, &status, 0)
+        waitpid(childPID, &status, 0)
         if status != 0 {
           return .failure(
             .nonZeroExitStatus(Int(status))
