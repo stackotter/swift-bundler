@@ -6,7 +6,7 @@ enum AppImageBundlerError: LocalizedError {
   case failedToCopyExecutable(source: URL, destination: URL, Error)
   case failedToCopyIcon(source: URL, destination: URL, Error)
   case failedToCreateDesktopFile(URL, Error?)
-  case failedToCreateSymlink(source: URL, destination: URL, Error)
+  case failedToCreateSymlink(source: URL, relativeDestination: String, Error)
   case failedToBundleAppDir(AppImageToolError)
   case failedToCopyResourceBundle(source: URL, destination: URL, Error)
   case failedToEnumerateResourceBundles(directory: URL, Error)
@@ -17,15 +17,24 @@ enum AppImageBundlerError: LocalizedError {
         return "Failed to create app bundle directory structure at '\(directory)'"
       case .failedToCopyExecutable(let source, let destination, _):
         return
-          "Failed to copy executable from '\(source.relativePath)' to '\(destination.relativePath)'"
+          """
+          Failed to copy executable from '\(source.relativePath)' to \
+          '\(destination.relativePath)'
+          """
       case .failedToCopyIcon(let source, let destination, _):
         return
-          "Failed to copy 'icns' file from '\(source.relativePath)' to '\(destination.relativePath)'"
+          """
+          Failed to copy 'icns' file from '\(source.relativePath)' to \
+          '\(destination.relativePath)'
+          """
       case .failedToCreateDesktopFile(let file, _):
         return "Failed to create desktop file at '\(file.relativePath)'"
       case .failedToCreateSymlink(let source, let destination, _):
         return
-          "Failed to create symlink from '\(source.relativePath)' to '\(destination.relativePath)'"
+          """
+          Failed to create symlink from '\(source.relativePath)' to relative \
+          path '\(destination)'
+          """
       case .failedToBundleAppDir(let error):
         return "Failed to convert AppDir to AppImage: \(error)"
       case .failedToCopyResourceBundle(let source, let destination, _):

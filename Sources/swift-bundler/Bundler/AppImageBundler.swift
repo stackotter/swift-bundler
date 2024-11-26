@@ -221,11 +221,12 @@ enum AppImageBundler: Bundler {
     at appDir: URL,
     appName: String
   ) -> Result<Void, AppImageBundlerError> {
-    let icon = appDir.appendingPathComponent(
-      "usr/share/icons/hicolor/1024x1024/apps/\(appName).png"
-    )
+    // The icon's path relative to the root of the AppDir
+    let iconRelativePath = "usr/share/icons/hicolor/1024x1024/apps/\(appName).png"
+    let icon = appDir.appendingPathComponent(iconRelativePath)
 
-    // Create `.DirIcon` and `AppName.png` if an icon is present.
+    // Create `.DirIcon` and `[AppName].png` if an icon is present. Both are
+    // just symlinks to the real icon file at `iconRelativePath`.
     var operation: () -> Result<Void, AppImageBundlerError> = { .success() }
     if FileManager.default.fileExists(atPath: icon.path) {
       operation = flatten(
@@ -233,13 +234,13 @@ enum AppImageBundler: Bundler {
         {
           Self.createSymlink(
             at: appDir.appendingPathComponent("\(appName).png"),
-            withDestination: icon
+            withRelativeDestination: iconRelativePath
           )
         },
         {
           Self.createSymlink(
             at: appDir.appendingPathComponent(".DirIcon"),
-            withDestination: appDir.appendingPathComponent("\(appName).png")
+            withRelativeDestination: "\(appName).png"
           )
         }
       )
@@ -251,7 +252,7 @@ enum AppImageBundler: Bundler {
       {
         Self.createSymlink(
           at: appDir.appendingPathComponent("AppRun"),
-          withDestination: appDir.appendingPathComponent("usr/bin/\(appName)")
+          withRelativeDestination: "usr/bin/\(appName)"
         )
       }
     )
@@ -259,17 +260,27 @@ enum AppImageBundler: Bundler {
     return operation()
   }
 
+  /// - Parameters:
+  ///   - symlink: The symlink file to create.
+  ///   - relativeDestination: The target of the symlink (relative to the
+  ///     directory containing the symlink).
   private static func createSymlink(
     at symlink: URL,
-    withDestination destination: URL
+    withRelativeDestination relativeDestination: String
   ) -> Result<Void, AppImageBundlerError> {
     do {
       try FileManager.default.createSymbolicLink(
-        at: symlink,
-        withDestinationURL: destination
+        atPath: symlink.path,
+        withDestinationPath: relativeDestination
       )
     } catch {
-      return .failure(.failedToCreateSymlink(source: symlink, destination: destination, error))
+      return .failure(
+        .failedToCreateSymlink(
+          source: symlink,
+          relativeDestination: relativeDestination,
+          error
+        )
+      )
     }
 
     return .success()
