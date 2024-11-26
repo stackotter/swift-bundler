@@ -1,8 +1,18 @@
 import Foundation
+import Parsing
 
 /// The bundler for creating Linux AppImage's.
 enum AppImageBundler: Bundler {
   typealias Context = Void
+
+  /// A parser for the output of ldd. Parses a single line.
+  private static let lddLineParser = Parse {
+    PrefixThrough(" => ")
+    PrefixUpTo(" (")
+    Rest<Substring>()
+  }.map { (_: Substring, path: Substring, _: Substring) in
+    String(path)
+  }
 
   static func bundle(
     _ context: BundlerContext,
@@ -54,6 +64,12 @@ enum AppImageBundler: Bundler {
         )
       },
       copyAppIconIfPresent,
+      {
+        Self.copyDynamicLibraryDependencies(
+          of: appExecutable,
+          to: appDir.appendingPathComponent("usr/bin")
+        )
+      },
       { Self.createSymlinks(at: appDir, appName: context.appName) },
       {
         log.info("Converting '\(context.appName).AppDir' to '\(appBundleName)'")
@@ -70,6 +86,49 @@ enum AppImageBundler: Bundler {
   }
 
   // MARK: Private methods
+
+  private static func copyDynamicLibraryDependencies(
+    of appExecutable: URL,
+    to destination: URL
+  ) -> Result<Void, AppImageBundlerError> {
+    return Process.create(
+      "ldd",
+      arguments: [appExecutable.path],
+      runSilentlyWhenNotVerbose: false
+    )
+    .getOutput()
+    .mapError { error in
+      .failedToEnumerateDynamicDependencies(error)
+    }
+    .flatMap { output in
+      let lines = output.split(separator: "\n")
+      for line in lines {
+        guard let libraryPath = try? lddLineParser.parse(line) else {
+          continue
+        }
+
+        let libraryURL = URL(fileURLWithPath: libraryPath)
+        let destination = destination.appendingPathComponent(
+          libraryURL.lastPathComponent
+        )
+        do {
+          try FileManager.default.copyItem(
+            at: libraryURL,
+            to: destination
+          )
+        } catch {
+          return .failure(
+            .failedToCopyDynamicLibrary(
+              source: libraryURL,
+              destination: destination,
+              error
+            )
+          )
+        }
+      }
+      return .success()
+    }
+  }
 
   private static func copyResources(
     from sourceDirectory: URL,
