@@ -50,18 +50,17 @@ extension Process {
     // Thanks Martin! https://forums.swift.org/t/the-problem-with-a-frozen-process-in-swift-process-class/39579/6
     var output = Data()
     var currentLine: String?
-    let group = DispatchGroup()
-    group.enter()
-    pipe.fileHandleForReading.readabilityHandler = { fh in
-      // TODO: All of this Process code is getting pretty ridiculous and janky, we should switch to
-      //   the experimental proposed Subprocess API (swift-experimental-subprocess)
-      let newData = fh.availableData
-      if newData.isEmpty {
+
+    func handleData(_ data: Data, isFinal: Bool = false) {
+      if pipe.fileHandleForReading.readabilityHandler == nil {
+        return
+      }
+
+      if data.isEmpty {
         pipe.fileHandleForReading.readabilityHandler = nil
-        group.leave()
       } else {
-        output.append(contentsOf: newData)
-        if let handleLine = handleLine, let string = String(data: newData, encoding: .utf8) {
+        output.append(contentsOf: data)
+        if let handleLine = handleLine, let string = String(data: data, encoding: .utf8) {
           let lines = ((currentLine ?? "") + string).split(
             separator: "\n", omittingEmptySubsequences: false)
           if let lastLine = lines.last, lastLine != "" {
@@ -77,12 +76,32 @@ extension Process {
       }
     }
 
+    pipe.fileHandleForReading.readabilityHandler = { fh in
+      // TODO: All of this Process code is getting pretty ridiculous and janky, we should switch to
+      //   the experimental proposed Subprocess API (swift-experimental-subprocess)
+      let newData = fh.availableData
+      handleData(newData)
+    }
+
     return runAndWait()
       .map { _ in
-        group.wait()
+        try? pipe.fileHandleForWriting.close()
+
+        // `readToEnd()` doesn't exist in 10.15.0, but it doesn't really matter anyway cause this
+        // code only seems to be relevant on Linux anyway (but probably doesn't hurt on macOS
+        // when available).
+        if #available(macOS 10.15.4, *) {
+          if let data = try? pipe.fileHandleForReading.readToEnd() {
+            handleData(data, isFinal: true)
+          }
+        }
+
+        pipe.fileHandleForReading.readabilityHandler = nil
+
         if let currentLine = currentLine {
           handleLine?(currentLine)
         }
+
         return output
       }
       .mapError { error in
@@ -213,7 +232,8 @@ extension Process {
       arguments: [
         "-c",
         "which \(tool)",
-      ]
+      ],
+      runSilentlyWhenNotVerbose: false
     )
     .getOutput()
     .map { path in

@@ -12,6 +12,7 @@ enum AppImageBundlerError: LocalizedError {
   case failedToEnumerateResourceBundles(directory: URL, Error)
   case failedToEnumerateDynamicDependencies(ProcessError)
   case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
+  case failedToUpdateMainExecutableRunpath(executable: URL, Error?)
 
   var errorDescription: String? {
     switch self {
@@ -49,6 +50,12 @@ enum AppImageBundlerError: LocalizedError {
         return """
           Failed to copy dynamic library from '\(source.relativePath)' to \
           '\(destination.relativePath)'
+          """
+      case .failedToUpdateMainExecutableRunpath(let executable, let underlyingError):
+        let reason = underlyingError?.localizedDescription ?? "unknown reason"
+        return """
+          Failed to update the runpath of the main executable at \
+          '\(executable.relativePath)': \(reason)
           """
     }
   }

@@ -71,7 +71,7 @@ enum AppImageBundler: Bundler {
       {
         Self.copyDynamicLibraryDependencies(
           of: appExecutable,
-          to: appDir.appendingPathComponent("usr/bin")
+          to: appDir.appendingPathComponent("usr/lib")
         )
       },
       { Self.createSymlinks(at: appDir, appName: context.appName) },
@@ -91,59 +91,96 @@ enum AppImageBundler: Bundler {
 
   // MARK: Private methods
 
+  /// Copies dynamic library dependencies of the specified executable file into
+  /// the `AppDir`, and updates the runpaths of the executable and moved dynamic
+  /// libraries accordingly.
   private static func copyDynamicLibraryDependencies(
     of appExecutable: URL,
     to destination: URL
   ) -> Result<Void, AppImageBundlerError> {
+    log.info("Copying dynamic library dependencies of main executable")
     return Process.create(
       "ldd",
       arguments: [appExecutable.path],
       runSilentlyWhenNotVerbose: false
-    )
-    .getOutput()
-    .mapError { error in
-      .failedToEnumerateDynamicDependencies(error)
-    }
-    .flatMap { output in
-      let lines = output.split(separator: "\n")
-      for line in lines {
-        guard let libraryPath = try? lddLineParser.parse(line) else {
-          continue
-        }
-
-        let libraryURL = URL(fileURLWithPath: libraryPath)
-        let destination = destination.appendingPathComponent(
-          libraryURL.lastPathComponent
-        )
-
-        #if os(Linux)
-          // URL.resolvingSymlinksInPath is broken on Linux
-          let resolvedLibraryPath = String(unsafeUninitializedCapacity: 4097) { buffer in
-            realpath(libraryPath, buffer.baseAddress)
-            return strlen(UnsafePointer(buffer.baseAddress!))
-          }
-          let resolvedLibraryURL = URL(fileURLWithPath: resolvedLibraryPath)
-        #else
-          let resolvedLibraryURL = libraryURL.resolvingSymlinksInPath()
-        #endif
-
-        do {
-          try FileManager.default.copyItem(
-            at: resolvedLibraryURL,
-            to: destination
-          )
-        } catch {
-          return .failure(
-            .failedToCopyDynamicLibrary(
-              source: libraryURL,
-              destination: destination,
-              error
-            )
-          )
-        }
+    ).getOutput()
+      .mapError { error in
+        .failedToEnumerateDynamicDependencies(error)
       }
-      return .success()
-    }
+      .flatMap { (output: String) -> Result<Void, AppImageBundlerError> in
+        // Parse the output of ldd line-by-line and copy the located libraries to
+        // the destination directory (updating runpaths appropriately).
+        let lines = output.split(separator: "\n")
+        for line in lines {
+          guard let libraryPath = try? lddLineParser.parse(line) else {
+            continue
+          }
+
+          let libraryURL = URL(fileURLWithPath: libraryPath)
+          let destination = destination.appendingPathComponent(
+            libraryURL.lastPathComponent
+          )
+
+          // Resolve symlinks in case the library itself is a symlinnk (we want
+          // to copy the actual library not the symlink).
+          #if os(Linux)
+            // URL.resolvingSymlinksInPath is broken on Linux
+            let resolvedLibraryPath = String(unsafeUninitializedCapacity: 4097) { buffer in
+              realpath(libraryPath, buffer.baseAddress)
+              return strlen(UnsafePointer(buffer.baseAddress!))
+            }
+            let resolvedLibraryURL = URL(fileURLWithPath: resolvedLibraryPath)
+          #else
+            let resolvedLibraryURL = libraryURL.resolvingSymlinksInPath()
+          #endif
+
+          // Copy the library to the provided destination directory.
+          do {
+            try FileManager.default.copyItem(
+              at: resolvedLibraryURL,
+              to: destination
+            )
+          } catch {
+            return .failure(
+              .failedToCopyDynamicLibrary(
+                source: libraryURL,
+                destination: destination,
+                error
+              )
+            )
+          }
+
+          // Update the library's runpath so that it only looks for its dependencies in
+          // the current directory (before falling back to the system wide default runpath).
+          switch PatchElfTool.setRunpath(of: destination, to: "$ORIGIN") {
+            case .success:
+              break
+            case .failure(let error):
+              return .failure(
+                .failedToCopyDynamicLibrary(
+                  source: libraryURL,
+                  destination: destination,
+                  error
+                )
+              )
+          }
+        }
+        return .success()
+      }
+      .flatMap { (_: Void) -> Result<Void, AppImageBundlerError> in
+        // Update the main executable's runpath
+        guard
+          let relativeDestination = destination.relativePath(
+            from: appExecutable.deletingLastPathComponent()
+          )
+        else {
+          return .failure(.failedToUpdateMainExecutableRunpath(executable: appExecutable, nil))
+        }
+        return PatchElfTool.setRunpath(of: appExecutable, to: "$ORIGIN/\(relativeDestination)")
+          .mapError { error in
+            .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
+          }
+      }
   }
 
   private static func copyResources(
@@ -212,6 +249,7 @@ enum AppImageBundler: Bundler {
     // bundlers.
     let appDir = outputDirectory.appendingPathComponent("\(appName).AppDir")
     let binDir = appDir.appendingPathComponent("usr/bin")
+    let libDir = appDir.appendingPathComponent("usr/lib")
     let iconDir = appDir.appendingPathComponent("usr/share/icons/hicolor/1024x1024/apps")
 
     do {
@@ -219,6 +257,7 @@ enum AppImageBundler: Bundler {
         try fileManager.removeItem(at: appDir)
       }
       try fileManager.createDirectory(at: binDir)
+      try fileManager.createDirectory(at: libDir)
       try fileManager.createDirectory(at: iconDir)
       return .success()
     } catch {
