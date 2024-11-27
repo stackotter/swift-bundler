@@ -96,7 +96,36 @@ enum SwiftPackageManager {
       product: product,
       buildContext: buildContext
     ).andThen { arguments in
-      let process = Process.create(
+
+      let pipe = Pipe()
+      let process: Process
+
+      var xcbeautify: Process?
+      let xcbeautifyCmd = Process.locate("xcbeautify")
+      switch xcbeautifyCmd
+      {
+        case .success(let cmd):
+          xcbeautify = Process.create(
+            cmd,
+            arguments: [
+              "--disable-logging"
+            ],
+            directory: buildContext.packageDirectory,
+            runSilentlyWhenNotVerbose: false
+          )
+        case .failure(_):
+          #if os(macOS)
+            let helpMsg = "brew install xcbeautify"
+          #else
+            let helpMsg = "mint install cpisciotta/xcbeautify"
+          #endif
+          log.warning("""
+          xcbeautify was not found, for pretty build output please intall it with:\n
+          \(helpMsg)
+          """)
+      }
+
+      process = Process.create(
         "swift",
         arguments: arguments,
         directory: buildContext.packageDirectory,
