@@ -18,6 +18,33 @@ enum AppImageBundler: Bundler {
     String(path)
   }
 
+  /// The list of dynamic libraries that are allowed to get bundled into
+  /// the final app bundle. The reason we need an allow list in the first
+  /// place is that a large proportion of dynamic libraries cause issues
+  /// when distributed to different platforms (such as Gtk). So for now
+  /// we just stick to bundling Swift's dependencies.
+  private static let dynamicLibraryBundlingAllowList: [String] = [
+    "libswiftSwiftOnoneSupport",
+    "libswiftCore",
+    "libswift_Concurrency",
+    "libswift_StringProcessing",
+    "libswift_RegexParser",
+    "libswiftGlibc",
+    "libBlocksRuntime",
+    "libdispatch",
+    "libswiftDispatch",
+    "libFoundation",
+    "libFoundationNetworking",
+    "libFoundationXML",
+    "libicuucswift",
+    "libicui18nswift",
+    "libicudataswift",
+    "libcurl",
+    "libxml2",
+    "libicuuc",
+    "libicudata",
+  ]
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
@@ -94,11 +121,15 @@ enum AppImageBundler: Bundler {
   /// Copies dynamic library dependencies of the specified executable file into
   /// the `AppDir`, and updates the runpaths of the executable and moved dynamic
   /// libraries accordingly.
+  ///
+  /// For now this sticks to handling the Swift runtime libraries because there
+  /// are many problematic dynamic libraries out there such as Gtk which break
+  /// things when you try to distribute them.
   private static func copyDynamicLibraryDependencies(
     of appExecutable: URL,
     to destination: URL
   ) -> Result<Void, AppImageBundlerError> {
-    log.info("Copying dynamic library dependencies of main executable")
+    log.info("Copying Swift runtime libraries.")
     return Process.create(
       "ldd",
       arguments: [appExecutable.path],
@@ -116,7 +147,13 @@ enum AppImageBundler: Bundler {
             continue
           }
 
+          // Ensure that library is on our allow list.
           let libraryURL = URL(fileURLWithPath: libraryPath)
+          let libraryName = String(libraryURL.lastPathComponent.split(separator: ".")[0])
+          guard dynamicLibraryBundlingAllowList.contains(libraryName) else {
+            continue
+          }
+
           let destination = destination.appendingPathComponent(
             libraryURL.lastPathComponent
           )

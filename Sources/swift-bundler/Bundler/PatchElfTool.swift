@@ -1,6 +1,6 @@
 import Foundation
 
-/// A warpper around `patchelf`.
+/// A wrapper around `patchelf`.
 enum PatchElfTool {
   static func setRunpath(
     of elfFile: URL,
