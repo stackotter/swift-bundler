@@ -10,24 +10,13 @@ enum XcodeBuildManager {
   /// Builds the specified product using a Swift package target as an xcodebuild scheme.
   /// - Parameters:
   ///   - product: The product to build.
-  ///   - packageDirectory: The root directory of the package containing the product.
-  ///   - configuration: The build configuration to use.
-  ///   - architectures: The set of architectures to build for.
-  ///   - platform: The platform to build for.
-  ///   - platformVersion: The platform version to build for.
-  ///   - hotReloadingEnabled: Controls whether the hot reloading environment variables
-  ///     are added to the build command or not.
+  ///   - buildContext: The context to build in.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
-    packageDirectory: URL,
-    configuration: BuildConfiguration,
-    architectures: [BuildArchitecture],
-    platform: Platform,
-    platformVersion: String,
-    hotReloadingEnabled: Bool = false
+    buildContext: SwiftPackageManager.BuildContext
   ) -> Result<Void, XcodeBuildManagerError> {
-    log.info("Starting \(configuration.rawValue) build")
+    log.info("Starting \(buildContext.configuration.rawValue) build")
 
     let pipe = Pipe()
     let process: Process
@@ -42,7 +31,7 @@ enum XcodeBuildManager {
           arguments: [
             "--disable-logging"
           ],
-          directory: packageDirectory,
+          directory: buildContext.packageDirectory,
           runSilentlyWhenNotVerbose: false
         )
       case .failure(_):
@@ -57,12 +46,12 @@ enum XcodeBuildManager {
         """)
     }
 
-    let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+    let archString = buildContext.architectures.compactMap({ $0.rawValue }).joined(separator: "_")
 
     var additionalArgs: [String] = []
-    if platform != .macOS {
+    if buildContext.platform != .macOS {
       // retrieving simulators for the -destination argument is only relevant for non-macOS platforms.
-      guard let simulators = try? SimulatorManager.listAvailableOSSimulators(for: platform).unwrap() else {
+      guard let simulators = try? SimulatorManager.listAvailableOSSimulators(for: buildContext.platform).unwrap() else {
         return .failure(.failedToRunXcodeBuild(
           command: "xcodebuild: could not retrieve list of available destinations.",
           .nonZeroExitStatus(-1)
@@ -76,7 +65,7 @@ enum XcodeBuildManager {
             destinations.append(
               XcodeBuildDestination(
                 name: simulator.name, 
-                platform: platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"),
+                platform: buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"),
                 OS: os
               )
             )
@@ -88,7 +77,7 @@ enum XcodeBuildManager {
 
       // we only care about matching the specifed platform name.
       let forPlatform: (XcodeBuildDestination) -> Bool = { simulator in
-        return simulator.platform.contains(platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
+        return simulator.platform.contains(buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
       }
       // we prefer to ignore iPhone SE models.
       let removeBlacklisted: (XcodeBuildDestination) -> Bool = { simulator in
@@ -127,15 +116,15 @@ enum XcodeBuildManager {
       "xcodebuild",
       arguments: [
         "-scheme", product,
-        "-configuration", configuration.rawValue.capitalized,
+        "-configuration", buildContext.configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
-        "-derivedDataPath", packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(platform.sdkName)").path
+        "-derivedDataPath", buildContext.packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(buildContext.platform.sdkName)").path
       ] + additionalArgs,
-      directory: packageDirectory,
+      directory: buildContext.packageDirectory,
       runSilentlyWhenNotVerbose: false
     )
 
-    if hotReloadingEnabled {
+    if buildContext.hotReloadingEnabled {
       process.addEnvironmentVariables([
         "SWIFT_BUNDLER_HOT_RELOADING": "1"
       ])

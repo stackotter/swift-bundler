@@ -244,25 +244,38 @@ struct BundleCommand: AsyncCommand {
       )
 
       // Get build output directory
-      let productsDirectory =
-        try arguments.productsDirectory
-        ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
-
-      // For all apple platforms (not including macOS), we generate xcode
-      // support, because macOS cannot cross-compile for any of the other
-      // darwin platforms like it can with linux, and thus we need to use
-      // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
-      if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
-        forceUsingXcodeBuild = true
+      let productsDirectory: URL
+      
+      if !forceUsingXcodeBuild {
+        productsDirectory = try arguments.productsDirectory
+          ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      } else {
+        let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+        // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
+        // however; for macOS there is no platform suffix at all.
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
+        productsDirectory = arguments.productsDirectory
+          ?? packageDirectory.appendingPathComponent(
+            ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
+          )
       }
 
       // Create build job
       let build: () async -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError { error in
-          return error
+        if forceUsingXcodeBuild {
+          XcodeBuildManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
+        } else {
+          SwiftPackageManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
         }
       }
 
