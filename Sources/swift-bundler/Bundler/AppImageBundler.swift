@@ -22,27 +22,52 @@ enum AppImageBundler: Bundler {
   /// the final app bundle. The reason we need an allow list in the first
   /// place is that a large proportion of dynamic libraries cause issues
   /// when distributed to different platforms (such as Gtk). So for now
-  /// we just stick to bundling Swift's dependencies.
+  /// we just stick to bundling Swift's dependencies. Ideally we'd
+  /// just generate this list from the Swift toolchain but we won't always
+  /// know which Swift toolchain was used to build the binary etc. And we
+  /// want to bundle `libcurl` and `libxml` as well since they're both
+  /// dependencies of the Swift runtime but they're not included in
+  /// the runtime itself.
+  ///
+  /// We don't bundle libc because that can cause all kinds of weird issues;
+  /// the main one being that any external dependencies of the app are forced
+  /// to use the same libc as the main executable, so if the user's machine
+  /// has a different enough libc version and the main executable depends on
+  /// external dependencies, then you'll probably get segfaults.
   private static let dynamicLibraryBundlingAllowList: [String] = [
-    "libswiftSwiftOnoneSupport",
     "libswiftCore",
-    "libswift_Concurrency",
-    "libswift_StringProcessing",
-    "libswift_RegexParser",
     "libswiftGlibc",
+    "libswiftDispatch",
+    "libswiftDistributed",
+    "libswiftObservation",
+    "libswiftRegexBuilder",
+    "libswiftRemoteMirror",
+    "libswiftSynchronization",
+    "libswiftSwiftOnoneSupport",
     "libBlocksRuntime",
     "libdispatch",
-    "libswiftDispatch",
+    "libswift_Volatile",
+    "libswift_Concurrency",
+    "libswift_RegexParser",
+    "libswift_StringProcessing",
+    "libswift_Backtracing",
+    "libswift_Builtin_float",
+    "libswift_Differentiation",
+    "lib_FoundationICU",
+    "lib_InternalSwiftScan",
+    "lib_InternalSwiftStaticMirror",
     "libFoundation",
-    "libFoundationNetworking",
     "libFoundationXML",
+    "libFoundationEssentials",
+    "libFoundationNetworking",
+    "libFoundationInternationalization",
+    "libicuuc",
+    "libicudata",
     "libicuucswift",
     "libicui18nswift",
     "libicudataswift",
     "libcurl",
     "libxml2",
-    "libicuuc",
-    "libicudata",
   ]
 
   static func bundle(
@@ -129,7 +154,7 @@ enum AppImageBundler: Bundler {
     of appExecutable: URL,
     to destination: URL
   ) -> Result<Void, AppImageBundlerError> {
-    log.info("Copying Swift runtime libraries.")
+    log.info("Copying Swift runtime libraries")
     return Process.create(
       "ldd",
       arguments: [appExecutable.path],
