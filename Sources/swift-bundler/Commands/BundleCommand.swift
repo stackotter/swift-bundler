@@ -186,6 +186,34 @@ struct BundleCommand: AsyncCommand {
       let universal = arguments.universal || arguments.architectures.count > 1
       let architectures = getArchitectures(platform: arguments.platform)
 
+      var forceUsingXcodeBuild = arguments.xcodebuild
+      // For all apple platforms (not including macOS), we generate xcode
+      // support, because macOS cannot cross-compile for any of the other
+      // darwin platforms like it can with linux, and thus we need to use
+      // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
+      if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
+        forceUsingXcodeBuild = true
+      }
+      forceUsingXcodeBuild = arguments.noXcodebuild ? !arguments.noXcodebuild : forceUsingXcodeBuild
+
+      if forceUsingXcodeBuild {
+        // Terminate the program if the project is an Xcodeproj based project.
+        let xcodeprojs = try FileManager.default.contentsOfDirectory(
+          at: packageDirectory,
+          includingPropertiesForKeys: nil
+        ).filter({ $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace") })
+        guard xcodeprojs.isEmpty else {
+          for xcodeproj in xcodeprojs {
+            if xcodeproj.path.contains("xcodeproj") {
+              log.error("An xcodeproj was located at the following path: \(xcodeproj.path)")
+            } else if xcodeproj.path.contains("xcworkspace") {
+              log.error("An xcworkspace was located at the following path: \(xcodeproj.path)")
+            }
+          }
+          throw CLIError.invalidXcodeprojDetected
+        }
+      }
+
       let outputDirectory = Self.getOutputDirectory(
         arguments.outputDirectory,
         scratchDirectory: scratchDirectory
@@ -216,17 +244,38 @@ struct BundleCommand: AsyncCommand {
       )
 
       // Get build output directory
-      let productsDirectory =
-        try arguments.productsDirectory
-        ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      let productsDirectory: URL
+      
+      if !forceUsingXcodeBuild {
+        productsDirectory = try arguments.productsDirectory
+          ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      } else {
+        let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+        // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
+        // however; for macOS there is no platform suffix at all.
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
+        productsDirectory = arguments.productsDirectory
+          ?? packageDirectory.appendingPathComponent(
+            ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
+          )
+      }
 
       // Create build job
       let build: () async -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError { error in
-          return error
+        if forceUsingXcodeBuild {
+          XcodeBuildManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
+        } else {
+          SwiftPackageManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
         }
       }
 
@@ -271,7 +320,7 @@ struct BundleCommand: AsyncCommand {
           }
 
           let darwinContext = DarwinBundler.Context(
-            isXcodeBuild: builtWithXcode,
+            isXcodeBuild: builtWithXcode || forceUsingXcodeBuild,
             universal: universal,
             standAlone: arguments.standAlone,
             platform: applePlatform,
