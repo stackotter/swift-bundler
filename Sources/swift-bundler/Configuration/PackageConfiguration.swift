@@ -60,54 +60,59 @@ struct PackageConfiguration: Codable {
       }
     }
 
-    let contents: String
-    do {
-      contents = try String(contentsOf: configurationFile)
-    } catch {
-      return .failure(.failedToReadConfigurationFile(configurationFile, error))
-    }
-
-    let configuration: PackageConfiguration
-    do {
-      configuration = try TOMLDecoder(strictDecoding: true).decode(
-        PackageConfiguration.self,
-        from: contents
-      )
-      if migrateConfiguration {
-        return .failure(.configurationIsAlreadyUpToDate)
+    return String.read(from: configurationFile)
+      .mapError { error in
+        .failedToReadConfigurationFile(configurationFile, error)
       }
-    } catch {
-      // Maybe the configuration is a Swift Bundler v2 configuration. Attempt to migrate it.
-      do {
-        let table = try TOMLTable(string: contents)
-        guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-          return .failure(.failedToDeserializeConfiguration(error))
+      .andThen { contents in
+        Result {
+          try TOMLDecoder(strictDecoding: true).decode(
+            PackageConfiguration.self,
+            from: contents
+          )
         }
+        .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
+        .andThen { configuration in
+          if migrateConfiguration {
+            return .failure(.configurationIsAlreadyUpToDate)
+          } else {
+            return .success(configuration)
+          }
+        }
+        .tryRecover(unless: [.configurationIsAlreadyUpToDate]) {
+          (error) -> Result<PackageConfiguration, PackageConfigurationError> in
+          // Maybe the configuration is a Swift Bundler v2 configuration.
+          // Attempt to migrate it.
+          Result {
+            try TOMLTable(string: contents)
+          }
+          .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
+          .andThen { table in
+            guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
+              return .failure(.failedToDeserializeConfiguration(error))
+            }
 
-        switch migrateV2Configuration(
-          configurationFile,
-          mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
-        ) {
-          case let .failure(error):
-            return .failure(error)
-          case let .success(config):
-            configuration = config
+            return migrateV2Configuration(
+              configurationFile,
+              mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
+            )
+          }
         }
-      } catch {
-        return .failure(.failedToDeserializeConfiguration(error))
       }
-    }
-
-    if configuration.formatVersion != PackageConfiguration.currentFormatVersion {
-      return .failure(.unsupportedFormatVersion(configuration.formatVersion))
-    }
-
-    return VariableEvaluator.evaluateVariables(
-      in: configuration,
-      packageDirectory: packageDirectory
-    ).mapError { error in
-      return .failedToEvaluateVariables(error)
-    }
+      .andThenDoSideEffect { configuration in
+        guard configuration.formatVersion == PackageConfiguration.currentFormatVersion else {
+          return .failure(.unsupportedFormatVersion(configuration.formatVersion))
+        }
+        return .success()
+      }
+      .andThen { configuration in
+        VariableEvaluator.evaluateVariables(
+          in: configuration,
+          packageDirectory: packageDirectory
+        ).mapError { error in
+          return .failedToEvaluateVariables(error)
+        }
+      }
   }
 
   /// Migrates a Swift Bundler `v2.0.0` configuration file to the current configuration format.
@@ -126,51 +131,47 @@ struct PackageConfiguration: Codable {
       log.warning("Run 'swift bundler migrate' to migrate it to the latest config format.")
     }
 
-    let contents: String
-    do {
-      contents = try String(contentsOf: configurationFile)
-    } catch {
-      return .failure(.failedToReadConfigurationFile(configurationFile, error))
-    }
-
-    if mode == .writeChanges(backup: true) {
-      let backupFile = configurationFile.appendingPathExtension("orig")
-      do {
-        try contents.write(to: backupFile, atomically: false, encoding: .utf8)
-      } catch {
-        return .failure(.failedToCreateConfigurationBackup(error))
+    return String.read(from: configurationFile)
+      .mapError { error in
+        PackageConfigurationError
+          .failedToReadConfigurationFile(configurationFile, error)
       }
-      log.info("The original configuration has been backed up to '\(backupFile.relativePath)'")
-    }
+      .andThenDoSideEffect { contents in
+        // Back up the file if requested.
+        guard mode == .writeChanges(backup: true) else {
+          return .success()
+        }
 
-    let oldConfiguration: PackageConfigurationV2
-    do {
-      oldConfiguration = try TOMLDecoder().decode(
-        PackageConfigurationV2.self,
-        from: contents
-      )
-    } catch {
-      return .failure(.failedToDeserializeV2Configuration(error))
-    }
-
-    let configuration = oldConfiguration.migrate()
-    let encodedContents: String
-    do {
-      encodedContents = try TOMLEncoder().encode(configuration)
-    } catch {
-      return .failure(.failedToSerializeConfiguration(error))
-    }
-
-    if case .writeChanges = mode {
-      log.info("Writing migrated config to disk.")
-      do {
-        try encodedContents.write(to: configurationFile, atomically: false, encoding: .utf8)
-      } catch {
-        return .failure(.failedToWriteToConfigurationFile(configurationFile, error))
+        let backupFile = configurationFile.appendingPathExtension("orig")
+        return contents.resultWrite(to: configurationFile)
+          .mapError(PackageConfigurationError.failedToCreateConfigurationBackup)
+          .ifSuccess { _ in
+            log.info(
+              """
+              The original configuration has been backed up to \
+              '\(backupFile.relativePath)'
+              """
+            )
+          }
       }
-    }
+      .andThen { contents in
+        // Decode the old configuration
+        TOMLDecoder().decode(PackageConfigurationV2.self, from: contents)
+          .mapError(PackageConfigurationError.failedToDeserializeV2Configuration)
+      }
+      .map { oldConfiguration in
+        // Migrate the configuration
+        oldConfiguration.migrate()
+      }
+      .andThenDoSideEffect { configuration in
+        // Write the changes if requested
+        guard case .writeChanges = mode else {
+          return .success()
+        }
 
-    return .success(configuration)
+        log.info("Writing migrated config to disk.")
+        return writeConfiguration(configuration, to: configurationFile)
+      }
   }
 
   /// Migrates a `Bundle.json` to a `Bundler.toml` file.
@@ -192,59 +193,48 @@ struct PackageConfiguration: Codable {
 
     return PackageConfigurationV1.load(
       from: oldConfigurationFile
-    ).flatMap { oldConfiguration in
-      var extraPlistEntries: [String: PlistValue] = [:]
-      for (key, value) in oldConfiguration.extraInfoPlistEntries {
-        if let value = value as? String {
-          extraPlistEntries[key] = .string(value)
-        }
+    )
+    .map { oldConfiguration in
+      oldConfiguration.migrate()
+    }
+    .andThenDoSideEffect { newConfiguration in
+      guard let newConfigurationFile = newConfigurationFile else {
+        return .success()
       }
 
-      if extraPlistEntries.count != oldConfiguration.extraInfoPlistEntries.count {
-        log.warning(
-          .init(
-            stringLiteral:
-              "Some entries in 'extraInfoPlistEntries' were not able to be converted to the new format (because they weren't strings)."
-              + " These will have to be manually converted"
+      return writeConfiguration(newConfiguration, to: newConfigurationFile)
+        .ifSuccess { _ in
+          log.info(
+            """
+            Only the 'product' and 'version' fields are mandatory. You can \
+            delete any others that you don't need
+            """
           )
-        )
-      }
-
-      log.warning(
-        "Discarding 'buildNumber' because the latest config format has no build number field")
-
-      let appConfiguration = AppConfiguration(
-        identifier: oldConfiguration.bundleIdentifier,
-        product: oldConfiguration.target,
-        version: oldConfiguration.versionString,
-        category: oldConfiguration.category,
-        plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
-      )
-
-      let configuration = PackageConfiguration([oldConfiguration.target: appConfiguration])
-      let newContents: String
-      do {
-        newContents = try TOMLEncoder().encode(configuration)
-      } catch {
-        return .failure(.failedToSerializeMigratedConfiguration(error))
-      }
-
-      if let newConfigurationFile = newConfigurationFile {
-        do {
-          try newContents.write(to: newConfigurationFile, atomically: false, encoding: .utf8)
-        } catch {
-          return .failure(.failedToWriteToMigratedConfigurationFile(newConfigurationFile, error))
+          log.info(
+            """
+            'Bundle.json' was successfully migrated to 'Bundler.toml', you can \
+            now safely delete it
+            """
+          )
         }
+    }
+  }
 
-        log.info(
-          "Only the 'product' and 'version' fields are mandatory. You can delete any others that you don't need"
-        )
-        log.info(
-          "'Bundle.json' was successfully migrated to 'Bundler.toml', you can now safely delete it"
-        )
+  /// Writes the given configuration to the given file.
+  static func writeConfiguration(
+    _ configuration: PackageConfiguration,
+    to file: URL
+  ) -> Result<Void, PackageConfigurationError> {
+    Result {
+      try TOMLEncoder().encode(configuration)
+    }
+    .mapError(PackageConfigurationError.failedToSerializeConfiguration)
+    .andThen { newContents in
+      Result {
+        try newContents.write(to: file, atomically: false, encoding: .utf8)
+      }.mapError { error in
+        .failedToWriteToConfigurationFile(file, error)
       }
-
-      return .success(configuration)
     }
   }
 
@@ -266,26 +256,9 @@ struct PackageConfiguration: Codable {
         version: "0.1.0"
       )
     ])
-
-    let contents: String
-    do {
-      contents = try TOMLEncoder().encode(configuration)
-    } catch {
-      return .failure(.failedToSerializeConfiguration(error))
-    }
-
     let file = directory.appendingPathComponent("Bundler.toml")
-    do {
-      try contents.write(
-        to: file,
-        atomically: false,
-        encoding: .utf8
-      )
-    } catch {
-      return .failure(.failedToWriteToConfigurationFile(file, error))
-    }
 
-    return .success()
+    return writeConfiguration(configuration, to: file)
   }
 
   // MARK: Instance methods

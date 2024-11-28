@@ -80,6 +80,47 @@ extension Result {
       newValue
     }
   }
+
+  func ifSuccess(do action: (Success) -> Void) -> Result<Success, Failure> {
+    map { value in
+      action(value)
+      return value
+    }
+  }
+
+  /// Attempts to recover from a failure with a function mapping the failure
+  /// to a new result (with the same success value).
+  func tryRecover(
+    _ recover: (Failure) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    switch self {
+      case .success(let value):
+        return .success(value)
+      case .failure(let error):
+        return recover(error)
+    }
+  }
+}
+
+extension Result where Failure: Equatable {
+  /// Attempts to recover from a failure with a function mapping the failure
+  /// to a new result (with the same success value).
+  /// - Parameter badFailures: Failures that recovery shouldn't be attempted for.
+  func tryRecover(
+    unless badFailures: [Failure],
+    _ recover: (Failure) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    switch self {
+      case .success(let value):
+        return .success(value)
+      case .failure(let error):
+        guard !badFailures.contains(error) else {
+          return .failure(error)
+        }
+        return recover(error)
+    }
+  }
+
 }
 
 extension Result where Success == Void {
@@ -87,6 +128,16 @@ extension Result where Success == Void {
   /// - Returns: A success value.
   static func success() -> Self {
     .success(())
+  }
+}
+
+extension Result where Failure == Error {
+  init(of action: () throws -> Success) {
+    do {
+      self = .success(try action())
+    } catch {
+      self = .failure(error)
+    }
   }
 }
 

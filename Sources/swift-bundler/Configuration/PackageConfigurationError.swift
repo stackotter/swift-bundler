@@ -2,7 +2,7 @@ import Foundation
 import TOMLKit
 
 /// An error related to package configuration.
-enum PackageConfigurationError: LocalizedError {
+enum PackageConfigurationError: LocalizedError, Equatable {
   case noSuchApp(String)
   case multipleAppsAndNoneSpecified
   case failedToEvaluateVariables(VariableEvaluatorError)
@@ -12,12 +12,33 @@ enum PackageConfigurationError: LocalizedError {
   case failedToWriteToConfigurationFile(URL, Error)
   case failedToReadContentsOfOldConfigurationFile(URL, Error)
   case failedToDeserializeOldConfiguration(Error)
-  case failedToSerializeMigratedConfiguration(Error)
-  case failedToWriteToMigratedConfigurationFile(URL, Error)
   case failedToCreateConfigurationBackup(Error)
   case failedToDeserializeV2Configuration(Error)
   case unsupportedFormatVersion(Int)
   case configurationIsAlreadyUpToDate
+
+  static func == (_ lhs: Self, _ rhs: Self) -> Bool {
+    switch (lhs, rhs) {
+      case (.noSuchApp, .noSuchApp): return true
+      case (.multipleAppsAndNoneSpecified, .multipleAppsAndNoneSpecified): return true
+      case (.failedToEvaluateVariables, .failedToEvaluateVariables): return true
+      case (.failedToReadConfigurationFile, .failedToReadConfigurationFile): return true
+      case (.failedToDeserializeConfiguration, .failedToDeserializeConfiguration): return true
+      case (.failedToSerializeConfiguration, .failedToSerializeConfiguration): return true
+      case (.failedToWriteToConfigurationFile, .failedToWriteToConfigurationFile): return true
+      case (
+        .failedToReadContentsOfOldConfigurationFile,
+        .failedToReadContentsOfOldConfigurationFile
+      ): return true
+      case (.failedToDeserializeOldConfiguration, .failedToDeserializeOldConfiguration): return true
+      case (.failedToCreateConfigurationBackup, .failedToCreateConfigurationBackup): return true
+      case (.failedToDeserializeV2Configuration, .failedToDeserializeV2Configuration): return true
+      case (.unsupportedFormatVersion, .unsupportedFormatVersion): return true
+      case (.configurationIsAlreadyUpToDate, .configurationIsAlreadyUpToDate): return true
+      default:
+        return false
+    }
+  }
 
   var errorDescription: String? {
     switch self {
@@ -41,10 +62,6 @@ enum PackageConfigurationError: LocalizedError {
         return "Failed to deserialize old configuration: \(error.localizedDescription)"
       case .failedToReadContentsOfOldConfigurationFile(let file, _):
         return "Failed to read contents of old configuration file at '\(file.relativePath)'"
-      case .failedToSerializeMigratedConfiguration:
-        return "Failed to serialize migrated configuration"
-      case .failedToWriteToMigratedConfigurationFile(let file, _):
-        return "Failed to write migrated configuration to file at '\(file.relativePath)'"
       case .failedToCreateConfigurationBackup:
         return "Failed to backup configuration file"
       case .failedToDeserializeV2Configuration(let error):

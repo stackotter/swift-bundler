@@ -25,29 +25,71 @@ struct PackageConfigurationV1: Codable {
   /// Loads the configuration from a `Bundle.json` file.
   /// - Parameter file: The file to load the configuration from.
   /// - Returns: The configuration. If an error occurs, a failure is returned.
-  static func load(from file: URL) -> Result<PackageConfigurationV1, PackageConfigurationError> {
-    let data: Data
-    do {
-      data = try Data(contentsOf: file)
-    } catch {
-      return .failure(.failedToReadContentsOfOldConfigurationFile(file, error))
+  static func load(
+    from file: URL
+  ) -> Result<PackageConfigurationV1, PackageConfigurationError> {
+    Result {
+      // Load the file's contents
+      try Data(contentsOf: file)
     }
+    .mapError { error in
+      .failedToReadContentsOfOldConfigurationFile(file, error)
+    }
+    .andThen { data in
+      // Parse the configuration
+      Result {
+        var configuration = try JSONDecoder().decode(
+          PackageConfigurationV1.self,
+          from: data
+        )
 
-    var configuration: PackageConfigurationV1
-    do {
-      configuration = try JSONDecoder().decode(PackageConfigurationV1.self, from: data)
+        // Load the `extraInfoPlistEntries` property if present
+        let json = try JSONSerialization.jsonObject(with: data)
+        if let json = json as? [String: Any],
+          let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
+        {
+          configuration.extraInfoPlistEntries = extraEntries
+        }
 
-      // Load the `extraInfoPlistEntries` property if present
-      let json = try JSONSerialization.jsonObject(with: data)
-      if let json = json as? [String: Any],
-        let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
-      {
-        configuration.extraInfoPlistEntries = extraEntries
+        return configuration
       }
-    } catch {
-      return .failure(.failedToDeserializeOldConfiguration(error))
+      .mapError(PackageConfigurationError.failedToDeserializeOldConfiguration)
+    }
+  }
+
+  func migrate() -> PackageConfiguration {
+    var extraPlistEntries: [String: PlistValue] = [:]
+    for (key, value) in extraInfoPlistEntries {
+      if let value = value as? String {
+        extraPlistEntries[key] = .string(value)
+      }
     }
 
-    return .success(configuration)
+    if extraPlistEntries.count != extraInfoPlistEntries.count {
+      log.warning(
+        """
+        Some entries in 'extraInfoPlistEntries' were not able to be converted \
+        to the new format (because they weren't strings). These will have to \
+        be manually converted
+        """
+      )
+    }
+
+    log.warning(
+      """
+      Discarding 'buildNumber' because the latest config format has no build \
+      number field
+      """
+    )
+
+    let appConfiguration = AppConfiguration(
+      identifier: bundleIdentifier,
+      product: target,
+      version: versionString,
+      category: category,
+      plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
+    )
+
+    return PackageConfiguration([target: appConfiguration])
   }
 }
