@@ -7,6 +7,16 @@ struct BundleArguments: ParsableArguments {
     help: "The name of the app to build.")
   var appName: String?
 
+  @Option(
+    help: "The bundler to use \(BundlerChoice.possibleValuesDescription).",
+    transform: {
+      guard let choice = BundlerChoice(rawValue: $0) else {
+        throw CLIError.invalidBundlerChoice($0)
+      }
+      return choice
+    })
+  var bundler = BundlerChoice.defaultForHostPlatform
+
   /// The directory containing the package to build.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
@@ -32,18 +42,22 @@ struct BundleArguments: ParsableArguments {
     transform: URL.init(fileURLWithPath:))
   var outputDirectory: URL?
 
-  /// The directory containing the built products. Can only be set when `--skip-build` is supplied.
+  /// The directory containing the built products. Can only be set when
+  /// `--skip-build` is supplied.
   @Option(
     name: .long,
     help:
-      "The directory containing the built products. Can only be set when `--skip-build` is supplied.",
+      """
+      The directory containing the built products. Can only be set when \
+      `--skip-build` is supplied.
+      """,
     transform: URL.init(fileURLWithPath:))
   var productsDirectory: URL?
 
   /// The build configuration to use.
   @Option(
     name: [.customShort("c"), .customLong("configuration")],
-    help: "The build configuration to use \(BuildConfiguration.possibleValuesString).",
+    help: "The build configuration to use \(BuildConfiguration.possibleValuesDescription).",
     transform: {
       guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
         throw CLIError.invalidBuildConfiguration($0)
@@ -57,7 +71,7 @@ struct BundleArguments: ParsableArguments {
     name: [.customShort("a"), .customLong("arch")],
     parsing: .singleValue,
     help: {
-      let possibleValues = BuildArchitecture.possibleValuesString
+      let possibleValues = BuildArchitecture.possibleValuesDescription
       let defaultValue = BuildArchitecture.current.rawValue
       return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
     }(),
@@ -87,7 +101,7 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: .shortAndLong,
     help: {
-      let possibleValues = Platform.possibleValuesString
+      let possibleValues = Platform.possibleValuesDescription
       return "The platform to build for \(possibleValues). (default: macOS)"
     }(),
     transform: { string in
@@ -101,7 +115,7 @@ struct BundleArguments: ParsableArguments {
       }
       return platform
     })
-  var platform = Platform.currentPlatform
+  var platform = Platform.host
 
   /// A codesigning identity to use.
   @Option(

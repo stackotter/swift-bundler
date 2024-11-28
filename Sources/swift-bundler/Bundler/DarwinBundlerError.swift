@@ -18,6 +18,8 @@ enum DarwinBundlerError: LocalizedError {
   case failedToLoadManifest(SwiftPackageManagerError)
   case failedToGetMinimumMacOSVersion(manifest: URL)
   case failedToCopyProvisioningProfile(Error)
+  case missingDarwinPlatformVersion(Platform)
+  case unsupportedPlatform(Platform)
 
   var errorDescription: String? {
     switch self {
@@ -53,10 +55,24 @@ enum DarwinBundlerError: LocalizedError {
       case .failedToLoadManifest(let error):
         return error.localizedDescription
       case .failedToGetMinimumMacOSVersion(let manifest):
-        return
-          "To build for macOS, please specify a macOS deployment version in the platforms field of '\(manifest.relativePath)'"
+        return """
+          To build for macOS, please specify a macOS deployment version in the \
+          platforms field of '\(manifest.relativePath)'
+          """
       case .failedToCopyProvisioningProfile:
         return "Failed to copy provisioning profile to output bundle"
+      case .missingDarwinPlatformVersion(let platform):
+        return """
+          Missing target platform version for '\(platform.rawValue)' in \
+          'Package.swift'. Please update the `Package.platforms` array \
+          and try again. Bundling for Darwin platforms requires a target \
+          platform.
+          """
+      case .unsupportedPlatform(let platform):
+        return """
+          Platform '\(platform.name)' not supported by \
+          '\(BundlerChoice.darwinDotApp.rawValue)' bundler.
+          """
     }
   }
 }

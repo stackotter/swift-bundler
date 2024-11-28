@@ -10,10 +10,11 @@ struct DarwinAppBundleStructure {
   let pkgInfoFile: URL
   let provisioningProfileFile: URL
   let appIconFile: URL
+  let mainExecutable: URL
 
   /// Describes the structure of an app bundle for the specific platform. Doesn't
   /// create anything on disk (see ``DarwinAppBundleStructure/createDirectories()``).
-  init(at bundleDirectory: URL, platform: ApplePlatform) {
+  init(at bundleDirectory: URL, platform: ApplePlatform, appName: String) {
     let os = platform.os
     switch os {
       case .macOS:
@@ -34,6 +35,8 @@ struct DarwinAppBundleStructure {
       "embedded.mobileprovision"
     )
     appIconFile = contentsDirectory.appendingPathComponent("AppIcon.icns")
+
+    mainExecutable = executableDirectory.appendingPathComponent(appName)
   }
 
   /// Attempts to create all directories within the app bundle. Ignores directories which

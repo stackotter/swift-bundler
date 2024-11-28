@@ -103,7 +103,7 @@ enum Platform: String, CaseIterable {
   }
 
   /// The platform that Swift Bundler is currently being run on.
-  static var currentPlatform: Platform {
+  static var host: Platform {
     #if os(macOS)
       return .macOS
     #elseif os(Linux)

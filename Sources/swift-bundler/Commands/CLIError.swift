@@ -5,6 +5,7 @@ enum CLIError: LocalizedError {
   case invalidPlatform(String)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
+  case invalidBundlerChoice(String)
   case failedToCopyIcon(source: URL, destination: URL, Error)
   case failedToGetPlatformVersion(platform: Platform, manifest: URL)
   case failedToRemoveExistingOutputs(outputDirectory: URL, Error)
@@ -14,17 +15,22 @@ enum CLIError: LocalizedError {
       case .invalidPlatform(let platform):
         return """
           Invalid platform '\(platform)'. Must be one of \
-          \(Platform.possibleValuesString)
+          \(Platform.possibleValuesDescription)
           """
       case .invalidArchitecture(let architecture):
         return """
           Invalid architecture '\(architecture)'. Must be one of \
-          \(BuildArchitecture.possibleValuesString)
+          \(BuildArchitecture.possibleValuesDescription)
           """
       case .invalidBuildConfiguration(let buildConfiguration):
         return """
           Invalid build configuration '\(buildConfiguration)'. Must be one of \
-          \(BuildConfiguration.possibleValuesString)
+          \(BuildConfiguration.possibleValuesDescription)
+          """
+      case .invalidBundlerChoice(let choice):
+        return """
+          Invalid bundler choice '\(choice)'. Must be one of \
+          \(BundlerChoice.possibleValuesDescription)
           """
       case .failedToCopyIcon(let source, let destination, _):
         return "Failed to copy icon from '\(source)' to '\(destination)'"

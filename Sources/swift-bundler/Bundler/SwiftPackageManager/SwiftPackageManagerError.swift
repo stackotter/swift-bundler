@@ -22,6 +22,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToDecodeBuildPlan(Error)
   case failedToComputeLinkingCommand(details: String)
   case failedToRunLinkingCommand(command: String, Error)
+  case missingDarwinPlatformVersion(Platform)
 
   var errorDescription: String? {
     switch self {
@@ -64,17 +65,28 @@ enum SwiftPackageManagerError: LocalizedError {
           "Failed to parse package manifest output: \(error?.localizedDescription ?? "Unknown error")"
       case .failedToParsePackageManifestToolsVersion(let error):
         return """
-          Failed to parse package manifest tools version: \(error?.localizedDescription ?? "Unknown error")
+          Failed to parse package manifest tools version: \
+          \(error?.localizedDescription ?? "Unknown error")
           """
       case .failedToReadBuildPlan(let path, let error):
-        return
-          "Failed to read build plan file at '\(path.relativePath(from: URL(fileURLWithPath: ".")) ?? path.path))': \(error.localizedDescription)"
+        let buildPlan = path.path(relativeTo: URL(fileURLWithPath: "."))
+        return """
+          Failed to read build plan file at '\(buildPlan)': \
+          \(error.localizedDescription)
+          """
       case .failedToDecodeBuildPlan(let error):
         return "Failed to decode build plain: \(error.localizedDescription)"
       case .failedToComputeLinkingCommand(let details):
         return "Failed to compute linking command: \(details)"
       case .failedToRunLinkingCommand(let command, let error):
         return "Failed to run linking commmand '\(command)': \(error.localizedDescription)"
+      case .missingDarwinPlatformVersion(let platform):
+        return """
+          Missing target platform version for '\(platform.rawValue)' in \
+          'Package.swift'. Please update the `Package.platforms` array \
+          and try again. Building for Darwin platforms requires a target \
+          platform.
+          """
     }
   }
 }

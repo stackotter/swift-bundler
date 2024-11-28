@@ -42,13 +42,13 @@ enum Templater {
         name: packageName
       ).mapError { error -> TemplaterError in
         .failedToCreateBareMinimumPackage(error)
-      }.flatMap { _ in
+      }.andThen { _ in
         log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
         return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
       }.mapError { error -> TemplaterError in
         attemptCleanup(outputDirectory)
         return error
-      }.flatMap { (_: Void) -> Result<Void, TemplaterError> in
+      }.andThen { (_: Void) -> Result<Void, TemplaterError> in
         return createPackageConfigurationFile(
           in: outputDirectory,
           packageName: packageName,
@@ -274,47 +274,40 @@ enum Templater {
   /// - Returns: A failure if updating fails.
   static func updateTemplates() -> Result<Void, TemplaterError> {
     return getDefaultTemplatesDirectory(downloadIfNecessary: false)
-      .flatMap { templatesDirectory in
-        if FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
-          let result = Process.create(
-            "git",
-            arguments: [
-              "fetch"
-            ],
-            directory: templatesDirectory
-          ).runAndWait().flatMap { _ in
-            return Process.create(
-              "git",
-              arguments: [
-                "checkout", "v\(SwiftBundler.version.major)",
-              ],
-              directory: templatesDirectory
-            ).runAndWait()
-          }.flatMap { _ in
-            return Process.create(
-              "git",
-              arguments: ["pull"],
-              directory: templatesDirectory
-            ).runAndWait()
-          }
-
-          if case let .failure(error) = result {
-            return .failure(.failedToPullLatestTemplates(error))
-          }
-          return .success()
-        } else {
+      .andThen { templatesDirectory in
+        guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
           return downloadDefaultTemplates(into: templatesDirectory)
         }
+
+        return Process.create(
+          "git",
+          arguments: [
+            "fetch"
+          ],
+          directory: templatesDirectory
+        ).runAndWait().flatMap { _ in
+          Process.create(
+            "git",
+            arguments: [
+              "checkout", "v\(SwiftBundler.version.major)",
+            ],
+            directory: templatesDirectory
+          ).runAndWait()
+        }.andThen { _ in
+          Process.create(
+            "git",
+            arguments: ["pull"],
+            directory: templatesDirectory
+          ).runAndWait()
+        }.mapError(TemplaterError.failedToPullLatestTemplates)
       }
   }
 
   /// Gets the list of available templates from the default templates directory.
   /// - Returns: The available templates, or an error if template enumeration fails.
   static func enumerateTemplates() -> Result<[Template], TemplaterError> {
-    return getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      .flatMap { templatesDirectory in
-        enumerateTemplates(in: templatesDirectory)
-      }
+    getDefaultTemplatesDirectory(downloadIfNecessary: true)
+      .andThen(enumerateTemplates(in:))
   }
 
   /// Gets the list of available templates from a templates directory.
@@ -531,9 +524,7 @@ enum Templater {
     }
 
     // Get the file's relative path (compared to the template root directory)
-    guard var relativePath = file.relativePath(from: templateDirectory) else {
-      return .failure(.failedToGetRelativePath(file: file, base: templateDirectory))
-    }
+    var relativePath = file.path(relativeTo: templateDirectory)
 
     // Compute the output directory, replacing occurrences of `{{variable}}` in the original path with the variable's value
     for (variable, value) in variables {

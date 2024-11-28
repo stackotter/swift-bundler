@@ -8,6 +8,7 @@ enum RunnerError: LocalizedError {
   case failedToReadEnvironmentFile(URL, Error)
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnSimulator(SimulatorManagerError)
+  case missingExecutable(Device, BundlerOutputStructure)
 
   var errorDescription: String? {
     switch self {
@@ -23,12 +24,20 @@ enum RunnerError: LocalizedError {
           "Failed to run 'ios-deploy'"
           "Have you trusted the provisioning profile in settings? (General > VPN & Device Management)"
         }.body
-      case let .failedToReadEnvironmentFile(file, _):
+      case .failedToReadEnvironmentFile(let file, _):
         return "Failed to read contents of environment file '\(file.relativePath)'"
-      case let .failedToParseEnvironmentFileEntry(line):
+      case .failedToParseEnvironmentFileEntry(let line):
         return "Failed to parse environment file, lines must contain '=': '\(line)'"
-      case let .failedToRunOnSimulator(error):
+      case .failedToRunOnSimulator(let error):
         return "Failed to run app on simulator: \(error.localizedDescription)"
+      case .missingExecutable(let device, let outputStructure):
+        return """
+          Failed to run '\(outputStructure.bundle.lastPathComponent)' on \
+          \(device.description) because the chosen bundler didn't produce an \
+          executable file. It's likely that the bundler targets a package-like \
+          format instead of an executable format. Try another bundler or stick \
+          to bundling.
+          """
     }
   }
 }

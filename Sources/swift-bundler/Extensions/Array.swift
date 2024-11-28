@@ -14,3 +14,40 @@ where Element: StackOtterArgParser.ExpressibleByArgument {
     return nil
   }
 }
+
+extension Array {
+  /// A `Result`-based version of ``Array/map(_:)``. Guaranteed to
+  /// short-circuit as soon as a failure occurs. Elements are processed in the
+  /// order that they appear.
+  func tryMap<Failure: Error, NewElement>(
+    conversion convert: (Element) -> Result<NewElement, Failure>
+  ) -> Result<[NewElement], Failure> {
+    var result: [NewElement] = []
+    for element in self {
+      switch convert(element) {
+        case .success(let newElement):
+          result.append(newElement)
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+    return .success(result)
+  }
+
+  /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
+  /// short-circuit as soon as a failure occurs. Elements are processed in the
+  /// order that they appear.
+  func tryForEach<Failure: Error>(
+    do action: (Element) -> Result<Void, Failure>
+  ) -> Result<Void, Failure> {
+    for element in self {
+      switch action(element) {
+        case .success:
+          continue
+        case .failure(let error):
+          return .failure(error)
+      }
+    }
+    return .success()
+  }
+}

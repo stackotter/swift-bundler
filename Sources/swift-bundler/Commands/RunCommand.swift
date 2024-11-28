@@ -65,12 +65,7 @@ struct RunCommand: AsyncCommand {
     let scratchDirectory =
       arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
 
-    let outputDirectory = BundleCommand.getOutputDirectory(
-      arguments.outputDirectory,
-      scratchDirectory: scratchDirectory
-    )
-
-    let (appName, appConfiguration) = try BundleCommand.getAppConfiguration(
+    let (_, appConfiguration) = try BundleCommand.getAppConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       customFile: arguments.configurationFileOverride
@@ -89,19 +84,16 @@ struct RunCommand: AsyncCommand {
       hotReloadingEnabled: hot
     )
 
-    if !skipBuild {
-      await bundleCommand.run()
-    }
-
-    let bundleName = getBundler(for: arguments.platform)
-      .appBundleName(forAppName: appName)
-    let bundle = outputDirectory.appendingPathComponent(bundleName)
+    // Perform bundling, or do a dry run if instructed to skip building (so
+    // that we still know where the output bundle is located).
+    let bundlerOutput = try await bundleCommand.doBundling(dryRun: skipBuild)
 
     let environmentVariables =
       try environmentFile.map { file in
         try Runner.loadEnvironmentVariables(from: file).unwrap()
       } ?? [:]
 
+    let additionalEnvironmentVariables: [String: String]
     if hot {
       var port: UInt16 = 7000
 
@@ -121,11 +113,6 @@ struct RunCommand: AsyncCommand {
 
       let socket = try await createSocket()
       try await socket.listen()
-
-      let hotReloadingVariables = [
-        "SWIFT_BUNDLER_HOT_RELOADING": "1",
-        "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
-      ]
 
       Task {
         var client = try await socket.accept()
@@ -189,24 +176,23 @@ struct RunCommand: AsyncCommand {
           })
       }
 
-      try Runner.run(
-        bundle: bundle,
-        bundleIdentifier: appConfiguration.identifier,
-        device: device,
-        arguments: passThroughArguments,
-        environmentVariables: environmentVariables.merging(
-          hotReloadingVariables, uniquingKeysWith: { key, _ in key }
-        )
-      ).unwrap()
+      additionalEnvironmentVariables = [
+        "SWIFT_BUNDLER_HOT_RELOADING": "1",
+        "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
+      ]
     } else {
-      try Runner.run(
-        bundle: bundle,
-        bundleIdentifier: appConfiguration.identifier,
-        device: device,
-        arguments: passThroughArguments,
-        environmentVariables: environmentVariables
-      ).unwrap()
+      additionalEnvironmentVariables = [:]
     }
+
+    try Runner.run(
+      bundlerOutput: bundlerOutput,
+      bundleIdentifier: appConfiguration.identifier,
+      device: device,
+      arguments: passThroughArguments,
+      environmentVariables: environmentVariables.merging(
+        additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
+      )
+    ).unwrap()
   }
 
   static func getDevice(for platform: Platform, simulatorSearchTerm: String?) throws -> Device {
@@ -250,7 +236,10 @@ struct RunCommand: AsyncCommand {
 
           guard let simulator = simulators.first else {
             log.error(
-              "Search term '\(searchTerm)' did not match any simulators. To list available simulators, use the following command:"
+              """
+              Search term '\(searchTerm)' did not match any simulators. To list \
+              available simulators, use the following command:
+              """
             )
 
             Output {

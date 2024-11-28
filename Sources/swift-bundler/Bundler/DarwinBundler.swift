@@ -27,19 +27,73 @@ enum DarwinBundler: Bundler {
     }
   }
 
+  static func computeContext(
+    context: BundlerContext,
+    command: BundleCommand,
+    manifest: PackageManifest
+  ) -> Result<Context, DarwinBundlerError> {
+    guard let applePlatform = command.arguments.platform.asApplePlatform else {
+      return .failure(.unsupportedPlatform(context.platform))
+    }
+
+    let codeSigningContext: Context.CodeSigningContext?
+    if let identity = command.arguments.identity {
+      codeSigningContext = DarwinBundler.Context.CodeSigningContext(
+        identity: identity,
+        entitlements: command.arguments.entitlements,
+        provisioningProfile: command.arguments.provisioningProfile
+      )
+    } else {
+      codeSigningContext = nil
+    }
+
+    guard let platformVersion = manifest.platformVersion(for: context.platform) else {
+      return .failure(.missingDarwinPlatformVersion(context.platform))
+    }
+
+    let universal = command.arguments.universal || command.arguments.architectures.count > 1
+    return .success(
+      Context(
+        isXcodeBuild: command.builtWithXcode,
+        universal: universal,
+        standAlone: command.arguments.standAlone,
+        platform: applePlatform,
+        platformVersion: platformVersion,
+        codeSigningContext: codeSigningContext
+      )
+    )
+  }
+
+  static func intendedOutput(
+    in context: BundlerContext,
+    _ additionalContext: Context
+  ) -> BundlerOutputStructure {
+    let bundle = context.outputDirectory
+      .appendingPathComponent("\(context.appName).app")
+    let structure = DarwinAppBundleStructure(
+      at: bundle,
+      platform: additionalContext.platform,
+      appName: context.appName
+    )
+    return BundlerOutputStructure(
+      bundle: bundle,
+      executable: structure.mainExecutable
+    )
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<Void, DarwinBundlerError> {
-    let appBundleName = appBundleName(forAppName: context.appName)
-    log.info("Bundling '\(appBundleName)'")
+  ) -> Result<BundlerOutputStructure, DarwinBundlerError> {
+    let outputStructure = intendedOutput(in: context, additionalContext)
+    let appBundle = outputStructure.bundle
+    log.info("Bundling '\(appBundle.lastPathComponent)'")
 
-    let appBundle = context.outputDirectory.appendingPathComponent(appBundleName)
     let bundleStructure = DarwinAppBundleStructure(
       at: appBundle,
-      platform: additionalContext.platform
+      platform: additionalContext.platform,
+      appName: context.appName
     )
-    let appExecutable = bundleStructure.executableDirectory.appendingPathComponent(context.appName)
 
     let createAppIconIfPresent: () -> Result<Void, DarwinBundlerError> = {
       if let path = context.appConfiguration.icon {
@@ -65,7 +119,7 @@ enum DarwinBundler: Bundler {
 
     let copyDynamicLibraries: () -> Result<Void, DarwinBundlerError> = {
       DynamicLibraryBundler.copyDynamicLibraries(
-        dependedOnBy: appExecutable,
+        dependedOnBy: bundleStructure.mainExecutable,
         to: bundleStructure.librariesDirectory,
         productsDirectory: context.productsDirectory,
         isXcodeBuild: additionalContext.isXcodeBuild,
@@ -101,7 +155,12 @@ enum DarwinBundler: Bundler {
 
     let bundleApp = flatten(
       bundleStructure.createDirectories,
-      { Self.copyExecutable(at: context.executableArtifact, to: appExecutable) },
+      {
+        Self.copyExecutable(
+          at: context.executableArtifact,
+          to: bundleStructure.mainExecutable
+        )
+      },
       { Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile) },
       {
         Self.createInfoPlistFile(
@@ -120,10 +179,7 @@ enum DarwinBundler: Bundler {
     )
 
     return bundleApp()
-  }
-
-  static func appBundleName(forAppName appName: String) -> String {
-    "\(appName).app"
+      .replacingSuccessValue(with: outputStructure)
   }
 
   // MARK: Private methods

@@ -48,6 +48,38 @@ extension Result {
       error
     }
   }
+
+  /// Just a better name for ``Result/flatMap``. When skim reading complicated
+  /// code it's not always clear whether it's an array `flatMap` or a result
+  /// `flatMap`. In my opinion, it's best if you can tell what you're working
+  /// with straight away.
+  func andThen<NewSuccess>(
+    _ transform: (Success) -> Result<NewSuccess, Failure>
+  ) -> Result<NewSuccess, Failure> {
+    flatMap(transform)
+  }
+
+  /// Specifically just performs a side effect without affecting the underlying
+  /// success value of the result (unless of course the action fails).
+  func andThenDoSideEffect(
+    _ action: (Success) -> Result<Void, Failure>
+  ) -> Result<Success, Failure> {
+    andThen { value in
+      action(value).map { _ in
+        value
+      }
+    }
+  }
+
+  /// If the result is a success, then this replaces the success value. It leaves
+  /// failures unchanged except for their type.
+  func replacingSuccessValue<NewSuccess>(
+    with newValue: NewSuccess
+  ) -> Result<NewSuccess, Failure> {
+    map { _ in
+      newValue
+    }
+  }
 }
 
 extension Result where Success == Void {

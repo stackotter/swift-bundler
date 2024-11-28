@@ -20,7 +20,7 @@ enum SwiftPackageManager {
     /// The platform to build for.
     var platform: Platform
     /// The platform version to build for.
-    var platformVersion: String
+    var platformVersion: String?
     /// Additional arguments to be passed to SwiftPM.
     var additionalArguments: [String]
     /// Controls whether the hot reloading environment variables are added to
@@ -252,7 +252,9 @@ enum SwiftPackageManager {
             return .failure(error)
         }
 
-        let platformVersion = buildContext.platformVersion
+        guard let platformVersion = buildContext.platformVersion else {
+          return .failure(.missingDarwinPlatformVersion(buildContext.platform))
+        }
         let hostArchitecture = BuildArchitecture.current
 
         let targetTriple: LLVMTargetTriple

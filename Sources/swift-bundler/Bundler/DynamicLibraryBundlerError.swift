@@ -5,10 +5,10 @@ enum DynamicLibraryBundlerError: LocalizedError {
   case failedToEnumerateDynamicLibraries(directory: URL, Error)
   case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
   case failedToUpdateLibraryInstallName(
-    library: String?, original: String, new: String, ProcessError)
-  case failedToGetNewPathRelativeToExecutable(library: String, newPath: URL, executable: URL)
-  case failedToGetOriginalPathRelativeToSearchDirectory(
-    library: String, originalPath: URL, searchDirectory: URL)
+    library: String?,
+    original: String,
+    new: String, ProcessError
+  )
   case failedToUpdateAppRPath(original: String, new: String, ProcessError)
   case failedToEnumerateSystemWideDynamicDependencies(ProcessError)
   case failedToSignMovedLibrary(CodeSignerError)
@@ -24,17 +24,6 @@ enum DynamicLibraryBundlerError: LocalizedError {
         let extraInfo = library.map { "of '\($0)'" } ?? ""
         return
           "Failed to update dynamic library install name\(extraInfo) from '\(original)' to '\(new)': \(processError.localizedDescription)"
-      case .failedToGetNewPathRelativeToExecutable(let library, let newPath, let executable):
-        let newPath = newPath.relativePath
-        let executable = executable.relativePath
-        return
-          "Failed to get original path of '\(library)' at '\(newPath)' relative to executable '\(executable)'"
-      case .failedToGetOriginalPathRelativeToSearchDirectory(
-        let library, let originalPath, let searchDirectory):
-        let originalPath = originalPath.relativePath
-        let searchDirectory = searchDirectory.relativePath
-        return
-          "Failed to get original path of '\(library)' at '\(originalPath)' relative to search directory '\(searchDirectory)'"
       case .failedToUpdateAppRPath(let original, let new, let processError):
         return
           "Failed to update the app's rpath from '\(original)' to '\(new)': \(processError.localizedDescription)"

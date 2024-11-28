@@ -10,7 +10,7 @@ enum PatchElfTool {
       .mapError { error in
         .patchelfNotFound(error)
       }
-      .flatMap { patchelf in
+      .andThen { patchelf in
         let result = Process.create(
           patchelf,
           arguments: [elfFile.path, "--set-rpath", newRunpath],

@@ -71,8 +71,35 @@ struct BundleCommand: AsyncCommand {
       }
     #endif
 
-    if Platform.currentPlatform == .linux && platform != .linux {
+    if Platform.host == .linux && platform != .linux {
       log.error("'--platform \(platform)' is not supported on Linux")
+      return false
+    }
+
+    guard arguments.bundler.isSupportedOnHostPlatform else {
+      log.error(
+        """
+        The '\(arguments.bundler.rawValue)' bundler is not supported on the \
+        current host platform. Supported values: \
+        \(BundlerChoice.supportedHostValuesDescription)
+        """
+      )
+      return false
+    }
+
+    guard arguments.bundler.supportedTargetPlatforms.contains(platform) else {
+      let alternatives = BundlerChoice.allCases.filter { choice in
+        choice.supportedTargetPlatforms.contains(platform)
+      }
+      let alternativesDescription = "(\(alternatives.map(\.rawValue).joined(separator: "|")))"
+      log.error(
+        """
+        The '\(arguments.bundler.rawValue)' bundler doesn't support bundling \
+        for '\(platform)'. Supported target platforms: \
+        \(BundlerChoice.supportedHostValuesDescription). Valid alternative \
+        bundlers: \(alternativesDescription)
+        """
+      )
       return false
     }
 
@@ -160,10 +187,17 @@ struct BundleCommand: AsyncCommand {
   }
 
   func wrappedRun() async throws {
-    var appBundle: URL?
+    _ = try await doBundling()
+  }
 
-    // Start timing
-    let elapsed = try await Stopwatch.time {
+  /// - Parameter dryRun: During a dry run, all of the validation steps are
+  ///   performed without performing any side effects. This allows the
+  ///   `RunCommand` to figure out where the output bundle will end up even
+  ///   when the user instructs it to skip bundling.
+  /// - Returns: A description of the structure of the bundler's output.
+  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
+    // Time execution so that we can report it to the user.
+    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
       let scratchDirectory =
@@ -183,7 +217,6 @@ struct BundleCommand: AsyncCommand {
       }
 
       // Get relevant configuration
-      let universal = arguments.universal || arguments.architectures.count > 1
       let architectures = getArchitectures(platform: arguments.platform)
 
       let outputDirectory = Self.getOutputDirectory(
@@ -196,14 +229,7 @@ struct BundleCommand: AsyncCommand {
       let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
-      guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
-        let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
-        throw CLIError.failedToGetPlatformVersion(
-          platform: arguments.platform,
-          manifest: manifestFile
-        )
-      }
-
+      let platformVersion = manifest.platformVersion(for: arguments.platform)
       let buildContext = SwiftPackageManager.BuildContext(
         packageDirectory: packageDirectory,
         scratchDirectory: scratchDirectory,
@@ -220,16 +246,6 @@ struct BundleCommand: AsyncCommand {
         try arguments.productsDirectory
         ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
 
-      // Create build job
-      let build: () async -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError { error in
-          return error
-        }
-      }
-
       // Create bundle job
       let bundlerContext = BundlerContext(
         appName: appName,
@@ -241,90 +257,110 @@ struct BundleCommand: AsyncCommand {
         platform: arguments.platform
       )
 
-      let removeExistingOutputs: () -> Result<Void, Error> = {
-        if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
-          do {
-            try FileManager.default.removeItem(at: outputDirectory)
-          } catch {
-            return .failure(
-              CLIError.failedToRemoveExistingOutputs(
-                outputDirectory: outputDirectory,
-                error
-              ) as Error
-            )
-          }
-        }
-        return .success()
-      }
-
-      let bundle = {
-        if let applePlatform = arguments.platform.asApplePlatform {
-          let codeSigningContext: DarwinBundler.Context.CodeSigningContext?
-          if let identity = arguments.identity {
-            codeSigningContext = DarwinBundler.Context.CodeSigningContext(
-              identity: identity,
-              entitlements: arguments.entitlements,
-              provisioningProfile: arguments.provisioningProfile
-            )
-          } else {
-            codeSigningContext = nil
-          }
-
-          let darwinContext = DarwinBundler.Context(
-            isXcodeBuild: builtWithXcode,
-            universal: universal,
-            standAlone: arguments.standAlone,
-            platform: applePlatform,
-            platformVersion: platformVersion,
-            codeSigningContext: codeSigningContext
-          )
-
-          appBundle = outputDirectory.appendingPathComponent(
-            DarwinBundler.appBundleName(forAppName: appName)
-          )
-          return DarwinBundler.bundle(
-            bundlerContext,
-            darwinContext
-          ).intoAnyError()
-        } else {
-          appBundle = outputDirectory.appendingPathComponent(
-            AppImageBundler.appBundleName(forAppName: appName)
-          )
-          return AppImageBundler.bundle(bundlerContext, ()).intoAnyError()
+      // Create build job
+      let build: () -> Result<Void, Error> = {
+        SwiftPackageManager.build(
+          product: appConfiguration.product,
+          buildContext: buildContext
+        ).mapError { error in
+          return error
         }
       }
 
-      // Build pipeline
-      let task: () async -> Result<Void, Error>
-      if skipBuild {
-        task = flatten(
-          removeExistingOutputs,
-          bundle
-        )
-      } else {
-        task = flatten(
-          build,
-          removeExistingOutputs,
-          bundle
+      // If this is a dry run, drop out just before we start actually do stuff.
+      guard !dryRun else {
+        return try Self.intendedOutput(
+          of: arguments.bundler.bundler,
+          context: bundlerContext,
+          command: self,
+          manifest: manifest
         )
       }
 
-      // Run pipeline
-      try await task().unwrap()
+      // Run all of the tasks that we've built up.
+      if !skipBuild {
+        try build().unwrap()
+      }
+
+      try Self.removeExistingOutputs(outputDirectory: outputDirectory).unwrap()
+      return try Self.bundle(
+        with: arguments.bundler.bundler,
+        context: bundlerContext,
+        command: self,
+        manifest: manifest
+      )
     }
 
-    // Output the time elapsed and app bundle location
-    log.info(
-      """
-      Done in \(elapsed.secondsString). App bundle located at \
-      '\(appBundle?.relativePath ?? "unknown")'
-      """
+    if !dryRun {
+      // Output the time elapsed along with the location of the produced app bundle.
+      log.info(
+        """
+        Done in \(elapsed.secondsString). App bundle located at \
+        '\(bundlerOutputStructure.bundle.relativePath)'
+        """
+      )
+    }
+
+    return bundlerOutputStructure
+  }
+
+  /// Removes the given output directory if it exists.
+  static func removeExistingOutputs(outputDirectory: URL) -> Result<Void, CLIError> {
+    if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
+      do {
+        try FileManager.default.removeItem(at: outputDirectory)
+      } catch {
+        return .failure(
+          CLIError.failedToRemoveExistingOutputs(
+            outputDirectory: outputDirectory,
+            error
+          )
+        )
+      }
+    }
+    return .success()
+  }
+
+  /// This generic function is required to operate on `any Bundler`s.
+  static func bundle<B: Bundler>(
+    with bundler: B.Type,
+    context: BundlerContext,
+    command: Self,
+    manifest: PackageManifest
+  ) throws -> BundlerOutputStructure {
+    try bundler.computeContext(
+      context: context,
+      command: command,
+      manifest: manifest
     )
+    .andThen { additionalContext in
+      bundler.bundle(context, additionalContext)
+    }
+    .unwrap()
+  }
+
+  /// This generic function is required to operate on `any Bundler`s.
+  static func intendedOutput<B: Bundler>(
+    of bundler: B.Type,
+    context: BundlerContext,
+    command: Self,
+    manifest: PackageManifest
+  ) throws -> BundlerOutputStructure {
+    try bundler.computeContext(
+      context: context,
+      command: command,
+      manifest: manifest
+    )
+    .map { additionalContext in
+      bundler.intendedOutput(in: context, additionalContext)
+    }
+    .unwrap()
   }
 
   /// Gets the configuration for the specified app.
   ///
-  /// If no app is specified, the first app is used (unless there are multiple apps, in which case a failure is returned).
+  /// If no app is specified, the first app is used (unless there are multiple
+  /// apps, in which case a failure is returned).
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
@@ -350,12 +386,16 @@ struct BundleCommand: AsyncCommand {
     }
   }
 
-  /// Unwraps an optional output directory and returns the default output directory if it's `nil`.
+  /// Unwraps an optional output directory and returns the default output
+  /// directory if it's `nil`.
   /// - Parameters:
   ///   - outputDirectory: The output directory. Returned as-is if not `nil`.
   ///   - scratchDirectory: The configured scratch directory.
   /// - Returns: The output directory to use.
-  static func getOutputDirectory(_ outputDirectory: URL?, scratchDirectory: URL) -> URL {
+  static func getOutputDirectory(
+    _ outputDirectory: URL?,
+    scratchDirectory: URL
+  ) -> URL {
     return outputDirectory ?? scratchDirectory.appendingPathComponent("bundler")
   }
 }

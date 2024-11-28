@@ -30,20 +30,22 @@ enum CodeSigner {
     let entitlements = bundle.deletingLastPathComponent().appendingPathComponent(
       "entitlements.xcent")
 
-    return getTeamIdentifier(from: bundle).map { teamIdentifier -> String in
-      generateEntitlementsContent(
-        teamIdentifier: teamIdentifier,
-        bundleIdentifier: bundleIdentifier
-      )
-    }.flatMap { entitlementsContent in
-      do {
-        try entitlementsContent.write(to: entitlements, atomically: false, encoding: .utf8)
-      } catch {
-        return .failure(.failedToWriteEntitlements(error))
+    return getTeamIdentifier(from: bundle)
+      .map { teamIdentifier -> String in
+        generateEntitlementsContent(
+          teamIdentifier: teamIdentifier,
+          bundleIdentifier: bundleIdentifier
+        )
       }
+      .andThen { entitlementsContent in
+        do {
+          try entitlementsContent.write(to: entitlements, atomically: false, encoding: .utf8)
+        } catch {
+          return .failure(.failedToWriteEntitlements(error))
+        }
 
-      return signAppBundle(bundle: bundle, identityId: identityId, entitlements: entitlements)
-    }
+        return signAppBundle(bundle: bundle, identityId: identityId, entitlements: entitlements)
+      }
   }
 
   /// Signs a Darwin app bundle.
@@ -139,46 +141,48 @@ enum CodeSigner {
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
-    return process.getOutput().mapError { error in
-      return .failedToEnumerateIdentities(error)
-    }.flatMap { output in
-      // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
-      let identityParser = Parse {
-        PrefixThrough(") ")
-        PrefixUpTo(" ").map { (id: Substring) in
-          String(id)
+    return process.getOutput()
+      .mapError { error in
+        return .failedToEnumerateIdentities(error)
+      }
+      .andThen { output in
+        // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
+        let identityParser = Parse {
+          PrefixThrough(") ")
+          PrefixUpTo(" ").map { (id: Substring) in
+            String(id)
+          }
+          " "
+          OneOf {
+            PrefixUpTo("\n")
+            Rest<Substring>()
+          }.map { (substring: Substring) -> String in
+            // Remove quotation marks
+            let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
+            return String(withoutQuotationMarks)
+          }
+        }.map { (_: Substring, id: String, name: String) in
+          return Identity(id: id, name: name)
         }
-        " "
-        OneOf {
-          PrefixUpTo("\n")
+
+        let identityListParser = Parse {
+          Many {
+            identityParser
+          }
           Rest<Substring>()
-        }.map { (substring: Substring) -> String in
-          // Remove quotation marks
-          let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
-          return String(withoutQuotationMarks)
+        }.map { (identities: [Identity], _: Substring) in
+          return identities
         }
-      }.map { (_: Substring, id: String, name: String) in
-        return Identity(id: id, name: name)
-      }
 
-      let identityListParser = Parse {
-        Many {
-          identityParser
+        let identities: [Identity]
+        do {
+          identities = try identityListParser.parse(output)
+        } catch {
+          return .failure(.failedToParseIdentityList(error))
         }
-        Rest<Substring>()
-      }.map { (identities: [Identity], _: Substring) in
-        return identities
-      }
 
-      let identities: [Identity]
-      do {
-        identities = try identityListParser.parse(output)
-      } catch {
-        return .failure(.failedToParseIdentityList(error))
+        return .success(identities)
       }
-
-      return .success(identities)
-    }
   }
 
   static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
@@ -190,9 +194,11 @@ enum CodeSigner {
         "-noverify",
         "-inform", "der",
       ]
-    ).getOutput(excludeStdError: true).mapError { error in
+    )
+    .getOutput(excludeStdError: true).mapError { error in
       return .failedToVerifyProvisioningProfile(error)
-    }.flatMap { plistContent in
+    }
+    .andThen { plistContent in
       let profile: ProvisioningProfile
       do {
         profile = try PropertyListDecoder().decode(

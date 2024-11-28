@@ -147,18 +147,9 @@ enum DynamicLibraryBundler {
         }
       }
 
-      guard
-        let newRelativePath = outputLibrary.relativePath(
-          from: executable.deletingLastPathComponent())
-      else {
-        return .failure(
-          .failedToGetNewPathRelativeToExecutable(
-            library: resolvedDependency.lastPathComponent,
-            newPath: outputLibrary,
-            executable: binary
-          )
-        )
-      }
+      let newRelativePath = outputLibrary.path(
+        relativeTo: executable.deletingLastPathComponent()
+      )
 
       if case let .failure(error) = updateLibraryInstallName(
         in: binary,
@@ -187,13 +178,15 @@ enum DynamicLibraryBundler {
     return .success()
   }
 
-  /// Updates the install name of a library that has changed locations relative to the executable.
+  /// Updates the install name of a library that has changed locations relative
+  /// to the executable.
   /// - Parameters:
   ///   - library: The library's name.
   ///   - executable: The executable to update the install name in.
   ///   - originalLibraryLocation: The library's original location.
   ///   - newLibraryLocation: The library's new location.
-  ///   - librarySearchDirectory: The original place that the executable would've searched for libraries.
+  ///   - librarySearchDirectory: The original place that the executable would've
+  ///     searched for libraries.
   /// - Returns: If an error occurs, a failure is returned.
   static func updateLibraryInstallName(
     of library: String,
@@ -202,30 +195,12 @@ enum DynamicLibraryBundler {
     newLibraryLocation: URL,
     librarySearchDirectory: URL
   ) -> Result<Void, DynamicLibraryBundlerError> {
-    guard
-      let originalRelativePath = originalLibraryLocation.relativePath(from: librarySearchDirectory)
-    else {
-      return .failure(
-        .failedToGetOriginalPathRelativeToSearchDirectory(
-          library: library,
-          originalPath: originalLibraryLocation,
-          searchDirectory: librarySearchDirectory
-        )
-      )
-    }
-
-    guard
-      let newRelativePath = newLibraryLocation.relativePath(
-        from: executable.deletingLastPathComponent())
-    else {
-      return .failure(
-        .failedToGetNewPathRelativeToExecutable(
-          library: library,
-          newPath: newLibraryLocation,
-          executable: executable
-        )
-      )
-    }
+    let originalRelativePath = originalLibraryLocation.path(
+      relativeTo: librarySearchDirectory
+    )
+    let newRelativePath = newLibraryLocation.path(
+      relativeTo: executable.deletingLastPathComponent()
+    )
 
     return updateLibraryInstallName(
       in: executable,
