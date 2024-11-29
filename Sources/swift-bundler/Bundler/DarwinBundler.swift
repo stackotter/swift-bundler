@@ -2,6 +2,8 @@ import Foundation
 
 /// The bundler for creating macOS apps.
 enum DarwinBundler: Bundler {
+  static let outputIsRunnable = true
+
   struct Context {
     /// Whether the build products were created by Xcode or not.
     var isXcodeBuild: Bool

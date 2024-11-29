@@ -4,6 +4,11 @@ protocol Bundler {
   associatedtype Context
   associatedtype Error: LocalizedError
 
+  /// Indicates whether the output of the bundler will be runnable or not. For
+  /// example, the output of ``RPMBundler`` is not runnable but the output of
+  /// ``AppImageBundler`` is.
+  static var outputIsRunnable: Bool { get }
+
   /// Computes the bundler's own context given the generic bundler context
   /// and Swift bundler's parsed command-line arguments, options, and flags.
   ///

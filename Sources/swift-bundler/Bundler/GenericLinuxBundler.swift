@@ -13,6 +13,8 @@ import Parsing
 /// take the output and bundle it up into an often distro-specific package file
 /// or standalone executable.
 enum GenericLinuxBundler: Bundler {
+  static let outputIsRunnable = true
+
   struct Context {
     /// Used in log messages to avoid exposing that everything's just the
     /// generic Linux bundler all the way down. Doesn't affect the fact
@@ -20,6 +22,13 @@ enum GenericLinuxBundler: Bundler {
     /// extension. It's up to other bundlers to transform that output
     /// into their desired output format.
     var cosmeticBundleName: String?
+    /// The full path to the bundle when installed on a system. Used when
+    /// generating the app's `.desktop` file. Useful for packaging bundlers
+    /// such as ``RPMBundler`` that know where the app will get installed
+    /// on the system. For example, a value of `/` would mean that the app
+    /// has been installed to the standard Linux locations, with the
+    /// executable going to `/usr/bin` etc. Defaults to `/`.
+    var installationRoot = URL(fileURLWithPath: "/")
   }
 
   /// A parser for the output of ldd. Parses a single line.
@@ -199,10 +208,15 @@ enum GenericLinuxBundler: Bundler {
         )
       },
       {
-        createDesktopFile(
+        let relativeExecutablePath = structure.mainExecutable.path(
+          relativeTo: structure.root
+        )
+        return createDesktopFile(
           at: structure.desktopFile,
           appName: context.appName,
-          appConfiguration: context.appConfiguration
+          appConfiguration: context.appConfiguration,
+          installedExecutableLocation:
+            additionalContext.installationRoot / relativeExecutablePath
         )
       },
       {
@@ -382,20 +396,23 @@ enum GenericLinuxBundler: Bundler {
   ///   - desktopFile: The desktop file to create.
   ///   - appName: The app's name.
   ///   - appConfiguration: The app's configuration.
+  ///   - installedExecutableLocation: The location the the executable will end
+  ///     up at on disk once installed.
   /// - Returns: If an error occurs, a failure is returned.
   private static func createDesktopFile(
     at desktopFile: URL,
     appName: String,
-    appConfiguration: AppConfiguration
+    appConfiguration: AppConfiguration,
+    installedExecutableLocation: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
     log.info("Creating '\(desktopFile.lastPathComponent)'")
 
     let properties = [
       ("Type", "Application"),
-      ("Version", "1.0"),
+      ("Version", "1.0"),  // The version of the target desktop spec, not the app
       ("Name", appName),
       ("Comment", ""),
-      ("Exec", "\(appName) %F"),
+      ("Exec", "\(installedExecutableLocation.path)"),
       ("Icon", appName),
       ("Terminal", "false"),
       ("Categories", ""),
