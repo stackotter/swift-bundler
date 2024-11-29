@@ -60,6 +60,18 @@ struct RunCommand: AsyncCommand {
       Foundation.exit(1)
     }
 
+    guard arguments.bundler.bundler.outputIsRunnable else {
+      log.error(
+        """
+        The chosen bundler (\(arguments.bundler.rawValue)) is bundling-only \
+        (i.e. it doesn't output a runnable bundle). Choose a different bundler \
+        or stick to bundling and manually install the bundle on your system to \
+        run your app.
+        """
+      )
+      Foundation.exit(1)
+    }
+
     // Load configuration
     let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
     let scratchDirectory =

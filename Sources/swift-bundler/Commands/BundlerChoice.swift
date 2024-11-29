@@ -3,6 +3,7 @@ enum BundlerChoice: String, CaseIterable {
   case darwinApp
   case linuxGeneric
   case linuxAppImage
+  case linuxRPM
 
   /// The bundler this choice corresponds to.
   var bundler: any Bundler.Type {
@@ -13,6 +14,8 @@ enum BundlerChoice: String, CaseIterable {
         return GenericLinuxBundler.self
       case .linuxAppImage:
         return AppImageBundler.self
+      case .linuxRPM:
+        return RPMBundler.self
     }
   }
 
@@ -46,7 +49,7 @@ enum BundlerChoice: String, CaseIterable {
     switch self {
       case .darwinApp:
         return [.macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator]
-      case .linuxGeneric, .linuxAppImage:
+      case .linuxGeneric, .linuxAppImage, .linuxRPM:
         return [.linux]
     }
   }

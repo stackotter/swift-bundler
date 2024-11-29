@@ -35,7 +35,6 @@ enum Runner {
           environmentVariables: environmentVariables
         )
       case .linux:
-        print(bundlerOutput)
         guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
           return .failure(.missingExecutable(device, bundlerOutput))
         }

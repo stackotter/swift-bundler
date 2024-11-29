@@ -48,3 +48,9 @@ extension URL {
     #endif
   }
 }
+
+/// Appends a path component to the end of a URL. Think of it like the actual
+/// forward slash in paths (sorry Windows).
+func / (_ left: URL, _ right: String) -> URL {
+  left.appendingPathComponent(right)
+}

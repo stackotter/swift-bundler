@@ -5,6 +5,8 @@ import Parsing
 enum AppImageBundler: Bundler {
   typealias Context = Void
 
+  static let outputIsRunnable = true
+
   /// Computes the location of the desktop file created in the given context.
   static func desktopFileLocation(for context: BundlerContext) -> URL {
     context.outputDirectory.appendingPathComponent(
