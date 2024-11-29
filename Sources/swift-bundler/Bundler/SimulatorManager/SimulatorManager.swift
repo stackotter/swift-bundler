@@ -47,17 +47,12 @@ enum SimulatorManager {
       ]
     ).getOutputData().mapError { error in
       return .failedToRunSimCTL(error)
-    }.flatMap { data in
-      let result: SimulatorList
-      do {
-        result = try JSONDecoder().decode(SimulatorList.self, from: data)
-      } catch {
-        return .failure(.failedToDecodeJSON(error))
-      }
-
+    }.andThen { data in
+      JSONDecoder().decode(SimulatorList.self, from: data)
+        .mapError(SimulatorManagerError.failedToDecodeJSON)
+    }.map { simulatorList in
       var osSimulators: [OSSimulator] = []
-      for (runtime, platformSimulators) in result.devices {
-
+      for (runtime, platformSimulators) in simulatorList.devices {
         switch platform {
           case .iOS, .iOSSimulator:
             if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
@@ -85,7 +80,7 @@ enum SimulatorManager {
         }
       }
 
-      return .success(osSimulators)
+      return osSimulators
     }
   }
 
