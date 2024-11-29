@@ -71,7 +71,7 @@ enum DarwinBundlerError: LocalizedError {
       case .unsupportedPlatform(let platform):
         return """
           Platform '\(platform.name)' not supported by \
-          '\(BundlerChoice.darwinDotApp.rawValue)' bundler.
+          '\(BundlerChoice.darwinApp.rawValue)' bundler.
           """
     }
   }

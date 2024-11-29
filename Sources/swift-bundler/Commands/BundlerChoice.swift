@@ -1,13 +1,13 @@
 /// A choice of bundler. Used by user's selecting a bundler at the command line.
 enum BundlerChoice: String, CaseIterable {
-  case darwinDotApp
+  case darwinApp
   case linuxGeneric
   case linuxAppImage
 
   /// The bundler this choice corresponds to.
   var bundler: any Bundler.Type {
     switch self {
-      case .darwinDotApp:
+      case .darwinApp:
         return DarwinBundler.self
       case .linuxGeneric:
         return GenericLinuxBundler.self
@@ -27,7 +27,7 @@ enum BundlerChoice: String, CaseIterable {
     //   that iOS is a valid host platform (for now...)
     switch Platform.host {
       case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
-        return .darwinDotApp
+        return .darwinApp
       case .linux:
         return .linuxGeneric
     }
@@ -44,7 +44,7 @@ enum BundlerChoice: String, CaseIterable {
   /// Target platforms that the choice is valid for.
   var supportedTargetPlatforms: [Platform] {
     switch self {
-      case .darwinDotApp:
+      case .darwinApp:
         return [.macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator]
       case .linuxGeneric, .linuxAppImage:
         return [.linux]
