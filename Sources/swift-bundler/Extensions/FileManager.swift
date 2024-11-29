@@ -24,13 +24,6 @@ extension FileManager {
     return false
   }
 
-  /// Creates a directory.
-  /// - Parameter url: The directory to create.
-  /// - Throws: An error if directory creation fails.
-  func createDirectory(at url: URL) throws {
-    try createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
-  }
-
   /// Swift Bundler commonly copies items and wraps up the source, destination,
   /// and underlying error into a use-case-specific error type. This helper
   /// reduces the amount of boilerplate required to do so.
@@ -48,6 +41,27 @@ extension FileManager {
       return .success()
     } catch {
       return .failure(wrapError(source, destination, error))
+    }
+  }
+
+  /// Creates a directory, returning a result.
+  ///
+  /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
+  func createDirectory<Failure>(
+    at directory: URL,
+    onError wrapError: (
+      _ directory: URL,
+      _ error: Error
+    ) -> Failure = { _, error in error }
+  ) -> Result<Void, Failure> {
+    Result {
+      try createDirectory(
+        at: directory,
+        withIntermediateDirectories: true,
+        attributes: nil
+      )
+    }.mapError { error in
+      wrapError(directory, error)
     }
   }
 
@@ -111,6 +125,24 @@ extension FileManager {
       return .success()
     } catch {
       return .failure(wrapError(symlink, relativeDestination, error))
+    }
+  }
+
+  /// Removes an item on disk.
+  ///
+  /// See ``FileManager/copyItem(at:to:onError:)`` for information about
+  /// the `wrapError` parameter.
+  func removeItem<Failure: Error>(
+    at item: URL,
+    onError wrapError: (
+      _ item: URL,
+      _ error: Error
+    ) -> Failure = { _, error in error }
+  ) -> Result<Void, Failure> {
+    Result {
+      try FileManager.default.removeItem(at: item)
+    }.mapError { error in
+      wrapError(item, error)
     }
   }
 }

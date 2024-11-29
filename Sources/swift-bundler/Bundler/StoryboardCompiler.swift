@@ -31,29 +31,35 @@ enum StoryboardCompiler {
       return .success()
     }
 
-    if !FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
-      do {
-        try FileManager.default.createDirectory(at: outputDirectory)
-      } catch {
-        return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
+    let outputDirectoryExists = FileManager.default.itemExists(
+      at: outputDirectory,
+      withType: .directory
+    )
+
+    return FileManager.default.contentsOfDirectory(
+      at: directory,
+      onError: StoryboardCompilerError.failedToEnumerateStoryboards
+    ).map { files in
+      files.filter { file in
+        file.pathExtension == "storyboard"
+      }
+    }.andThenDoSideEffect(if: !outputDirectoryExists) { _ in
+      FileManager.default.createDirectory(
+        at: outputDirectory,
+        onError: StoryboardCompilerError.failedToCreateOutputDirectory
+      )
+    }.andThen { storyboards in
+      storyboards.tryForEach { storyboard in
+        // Compile the storyboard and delete the original file if !keepSources
+        compileStoryboard(storyboard, to: outputDirectory)
+          .andThen(if: !keepSources) { _ in
+            FileManager.default.removeItem(
+              at: storyboard,
+              onError: StoryboardCompilerError.failedToDeleteStoryboard
+            )
+          }
       }
     }
-
-    for storyboard in storyboards {
-      if case .failure(let error) = compileStoryboard(storyboard, to: outputDirectory) {
-        return .failure(error)
-      }
-
-      if !keepSources {
-        do {
-          try FileManager.default.removeItem(at: storyboard)
-        } catch {
-          return .failure(.failedToDeleteStoryboard(storyboard, error))
-        }
-      }
-    }
-
-    return .success()
   }
 
   /// Compiles a storyboard.

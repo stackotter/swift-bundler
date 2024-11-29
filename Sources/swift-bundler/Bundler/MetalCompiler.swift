@@ -38,20 +38,15 @@ enum MetalCompiler {
       to: directory,
       for: platform,
       platformVersion: platformVersion
-    ).flatMap { _ in
-      if keepSources {
-        return .success()
+    )
+    .replacingSuccessValue(with: ())
+    .andThen(if: !keepSources) { _ in
+      shaderSources.tryForEach { source in
+        FileManager.default.removeItem(at: source)
+          .mapError { error in
+            .failedToDeleteShaderSource(source, error)
+          }
       }
-
-      for source in shaderSources {
-        do {
-          try FileManager.default.removeItem(at: source)
-        } catch {
-          return .failure(.failedToDeleteShaderSource(source, error))
-        }
-      }
-
-      return .success()
     }
   }
 
@@ -61,7 +56,8 @@ enum MetalCompiler {
   ///   - destination: The directory to output `default.metallib` to.
   ///   - platform: The platform to compile for.
   ///   - platformVersion: The platform version to target during compilation.
-  /// - Returns: Returns the location of the resulting `metallib`. If an error occurs, a failure is returned.
+  /// - Returns: Returns the location of the resulting `metallib`. If an error
+  ///   occurs, a failure is returned.
   static func compileMetalShaders(
     _ sources: [URL],
     to destination: URL,
@@ -71,47 +67,37 @@ enum MetalCompiler {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("metal_compilation-\(UUID().uuidString)")
-    do {
-      try FileManager.default.createDirectory(at: tempDirectory)
-    } catch {
-      return .failure(.failedToCreateTemporaryCompilationDirectory(tempDirectory, error))
-    }
-
-    // Compile the shaders into `.air` files
-    var airFiles: [URL] = []
-    for shaderSource in sources {
-      let outputFileName = shaderSource.deletingPathExtension().appendingPathExtension("air")
-        .lastPathComponent
-      let outputFile = tempDirectory.appendingPathComponent(outputFileName)
-
-      let compilationResult = compileShader(
-        shaderSource,
-        to: outputFile,
-        for: platform,
-        platformVersion: platformVersion
-      )
-
-      if case let .failure(error) = compilationResult {
-        return .failure(error)
-      }
-      airFiles.append(outputFile)
-    }
-
-    // Combine the compiled shaders into a `.metal-ar` archive
     let archive = tempDirectory.appendingPathComponent("default.metal-ar")
-    let archiveResult = createArchive(at: archive, from: airFiles, for: platform)
-    if case let .failure(error) = archiveResult {
-      return .failure(error)
-    }
 
-    // Convert the `metal-ar` archive into a `metallib` library
-    let library = destination.appendingPathComponent("default.metallib")
-    let libraryResult = createLibrary(at: library, from: archive, for: platform)
-    if case let .failure(error) = libraryResult {
-      return .failure(error)
-    }
+    return FileManager.default.createDirectory(
+      at: tempDirectory,
+      onError: MetalCompilerError.failedToCreateTemporaryCompilationDirectory
+    )
+    .andThen { _ in
+      // Compile the shaders into `.air` files
+      sources.tryMap { shaderSource in
+        let outputFileName = shaderSource.deletingPathExtension()
+          .appendingPathExtension("air").lastPathComponent
+        let outputFile = tempDirectory.appendingPathComponent(outputFileName)
 
-    return .success(library)
+        return compileShader(
+          shaderSource,
+          to: outputFile,
+          for: platform,
+          platformVersion: platformVersion
+        ).replacingSuccessValue(with: outputFile)
+      }
+    }
+    .andThen { airFiles in
+      // Combine the compiled shaders into a `.metal-ar` archive
+      createArchive(at: archive, from: airFiles, for: platform)
+    }
+    .andThen { _ in
+      // Convert the `metal-ar` archive into a `metallib` library
+      let library = destination.appendingPathComponent("default.metallib")
+      return createLibrary(at: library, from: archive, for: platform)
+        .replacingSuccessValue(with: library)
+    }
   }
 
   /// Compiles a metal shader file into an `air` file.

@@ -207,14 +207,13 @@ enum DarwinBundler: Bundler {
   /// - Returns: If an error occurs, a failure is returned.
   private static func createPkgInfoFile(at pkgInfoFile: URL) -> Result<Void, DarwinBundlerError> {
     log.info("Creating 'PkgInfo'")
-    do {
-      var pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
-      let pkgInfoData = Data(bytes: &pkgInfoBytes, count: pkgInfoBytes.count)
-      try pkgInfoData.write(to: pkgInfoFile)
-      return .success()
-    } catch {
-      return .failure(.failedToCreatePkgInfo(file: pkgInfoFile, error))
-    }
+
+    let pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
+    let pkgInfoData = Data(bytes: pkgInfoBytes, count: pkgInfoBytes.count)
+    return pkgInfoData.write(to: pkgInfoFile)
+      .mapError { error in
+        .failedToCreatePkgInfo(file: pkgInfoFile, error)
+      }
   }
 
   /// Creates an app's `Info.plist` file.

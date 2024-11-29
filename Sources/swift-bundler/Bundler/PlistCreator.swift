@@ -9,7 +9,8 @@ enum PlistCreator {
   ///   - appName: The name of the app.
   ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
-  ///   - platformVersion: The minimum platform version that the app should run on.
+  ///   - platformVersion: The minimum platform version that the app should
+  ///     run on.
   /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
@@ -23,13 +24,11 @@ enum PlistCreator {
       configuration: configuration,
       platform: platform,
       platformVersion: platformVersion
-    ).flatMap { contents in
-      do {
-        try contents.write(to: file)
-        return .success()
-      } catch {
-        return .failure(.failedToWriteAppInfoPlist(file: file, error))
-      }
+    ).andThen { contents in
+      contents.write(to: file)
+        .mapError { error in
+          .failedToWriteAppInfoPlist(file: file, error)
+        }
     }
   }
 
@@ -37,9 +36,11 @@ enum PlistCreator {
   /// - Parameters:
   ///   - file: The URL of the file to create.
   ///   - bundleName: The bundle's name.
-  ///   - minimumOSVersion: The minimum OS version that the resource bundle should work on.
+  ///   - minimumOSVersion: The minimum OS version that the resource bundle
+  ///     should work on.
   ///   - platform: The platform the bundle is for.
-  ///   - platformVersion: The minimum platform version that the app should run on.
+  ///   - platformVersion: The minimum platform version that the app should
+  ///     run on.
   /// - Returns: If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlist(
     at file: URL,
@@ -51,14 +52,11 @@ enum PlistCreator {
       bundleName: bundleName,
       platform: platform,
       platformVersion: platformVersion
-    ).flatMap { contents in
-      do {
-        try contents.write(to: file)
-        return .success()
-      } catch {
-        return .failure(
-          .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error))
-      }
+    ).andThen { contents in
+      contents.write(to: file)
+        .mapError { error in
+          .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error)
+        }
     }
   }
 
@@ -67,8 +65,10 @@ enum PlistCreator {
   ///   - appName: The app's name.
   ///   - configuration: The app's configuration.
   ///   - platform: The platform the app is for.
-  ///   - platformVersion: The minimum platform version that the app should run on.
-  /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
+  ///   - platformVersion: The minimum platform version that the app should
+  ///     run on.
+  /// - Returns: The generated contents for the `Info.plist` file. If an error
+  ///   occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
     configuration: AppConfiguration,

@@ -17,42 +17,37 @@ enum IconSetCreator {
 
     let temporaryDirectory = FileManager.default.temporaryDirectory
     let iconSet = temporaryDirectory.appendingPathComponent("AppIcon.iconset")
-    do {
-      try FileManager.default.createDirectory(at: iconSet)
-    } catch {
-      return .failure(.failedToCreateIconSetDirectory(iconSet, error))
-    }
-
     let sizes = [16, 32, 128, 256, 512]
-    for size in sizes {
-      let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
-      let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
 
-      var result = createScaledIcon(icon, dimension: size, output: regularScale)
-      if case .failure = result {
-        return result
+    return FileManager.default.createDirectory(at: iconSet)
+      .mapError { error in
+        .failedToCreateIconSetDirectory(iconSet, error)
       }
-      result = createScaledIcon(icon, dimension: size * 2, output: doubleScale)
-      if case .failure = result {
-        return result
+      .andThen { _ in
+        sizes.tryForEach { size in
+          let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
+          let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
+
+          return createScaledIcon(icon, dimension: size, output: regularScale)
+            .andThen { _ in
+              createScaledIcon(icon, dimension: size * 2, output: doubleScale)
+            }
+        }
       }
-    }
-
-    let process = Process.create(
-      "/usr/bin/iconutil",
-      arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
-    )
-    if case let .failure(error) = process.runAndWait() {
-      return .failure(.failedToConvertToICNS(error))
-    }
-
-    do {
-      try FileManager.default.removeItem(at: iconSet)
-    } catch {
-      return .failure(.failedToRemoveIconSetDirectory(iconSet, error))
-    }
-
-    return .success()
+      .andThen { _ in
+        Process.create(
+          "/usr/bin/iconutil",
+          arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
+        ).runAndWait().mapError { error in
+          .failedToConvertToICNS(error)
+        }
+      }
+      .andThen { _ in
+        FileManager.default.removeItem(
+          at: iconSet,
+          onError: IconSetCreatorError.failedToRemoveIconSetDirectory
+        )
+      }
   }
 
   /// Creates a scaled copy of an icon.

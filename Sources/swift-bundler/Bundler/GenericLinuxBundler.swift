@@ -134,18 +134,12 @@ enum GenericLinuxBundler: Bundler {
     /// Creates all directories (including intermediate directories) required to
     /// create this bundle structure.
     func createDirectories() -> Result<Void, GenericLinuxBundlerError> {
-      for directory in directories {
-        do {
-          try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-          )
-        } catch {
-          return .failure(.failedToCreateDirectory(directory, error))
-        }
+      directories.tryForEach { directory in
+        FileManager.default.createDirectory(
+          at: directory,
+          onError: GenericLinuxBundlerError.failedToCreateDirectory
+        )
       }
-
-      return .success()
     }
 
     /// Computes the `.desktop` file name to use for the given app name.
@@ -417,12 +411,9 @@ enum GenericLinuxBundler: Bundler {
       return .failure(.failedToCreateDesktopFile(desktopFile, nil))
     }
 
-    do {
-      try data.write(to: desktopFile)
-    } catch {
-      return .failure(.failedToCreateDesktopFile(desktopFile, error))
-    }
-
-    return .success()
+    return data.write(to: desktopFile)
+      .mapError { error in
+        .failedToCreateDesktopFile(desktopFile, error)
+      }
   }
 }

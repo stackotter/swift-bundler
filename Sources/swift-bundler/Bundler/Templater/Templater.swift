@@ -7,7 +7,8 @@ enum Templater {
   /// The repository of default templates.
   static let defaultTemplateRepository = "https://github.com/stackotter/swift-bundler-templates"
 
-  /// Creates a package using an optionally specified template from the default template repository.
+  /// Creates a package using an optionally specified template from the default
+  /// template repository.
   ///
   /// Downloads the default template repository if it hasn't already been downloaded.
   /// - Parameters:
@@ -15,11 +16,14 @@ enum Templater {
   ///   - template: The template to use to create the package.
   ///   - packageName: The name of the package.
   ///   - configuration: The app's configuration.
-  ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
+  ///   - forceCreation: If `true`, the package will be created even if the
+  ///     selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
-  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
-  ///     will be added to the package (enabling ergonomic debugging with VSCode).
-  /// - Returns: The template that the package was created from (or nil if none were used), or a failure if package creation failed.
+  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing
+  ///     `launch.json` and `.vscode/tasks.json`), will be added to the package
+  ///     (enabling ergonomic debugging with VSCode).
+  /// - Returns: The template that the package was created from (or nil if none
+  ///   were used), or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
     from template: String?,
@@ -33,7 +37,8 @@ enum Templater {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
-    // If no template is specified, create the most basic package that just prints 'Hello, World!'
+    // If no template is specified, create the most basic package that just
+    // prints 'Hello, World!'
     guard let template = template else {
       log.info("Creating package")
 
@@ -61,20 +66,21 @@ enum Templater {
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
-    return getDefaultTemplatesDirectory(downloadIfNecessary: true).flatMap { templatesDirectory in
-      return createPackage(
-        in: outputDirectory,
-        from: template,
-        in: templatesDirectory,
-        packageName: packageName,
-        configuration: configuration,
-        forceCreation: forceCreation,
-        indentationStyle: indentationStyle,
-        addVSCodeOverlay: addVSCodeOverlay
-      )
-    }.map { template in
-      return .some(template)
-    }
+    return getDefaultTemplatesDirectory(downloadIfNecessary: true)
+      .andThen { templatesDirectory in
+        createPackage(
+          in: outputDirectory,
+          from: template,
+          in: templatesDirectory,
+          packageName: packageName,
+          configuration: configuration,
+          forceCreation: forceCreation,
+          indentationStyle: indentationStyle,
+          addVSCodeOverlay: addVSCodeOverlay
+        )
+      }.map { template in
+        .some(template)
+      }
   }
 
   /// Creates a package from the specified template from the specified template repository.
@@ -134,9 +140,7 @@ enum Templater {
     }
 
     // Create the output directory
-    do {
-      try FileManager.default.createDirectory(at: outputDirectory)
-    } catch {
+    if case let .failure(error) = FileManager.default.createDirectory(at: outputDirectory) {
       return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
     }
 
@@ -190,14 +194,14 @@ enum Templater {
       // Cleanup output directory
       attemptCleanup(outputDirectory)
       return error
-    }.flatMap { _ -> Result<Void, TemplaterError> in
-      return createPackageConfigurationFile(
+    }.andThen { _ -> Result<Void, TemplaterError> in
+      createPackageConfigurationFile(
         in: outputDirectory,
         packageName: packageName,
         configuration: configuration
       )
     }.map { _ in
-      return Template(name: template, manifest: manifest)
+      Template(name: template, manifest: manifest)
     }
   }
 
@@ -246,8 +250,10 @@ enum Templater {
   }
 
   /// Gets the default templates directory.
-  /// - Parameter downloadIfNecessary: If `true` the default templates repository is downloaded if the templates directory doesn't exist.
-  /// - Returns: The default templates directory, or a failure if the templates directory doesn't exist and couldn't be downloaded.
+  /// - Parameter downloadIfNecessary: If `true` the default templates
+  ///   repository is downloaded if the templates directory doesn't exist.
+  /// - Returns: The default templates directory, or a failure if the templates
+  ///   directory doesn't exist and couldn't be downloaded.
   static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError>
   {
     // Get the templates directory
@@ -285,7 +291,7 @@ enum Templater {
             "fetch"
           ],
           directory: templatesDirectory
-        ).runAndWait().flatMap { _ in
+        ).runAndWait().andThen { _ in
           Process.create(
             "git",
             arguments: [
@@ -505,17 +511,19 @@ enum Templater {
     ]
 
     // Read the file's contents
-    var contents: String
-    do {
-      contents = try String(contentsOf: file)
-    } catch {
-      return .failure(
-        .failedToReadFile(template: templateDirectory.lastPathComponent, file: file, error))
+    let contents = String.read(from: file).mapError { error in
+      TemplaterError.failedToReadFile(
+        template: templateDirectory.lastPathComponent,
+        file: file,
+        error
+      )
+    }
+    guard case .success(var contents) = contents else {
+      return contents.replacingSuccessValue(with: ())
     }
 
-    var file = file
-
     // If the file is a template, replace all instances of `{{variable}}` with the variable's value
+    var file = file
     if file.pathExtension == "template" {
       for (variable, value) in variables {
         contents = contents.replacingOccurrences(of: "{{\(variable)}}", with: value)
@@ -531,16 +539,11 @@ enum Templater {
       relativePath = relativePath.replacingOccurrences(of: "{{\(variable)}}", with: value)
     }
 
-    let outputFile = outputDirectory.appendingPathComponent(relativePath)
-
     // Write to the output file
-    try? FileManager.default.createDirectory(at: outputFile.deletingLastPathComponent())
-    do {
-      try contents.write(to: outputFile, atomically: false, encoding: .utf8)
-    } catch {
-      return .failure(.failedToWriteToOutputFile(file: file, error))
+    let outputFile = outputDirectory.appendingPathComponent(relativePath)
+    _ = FileManager.default.createDirectory(at: outputFile.deletingLastPathComponent())
+    return contents.write(to: outputFile).mapError { error in
+      .failedToWriteToOutputFile(file: file, error)
     }
-
-    return .success()
   }
 }

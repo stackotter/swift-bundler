@@ -70,36 +70,38 @@ enum XcodeprojConverter {
       return .failure(.directoryAlreadyExists(outputDirectory))
     }
 
-    // Load xcodeproj
-    let project: XcodeProj
-    do {
-      project = try XcodeProj(pathString: xcodeProjectFile.path)
-    } catch {
-      return .failure(.failedToLoadXcodeProj(xcodeProjectFile, error))
-    }
-
     let projectRootDirectory = xcodeProjectFile.deletingLastPathComponent()
     let sourcesDirectory = outputDirectory.appendingPathComponent("Sources")
 
-    // Extract and convert targets
-    return extractTargets(from: project, rootDirectory: projectRootDirectory).flatMap { targets in
+    // Load xcodeproj
+    return Result {
+      try XcodeProj(pathString: xcodeProjectFile.path)
+    }
+    .mapError { error in
+      .failedToLoadXcodeProj(xcodeProjectFile, error)
+    }
+    .andThen { project in
+      // Extract and convert targets
+      extractTargets(from: project, rootDirectory: projectRootDirectory)
+    }
+    .andThen { targets in
       // Copy targets and then create configuration files
-      return copyTargets(
+      copyTargets(
         targets,
         to: sourcesDirectory
-      ).flatMap { _ in
+      ).andThen { _ in
         // Create Package.swift
-        return createPackageManifestFile(
+        createPackageManifestFile(
           at: outputDirectory.appendingPathComponent("Package.swift"),
           packageName: xcodeProjectFile.deletingPathExtension().lastPathComponent,
           targets: targets
         )
-      }.flatMap { _ in
+      }.andThen { _ in
         // Create Bundler.toml
-        return createPackageConfigurationFile(
+        createPackageConfigurationFile(
           at: outputDirectory.appendingPathComponent("Bundler.toml"),
           targets: targets.compactMap { target in
-            return target as? ExecutableTarget
+            target as? ExecutableTarget
           }
         )
       }
@@ -345,36 +347,38 @@ enum XcodeprojConverter {
   ) -> Result<Void, XcodeprojConverterError> {
     log.info("Copying files for target '\(target.name)'")
 
-    for file in target.files {
-      // Get source and destination
-      let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
-      let source = file.location
-      let destination =
-        targetDirectory
-        .appendingPathComponent(file.bundlerPath(target: target.name))
-
-      // Create output directory
-      do {
-        try FileManager.default.createDirectory(at: targetDirectory)
-      } catch {
-        return .failure(.failedToCreateTargetDirectory(target: target.name, targetDirectory, error))
+    // Create directory for target and copy files across.
+    let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
+    return FileManager.default.createDirectory(at: targetDirectory)
+      .mapError { error in
+        .failedToCreateTargetDirectory(target: target.name, targetDirectory, error)
       }
+      .andThen { _ in
+        target.files.tryForEach { file in
+          // Get source and destination
+          let source = file.location
+          let destination = targetDirectory.appendingPathComponent(
+            file.bundlerPath(target: target.name)
+          )
+          let destinationDirectory = destination.deletingLastPathComponent()
+          let destinationExists = FileManager.default.itemExists(
+            at: destinationDirectory,
+            withType: .directory
+          )
 
-      // Copy item
-      do {
-        // Create parent directory if required
-        let directory = destination.deletingLastPathComponent()
-        if !FileManager.default.fileExists(atPath: directory.path) {
-          try FileManager.default.createDirectory(at: directory)
+          // Create parent directory if required and copy item.
+          return Result.success()
+            .andThen(if: !destinationExists) {
+              FileManager.default.createDirectory(at: destinationDirectory)
+            }
+            .andThen { _ in
+              FileManager.default.copyItem(at: source, to: destination)
+            }
+            .mapError { error in
+              .failedToCopyFile(source: source, destination: destination, error)
+            }
         }
-
-        try FileManager.default.copyItem(at: source, to: destination)
-      } catch {
-        return .failure(.failedToCopyFile(source: source, destination: destination, error))
       }
-    }
-
-    return .success()
   }
 
   /// Creates a `Bundler.toml` file declaring the given executable targets as apps.
@@ -442,16 +446,14 @@ enum XcodeprojConverter {
     packageName: String,
     targets: [any XcodeTarget]
   ) -> Result<Void, XcodeprojConverterError> {
-    return createPackageManifestContents(
+    createPackageManifestContents(
       packageName: packageName,
       targets: targets
-    ).flatMap { contents in
-      do {
-        try contents.write(to: file, atomically: false, encoding: .utf8)
-        return .success()
-      } catch {
-        return .failure(.failedToCreatePackageManifest(file, error))
-      }
+    ).andThen { contents in
+      contents.write(to: file)
+        .mapError { error in
+          .failedToCreatePackageManifest(file, error)
+        }
     }
   }
 
@@ -467,13 +469,11 @@ enum XcodeprojConverter {
     let platformStrings = minimalPlatformStrings(for: targets)
 
     var names: Set<String> = []
-    let uniquePackageDependencies =
-      targets.flatMap { target in
-        target.packageDependencies
-      }
-      .filter { dependency in
-        return names.insert(dependency.package).inserted
-      }
+    let uniquePackageDependencies = targets.flatMap { target in
+      target.packageDependencies
+    }.filter { dependency in
+      return names.insert(dependency.package).inserted
+    }
 
     let dependenciesSource = ArrayExprSyntax {
       for dependency in uniquePackageDependencies {

@@ -378,11 +378,10 @@ struct BundleCommand: AsyncCommand {
     return PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
-    ).flatMap { configuration in
-      return configuration.getAppConfiguration(appName)
-    }.map { app in
+    ).andThen { configuration in
+      configuration.getAppConfiguration(appName)
+    }.ifSuccess { app in
       Self.app = app
-      return app
     }
   }
 

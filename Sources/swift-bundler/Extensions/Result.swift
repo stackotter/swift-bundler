@@ -59,12 +59,43 @@ extension Result {
     flatMap(transform)
   }
 
+  /// Perform a fallible transformation on success, but only if the given
+  /// condition is met. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen(
+    if condition: Bool,
+    _ transform: (Success) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    flatMap { value in
+      guard condition else {
+        return .success(value)
+      }
+
+      return transform(value)
+    }
+  }
+
   /// Specifically just performs a side effect without affecting the underlying
   /// success value of the result (unless of course the action fails).
   func andThenDoSideEffect(
     _ action: (Success) -> Result<Void, Failure>
   ) -> Result<Success, Failure> {
     andThen { value in
+      action(value).map { _ in
+        value
+      }
+    }
+  }
+
+  /// If the given condition is met, perform a side effect (a fallible action
+  /// which doesn't affect the underlying success value). This streamlines
+  /// applicable code enough that I believe it's worth having a separate helper
+  /// method for.
+  func andThenDoSideEffect(
+    if condition: Bool,
+    _ action: (Success) -> Result<Void, Failure>
+  ) -> Result<Success, Failure> {
+    andThen(if: condition) { value in
       action(value).map { _ in
         value
       }
@@ -81,6 +112,8 @@ extension Result {
     }
   }
 
+  /// Performs an action if the result is a success, without affecting the
+  /// result's value.
   func ifSuccess(do action: (Success) -> Void) -> Result<Success, Failure> {
     map { value in
       action(value)
@@ -90,14 +123,23 @@ extension Result {
 
   /// Attempts to recover from a failure with a function mapping the failure
   /// to a new result (with the same success value).
-  func tryRecover(
-    _ recover: (Failure) -> Result<Success, Failure>
-  ) -> Result<Success, Failure> {
+  func tryRecover<NewFailure>(
+    _ recover: (Failure) -> Result<Success, NewFailure>
+  ) -> Result<Success, NewFailure> {
     switch self {
       case .success(let value):
         return .success(value)
       case .failure(let error):
         return recover(error)
+    }
+  }
+
+  /// Performs an action if the result is a failure, without affecting the
+  /// result's value.
+  func ifFailure(do action: (Failure) -> Void) -> Result<Success, Failure> {
+    mapError { error in
+      action(error)
+      return error
     }
   }
 }

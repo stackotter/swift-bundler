@@ -136,48 +136,42 @@ enum StringCatalogCompiler {
     to outputDirectory: URL,
     keepSources: Bool = false
   ) -> Result<Void, StringCatalogCompilerError> {
-    // Get the string catalog files.
-    let stringCatalogFiles =
-      FileManager.default.enumerator(
-        at: directory,
-        includingPropertiesForKeys: nil
-      )?
-      .compactMap { $0 as? URL }
-      .filter { $0.pathExtension == "xcstrings" }
-
-    // If there are no string catalog files, return an error.
-    guard let files = stringCatalogFiles else {
-      return .failure(.failedToEnumerateStringsCatalogs(directory))
-    }
-
-    // Compile the string catalog files.
-    let result = compileStringCatalogs(
-      files.reduce(into: [URL: String]()) { result, file in
-        let tableName = file.deletingPathExtension().lastPathComponent
-        result[file] = tableName
-      },
-      to: outputDirectory
+    // Enumerate string catalog files.
+    return FileManager.default.enumerator(
+      at: directory,
+      includingPropertiesForKeys: nil
     )
-
-    guard case .success = result else {
-      return result
+    .okOr(.failedToEnumerateStringsCatalogs(directory))
+    .map { files in
+      // Filter out non-xcstrings files
+      files
+        .compactMap { $0 as? URL }
+        .filter { $0.pathExtension == "xcstrings" }
     }
+    .andThen { stringCatalogFiles in
+      let tableNameTable = [URL: String](
+        stringCatalogFiles.map { file in
+          let tableName = file.deletingPathExtension().lastPathComponent
+          return (file, tableName)
+        },
+        uniquingKeysWith: { first, _ in first }
+      )
 
-    // If the sources should be kept, return success.
-    if keepSources {
-      return .success(())
-    }
-
-    // Delete the string catalog files.
-    for file in files {
-      do {
-        try FileManager.default.removeItem(at: file)
-      } catch {
-        return .failure(.failedToDeleteStringsCatalog(file, error))
+      // Compile the string catalog files.
+      return compileStringCatalogs(
+        tableNameTable,
+        to: outputDirectory
+      )
+      .andThenDoSideEffect(if: !keepSources) { _ in
+        // Delete the string catalog files if !keepSources
+        stringCatalogFiles.tryForEach { file in
+          FileManager.default.removeItem(
+            at: file,
+            onError: StringCatalogCompilerError.failedToDeleteStringsCatalog
+          )
+        }
       }
     }
-
-    return .success(())
   }
 
   /// Compile a string catalog file into a strings file.
@@ -191,107 +185,104 @@ enum StringCatalogCompiler {
   ) -> Result<Void, StringCatalogCompilerError> {
     // Create the output directory if it doesn't exist.
     if !FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
-      do {
-        try FileManager.default.createDirectory(at: outputDirectory)
-      } catch {
-        return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
+      let result = FileManager.default.createDirectory(
+        at: outputDirectory,
+        onError: StringCatalogCompilerError.failedToCreateOutputDirectory
+      )
+      guard case .success = result else {
+        return result
       }
     }
 
     // Loop through the string catalog files.
-    for (file, tableName) in files {
+    return Array(files).tryForEach { (file, tableName) in
       // Read the string catalog file.
-      let data: Result<StringsCatalogFile, StringCatalogCompilerError> = {
-        do {
-          let data = try Data(contentsOf: file)
-          return .success(try JSONDecoder().decode(StringsCatalogFile.self, from: data))
-        } catch {
-          return .failure(.failedToParseJSON(file, error))
+      return Data.read(from: file)
+        .andThen { data in
+          JSONDecoder().decode(StringsCatalogFile.self, from: data)
         }
-      }()
+        .mapError { error in
+          StringCatalogCompilerError.failedToParseJSON(file, error)
+        }
+        .andThen { stringsCatalog in
+          // Get the locales
+          let locales = detectLocales(from: stringsCatalog)
 
-      guard case let .success(data) = data else {
-        return data.eraseSuccessValue()
-      }
+          // Generate the strings file for each locale.
+          return locales.tryForEach { locale in
+            // Create the lproj directory if it doesn't exist.
+            let lprojDirectory =
+              outputDirectory
+              .appendingPathComponent(locale)
+              .appendingPathExtension("lproj")
 
-      // Get the locales
-      let locales = detectLocales(from: data)
+            // Create the lproj directory if it doesn't exist.
+            if !FileManager.default.itemExists(at: lprojDirectory, withType: .directory) {
+              let result = FileManager.default.createDirectory(
+                at: lprojDirectory,
+                onError: StringCatalogCompilerError.failedToCreateLprojDirectory
+              )
+              guard case .success = result else {
+                return result
+              }
+            }
 
-      // Generate the strings file for each locale.
-      for locale in locales {
-        // Create the lproj directory if it doesn't exist.
-        let lprojDirectory =
-          outputDirectory
-          .appendingPathComponent(locale)
-          .appendingPathExtension("lproj")
+            let data = generateStringsFile(url: file, from: stringsCatalog, locale: locale)
 
-        // Create the lproj directory if it doesn't exist.
-        if !FileManager.default.itemExists(at: lprojDirectory, withType: .directory) {
-          do {
-            try FileManager.default.createDirectory(at: lprojDirectory)
-          } catch {
-            return .failure(.failedToCreateLprojDirectory(lprojDirectory, error))
+            guard case let .success((stringsFile, stringsDictFile)) = data else {
+              return data.eraseSuccessValue()
+            }
+
+            // The paths for the strings and strings dict files.
+            let stringsFileURL =
+              lprojDirectory
+              .appendingPathComponent(tableName)
+              .appendingPathExtension("strings")
+            let stringsDictFileURL =
+              lprojDirectory
+              .appendingPathComponent(tableName)
+              .appendingPathExtension("stringsdict")
+
+            let encoder = PropertyListEncoder()
+            encoder.outputFormat = .xml
+
+            // Encode them to Plist format.
+            let stringsFileData = encoder.encode(stringsFile)
+              .mapError { error in
+                StringCatalogCompilerError.failedToEncodePlistStringsFile(stringsFileURL, error)
+              }
+            guard case let .success(stringsFileData) = stringsFileData else {
+              return stringsFileData.eraseSuccessValue()
+            }
+
+            let stringsDictFileData = encoder.encode(stringsDictFile)
+              .mapError { error in
+                StringCatalogCompilerError.failedToEncodePlistStringsDictFile(
+                  stringsDictFileURL,
+                  error
+                )
+              }
+            guard case let .success(stringsDictFileData) = stringsDictFileData else {
+              return stringsDictFileData.eraseSuccessValue()
+            }
+
+            // Write the strings and strings dict files.
+            return stringsFileData.write(to: stringsFileURL)
+              .andThen { _ in
+                stringsDictFileData.write(to: stringsDictFileURL)
+              }
+              .mapError { error in
+                .failedToWriteStringsFile(stringsFileURL, error)
+              }
+              .andThen { _ in
+                stringsDictFileData.write(to: stringsDictFileURL)
+                  .mapError { error in
+                    .failedToWriteStringsDictFile(stringsDictFileURL, error)
+                  }
+              }
           }
         }
-
-        let data = generateStringsFile(url: file, from: data, locale: locale)
-
-        guard case let .success((stringsFile, stringsDictFile)) = data else {
-          return data.eraseSuccessValue()
-        }
-
-        // The paths for the strings and strings dict files.
-        let stringsFileURL =
-          lprojDirectory
-          .appendingPathComponent(tableName)
-          .appendingPathExtension("strings")
-        let stringsDictFileURL =
-          lprojDirectory
-          .appendingPathComponent(tableName)
-          .appendingPathExtension("stringsdict")
-
-        let encoder = PropertyListEncoder()
-        encoder.outputFormat = .xml
-
-        // Encode them to Plist format.
-        let stringsFileData: Result<Data, StringCatalogCompilerError> = {
-          do {
-            return .success(try encoder.encode(stringsFile))
-          } catch {
-            return .failure(.failedToEncodePlistStringsFile(stringsFileURL, error))
-          }
-        }()
-        guard case let .success(stringsFileData) = stringsFileData else {
-          return stringsFileData.eraseSuccessValue()
-        }
-
-        let stringsDictFileData: Result<Data, StringCatalogCompilerError> = {
-          do {
-            return .success(try encoder.encode(stringsDictFile))
-          } catch {
-            return .failure(.failedToEncodePlistStringsDictFile(stringsDictFileURL, error))
-          }
-        }()
-        guard case let .success(stringsDictFileData) = stringsDictFileData else {
-          return stringsDictFileData.eraseSuccessValue()
-        }
-
-        // Write the strings and strings dict files.
-        do {
-          try stringsFileData.write(to: stringsFileURL)
-          try stringsDictFileData.write(to: stringsDictFileURL)
-        } catch {
-          return .failure(.failedToWriteStringsFile(stringsFileURL, error))
-        }
-        do {
-          try stringsDictFileData.write(to: stringsDictFileURL)
-        } catch {
-          return .failure(.failedToWriteStringsDictFile(stringsDictFileURL, error))
-        }
-      }
     }
-
-    return .success(())
   }
 
   /// Detects locales from the string catalog files.
@@ -313,20 +304,19 @@ enum StringCatalogCompiler {
     return locales
   }
 
-  // Gets the regex to match format value types.
+  /// Gets the regex to match format value types.
   /// - Returns: The regex to match format value types.
   private static func getFormatValueTypeRegex() -> Result<
-    NSRegularExpression, StringCatalogCompilerError
+    NSRegularExpression,
+    StringCatalogCompilerError
   > {
     // The regex to match format value types.
-    do {
-      return .success(
-        try NSRegularExpression(
-          pattern: "%([0-9]+\\$)?[0 #+-]?[0-9*]*\\.?\\d*[hl]{0,2}[jztL]?[dDiuUxXoOeEfgGaAcCsSpF]",
-          options: []))
-    } catch {
-      return .failure(.failedToCreateFormatStringRegex(error))
-    }
+    Result {
+      try NSRegularExpression(
+        pattern: "%([0-9]+\\$)?[0 #+-]?[0-9*]*\\.?\\d*[hl]{0,2}[jztL]?[dDiuUxXoOeEfgGaAcCsSpF]",
+        options: []
+      )
+    }.mapError(StringCatalogCompilerError.failedToCreateFormatStringRegex)
   }
 
   /// Selects and returns the order of format specifiers in a string.
@@ -361,12 +351,14 @@ enum StringCatalogCompiler {
     for formatSpecifier in formatSpecifiers {
       // Trim the first character (%)
       let formatSpecifierStrip = String(formatSpecifier.dropFirst())
+
       // The last character is the format specifier type.
       let formatSpecifierType = String(
         formatSpecifierStrip[
           formatSpecifierStrip.index(before: formatSpecifierStrip.endIndex)
         ]
       )
+
       // If there is an $, get the number before it.
       let formatSpecifierOrderSplit = formatSpecifierStrip.split(separator: "$")
       let intBeforeDollar =

@@ -46,22 +46,11 @@ struct DarwinAppBundleStructure {
       contentsDirectory, resourcesDirectory, librariesDirectory, executableDirectory,
     ]
 
-    for directory in directories {
-      guard !FileManager.default.itemExists(at: directory, withType: .directory) else {
-        continue
-      }
-      do {
-        try FileManager.default.createDirectory(
-          at: directory,
-          withIntermediateDirectories: true
-        )
-      } catch {
-        return .failure(
-          .failedToCreateAppBundleDirectoryStructure(error)
-        )
-      }
+    return directories.filter { directory in
+      !FileManager.default.itemExists(at: directory, withType: .directory)
+    }.tryForEach { directory in
+      FileManager.default.createDirectory(at: directory)
+        .mapError(DarwinBundlerError.failedToCreateAppBundleDirectoryStructure)
     }
-
-    return .success()
   }
 }

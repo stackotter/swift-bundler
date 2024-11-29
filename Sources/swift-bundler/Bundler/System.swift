@@ -17,12 +17,10 @@ enum System {
       return .failure(.failedToGetApplicationSupportDirectory(error))
     }
 
-    do {
-      try FileManager.default.createDirectory(at: directory)
-    } catch {
-      return .failure(.failedToCreateApplicationSupportDirectory(error))
-    }
-
-    return .success(directory)
+    return FileManager.default.createDirectory(at: directory)
+      .mapError { error in
+        .failedToCreateApplicationSupportDirectory(error)
+      }
+      .replacingSuccessValue(with: directory)
   }
 }

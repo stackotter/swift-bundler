@@ -143,7 +143,7 @@ struct PackageConfiguration: Codable {
         }
 
         let backupFile = configurationFile.appendingPathExtension("orig")
-        return contents.resultWrite(to: configurationFile)
+        return contents.write(to: configurationFile)
           .mapError(PackageConfigurationError.failedToCreateConfigurationBackup)
           .ifSuccess { _ in
             log.info(

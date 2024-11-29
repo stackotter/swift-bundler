@@ -38,55 +38,47 @@ enum SwiftPackageManager {
     name: String
   ) -> Result<Void, SwiftPackageManagerError> {
     // Create the package directory if it doesn't exist
-    let createPackageDirectory: () -> Result<Void, SwiftPackageManagerError> = {
-      if !FileManager.default.itemExists(at: directory, withType: .directory) {
-        do {
-          try FileManager.default.createDirectory(at: directory)
-        } catch {
-          return .failure(.failedToCreatePackageDirectory(directory, error))
-        }
+    let directoryExists = FileManager.default.itemExists(at: directory, withType: .directory)
+    return Result.success()
+      .andThen(if: !directoryExists) { _ in
+        FileManager.default.createDirectory(
+          at: directory,
+          onError: SwiftPackageManagerError.failedToCreatePackageDirectory
+        )
       }
-      return .success()
-    }
+      .andThen { _ in
+        // Run the init command
+        let arguments = [
+          "package", "init",
+          "--type=executable",
+          "--name=\(name)",
+        ]
 
-    // Run the init command
-    let runInitCommand: () -> Result<Void, SwiftPackageManagerError> = {
-      let arguments = [
-        "package", "init",
-        "--type=executable",
-        "--name=\(name)",
-      ]
+        let process = Process.create(
+          "swift",
+          arguments: arguments,
+          directory: directory
+        )
+        process.setOutputPipe(Pipe())
 
-      let process = Process.create(
-        "swift",
-        arguments: arguments,
-        directory: directory)
-      process.setOutputPipe(Pipe())
-
-      return process.runAndWait()
-        .mapError { error in
-          .failedToRunSwiftInit(
-            command: "swift \(arguments.joined(separator: " "))",
-            error
-          )
-        }
-    }
-
-    // Create the configuration file
-    let createConfigurationFile: () -> Result<Void, SwiftPackageManagerError> = {
-      PackageConfiguration.createConfigurationFile(in: directory, app: name, product: name)
-        .mapError { error in
+        return process.runAndWait()
+          .mapError { error in
+            .failedToRunSwiftInit(
+              command: "swift \(arguments.joined(separator: " "))",
+              error
+            )
+          }
+      }
+      .andThen { _ in
+        // Create the configuration file
+        PackageConfiguration.createConfigurationFile(
+          in: directory,
+          app: name,
+          product: name
+        ).mapError { error in
           .failedToCreateConfigurationFile(error)
         }
-    }
-
-    // Compose the function
-    let create = flatten(
-      createPackageDirectory,
-      runInitCommand,
-      createConfigurationFile)
-
-    return create()
+      }
   }
 
   /// Builds the specified product of a Swift package.
@@ -103,7 +95,7 @@ enum SwiftPackageManager {
     return createBuildArguments(
       product: product,
       buildContext: buildContext
-    ).flatMap { arguments in
+    ).andThen { arguments in
       let process = Process.create(
         "swift",
         arguments: arguments,
@@ -118,7 +110,7 @@ enum SwiftPackageManager {
       }
 
       return process.runAndWait().mapError { error in
-        return .failedToRunSwiftBuild(
+        .failedToRunSwiftBuild(
           command: "swift \(arguments.joined(separator: " "))",
           error
         )
@@ -151,7 +143,7 @@ enum SwiftPackageManager {
       return build(
         product: product,
         buildContext: buildContext
-      ).flatMap { _ in
+      ).andThen { _ in
         let buildPlanFile = buildContext.scratchDirectory
           .appendingPathComponent("\(buildContext.configuration).yaml")
         let buildPlanString: String
@@ -333,10 +325,8 @@ enum SwiftPackageManager {
       arguments: ["--version"])
 
     return process.getOutput()
-      .mapError { error in
-        .failedToGetSwiftVersion(error)
-      }
-      .flatMap { output in
+      .mapError(SwiftPackageManagerError.failedToGetSwiftVersion)
+      .andThen { output in
         // The first two examples are for release versions of Swift (the first on macOS, the second on Linux).
         // The next two examples are for snapshot versions of Swift (the first on macOS, the second on Linux).
         // Sample: "swift-driver version: 1.45.2 Apple Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
@@ -376,11 +366,10 @@ enum SwiftPackageManager {
           }
         }
 
-        do {
-          let version = try parser.parse(output)
-          return .success(version)
-        } catch {
-          return .failure(.invalidSwiftVersionOutput(output, error))
+        return Result {
+          try parser.parse(output)
+        }.mapError { error in
+          .invalidSwiftVersionOutput(output, error)
         }
       }
   }
@@ -397,7 +386,7 @@ enum SwiftPackageManager {
     return createBuildArguments(
       product: nil,
       buildContext: buildContext
-    ).flatMap { arguments in
+    ).andThen { arguments in
       let process = Process.create(
         "swift",
         arguments: arguments + ["--show-bin-path"],
@@ -405,10 +394,9 @@ enum SwiftPackageManager {
       )
 
       return process.getOutput().map { output in
-        let path = output.trimmingCharacters(in: .newlines)
-        return URL(fileURLWithPath: path)
+        URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
       }.mapError { error in
-        return .failedToGetProductsDirectory(command: "swift " + process.argumentsString, error)
+        .failedToGetProductsDirectory(command: "swift " + process.argumentsString, error)
       }
     }
   }
@@ -530,17 +518,16 @@ enum SwiftPackageManager {
     )
 
     return process.getOutput().mapError { error in
-      return .failedToGetTargetInfo(command: "swift " + process.argumentsString, error)
-    }.flatMap { output in
+      .failedToGetTargetInfo(command: "swift " + process.argumentsString, error)
+    }.andThen { output in
       guard let data = output.data(using: .utf8) else {
         return .failure(.failedToParseTargetInfo(json: output, nil))
       }
-      do {
-        return .success(
-          try JSONDecoder().decode(SwiftTargetInfo.self, from: data))
-      } catch {
-        return .failure(.failedToParseTargetInfo(json: output, error))
-      }
+
+      return JSONDecoder().decode(SwiftTargetInfo.self, from: data)
+        .mapError { error in
+          .failedToParseTargetInfo(json: output, error)
+        }
     }
   }
 }

@@ -166,37 +166,35 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
+    let environmentArguments: [String]
+    if !environmentVariables.isEmpty {
+      // TODO: correctly escape keys and values
+      let value = environmentVariables.map { key, value in
+        return "\(key)=\(value)"
+      }.joined(separator: " ")
+      environmentArguments = ["--envs", "\(value)"]
+    } else {
+      environmentArguments = []
+    }
+
     // `ios-deploy` is explicitly resolved (instead of allowing `Process.create`
     // to handle running programs located on the user's PATH) so that a detailed
     // error message can be emitted for this easy misconfiguration issue.
-    return Process.locate("ios-deploy").mapError { error in
-      return .failedToLocateIOSDeploy(error)
-    }.flatMap { iosDeployExecutable in
-      let environmentArguments: [String]
-      if !environmentVariables.isEmpty {
-        // TODO: correctly escape keys and values
-        let value = environmentVariables.map { key, value in
-          return "\(key)=\(value)"
-        }.joined(separator: " ")
-        environmentArguments = ["--envs", "\(value)"]
-      } else {
-        environmentArguments = []
+    return Process.locate("ios-deploy")
+      .mapError(RunnerError.failedToLocateIOSDeploy)
+      .andThen { iosDeployExecutable in
+        Process.create(
+          iosDeployExecutable,
+          arguments: [
+            "--noninteractive",
+            "--bundle", bundlerOutput.bundle.path,
+          ] + environmentArguments
+            + arguments.flatMap { argument in
+              return ["--args", argument]
+            },
+          runSilentlyWhenNotVerbose: false
+        ).runAndWait().mapError(RunnerError.failedToLocateIOSDeploy)
       }
-
-      return Process.create(
-        iosDeployExecutable,
-        arguments: [
-          "--noninteractive",
-          "--bundle", bundlerOutput.bundle.path,
-        ] + environmentArguments
-          + arguments.flatMap { argument in
-            return ["--args", argument]
-          },
-        runSilentlyWhenNotVerbose: false
-      ).runAndWait().mapError { error in
-        return .failedToRunIOSDeploy(error)
-      }
-    }
   }
 
   /// Runs an app on the first connected visionOS device.
@@ -249,13 +247,13 @@ enum Runner {
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
     log.info("Preparing simulator")
-    return SimulatorManager.bootSimulator(id: simulatorId).flatMap { _ in
+    return SimulatorManager.bootSimulator(id: simulatorId).andThen { _ in
       log.info("Installing app")
       return SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
-    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+    }.andThen { (_: Void) -> Result<Void, SimulatorManagerError> in
       log.info("Opening Simulator")
       return SimulatorManager.openSimulatorApp()
-    }.flatMap { (_: Void) -> Result<Void, SimulatorManagerError> in
+    }.andThen { (_: Void) -> Result<Void, SimulatorManagerError> in
       log.info("Launching \(bundleIdentifier)")
       return SimulatorManager.launchApp(
         bundleIdentifier,

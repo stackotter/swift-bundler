@@ -3,13 +3,13 @@ import Foundation
 /// A utility for managing simulators.
 enum SimulatorManager {
   /// Lists available simulators.
-  /// - Parameter searchTerm: If provided, the simulators will be filtered using the search term.
-  /// - Returns: A list of available simulators matching the search term (if provided), or a failure if an error occurs.
+  /// - Parameter searchTerm: If provided, the simulators will be filtered using
+  ///   the search term.
+  /// - Returns: A list of available simulators matching the search term (if
+  ///   provided), or a failure if an error occurs.
   static func listAvailableSimulators(
     searchTerm: String? = nil
-  ) -> Result<
-    [Simulator], SimulatorManagerError
-  > {
+  ) -> Result<[Simulator], SimulatorManagerError> {
     return Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -17,27 +17,18 @@ enum SimulatorManager {
         searchTerm, "available", "--json",
       ].compactMap { $0 }
     ).getOutputData().mapError { error in
-      return .failedToRunSimCTL(error)
-    }.flatMap { data in
-      let result: SimulatorList
-      do {
-        result = try JSONDecoder().decode(SimulatorList.self, from: data)
-      } catch {
-        return .failure(.failedToDecodeJSON(error))
-      }
-
-      var simulators: [Simulator] = []
-      for (platform, platformSimulators) in result.devices {
-        if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
-          simulators.append(contentsOf: platformSimulators)
-        } else if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
-          simulators.append(contentsOf: platformSimulators)
-        } else if platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS") {
-          simulators.append(contentsOf: platformSimulators)
+      .failedToRunSimCTL(error)
+    }.andThen { data in
+      JSONDecoder().decode(SimulatorList.self, from: data)
+        .mapError(SimulatorManagerError.failedToDecodeJSON)
+    }.map { simulatorList in
+      simulatorList.devices
+        .filter { (platform, platformSimulators) in
+          platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS")
+            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS")
+            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS")
         }
-      }
-
-      return .success(simulators)
+        .flatMap(\.value)
     }
   }
 
@@ -47,11 +38,11 @@ enum SimulatorManager {
   static func bootSimulator(id: String) -> Result<Void, SimulatorManagerError> {
     return Process.create(
       "/usr/bin/xcrun",
-      arguments: [
-        "simctl", "boot", id,
-      ]
-    ).getOutputData().eraseSuccessValue().flatMapError {
-      error -> Result<Void, SimulatorManagerError> in
+      arguments: ["simctl", "boot", id]
+    )
+    .getOutputData()
+    .eraseSuccessValue()
+    .tryRecover { error in
       // If the device is already booted, count it as a success
       guard
         case let ProcessError.nonZeroExitStatusWithOutput(data, _) = error,
@@ -69,9 +60,11 @@ enum SimulatorManager {
   /// - Parameters:
   ///   - bundleIdentifier: The app's bundle identifier.
   ///   - simulatorId: The name or id of the simulator to launch in.
-  ///   - connectConsole: If `true`, the function will block and the current process will print the stdout and stderr of the running app.
+  ///   - connectConsole: If `true`, the function will block and the current
+  ///     process will print the stdout and stderr of the running app.
   ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentVariables: Additional environment variables to pass to the app.
+  ///   - environmentVariables: Additional environment variables to pass to the
+  ///     app.
   /// - Returns: A failure if an error occurs.
   static func launchApp(
     _ bundleIdentifier: String,

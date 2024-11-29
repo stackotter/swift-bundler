@@ -28,23 +28,33 @@ struct PackageConfigurationV1: Codable {
   static func load(
     from file: URL
   ) -> Result<PackageConfigurationV1, PackageConfigurationError> {
-    Result {
-      // Load the file's contents
-      try Data(contentsOf: file)
-    }
-    .mapError { error in
-      .failedToReadContentsOfOldConfigurationFile(file, error)
-    }
-    .andThen { data in
-      // Parse the configuration
-      Result {
-        var configuration = try JSONDecoder().decode(
+    // Load the file's contents
+    Data.read(from: file)
+      .mapError { error in
+        .failedToReadContentsOfOldConfigurationFile(file, error)
+      }
+      .andThen { data in
+        // Parse the configuration. The `extraInfoPlistEntries` field requires
+        // special attention so we parse the configuration twice, once as a
+        // PackageConfigurationV1 and once as a JSON object.
+        JSONDecoder().decode(
           PackageConfigurationV1.self,
           from: data
         )
-
+        .andThen { configuration in
+          Result {
+            try JSONSerialization.jsonObject(with: data)
+          }
+          .map { json in
+            (configuration, json)
+          }
+        }
+        .mapError(PackageConfigurationError.failedToDeserializeOldConfiguration)
+      }
+      .map { (configuration: PackageConfigurationV1, json: Any) in
         // Load the `extraInfoPlistEntries` property if present
-        let json = try JSONSerialization.jsonObject(with: data)
+        var configuration = configuration
+
         if let json = json as? [String: Any],
           let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
         {
@@ -53,8 +63,6 @@ struct PackageConfigurationV1: Codable {
 
         return configuration
       }
-      .mapError(PackageConfigurationError.failedToDeserializeOldConfiguration)
-    }
   }
 
   func migrate() -> PackageConfiguration {

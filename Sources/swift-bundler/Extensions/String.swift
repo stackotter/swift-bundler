@@ -13,13 +13,15 @@ extension String {
     return self
   }
 
+  /// Reads the contents of a file, returning a result.
   static func read(from file: URL) -> Result<String, any Error> {
     Result {
       try String(contentsOf: file)
     }
   }
 
-  func resultWrite(to file: URL) -> Result<Void, any Error> {
+  /// Writes the string to a file, returning a result.
+  func write(to file: URL) -> Result<Void, any Error> {
     Result {
       try write(to: file, atomically: true, encoding: .utf8)
     }

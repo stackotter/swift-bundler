@@ -119,12 +119,9 @@ extension Process {
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
   func getOutput(excludeStdError: Bool = false) -> Result<String, ProcessError> {
     return getOutputData(excludeStdError: excludeStdError)
-      .flatMap { data in
-        guard let output = String(data: data, encoding: .utf8) else {
-          return .failure(.invalidUTF8Output(output: data))
-        }
-
-        return .success(output)
+      .andThen { data in
+        String(data: data, encoding: .utf8)
+          .okOr(.invalidUTF8Output(output: data))
       }
   }
 
@@ -133,20 +130,19 @@ extension Process {
   func runAndWait() -> Result<Void, ProcessError> {
     log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? [])")
 
-    do {
+    return Result {
       try run()
-    } catch {
-      return .failure(.failedToRunProcess(error))
-    }
+    }.mapError(ProcessError.failedToRunProcess)
+      .andThen { _ in
+        waitUntilExit()
 
-    waitUntilExit()
+        let exitStatus = Int(terminationStatus)
+        guard exitStatus == 0 else {
+          return .failure(.nonZeroExitStatus(exitStatus))
+        }
 
-    let exitStatus = Int(terminationStatus)
-    if exitStatus != 0 {
-      return .failure(.nonZeroExitStatus(exitStatus))
-    }
-
-    return .success()
+        return .success()
+      }
   }
 
   /// Adds environment variables to the process's environment.
@@ -163,10 +159,12 @@ extension Process {
   /// - Parameters:
   ///   - tool: The tool.
   ///   - arguments: The tool's arguments.
-  ///   - directory: The directory to run the command in. Defaults to the current directory.
+  ///   - directory: The directory to run the command in. Defaults to the current
+  ///     directory.
   ///   - pipe: The pipe for the process's stdout and stderr. Defaults to `nil`.
-  ///   - runSilentlyWhenNotVerbose: If `true`, output is captured even when no pipe is provided id Swift Bundler wasn't run with `-v`.
-  ///                                Defaults to `true`.
+  ///   - runSilentlyWhenNotVerbose: If `true`, output is captured even when no
+  ///     pipe is provided id Swift Bundler wasn't run with `-v`. Defaults to
+  ///     `true`.
   /// - Returns: The new process.
   static func create(
     _ tool: String,
