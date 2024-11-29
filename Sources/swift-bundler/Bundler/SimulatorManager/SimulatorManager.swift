@@ -46,18 +46,46 @@ enum SimulatorManager {
         "simctl", "list", "devices", "available", "--json",
       ]
     ).getOutputData().mapError { error in
-      .failedToRunSimCTL(error)
-    }.andThen { data in
-      JSONDecoder().decode(SimulatorList.self, from: data)
-        .mapError(SimulatorManagerError.failedToDecodeJSON)
-    }.map { simulatorList in
-      simulatorList.devices
-        .filter { (platform, platformSimulators) in
-          platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS")
-            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS")
-            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS")
+      return .failedToRunSimCTL(error)
+    }.flatMap { data in
+      let result: SimulatorList
+      do {
+        result = try JSONDecoder().decode(SimulatorList.self, from: data)
+      } catch {
+        return .failure(.failedToDecodeJSON(error))
+      }
+
+      var osSimulators: [OSSimulator] = []
+      for (runtime, platformSimulators) in result.devices {
+
+        switch platform {
+          case .iOS, .iOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          case .visionOS, .visionOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          case .tvOS, .tvOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          default:
+            break
         }
-        .flatMap(\.value)
+      }
+
+      return .success(osSimulators)
     }
   }
 

@@ -14,8 +14,7 @@ import Foundation
 import StackOtterArgParser
 
 /// The subcommand for creating app bundles for a package.
-struct BundleCommand: AsyncCommand
-{
+struct BundleCommand: AsyncCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Create an app bundle from a package."
@@ -33,17 +32,16 @@ struct BundleCommand: AsyncCommand
   var skipBuild = false
 
   #if os(macOS)
-    // If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
-    //
-    // Can only be `true` when ``skipBuild`` is `true`.
+    /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
+    ///
+    /// Can only be `true` when ``skipBuild`` is `true`.
     @Flag(
       name: .long,
       help: .init(
         stringLiteral:
-        "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
+          "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
           + " Can only be set when `--skip-build` is supplied."
-      )
-    )
+      ))
   #endif
   var builtWithXcode = false
 
@@ -52,8 +50,7 @@ struct BundleCommand: AsyncCommand
   /// Used to avoid loading configuration twice when RunCommand is used.
   static var app: (name: String, app: AppConfiguration)? // TODO: fix this weird pattern with a better config loading system
 
-  init()
-  {
+  init() {
     _arguments = OptionGroup()
   }
 
@@ -61,10 +58,8 @@ struct BundleCommand: AsyncCommand
     arguments: OptionGroup<BundleArguments>,
     skipBuild: Bool,
     builtWithXcode: Bool,
-    hotReloadingEnabled: Bool,
-    isUsingXcodeBuild: Bool
-  )
-  {
+    hotReloadingEnabled: Bool
+  ) {
     _arguments = arguments
     self.skipBuild = skipBuild
     self.builtWithXcode = builtWithXcode
@@ -76,15 +71,11 @@ struct BundleCommand: AsyncCommand
     platform: Platform,
     skipBuild: Bool,
     builtWithXcode: Bool
-  ) -> Bool
-  {
+  ) -> Bool {
     // Validate parameters
     #if os(macOS)
-      if !skipBuild
-      {
-        guard arguments.productsDirectory == nil, !builtWithXcode
-        else
-        {
+      if !skipBuild {
+        guard arguments.productsDirectory == nil, !builtWithXcode else {
           log.error(
             "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'"
           )
@@ -93,15 +84,12 @@ struct BundleCommand: AsyncCommand
       }
     #endif
 
-    if Platform.host == .linux, platform != .linux
-    {
+    if Platform.host == .linux && platform != .linux {
       log.error("'--platform \(platform)' is not supported on Linux")
       return false
     }
 
-    guard arguments.bundler.isSupportedOnHostPlatform
-    else
-    {
+    guard arguments.bundler.isSupportedOnHostPlatform else {
       log.error(
         """
         The '\(arguments.bundler.rawValue)' bundler is not supported on the \
@@ -112,11 +100,8 @@ struct BundleCommand: AsyncCommand
       return false
     }
 
-    guard arguments.bundler.supportedTargetPlatforms.contains(platform)
-    else
-    {
-      let alternatives = BundlerChoice.allCases.filter
-      { choice in
+    guard arguments.bundler.supportedTargetPlatforms.contains(platform) else {
+      let alternatives = BundlerChoice.allCases.filter { choice in
         choice.supportedTargetPlatforms.contains(platform)
       }
       let alternativesDescription = "(\(alternatives.map(\.rawValue).joined(separator: "|")))"
@@ -134,7 +119,7 @@ struct BundleCommand: AsyncCommand
     // macOS-only arguments
     #if os(macOS)
       if platform == .iOS || platform == .visionOS,
-         builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
+        builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
       {
         log.error(
           "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform \(platform.rawValue)'"
@@ -142,40 +127,33 @@ struct BundleCommand: AsyncCommand
         return false
       }
 
-      if arguments.shouldCodesign && arguments.identity == nil
-      {
+      if arguments.shouldCodesign && arguments.identity == nil {
         log.error("Please provide a codesigning identity with `--identity`")
-        Output
-        {
+        Output {
           ""
-          Section("Tip: Listing available identities")
-          {
+          Section("Tip: Listing available identities") {
             ExampleCommand("swift bundler list-identities")
           }
         }.show()
         return false
       }
 
-      if arguments.identity != nil && !arguments.shouldCodesign
-      {
+      if arguments.identity != nil && !arguments.shouldCodesign {
         log.error("`--identity` can only be used with `--codesign`")
         return false
       }
 
       if platform == .iOS || platform == .visionOS || platform == .tvOS,
-         !arguments.shouldCodesign || arguments.identity == nil
-         || arguments.provisioningProfile == nil
+        !arguments.shouldCodesign || arguments.identity == nil
+          || arguments.provisioningProfile == nil
       {
         log.error(
           "Must specify `--identity`, `--codesign` and `--provisioning-profile` when '--platform \(platform.rawValue)'"
         )
-        if arguments.identity == nil
-        {
-          Output
-          {
+        if arguments.identity == nil {
+          Output {
             ""
-            Section("Tip: Listing available identities")
-            {
+            Section("Tip: Listing available identities") {
               ExampleCommand("swift bundler list-identities")
             }
           }.show()
@@ -183,49 +161,45 @@ struct BundleCommand: AsyncCommand
         return false
       }
 
-      if platform != .macOS, arguments.standAlone
-      {
+      if platform != .macOS && arguments.standAlone {
         log.error("'--experimental-stand-alone' only works on macOS")
         return false
       }
 
-      switch platform
-      {
+      switch platform {
         case .iOS, .visionOS, .tvOS:
-        break
+          break
         default:
-        if arguments.provisioningProfile != nil
-        {
-          log.error(
-            "`--provisioning-profile` is only available when building visionOS and iOS apps")
-          return false
-        }
+          if arguments.provisioningProfile != nil {
+            log.error(
+              "`--provisioning-profile` is only available when building visionOS and iOS apps")
+            return false
+          }
       }
     #endif
 
     return true
   }
 
-  func getArchitectures(platform: Platform) -> [BuildArchitecture]
-  {
-    let architectures: [BuildArchitecture] = switch platform
-    {
+  func getArchitectures(platform: Platform) -> [BuildArchitecture] {
+    let architectures: [BuildArchitecture]
+    switch platform {
       case .macOS:
-        arguments.universal
+        architectures =
+          arguments.universal
           ? [.arm64, .x86_64]
           : (!arguments.architectures.isEmpty
             ? arguments.architectures : [BuildArchitecture.current])
       case .iOS, .visionOS, .tvOS:
-        [.arm64]
+        architectures = [.arm64]
       case .linux, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        [BuildArchitecture.current]
+        architectures = [BuildArchitecture.current]
     }
 
     return architectures
   }
 
-  func wrappedRun() async throws
-  {
+  func wrappedRun() async throws {
     _ = try await doBundling()
   }
 
@@ -234,11 +208,9 @@ struct BundleCommand: AsyncCommand
   ///   `RunCommand` to figure out where the output bundle will end up even
   ///   when the user instructs it to skip bundling.
   /// - Returns: A description of the structure of the bundler's output.
-  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure
-  {
+  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time
-    {
+    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
       let scratchDirectory =
@@ -253,8 +225,7 @@ struct BundleCommand: AsyncCommand
       if !Self.validateArguments(
         arguments, platform: arguments.platform, skipBuild: skipBuild,
         builtWithXcode: builtWithXcode
-      )
-      {
+      ) {
         Foundation.exit(1)
       }
 
@@ -328,8 +299,19 @@ struct BundleCommand: AsyncCommand
           )
       }
 
+      // Create bundle job
+      let bundlerContext = BundlerContext(
+        appName: appName,
+        packageName: manifest.displayName,
+        appConfiguration: appConfiguration,
+        packageDirectory: packageDirectory,
+        productsDirectory: productsDirectory,
+        outputDirectory: outputDirectory,
+        platform: arguments.platform
+      )
+
       // Create build job
-      let build: () async -> Result<Void, Error> = {
+      let build: () -> Result<Void, Error> = {
         if forceUsingXcodeBuild {
           XcodeBuildManager.build(
             product: appConfiguration.product,
@@ -347,32 +329,8 @@ struct BundleCommand: AsyncCommand
         }
       }
 
-      // Create bundle job
-      let bundlerContext = BundlerContext(
-        appName: appName,
-        packageName: manifest.displayName,
-        appConfiguration: appConfiguration,
-        packageDirectory: packageDirectory,
-        productsDirectory: productsDirectory,
-        outputDirectory: outputDirectory,
-        platform: arguments.platform
-      )
-
-      // Create build job
-      let build: () -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError
-        { error in
-          error
-        }
-      }
-
       // If this is a dry run, drop out just before we start actually do stuff.
-      guard !dryRun
-      else
-      {
+      guard !dryRun else {
         return try Self.intendedOutput(
           of: arguments.bundler.bundler,
           context: bundlerContext,
@@ -382,8 +340,7 @@ struct BundleCommand: AsyncCommand
       }
 
       // Run all of the tasks that we've built up.
-      if !skipBuild
-      {
+      if !skipBuild {
         try build().unwrap()
       }
 
@@ -396,8 +353,7 @@ struct BundleCommand: AsyncCommand
       )
     }
 
-    if !dryRun
-    {
+    if !dryRun {
       // Output the time elapsed along with the location of the produced app bundle.
       log.info(
         """
@@ -411,16 +367,12 @@ struct BundleCommand: AsyncCommand
   }
 
   /// Removes the given output directory if it exists.
-  static func removeExistingOutputs(outputDirectory: URL) -> Result<Void, CLIError>
-  {
-    if FileManager.default.itemExists(at: outputDirectory, withType: .directory)
-    {
-      do
-      {
+  static func removeExistingOutputs(outputDirectory: URL) -> Result<Void, CLIError> {
+    if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
+      do {
         try FileManager.default.removeItem(at: outputDirectory)
       }
-      catch
-      {
+      catch {
         return .failure(
           CLIError.failedToRemoveExistingOutputs(
             outputDirectory: outputDirectory,
@@ -438,15 +390,13 @@ struct BundleCommand: AsyncCommand
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
-  ) throws -> BundlerOutputStructure
-  {
+  ) throws -> BundlerOutputStructure {
     try bundler.computeContext(
       context: context,
       command: command,
       manifest: manifest
     )
-    .andThen
-    { additionalContext in
+    .andThen { additionalContext in
       bundler.bundle(context, additionalContext)
     }
     .unwrap()
@@ -458,15 +408,13 @@ struct BundleCommand: AsyncCommand
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
-  ) throws -> BundlerOutputStructure
-  {
+  ) throws -> BundlerOutputStructure {
     try bundler.computeContext(
       context: context,
       command: command,
       manifest: manifest
     )
-    .map
-    { additionalContext in
+    .map { additionalContext in
       bundler.intendedOutput(in: context, additionalContext)
     }
     .unwrap()
@@ -485,21 +433,17 @@ struct BundleCommand: AsyncCommand
     _ appName: String?,
     packageDirectory: URL,
     customFile: URL? = nil
-  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError>
-  {
-    if let app
-    {
+  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+    if let app {
       return .success(app)
     }
 
     return PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
-    ).andThen
-    { configuration in
+    ).andThen { configuration in
       configuration.getAppConfiguration(appName)
-    }.ifSuccess
-    { app in
+    }.ifSuccess { app in
       Self.app = app
     }
   }
@@ -513,8 +457,7 @@ struct BundleCommand: AsyncCommand
   static func getOutputDirectory(
     _ outputDirectory: URL?,
     scratchDirectory: URL
-  ) -> URL
-  {
-    outputDirectory ?? scratchDirectory.appendingPathComponent("bundler")
+  ) -> URL {
+    return outputDirectory ?? scratchDirectory.appendingPathComponent("bundler")
   }
 }
