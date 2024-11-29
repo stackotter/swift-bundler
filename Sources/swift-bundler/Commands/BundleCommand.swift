@@ -1,15 +1,3 @@
-/* -----------------------------------------------------------
- * :: :  D  E  S  I  G  N  :                                ::
- * -----------------------------------------------------------
- * @swift
- *
- *
- *                    copyright (c) 2024 the swift collective.
- *                                        All Rights Reserved.
- * -----------------------------------------------------------
- *  . x x x . o o o . x x x . : : : .    o  x  o    . : : : .
- * ----------------------------------------------------------- */
-
 import Foundation
 import StackOtterArgParser
 
@@ -224,8 +212,8 @@ struct BundleCommand: AsyncCommand {
 
       if !Self.validateArguments(
         arguments, platform: arguments.platform, skipBuild: skipBuild,
-        builtWithXcode: builtWithXcode
-      ) {
+        builtWithXcode: builtWithXcode)
+      {
         Foundation.exit(1)
       }
 
@@ -371,8 +359,7 @@ struct BundleCommand: AsyncCommand {
     if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
       do {
         try FileManager.default.removeItem(at: outputDirectory)
-      }
-      catch {
+      } catch {
         return .failure(
           CLIError.failedToRemoveExistingOutputs(
             outputDirectory: outputDirectory,
@@ -385,8 +372,8 @@ struct BundleCommand: AsyncCommand {
   }
 
   /// This generic function is required to operate on `any Bundler`s.
-  static func bundle(
-    with bundler: (some Bundler).Type,
+  static func bundle<B: Bundler>(
+    with bundler: B.Type,
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
@@ -403,8 +390,8 @@ struct BundleCommand: AsyncCommand {
   }
 
   /// This generic function is required to operate on `any Bundler`s.
-  static func intendedOutput(
-    of bundler: (some Bundler).Type,
+  static func intendedOutput<B: Bundler>(
+    of bundler: B.Type,
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
@@ -434,7 +421,7 @@ struct BundleCommand: AsyncCommand {
     packageDirectory: URL,
     customFile: URL? = nil
   ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
-    if let app {
+    if let app = Self.app {
       return .success(app)
     }
 

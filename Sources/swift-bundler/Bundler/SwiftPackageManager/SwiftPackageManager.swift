@@ -138,7 +138,7 @@ enum SwiftPackageManager {
         ])
       }
 
-      // pipe xcodebuild output to xcbeautify.
+      // pipe swiftpm output to xcbeautify.
       if let xcbeautify = xcbeautify {
         process.standardOutput = pipe
         xcbeautify.standardInput = pipe
