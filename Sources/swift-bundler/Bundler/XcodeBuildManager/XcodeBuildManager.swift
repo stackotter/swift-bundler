@@ -164,6 +164,9 @@ enum XcodeBuildManager {
       forceUsingXcodeBuild = true
     }
     
-    return command.arguments.noXcodebuild ? !command.arguments.noXcodebuild : forceUsingXcodeBuild
+    // Allows the '--no-xcodebuild' flag to be passed in, to override whether
+    // or not the swiftpm-based build system is used, even for embedded apple
+    // platforms (ex. visionOS, iOS, tvOS, watchOS).
+    return command.arguments.noXcodebuild ? false : forceUsingXcodeBuild
   }
 }
