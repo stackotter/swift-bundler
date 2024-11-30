@@ -149,4 +149,21 @@ enum XcodeBuildManager {
       )
     }
   }
+
+  /// Whether or not the bundle command utilizes xcodebuild instead of swiftpm.
+  /// - Parameters:
+  ///   - command: The subcommand for creating app bundles for a package.
+  /// - Returns: Whether or not xcodebuild is invoked instead of swiftpm.
+  static func isUsingXcodeBuild(for command: BundleCommand) -> Bool {
+    var forceUsingXcodeBuild = command.arguments.xcodebuild
+    // For all apple platforms (not including macOS), we generate xcode
+    // support, because macOS cannot cross-compile for any of the other
+    // darwin platforms like it can with linux, and thus we need to use
+    // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
+    if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(command.arguments.platform) {
+      forceUsingXcodeBuild = true
+    }
+    
+    return command.arguments.noXcodebuild ? !command.arguments.noXcodebuild : forceUsingXcodeBuild
+  }
 }

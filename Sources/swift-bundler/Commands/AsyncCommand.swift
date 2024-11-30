@@ -7,7 +7,7 @@ protocol AsyncCommand: AsyncParsableCommand {
   func wrappedValidate() throws
 
   /// Implement this instead of `run()` to get custom Swift Bundler error handling.
-  mutating func wrappedRun() async throws
+  func wrappedRun() async throws
 }
 
 extension AsyncCommand {
@@ -15,7 +15,7 @@ extension AsyncCommand {
 }
 
 extension AsyncCommand {
-  mutating func run() async {
+  func run() async {
     do {
       try await wrappedRun()
     } catch {

@@ -187,7 +187,7 @@ struct BundleCommand: AsyncCommand {
     return architectures
   }
 
-  mutating func wrappedRun() async throws {
+  func wrappedRun() async throws {
     _ = try await doBundling()
   }
 
@@ -196,7 +196,7 @@ struct BundleCommand: AsyncCommand {
   ///   `RunCommand` to figure out where the output bundle will end up even
   ///   when the user instructs it to skip bundling.
   /// - Returns: A description of the structure of the bundler's output.
-  mutating func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
+  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
@@ -220,20 +220,10 @@ struct BundleCommand: AsyncCommand {
       // Get relevant configuration
       let architectures = getArchitectures(platform: arguments.platform)
 
-      var forceUsingXcodeBuild = arguments.xcodebuild
-      // For all apple platforms (not including macOS), we generate xcode
-      // support, because macOS cannot cross-compile for any of the other
-      // darwin platforms like it can with linux, and thus we need to use
-      // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
-      if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(arguments.platform) {
-        forceUsingXcodeBuild = true
-      }
-      forceUsingXcodeBuild = arguments.noXcodebuild ? !arguments.noXcodebuild : forceUsingXcodeBuild
+      // Whether or not we are building with xcodebuild instead of swiftpm.
+      let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: self)
 
-      if forceUsingXcodeBuild {
-        // If building with xcodebuild, be sure to set that here.
-        self.builtWithXcode = true
-
+      if isUsingXcodeBuild {
         // Terminate the program if the project is an Xcodeproj based project.
         let xcodeprojs = try FileManager.default.contentsOfDirectory(
           at: packageDirectory,
@@ -276,7 +266,7 @@ struct BundleCommand: AsyncCommand {
       // Get build output directory
       let productsDirectory: URL
       
-      if !forceUsingXcodeBuild {
+      if !isUsingXcodeBuild {
         productsDirectory = try arguments.productsDirectory
           ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
       } else {
@@ -303,7 +293,7 @@ struct BundleCommand: AsyncCommand {
 
       // Create build job
       let build: () -> Result<Void, Error> = {
-        if forceUsingXcodeBuild {
+        if isUsingXcodeBuild {
           XcodeBuildManager.build(
             product: appConfiguration.product,
             buildContext: buildContext

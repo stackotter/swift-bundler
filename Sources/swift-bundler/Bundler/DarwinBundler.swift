@@ -53,10 +53,15 @@ enum DarwinBundler: Bundler {
       return .failure(.missingDarwinPlatformVersion(context.platform))
     }
 
+    // Whether a universal application binary (arm64 and x86_64) will be created.
     let universal = command.arguments.universal || command.arguments.architectures.count > 1
+
+    // Whether or not we are building with xcodebuild instead of swiftpm.
+    let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: command)
+
     return .success(
       Context(
-        isXcodeBuild: command.builtWithXcode,
+        isXcodeBuild: command.builtWithXcode || isUsingXcodeBuild,
         universal: universal,
         standAlone: command.arguments.standAlone,
         platform: applePlatform,
