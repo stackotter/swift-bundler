@@ -61,7 +61,15 @@ enum DynamicLibraryBundler {
       log.info("Copying dynamic library '\(name)'")
 
       // Copy and rename the library
-      let outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib")
+      let outputLibrary: URL
+      if name.prefix(3).contains("lib") {
+        // do not add a 'lib' prefix to the dynamic library if it's already prefixed with 'lib'.
+        outputLibrary = outputDirectory.appendingPathComponent("\(name).dylib")
+      } else {
+        // add a 'lib' prefix to the dynamic library if it's not already prefixed with 'lib'.
+        outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib")
+      }
+
       do {
         try FileManager.default.copyItem(
           at: library,
@@ -279,8 +287,8 @@ enum DynamicLibraryBundler {
         contents
         .filter { $0.pathExtension == "dylib" }
         .map { library in
-          let name = library.deletingPathExtension().lastPathComponent.dropFirst(3)
-          return (name: String(name), file: library)
+          let name = library.deletingPathExtension().lastPathComponent
+          return (name: name, file: library)
         }
     }
 

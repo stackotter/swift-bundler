@@ -167,4 +167,24 @@ struct BundleArguments: ParsableArguments {
     )
   #endif
   var standAlone = false
+
+  /// Builds with xcodebuild instead of swiftpm.
+  #if os(macOS)
+    @Flag(
+      name: .customLong("xcodebuild"),
+      help: "Builds with xcodebuild instead of swiftpm."
+    )
+  #endif
+  var xcodebuild = false
+
+  /// Builds without xcodebuild, to override embedded
+  /// darwin platforms which automatically force xcodebuild,
+  /// to build with swiftpm instead.
+  #if os(macOS)
+    @Flag(
+      name: .customLong("no-xcodebuild"),
+      help: "Builds without xcodebuild, to override embedded darwin platforms which automatically force xcodebuild, to build with swiftpm instead."
+    )
+  #endif
+  var noXcodebuild = false
 }
