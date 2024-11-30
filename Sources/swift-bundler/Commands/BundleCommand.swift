@@ -187,7 +187,7 @@ struct BundleCommand: AsyncCommand {
     return architectures
   }
 
-  func wrappedRun() async throws {
+  mutating func wrappedRun() async throws {
     _ = try await doBundling()
   }
 
@@ -196,7 +196,7 @@ struct BundleCommand: AsyncCommand {
   ///   `RunCommand` to figure out where the output bundle will end up even
   ///   when the user instructs it to skip bundling.
   /// - Returns: A description of the structure of the bundler's output.
-  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
+  mutating func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
@@ -231,6 +231,9 @@ struct BundleCommand: AsyncCommand {
       forceUsingXcodeBuild = arguments.noXcodebuild ? !arguments.noXcodebuild : forceUsingXcodeBuild
 
       if forceUsingXcodeBuild {
+        // If building with xcodebuild, be sure to set that here.
+        self.builtWithXcode = true
+
         // Terminate the program if the project is an Xcodeproj based project.
         let xcodeprojs = try FileManager.default.contentsOfDirectory(
           at: packageDirectory,

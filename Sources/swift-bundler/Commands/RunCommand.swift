@@ -89,7 +89,7 @@ struct RunCommand: AsyncCommand {
       simulatorSearchTerm: simulatorSearchTerm
     )
 
-    let bundleCommand = BundleCommand(
+    var bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
       builtWithXcode: false,
