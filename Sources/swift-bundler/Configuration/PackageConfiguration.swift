@@ -89,7 +89,7 @@ struct PackageConfiguration: Codable {
           .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
           .andThen { table in
             guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-              return .failure(.failedToDeserializeConfiguration(error))
+              return .failure(error)
             }
 
             return migrateV2Configuration(

@@ -235,15 +235,6 @@
       }
     },
     {
-      "identity" : "tomlkit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/furby-tm/TOMLKit",
-      "state" : {
-        "revision" : "f2b3e80a19c7fb3d42e3cfda98076cef8f0d1bd7",
-        "version" : "0.5.6"
-      }
-    },
-    {
       "identity" : "version",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mxcl/Version.git",
