@@ -21,6 +21,8 @@ jobs:
         git worktree add --checkout gh-pages origin/gh-pages
         export DOCC_JSON_PRETTYPRINT="YES"
         export SWIFTPM_ENABLE_COMMAND_PLUGINS=1 
+        git clone https://github.com/stackotter/swift-docc-render-artifact ../swift-docc-render-artifact
+        export DOCC_HTML_DIR=../swift-docc-render-artifact/dist
         swift package \
           --allow-writing-to-directory gh-pages/docs \
           generate-documentation \
