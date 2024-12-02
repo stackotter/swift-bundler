@@ -31,15 +31,19 @@
     {
       "content" : [
         {
-          "anchor" : "Recommended",
+          "anchor" : "Recommended-macOS-and-Linux",
           "level" : 2,
-          "text" : "Recommended",
+          "text" : "Recommended (macOS and Linux)",
           "type" : "heading"
         },
         {
           "inlineContent" : [
             {
-              "text" : "Install the latest release of Swift Bundler using ",
+              "text" : "If you’re on macOS or Linux, install the latest release of Swift Bundler using",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
               "type" : "text"
             },
             {
@@ -86,15 +90,89 @@
           "type" : "aside"
         },
         {
-          "anchor" : "Manual-installation",
-          "level" : 2,
-          "text" : "Manual installation",
+          "anchor" : "Latest-commit",
+          "level" : 3,
+          "text" : "Latest commit",
           "type" : "heading"
         },
         {
           "inlineContent" : [
             {
-              "text" : "Alternatively, you can install Swift Bundler manually for maximum control.",
+              "identifier" : "https:\/\/github.com\/yonaskolb\/Mint",
+              "isActive" : true,
+              "overridingTitle" : "Mint",
+              "overridingTitleInlineContent" : [
+                {
+                  "text" : "Mint",
+                  "type" : "text"
+                }
+              ],
+              "type" : "reference"
+            },
+            {
+              "text" : " can also be used to install directly",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "from the ",
+              "type" : "text"
+            },
+            {
+              "code" : "main",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " development branch if you’re willing to sacrifice stability in",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "exchange for the latest and greatest features.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "mint install stackotter\/swift-bundler@main"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Manual-installation-all-platforms",
+          "level" : 2,
+          "text" : "Manual installation (all platforms)",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "You can install Swift Bundler manually for maximum control. Clone the repo,",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "build Swift Bundler using the Swift Package Manager, and then copy the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "resulting executable to a directory in your path.",
               "type" : "text"
             }
           ],
@@ -106,7 +184,54 @@
             "cd swift-bundler",
             "",
             "swift build -c release",
-            "cp .build\/release\/swift-bundler \/path\/to\/bin\/"
+            "cp .build\/release\/swift-bundler \/path\/to\/bin\/",
+            "",
+            "# Verify installation",
+            "swift bundler --version"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Pre-built-macOS",
+          "level" : 2,
+          "text" : "Pre-built (macOS)",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "If you’re on macOS, you can use the universal build of ",
+              "type" : "text"
+            },
+            {
+              "code" : "swift-bundler",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " attached",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "to recent releases.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "# Replace X.X.X with desired version",
+            "curl -O https:\/\/github.com\/stackotter\/swift-bundler\/releases\/download\/vX.X.X\/swift-bundler",
+            "chmod +x .\/swift-bundler",
+            "sudo mv .\/swift-bundler \/usr\/local\/bin\/",
+            "",
+            "# Verify installation",
+            "swift bundler --version"
           ],
           "syntax" : "sh",
           "type" : "codeListing"
@@ -191,10 +316,10 @@
 },
 "https://github.com/yonaskolb/Mint": {
   "identifier" : "https:\/\/github.com\/yonaskolb\/Mint",
-  "title" : "mint",
+  "title" : "Mint",
   "titleInlineContent" : [
     {
-      "text" : "mint",
+      "text" : "Mint",
       "type" : "text"
     }
   ],

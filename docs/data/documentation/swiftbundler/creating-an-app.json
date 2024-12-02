@@ -48,7 +48,7 @@
         {
           "code" : [
             "# Create a new app from the SwiftUI template",
-            "swift bundler create HelloWorld --identifier com.example.HelloWorld --template SwiftUI",
+            "swift bundler create HelloWorld --template SwiftUI",
             "cd HelloWorld"
           ],
           "syntax" : "sh",
@@ -103,6 +103,48 @@
           "type" : "codeListing"
         },
         {
+          "inlineContent" : [
+            {
+              "text" : "Use ",
+              "type" : "text"
+            },
+            {
+              "code" : "--platform",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : "\/",
+              "type" : "text"
+            },
+            {
+              "code" : "-p",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " to specify a target platform. On macOS this includes",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "all Apple platforms (other than watchOS), but on Linux you’re limited to Linux.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "# Run the app on an iOS simulator. If you don't specify a simulator then Swift",
+            "# Bundler will attempt to use the first compatible booted simulator it finds.",
+            "swift bundler run --platform iOSSimulator --simulator \"iPhone 16\""
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
           "anchor" : "Distributing-the-app",
           "level" : 2,
           "text" : "Distributing the app",
@@ -119,7 +161,24 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " command to create an app bundle that you can distribute to users. It is recommended that you use the ",
+              "text" : " command to create an app bundle that you can distribute to",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "users.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "On macOS it is recommended that you use the ",
               "type" : "text"
             },
             {
@@ -127,7 +186,68 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " options to create an optimized universal binary (for running on both Intel and Apple Silicon Macs).",
+              "text" : " options to create",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "an optimized universal binary (for running on both Intel and Apple Silicon",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "Macs).",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "On Linux you’ll want to supply either ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler linuxAppImage",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " or",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler linuxRPM",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ", since the default Linux bundler (",
+              "type" : "text"
+            },
+            {
+              "code" : "linuxGeneric",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ") is",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "targeted at development and not distribution.",
               "type" : "text"
             }
           ],
@@ -158,7 +278,15 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " command if you want to use Xcode as your IDE. This command only needs to be run once unless you delete the ",
+              "text" : " command if you want to use Xcode as your IDE.",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "This command only needs to be run once unless you delete the ",
               "type" : "text"
             },
             {
@@ -166,7 +294,11 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " directory.",
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "directory.",
               "type" : "text"
             }
           ],
@@ -191,7 +323,15 @@
               "type" : "codeVoice"
             },
             {
-              "text" : ", or use Finder to open ",
+              "text" : ", or use Finder to",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "open ",
               "type" : "text"
             },
             {
@@ -199,7 +339,15 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " with Xcode. To run the app, just select the scheme with the same name as your app and then click run.",
+              "text" : " with Xcode. To run the app, select the scheme with the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "same name as your app and then click run.",
               "type" : "text"
             }
           ],
