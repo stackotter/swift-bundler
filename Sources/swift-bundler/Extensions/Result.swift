@@ -173,16 +173,6 @@ extension Result where Success == Void {
   }
 }
 
-extension Result where Failure == Error {
-  init(of action: () throws -> Success) {
-    do {
-      self = .success(try action())
-    } catch {
-      self = .failure(error)
-    }
-  }
-}
-
 /// Returns a closure that runs the given operations one by one and stops on failure.
 /// - Parameter operations: The operations to chain together.
 /// - Returns: If an error occurs, a failure is returned.
