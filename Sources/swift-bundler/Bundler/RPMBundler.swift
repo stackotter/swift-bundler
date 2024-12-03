@@ -140,6 +140,17 @@ enum RPMBundler: Bundler {
     let relativeDesktopFileLocation = bundleStructure.desktopFile.path(
       relativeTo: bundleStructure.root
     )
+
+    // We install this as a 512x512 icon (even though it's 1024x1024)
+    // because Linux doesn't seem to check for 1024x1024 icons, and it also
+    // doesn't seem to care if the icon's size is incorrect. Will fix
+    // eventually when revamping icon support.
+    let relativeIconFileLocation = bundleStructure.icon1024x1024.path(
+      relativeTo: bundleStructure.root
+    )
+    let iconFileDestination =
+      "/usr/share/icons/hicolor/512x512/apps/\(bundleStructure.icon1024x1024.lastPathComponent)"
+
     return """
       Name:           \(appName)
       Version:        \(appVersion)
@@ -163,14 +174,22 @@ enum RPMBundler: Bundler {
       rm -rf $RPM_BUILD_ROOT
       mkdir -p $RPM_BUILD_ROOT\(installationRoot.path)
       cp -R * $RPM_BUILD_ROOT\(installationRoot.path)
-      desktop-file-install $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDesktopFileLocation)
+      mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: "/" + relativeDesktopFileLocation).deletingLastPathComponent().path)
+      cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDesktopFileLocation) $RPM_BUILD_ROOT/\(relativeDesktopFileLocation)
+      mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: iconFileDestination).deletingLastPathComponent().path)
+      cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeIconFileLocation) $RPM_BUILD_ROOT\(iconFileDestination)
+
+      %post
+      xdg-desktop-menu forceupdate
+      xdg-icon-resource forceupdate
 
       %clean
       rm -rf $RPM_BUILD_ROOT
 
       %files
       \(installationRoot.path)
-      /usr/share/applications/\(bundleStructure.desktopFile.lastPathComponent)
+      /\(relativeDesktopFileLocation)
+      \(iconFileDestination)
       """
   }
 
