@@ -14,7 +14,7 @@ let package = Package(
     .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", "0.11.0"..<"0.12.0"),
-    .package(url: "https://github.com/LebJe/TOMLKit", from: "0.5.6"),
+    .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),

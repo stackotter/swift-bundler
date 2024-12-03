@@ -235,6 +235,15 @@
       }
     },
     {
+      "identity" : "tomlkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/TOMLKit",
+      "state" : {
+        "revision" : "18a7db47209b83ad969196dbc4eb4904ee9955d0",
+        "version" : "0.6.1"
+      }
+    },
+    {
       "identity" : "version",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mxcl/Version.git",
