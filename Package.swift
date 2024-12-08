@@ -8,7 +8,7 @@ let package = Package(
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
     .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
-    .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
+    .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"])
   ],
   dependencies: [
     .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
