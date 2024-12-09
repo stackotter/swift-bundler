@@ -120,7 +120,7 @@ enum XcodeprojConverter {
     var packageDependencies: [XcodePackageDependency] = []
 
     guard let packageProductDependencies = target.packageProductDependencies else {
-      return []
+      return packageDependencies
     }
 
     for dependency in packageProductDependencies {
