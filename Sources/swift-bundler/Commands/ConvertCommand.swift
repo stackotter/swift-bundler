@@ -1,6 +1,6 @@
 import Foundation
 import StackOtterArgParser
-import XcodeProj
+import SwiftXcodeProj
 import TOMLKit
 
 /// The command for converting xcodeprojs to Swift Bundler projects.

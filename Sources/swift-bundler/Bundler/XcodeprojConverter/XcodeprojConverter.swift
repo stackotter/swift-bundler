@@ -3,7 +3,7 @@ import SwiftFormat
 import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import XcodeProj
+import SwiftXcodeProj
 import TOMLKit
 import Version
 
@@ -119,11 +119,7 @@ enum XcodeprojConverter {
   ) -> [XcodePackageDependency] {
     var packageDependencies: [XcodePackageDependency] = []
 
-    guard let packageProductDependencies = target.packageProductDependencies else {
-      return packageDependencies
-    }
-
-    for dependency in packageProductDependencies {
+    for dependency in target.packageProductDependencies {
       guard
         let package = dependency.package,
         let packageName = package.name,

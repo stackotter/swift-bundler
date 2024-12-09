@@ -1,4 +1,4 @@
-import XcodeProj
+import SwiftXcodeProj
 
 extension XcodeprojConverter {
   /// A type of target in a Swift package.

@@ -199,6 +199,15 @@
       }
     },
     {
+      "identity" : "swiftxcodeproj",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/SwiftXcodeProj",
+      "state" : {
+        "revision" : "182a1f69f0c77e1a152fba083b7fa814785824dd",
+        "version" : "8.11.0"
+      }
+    },
+    {
       "identity" : "tomlkit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/TOMLKit",
@@ -214,15 +223,6 @@
       "state" : {
         "revision" : "303a0f916772545e1e8667d3104f83be708a723c",
         "version" : "2.1.0"
-      }
-    },
-    {
-      "identity" : "xcodeproj",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tuist/XcodeProj.git",
-      "state" : {
-        "revision" : "d3df4265b8383dd56dae4b01f817d30c22e7612c",
-        "version" : "8.25.0"
       }
     },
     {
