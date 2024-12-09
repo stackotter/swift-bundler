@@ -1,5 +1,5 @@
 import Foundation
-import SwiftXcodeProj
+import XcodeProj
 
 /// An error returned by ``XcodeprojConverter``.
 enum XcodeprojConverterError: LocalizedError {
