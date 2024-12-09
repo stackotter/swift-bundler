@@ -3,7 +3,7 @@ import SwiftFormat
 import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftXcodeProj
+import XcodeProj
 import TOMLKit
 import Version
 
@@ -118,7 +118,12 @@ enum XcodeprojConverter {
     rootDirectory: URL
   ) -> [XcodePackageDependency] {
     var packageDependencies: [XcodePackageDependency] = []
-    for dependency in target.packageProductDependencies {
+
+    guard let packageProductDependencies = target.packageProductDependencies else {
+      return []
+    }
+
+    for dependency in packageProductDependencies {
       guard
         let package = dependency.package,
         let packageName = package.name,

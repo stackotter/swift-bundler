@@ -1,5 +1,5 @@
 import Foundation
-import SwiftXcodeProj
+import XcodeProj
 
 extension XcodeprojConverter {
   /// A file in an Xcode project.
