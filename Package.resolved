@@ -10,24 +10,6 @@
       }
     },
     {
-      "identity" : "graphviz",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/wabiverse/GraphViz.git",
-      "state" : {
-        "revision" : "5e597d2f580f543cf7185f260c69b6b482a68d0f",
-        "version" : "0.6.0"
-      }
-    },
-    {
-      "identity" : "jsonutilities",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/yonaskolb/JSONUtilities.git",
-      "state" : {
-        "revision" : "128d2ffc22467f69569ef8ff971683e2393191a0",
-        "version" : "4.2.0"
-      }
-    },
-    {
       "identity" : "pathkit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/kylef/PathKit.git",
@@ -217,21 +199,12 @@
       }
     },
     {
-      "identity" : "swiftcli",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jakeheis/SwiftCLI.git",
-      "state" : {
-        "revision" : "2e949055d9797c1a6bddcda0e58dada16cc8e970",
-        "version" : "6.0.3"
-      }
-    },
-    {
       "identity" : "swiftxcodeproj",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/SwiftXcodeProj.git",
+      "location" : "https://github.com/stackotter/SwiftXcodeProj",
       "state" : {
-        "revision" : "46e9b907e3ec66010cf2204594549ff1dc195032",
-        "version" : "8.10.1"
+        "revision" : "182a1f69f0c77e1a152fba083b7fa814785824dd",
+        "version" : "8.11.0"
       }
     },
     {
@@ -250,15 +223,6 @@
       "state" : {
         "revision" : "303a0f916772545e1e8667d3104f83be708a723c",
         "version" : "2.1.0"
-      }
-    },
-    {
-      "identity" : "xcodegen",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/XcodeGen",
-      "state" : {
-        "revision" : "8f562268f8b54461b6ddfe817d624bc4e307a30e",
-        "version" : "2.35.2"
       }
     },
     {

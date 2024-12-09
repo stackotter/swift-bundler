@@ -118,6 +118,7 @@ enum XcodeprojConverter {
     rootDirectory: URL
   ) -> [XcodePackageDependency] {
     var packageDependencies: [XcodePackageDependency] = []
+
     for dependency in target.packageProductDependencies {
       guard
         let package = dependency.package,
