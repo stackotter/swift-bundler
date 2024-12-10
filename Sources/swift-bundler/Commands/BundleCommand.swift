@@ -15,7 +15,8 @@ struct BundleCommand: AsyncCommand {
   /// Whether to skip the build step or not.
   @Flag(
     name: .long,
-    help: "Skip the build step.")
+    help: "Skip the build step."
+  )
   var skipBuild = false
 
   #if os(macOS)
@@ -35,7 +36,7 @@ struct BundleCommand: AsyncCommand {
   var hotReloadingEnabled = false
 
   /// Used to avoid loading configuration twice when RunCommand is used.
-  static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
+  static var app: (name: String, app: AppConfiguration)? // TODO: fix this weird pattern with a better config loading system
 
   init() {
     _arguments = OptionGroup()
@@ -219,6 +220,27 @@ struct BundleCommand: AsyncCommand {
       // Get relevant configuration
       let architectures = getArchitectures(platform: arguments.platform)
 
+      // Whether or not we are building with xcodebuild instead of swiftpm.
+      let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: self)
+
+      if isUsingXcodeBuild {
+        // Terminate the program if the project is an Xcodeproj based project.
+        let xcodeprojs = try FileManager.default.contentsOfDirectory(
+          at: packageDirectory,
+          includingPropertiesForKeys: nil
+        ).filter({ $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace") })
+        guard xcodeprojs.isEmpty else {
+          for xcodeproj in xcodeprojs {
+            if xcodeproj.path.contains("xcodeproj") {
+              log.error("An xcodeproj was located at the following path: \(xcodeproj.path)")
+            } else if xcodeproj.path.contains("xcworkspace") {
+              log.error("An xcworkspace was located at the following path: \(xcodeproj.path)")
+            }
+          }
+          throw CLIError.invalidXcodeprojDetected
+        }
+      }
+
       let outputDirectory = Self.getOutputDirectory(
         arguments.outputDirectory,
         scratchDirectory: scratchDirectory
@@ -242,9 +264,21 @@ struct BundleCommand: AsyncCommand {
       )
 
       // Get build output directory
-      let productsDirectory =
-        try arguments.productsDirectory
-        ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      let productsDirectory: URL
+      
+      if !isUsingXcodeBuild {
+        productsDirectory = try arguments.productsDirectory
+          ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      } else {
+        let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+        // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
+        // however; for macOS there is no platform suffix at all.
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
+        productsDirectory = arguments.productsDirectory
+          ?? packageDirectory.appendingPathComponent(
+            ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
+          )
+      }
 
       // Create bundle job
       let bundlerContext = BundlerContext(
@@ -259,11 +293,20 @@ struct BundleCommand: AsyncCommand {
 
       // Create build job
       let build: () -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError { error in
-          return error
+        if isUsingXcodeBuild {
+          XcodeBuildManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
+        } else {
+          SwiftPackageManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).mapError { error in
+            return error
+          }
         }
       }
 

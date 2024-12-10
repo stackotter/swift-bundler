@@ -32,6 +32,58 @@ enum SimulatorManager {
     }
   }
 
+  /// Lists all available simulators per OS.
+  /// - Parameter platform: Filters the simulators by platform.
+  /// - Returns: A list of available simulators matching the platform, or a failure if an error occurs.
+  static func listAvailableOSSimulators(
+    for platform: Platform
+  ) -> Result<
+    [OSSimulator], SimulatorManagerError
+  > {
+    return Process.create(
+      "/usr/bin/xcrun",
+      arguments: [
+        "simctl", "list", "devices", "available", "--json",
+      ]
+    ).getOutputData().mapError { error in
+      return .failedToRunSimCTL(error)
+    }.andThen { data in
+      JSONDecoder().decode(SimulatorList.self, from: data)
+        .mapError(SimulatorManagerError.failedToDecodeJSON)
+    }.map { simulatorList in
+      var osSimulators: [OSSimulator] = []
+      for (runtime, platformSimulators) in simulatorList.devices {
+        switch platform {
+          case .iOS, .iOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          case .visionOS, .visionOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          case .tvOS, .tvOSSimulator:
+            if runtime.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS") {
+              if !platformSimulators.isEmpty {
+                let version = SimUtils.getOSVersionForRuntime(runtime)
+                osSimulators.append(.init(OS: version, simulators: platformSimulators))
+              }
+            }
+          default:
+            break
+        }
+      }
+
+      return osSimulators
+    }
+  }
+
   /// Boots a simulator. If it's already running, nothing is done.
   /// - Parameter id: The name or id of the simulator to start.
   /// - Returns: A failure if an error occurs.
