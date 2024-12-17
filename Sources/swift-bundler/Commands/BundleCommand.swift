@@ -246,7 +246,6 @@ struct BundleCommand: AsyncCommand {
         try arguments.productsDirectory
         ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
 
-      // Create bundle job
       let bundlerContext = BundlerContext(
         appName: appName,
         packageName: manifest.displayName,
@@ -281,6 +280,14 @@ struct BundleCommand: AsyncCommand {
       if !skipBuild {
         try build().unwrap()
       }
+
+      // TODO: Insert when moving to the bundle directory, perhaps via a method
+      //   on some sort of BuildProducts struct. Otherwise we end up adding
+      //   metadata multiple times if the user uses `--skip-build`, which is
+      //   harmless, but janky.
+      let executable = productsDirectory.appendingPathComponent("\(appName)")
+      let metadata = MetadataInserter.metadata(for: appConfiguration)
+      try MetadataInserter.insert(metadata, into: executable).unwrap()
 
       try Self.removeExistingOutputs(outputDirectory: outputDirectory).unwrap()
       return try Self.bundle(
