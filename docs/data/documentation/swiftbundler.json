@@ -61,6 +61,7 @@
   ],
   "topicSections" : [
     {
+      "anchor" : "Getting-started",
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/creating-an-app",
@@ -69,12 +70,14 @@
       "title" : "Getting started"
     },
     {
+      "anchor" : "Concepts",
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates"
       ],
       "title" : "Concepts"
     },
     {
+      "anchor" : "Advanced-usage",
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates",
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"
@@ -82,6 +85,7 @@
       "title" : "Advanced usage"
     },
     {
+      "anchor" : "Articles",
       "generated" : true,
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps"

@@ -343,6 +343,7 @@
   ],
   "seeAlsoSections" : [
     {
+      "anchor" : "Advanced-usage",
       "generated" : true,
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"

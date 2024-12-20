@@ -1189,6 +1189,7 @@
   ],
   "seeAlsoSections" : [
     {
+      "anchor" : "Getting-started",
       "generated" : true,
       "identifiers" : [
         "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
