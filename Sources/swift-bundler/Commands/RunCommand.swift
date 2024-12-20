@@ -80,8 +80,9 @@ struct RunCommand: AsyncCommand {
     let (_, appConfiguration) = try BundleCommand.getAppConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
+      context: ConfigurationFlattener.Context(platform: arguments.platform),
       customFile: arguments.configurationFileOverride
-    ).unwrap()
+    )
 
     // Get the device to run on
     let device = try Self.getDevice(

@@ -15,7 +15,7 @@ enum PlistCreator {
   static func createAppInfoPlist(
     at file: URL,
     appName: String,
-    configuration: AppConfiguration,
+    configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String
   ) -> Result<Void, PlistCreatorError> {
@@ -71,7 +71,7 @@ enum PlistCreator {
   ///   occurs, a failure is returned.
   static func createAppInfoPlistContents(
     appName: String,
-    configuration: AppConfiguration,
+    configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String
   ) -> Result<Data, PlistCreatorError> {
@@ -115,7 +115,7 @@ enum PlistCreator {
         break
     }
 
-    for (key, value) in configuration.plist ?? [:] {
+    for (key, value) in configuration.plist {
       entries[key] = value.value
     }
 

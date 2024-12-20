@@ -402,7 +402,7 @@ enum GenericLinuxBundler: Bundler {
   private static func createDesktopFile(
     at desktopFile: URL,
     appName: String,
-    appConfiguration: AppConfiguration,
+    appConfiguration: AppConfiguration.Flat,
     installedExecutableLocation: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
     log.info("Creating '\(desktopFile.lastPathComponent)'")

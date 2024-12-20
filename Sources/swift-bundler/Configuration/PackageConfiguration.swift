@@ -16,6 +16,34 @@ struct PackageConfiguration: Codable {
     case apps
   }
 
+  struct Flat {
+    var formatVersion: Int
+    var apps: [String: AppConfiguration.Flat]
+
+    /// Gets the configuration for the specified app. If no app is specified
+    /// and there is only one app, that app is returned.
+    /// - Parameter name: The name of the app to get.
+    /// - Returns: The app's name and configuration. If no app is specified, and
+    ///   there is more than one app, a failure is returned.
+    func getAppConfiguration(
+      _ name: String?
+    ) -> Result<
+      (name: String, app: AppConfiguration.Flat),
+      PackageConfigurationError
+    > {
+      if let name = name {
+        guard let selected = apps[name] else {
+          return .failure(.noSuchApp(name))
+        }
+        return .success((name: name, app: selected))
+      } else if let first = apps.first, apps.count == 1 {
+        return .success((name: first.key, app: first.value))
+      } else {
+        return .failure(.multipleAppsAndNoneSpecified)
+      }
+    }
+  }
+
   /// Creates a new package configuration.
   /// - Parameter apps: The package's apps.
   init(_ apps: [String: AppConfiguration]) {

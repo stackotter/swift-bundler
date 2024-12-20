@@ -26,16 +26,20 @@ struct BundleCommand: AsyncCommand {
       name: .long,
       help: .init(
         stringLiteral:
-          "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
-          + " Can only be set when `--skip-build` is supplied."
+          """
+          Treats the products in the products directory as if they were built \
+          by Xcode (which is the same as universal builds by SwiftPM). Can \
+          only be set when `--skip-build` is supplied.
+          """
       ))
   #endif
   var builtWithXcode = false
 
   var hotReloadingEnabled = false
 
+  // TODO: fix this weird pattern with a better config loading system
   /// Used to avoid loading configuration twice when RunCommand is used.
-  static var app: (name: String, app: AppConfiguration)?  // TODO: fix this weird pattern with a better config loading system
+  static var app: (name: String, app: AppConfiguration.Flat)?
 
   init() {
     _arguments = OptionGroup()
@@ -64,7 +68,10 @@ struct BundleCommand: AsyncCommand {
       if !skipBuild {
         guard arguments.productsDirectory == nil, !builtWithXcode else {
           log.error(
-            "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'"
+            """
+            '--products-directory' and '--built-with-xcode' are only compatible \
+            with '--skip-build'
+            """
           )
           return false
         }
@@ -109,7 +116,10 @@ struct BundleCommand: AsyncCommand {
         builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
       {
         log.error(
-          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform \(platform.rawValue)'"
+          """
+          '--built-with-xcode', '--universal' and '--arch' are not compatible \
+          with '--platform \(platform.rawValue)'
+          """
         )
         return false
       }
@@ -135,7 +145,10 @@ struct BundleCommand: AsyncCommand {
           || arguments.provisioningProfile == nil
       {
         log.error(
-          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when '--platform \(platform.rawValue)'"
+          """
+          Must specify `--identity`, `--codesign` and `--provisioning-profile` \
+          when '--platform \(platform.rawValue)'
+          """
         )
         if arguments.identity == nil {
           Output {
@@ -159,7 +172,11 @@ struct BundleCommand: AsyncCommand {
         default:
           if arguments.provisioningProfile != nil {
             log.error(
-              "`--provisioning-profile` is only available when building visionOS and iOS apps")
+              """
+              `--provisioning-profile` is only available when building \
+              visionOS and iOS apps
+              """
+            )
             return false
           }
       }
@@ -206,8 +223,9 @@ struct BundleCommand: AsyncCommand {
       let (appName, appConfiguration) = try Self.getAppConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
+        context: ConfigurationFlattener.Context(platform: arguments.platform),
         customFile: arguments.configurationFileOverride
-      ).unwrap()
+      )
 
       if !Self.validateArguments(
         arguments, platform: arguments.platform, skipBuild: skipBuild,
@@ -371,25 +389,32 @@ struct BundleCommand: AsyncCommand {
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
+  ///   - context: The context used to evaluate configuration overlays.
   ///   - customFile: A custom configuration file not at the standard location.
   /// - Returns: The app's configuration if successful.
   static func getAppConfiguration(
     _ appName: String?,
     packageDirectory: URL,
+    context: ConfigurationFlattener.Context,
     customFile: URL? = nil
-  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+  ) throws -> (name: String, app: AppConfiguration.Flat) {
     if let app = Self.app {
-      return .success(app)
+      return app
     }
 
-    return PackageConfiguration.load(
+    let configuration = try PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
-    ).andThen { configuration in
-      configuration.getAppConfiguration(appName)
-    }.ifSuccess { app in
-      Self.app = app
-    }
+    ).unwrap()
+
+    let flatConfiguration = try ConfigurationFlattener.flatten(
+      configuration,
+      with: context
+    ).unwrap()
+
+    let app = try flatConfiguration.getAppConfiguration(appName).unwrap()
+    Self.app = app
+    return app
   }
 
   /// Unwraps an optional output directory and returns the default output

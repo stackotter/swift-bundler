@@ -59,7 +59,7 @@ struct BundlerContext {
   /// The name of the package.
   var packageName: String
   /// The app's configuration.
-  var appConfiguration: AppConfiguration
+  var appConfiguration: AppConfiguration.Flat
 
   /// The root directory of the package containing the app.
   var packageDirectory: URL

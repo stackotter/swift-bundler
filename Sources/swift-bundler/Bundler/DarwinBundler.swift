@@ -228,7 +228,7 @@ enum DarwinBundler: Bundler {
   private static func createInfoPlistFile(
     at infoPlistFile: URL,
     appName: String,
-    appConfiguration: AppConfiguration,
+    appConfiguration: AppConfiguration.Flat,
     platform: ApplePlatform,
     platformVersion: String
   ) -> Result<Void, DarwinBundlerError> {
