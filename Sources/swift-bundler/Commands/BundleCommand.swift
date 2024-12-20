@@ -303,7 +303,7 @@ struct BundleCommand: AsyncCommand {
       //   on some sort of BuildProducts struct. Otherwise we end up adding
       //   metadata multiple times if the user uses `--skip-build`, which is
       //   harmless, but janky.
-      let executable = productsDirectory.appendingPathComponent("\(appName)")
+      let executable = productsDirectory.appendingPathComponent(appConfiguration.product)
       let metadata = MetadataInserter.metadata(for: appConfiguration)
       try MetadataInserter.insert(metadata, into: executable).unwrap()
 

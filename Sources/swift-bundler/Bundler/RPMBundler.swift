@@ -78,6 +78,7 @@ enum RPMBundler: Bundler {
       log.info("Creating RPM spec file")
       let specContents = generateSpec(
         appName: context.appName,
+        appIdentifier: context.appConfiguration.identifier,
         appVersion: appVersion,
         bundleStructure: structure,
         sourceArchiveName: rpmBuildDirectory.appSourceArchive.lastPathComponent,
@@ -132,12 +133,17 @@ enum RPMBundler: Bundler {
   /// Generates an RPM spec for the given application.
   static func generateSpec(
     appName: String,
+    appIdentifier: String,
     appVersion: String,
     bundleStructure: GenericLinuxBundler.BundleStructure,
     sourceArchiveName: String,
     installationRoot: URL
   ) -> String {
     let relativeDesktopFileLocation = bundleStructure.desktopFile.path(
+      relativeTo: bundleStructure.root
+    )
+
+    let relativeDBusServiceFileLocation = bundleStructure.dbusServiceFile.path(
       relativeTo: bundleStructure.root
     )
 
@@ -151,6 +157,34 @@ enum RPMBundler: Bundler {
     let iconFileDestination =
       "/usr/share/icons/hicolor/512x512/apps/\(bundleStructure.icon1024x1024.lastPathComponent)"
 
+    let hasDBusService = FileManager.default.itemExists(
+      at: bundleStructure.dbusServiceFile,
+      withType: .file
+    )
+    let installDBusServiceCommand: String
+    if hasDBusService {
+      installDBusServiceCommand = """
+        mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: "/" + relativeDBusServiceFileLocation).deletingLastPathComponent().path)
+        cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDBusServiceFileLocation) $RPM_BUILD_ROOT/\(relativeDBusServiceFileLocation)
+        """
+    } else {
+      installDBusServiceCommand = "# No desktop service file present"
+    }
+
+    let hasIcon = FileManager.default.itemExists(
+      at: bundleStructure.icon1024x1024,
+      withType: .file
+    )
+    let installIconCommand: String
+    if hasIcon {
+      installIconCommand = """
+        mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: iconFileDestination).deletingLastPathComponent().path)
+        cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeIconFileLocation) $RPM_BUILD_ROOT\(iconFileDestination)
+        """
+    } else {
+      installIconCommand = "# No icon file present"
+    }
+
     return """
       Name:           \(appName)
       Version:        \(appVersion)
@@ -160,7 +194,9 @@ enum RPMBundler: Bundler {
       License:        MIT
       Source0:        \(sourceArchiveName)
 
+      %global _enable_debug_package 0
       %global debug_package %{nil}
+      %global __os_install_post /usr/lib/rpm/brp-compress %{nil}
 
       %description
       An app bundled by Swift Bundler
@@ -176,8 +212,8 @@ enum RPMBundler: Bundler {
       cp -R * $RPM_BUILD_ROOT\(installationRoot.path)
       mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: "/" + relativeDesktopFileLocation).deletingLastPathComponent().path)
       cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDesktopFileLocation) $RPM_BUILD_ROOT/\(relativeDesktopFileLocation)
-      mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: iconFileDestination).deletingLastPathComponent().path)
-      cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeIconFileLocation) $RPM_BUILD_ROOT\(iconFileDestination)
+      \(installDBusServiceCommand)
+      \(installIconCommand)
 
       %post
       xdg-desktop-menu forceupdate
@@ -189,7 +225,8 @@ enum RPMBundler: Bundler {
       %files
       \(installationRoot.path)
       /\(relativeDesktopFileLocation)
-      \(iconFileDestination)
+      \(hasDBusService ? "/\(relativeDBusServiceFileLocation)" : "")
+      \(hasIcon ? iconFileDestination : "")
       """
   }
 

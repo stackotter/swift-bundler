@@ -45,10 +45,14 @@ struct AppConfiguration: Codable {
     var icon: String?
     var urlSchemes: [String]
     var plist: [String: PlistValue]
+    var dbusActivatable: Bool
   }
 
   struct Overlay: Codable {
-    static let exclusiveProperties: [Condition: PropertySet] = [:]
+    static let exclusiveProperties: [Condition: PropertySet] = [
+      .platform("linux"): PropertySet()
+        .add(.dbusActivatable, \.dbusActivatable)
+    ]
 
     var condition: Condition
     var identifier: String?
@@ -58,6 +62,7 @@ struct AppConfiguration: Codable {
     var icon: String?
     var urlSchemes: [String]?
     var plist: [String: PlistValue]?
+    var dbusActivatable: Bool?
 
     enum CodingKeys: String, CodingKey {
       case condition
@@ -68,6 +73,7 @@ struct AppConfiguration: Codable {
       case icon
       case urlSchemes = "url_schemes"
       case plist
+      case dbusActivatable = "dbus_activatable"
     }
 
     struct PropertySet {

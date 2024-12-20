@@ -5,7 +5,8 @@ enum GenericLinuxBundlerError: LocalizedError {
   case failedToCreateBundleStructure(root: URL, Error)
   case failedToCopyExecutable(source: URL, destination: URL, Error)
   case failedToCopyIcon(source: URL, destination: URL, Error)
-  case failedToCreateDesktopFile(URL, Error?)
+  case failedToCreateDesktopFile(URL, Error)
+  case failedToCreateDBusServiceFile(URL, Error)
   case failedToCreateSymlink(source: URL, relativeDestination: String, Error)
   case failedToCopyResourceBundle(source: URL, destination: URL, Error)
   case failedToEnumerateResourceBundles(directory: URL, Error)
@@ -30,6 +31,8 @@ enum GenericLinuxBundlerError: LocalizedError {
           """
       case .failedToCreateDesktopFile(let file, _):
         return "Failed to create desktop file at '\(file.relativePath)'"
+      case .failedToCreateDBusServiceFile(let file, _):
+        return "Failed to create DBus service file at '\(file.relativePath)'"
       case .failedToCreateSymlink(let source, let destination, _):
         return """
           Failed to create symlink from '\(source.relativePath)' to relative \

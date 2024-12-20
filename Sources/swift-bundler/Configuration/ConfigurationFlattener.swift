@@ -32,7 +32,8 @@ enum ConfigurationFlattener {
       category: configuration.category,
       icon: configuration.icon,
       urlSchemes: configuration.urlSchemes ?? [],
-      plist: configuration.plist ?? [:]
+      plist: configuration.plist ?? [:],
+      dbusActivatable: false
     )
     let overlays = configuration.overlays ?? []
 
@@ -78,6 +79,7 @@ enum ConfigurationFlattener {
           merge(&partialResult.icon, overlay.icon)
           merge(&partialResult.urlSchemes, overlay.urlSchemes)
           merge(&partialResult.plist, overlay.plist)
+          merge(&partialResult.dbusActivatable, overlay.dbusActivatable)
         }
     }
   }

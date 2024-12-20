@@ -13,9 +13,9 @@ enum ConfigurationFlattenerError: LocalizedError {
         let propertyList = properties.map { "'\($0)'" }.joinedGrammatically(
           singular: "property",
           plural: "properties",
-          withTrailingVerb: Verb(singular: "only exists", plural: "only exist")
+          withTrailingVerb: .be
         )
-        return "\(propertyList) in overlays meeting the condition '\(condition)'"
+        return "\(propertyList) only available in overlays meeting the condition '\(condition)'"
     }
   }
 }

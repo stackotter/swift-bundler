@@ -115,6 +115,15 @@ enum PlistCreator {
         break
     }
 
+    if !configuration.urlSchemes.isEmpty {
+      entries["CFBundleURLTypes"] = [
+        [
+          "CFBundleTypeRole": "Viewer",
+          "CFBundleURLSchemes": configuration.urlSchemes,
+        ]
+      ]
+    }
+
     for (key, value) in configuration.plist {
       entries[key] = value.value
     }
