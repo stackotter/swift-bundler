@@ -9,11 +9,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Version
+      - name: Swift version
         run: swift --version
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build
         run: swift build
