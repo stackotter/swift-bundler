@@ -28,16 +28,17 @@ enum RPMBundler: Bundler {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let bundleName = outputStructure.bundle.lastPathComponent
 
+    let escapedAppName = context.appName.replacingOccurrences(of: " ", with: "-")
     let appVersion = context.appConfiguration.version
     let rpmBuildDirectory = RPMBuildDirectory(
       at: context.outputDirectory / "rpmbuild",
-      appName: context.appName,
+      escapedAppName: escapedAppName,
       appVersion: appVersion
     )
 
     // The 'source' directory for our RPM. Doesn't actual contain source code
     // cause it's all pre-compiled.
-    let sourceDirectory = context.outputDirectory / "\(context.appName)-\(appVersion)"
+    let sourceDirectory = context.outputDirectory / "\(escapedAppName)-\(appVersion)"
 
     let installationRoot = URL(fileURLWithPath: "/opt/\(context.appName)")
     return GenericLinuxBundler.bundle(
@@ -77,7 +78,7 @@ enum RPMBundler: Bundler {
       // installing desktop files).
       log.info("Creating RPM spec file")
       let specContents = generateSpec(
-        appName: context.appName,
+        escapedAppName: escapedAppName,
         appIdentifier: context.appConfiguration.identifier,
         appVersion: appVersion,
         bundleStructure: structure,
@@ -132,7 +133,7 @@ enum RPMBundler: Bundler {
 
   /// Generates an RPM spec for the given application.
   static func generateSpec(
-    appName: String,
+    escapedAppName: String,
     appIdentifier: String,
     appVersion: String,
     bundleStructure: GenericLinuxBundler.BundleStructure,
@@ -154,39 +155,35 @@ enum RPMBundler: Bundler {
     let relativeIconFileLocation = bundleStructure.icon1024x1024.path(
       relativeTo: bundleStructure.root
     )
-    let iconFileDestination =
-      "/usr/share/icons/hicolor/512x512/apps/\(bundleStructure.icon1024x1024.lastPathComponent)"
 
-    let hasDBusService = FileManager.default.itemExists(
-      at: bundleStructure.dbusServiceFile,
-      withType: .file
-    )
-    let installDBusServiceCommand: String
-    if hasDBusService {
-      installDBusServiceCommand = """
-        mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: "/" + relativeDBusServiceFileLocation).deletingLastPathComponent().path)
-        cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDBusServiceFileLocation) $RPM_BUILD_ROOT/\(relativeDBusServiceFileLocation)
+    func copyToBuildRoot(_ relativePath: String) -> String {
+      let quotedPath = shellQuoted(relativePath)
+      return """
+        FILE_SRC=$INSTALL_ROOT/\(quotedPath)
+        FILE_DEST=$RPM_BUILD_ROOT/\(quotedPath)
+        mkdir -p $(dirname "$FILE_DEST")
+        cp "$FILE_SRC" "$FILE_DEST"
         """
-    } else {
-      installDBusServiceCommand = "# No desktop service file present"
     }
 
-    let hasIcon = FileManager.default.itemExists(
-      at: bundleStructure.icon1024x1024,
-      withType: .file
-    )
-    let installIconCommand: String
-    if hasIcon {
-      installIconCommand = """
-        mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: iconFileDestination).deletingLastPathComponent().path)
-        cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeIconFileLocation) $RPM_BUILD_ROOT\(iconFileDestination)
-        """
-    } else {
-      installIconCommand = "# No icon file present"
-    }
+    let hasDBusService = bundleStructure.dbusServiceFile.exists()
+    let installDBusServiceCommand =
+      if hasDBusService {
+        copyToBuildRoot(relativeDBusServiceFileLocation)
+      } else {
+        "# No desktop service file present"
+      }
+
+    let hasIcon = bundleStructure.icon1024x1024.exists()
+    let installIconCommand =
+      if hasIcon {
+        copyToBuildRoot(relativeIconFileLocation)
+      } else {
+        "# No icon file present"
+      }
 
     return """
-      Name:           \(appName)
+      Name:           \(escapedAppName)
       Version:        \(appVersion)
       Release:        1%{?dist}
       Summary:        An app bundled by Swift Bundler
@@ -194,8 +191,11 @@ enum RPMBundler: Bundler {
       License:        MIT
       Source0:        \(sourceArchiveName)
 
-      %global _enable_debug_package 0
       %global debug_package %{nil}
+
+      # Prevents rpmbuild from messing with our ELF files (since Swift Bundler
+      # adds trailer data that gets stripped away when patching ELFs)
+      %global _enable_debug_package 0
       %global __os_install_post /usr/lib/rpm/brp-compress %{nil}
 
       %description
@@ -207,11 +207,13 @@ enum RPMBundler: Bundler {
       %build
 
       %install
-      rm -rf $RPM_BUILD_ROOT
-      mkdir -p $RPM_BUILD_ROOT\(installationRoot.path)
-      cp -R * $RPM_BUILD_ROOT\(installationRoot.path)
-      mkdir -p $RPM_BUILD_ROOT\(URL(fileURLWithPath: "/" + relativeDesktopFileLocation).deletingLastPathComponent().path)
-      cp $RPM_BUILD_ROOT\(installationRoot.path)/\(relativeDesktopFileLocation) $RPM_BUILD_ROOT/\(relativeDesktopFileLocation)
+      INSTALL_ROOT=$RPM_BUILD_ROOT\(shellQuoted(installationRoot.path))
+
+      rm -rf "$RPM_BUILD_ROOT"
+      mkdir -p "$INSTALL_ROOT"
+      cp -R * "$INSTALL_ROOT"
+
+      \(copyToBuildRoot(relativeDesktopFileLocation))
       \(installDBusServiceCommand)
       \(installIconCommand)
 
@@ -220,14 +222,26 @@ enum RPMBundler: Bundler {
       xdg-icon-resource forceupdate
 
       %clean
-      rm -rf $RPM_BUILD_ROOT
+      rm -rf "$RPM_BUILD_ROOT"
 
       %files
-      \(installationRoot.path)
-      /\(relativeDesktopFileLocation)
-      \(hasDBusService ? "/\(relativeDBusServiceFileLocation)" : "")
-      \(hasIcon ? iconFileDestination : "")
+      \(rpmEscapedFilePath(installationRoot.path))
+      \(rpmEscapedFilePath("/" + relativeDesktopFileLocation))
+      \(hasDBusService ? rpmEscapedFilePath("/" + relativeDBusServiceFileLocation) : "")
+      \(hasIcon ? rpmEscapedFilePath("/" + relativeIconFileLocation) : "")
       """
+  }
+
+  private static func shellQuoted(_ string: String) -> String {
+    "'\(string.replacingOccurrences(of: "'", with: "\\'"))'"
+  }
+  private static func rpmEscapedFilePath(_ string: String) -> String {
+    let value =
+      string
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "%", with: "%%")
+      .replacingOccurrences(of: "\"", with: "\\\"")
+    return "\"\(value)\""
   }
 
   /// The structure of an `rpmbuild` directory.
@@ -252,15 +266,15 @@ enum RPMBundler: Bundler {
 
     /// Describes the structure of an `rpmbuild` directory. Doesn't create
     /// anything on disk (see ``RPMBuildDirectory/createDirectories()``).
-    init(at root: URL, appName: String, appVersion: String) {
+    init(at root: URL, escapedAppName: String, appVersion: String) {
       self.root = root
       build = root / "BUILD"
       buildRoot = root / "BUILDROOT"
       rpms = root / "RPMS"
       sources = root / "SOURCES"
-      appSourceArchive = sources / "\(appName)-\(appVersion).tar.gz"
+      appSourceArchive = sources / "\(escapedAppName)-\(appVersion).tar.gz"
       specs = root / "SPECS"
-      appSpec = specs / "\(appName).spec"
+      appSpec = specs / "\(escapedAppName).spec"
       srpms = root / "SRPMS"
     }
 

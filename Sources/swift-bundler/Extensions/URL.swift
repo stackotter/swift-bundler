@@ -47,6 +47,11 @@ extension URL {
       return resolvingSymlinksInPath()
     #endif
   }
+
+  /// Gets whether the URL exists on disk or not.
+  func exists() -> Bool {
+    FileManager.default.fileExists(atPath: path)
+  }
 }
 
 /// Appends a path component to the end of a URL. Think of it like the actual

@@ -34,7 +34,7 @@ struct DarwinAppBundleStructure {
     provisioningProfileFile = contentsDirectory.appendingPathComponent(
       "embedded.mobileprovision"
     )
-    appIconFile = contentsDirectory.appendingPathComponent("AppIcon.icns")
+    appIconFile = resourcesDirectory.appendingPathComponent("AppIcon.icns")
 
     mainExecutable = executableDirectory.appendingPathComponent(appName)
   }

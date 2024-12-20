@@ -75,7 +75,7 @@ struct BundlerContext {
 
   /// The app's main built executable file.
   var executableArtifact: URL {
-    productsDirectory.appendingPathComponent(appName)
+    productsDirectory.appendingPathComponent(appConfiguration.product)
   }
 }
 

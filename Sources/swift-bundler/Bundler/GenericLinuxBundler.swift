@@ -133,8 +133,11 @@ enum GenericLinuxBundler: Bundler {
       mainExecutable = bin.appendingPathComponent(appName)
       lib = root.appendingPathComponent("usr/lib")
       resources = bin
+      // TODO: Resize the icon to 512x512, 1024x1024 isn't supported by xdg stuff
+      //   but no one checks the actual size so we store it in 512x512 and it
+      //   works as a workaround.
       icon1024x1024 = root.appendingPathComponent(
-        "usr/share/icons/hicolor/1024x1024/apps/\(appIdentifier).png"
+        "usr/share/icons/hicolor/512x512/apps/\(appIdentifier).png"
       )
       desktopFile = root.appendingPathComponent(
         "usr/share/applications/\(Self.desktopFileName(for: appIdentifier))"
@@ -433,12 +436,14 @@ enum GenericLinuxBundler: Bundler {
   ) -> Result<Void, GenericLinuxBundlerError> {
     log.info("Creating '\(desktopFile.lastPathComponent)'")
 
+    let escapedExecPath = installedExecutableLocation.path
+      .replacingOccurrences(of: " ", with: "\\ ")
     var properties = [
       ("Type", "Application"),
       ("Version", "1.0"),  // The version of the target desktop spec, not the app
       ("Name", appName),
       ("Comment", ""),
-      ("Exec", "\(installedExecutableLocation.path) %U"),
+      ("Exec", "\(escapedExecPath) %U"),
       ("Icon", appName),
       ("Terminal", "false"),
       ("Categories", ""),
@@ -480,7 +485,7 @@ enum GenericLinuxBundler: Bundler {
   ) -> Result<Void, GenericLinuxBundlerError> {
     let properties = [
       ("Name", appIdentifier),
-      ("Exec", installedExecutableLocation.path),
+      ("Exec", "\"\(installedExecutableLocation.path)\""),
     ]
 
     let contents = encodeIniSection(title: "D-BUS Service", properties: properties)
