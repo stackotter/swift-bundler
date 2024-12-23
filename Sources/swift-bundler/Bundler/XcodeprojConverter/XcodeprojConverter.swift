@@ -301,7 +301,8 @@ enum XcodeprojConverter {
       with: .default(
         .init(
           appName: targetName,
-          productName: targetName
+          productName: targetName,
+          date: Date()
         )
       )
     )

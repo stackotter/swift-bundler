@@ -9,6 +9,8 @@ enum VariableEvaluator {
     var appName: String
     /// The app's product name.
     var productName: String
+    /// The current date as of the beginning of variable evaluation.
+    var date: Date
     /// The root directory of the package.
     var packageDirectory: URL?
     /// The app's version.
@@ -39,22 +41,22 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - string: The string to evaluate variables in.
   ///   - evaluator: The evaluator to use when evaluating each variable.
-  ///   - openingDelimeter: The opening delimeter for a variable. Defaults to `$(`.
-  ///   - closingDelimeter: The closing delimeter for a variable. Defaults to `)`.
+  ///   - openingDelimiter: The opening delimiter for a variable. Defaults to `$(`.
+  ///   - closingDelimiter: The closing delimiter for a variable. Defaults to `)`.
   /// - Returns: The evaluated string, or a failure if an error occurs.
   static func evaluateVariables(
     in string: String,
     with evaluator: Evaluator,
-    openingDelimeter: String = "$(",
-    closingDelimeter: String = ")"
+    openingDelimiter: String = "$(",
+    closingDelimiter: String = ")"
   ) -> Result<String, VariableEvaluatorError> {
     var input = string[...]
     var output = ""
 
-    // Create parser from delimeters
+    // Create parser from delimiters
     let parser = Parse {
       OneOf {
-        PrefixUpTo(openingDelimeter).map(String.init)
+        PrefixUpTo(openingDelimiter).map(String.init)
         Rest<Substring>().map(String.init)
         End<Substring>().map { _ in
           ""
@@ -62,9 +64,9 @@ enum VariableEvaluator {
       }
       OneOf {
         Parse(Optional.some(_:)) {
-          openingDelimeter
-          PrefixUpTo(closingDelimeter).map(String.init)
-          closingDelimeter
+          openingDelimiter
+          PrefixUpTo(closingDelimiter).map(String.init)
+          closingDelimiter
         }
 
         Parse(String?.none) {
@@ -155,6 +157,23 @@ enum VariableEvaluator {
         }
 
         value = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+      case "REVISION_NUMBER":
+        guard let packageDirectory = context.packageDirectory else {
+          return .failure(.packageDirectoryRequiredToEvaluateRevisionNumber)
+        }
+
+        // TODO: Consider using git library
+        let result = Process.create(
+          "git",
+          arguments: ["rev-list", "--count", "HEAD"],
+          directory: packageDirectory
+        ).getOutput()
+
+        guard case let .success(string) = result else {
+          return .failure(.failedToEvaluateRevisionNumber(directory: packageDirectory))
+        }
+
+        value = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
       case "VERSION", "MARKETING_VERSION", "CURRENT_PROJECT_VERSION":
         value = context.version
       case "PRODUCT_BUNDLE_IDENTIFIER":
@@ -171,6 +190,8 @@ enum VariableEvaluator {
         value = productRFC1034Identifier.replacingOccurrences(of: "-", with: "_")
       case "SRCROOT":
         value = "."  // Swift Bundler avoids using absolute paths
+      case "UNIX_TIMESTAMP":
+        value = String(context.date.timeIntervalSince1970)
       default:
         value = nil
     }
@@ -182,43 +203,41 @@ enum VariableEvaluator {
     return .success(value)
   }
 
-  /// Evaluates the expressions present in a plist value (only string values within the tree are evaluated).
+  /// Evaluates the expressions present in tree-like structure (only string
+  /// values within the tree are evaluated).
   /// - Parameters:
-  ///   - value: The plist value to evaluate.
+  ///   - value: The value to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated plist value, or a failure if evaluation fails.
-  static func evaluateVariables(
-    in value: PlistValue,
+  /// - Returns: The evaluated value, or a failure if evaluation fails.
+  static func evaluateVariables<Tree: VariableEvaluatable>(
+    in value: Tree,
     with context: Context
-  ) -> Result<PlistValue, VariableEvaluatorError> {
-    switch value {
-      case .string(let string):
-        return evaluateVariables(in: string, with: context).map { evaluatedString in
-          return .string(evaluatedString)
-        }
-      case .array(let array):
-        return evaluateVariables(in: array, with: context).map { evaluatedArray in
-          return .array(evaluatedArray)
-        }
-      case .dictionary(let dictionary):
-        return evaluateVariables(in: dictionary, with: context).map { evaluatedDictionary in
-          return .dictionary(evaluatedDictionary)
-        }
-      default:
-        return .success(value)
+  ) -> Result<Tree, VariableEvaluatorError> {
+    if let stringValue = value.stringValue {
+      return evaluateVariables(in: stringValue, with: context)
+        .map(Tree.string(_:))
+    } else if let arrayValue = value.arrayValue {
+      return evaluateVariables(in: arrayValue, with: context)
+        .map(Tree.array(_:))
+    } else if let dictionaryValue = value.dictionaryValue {
+      return evaluateVariables(in: dictionaryValue, with: context)
+        .map(Tree.dictionary(_:))
+    } else {
+      return .success(value)
     }
   }
 
-  /// Evaluates the variables present in a plist array (only string values are evaluated).
+  /// Evaluates the variables present in an array of tree-like structures (only
+  /// string values within the tree-like structures are evaluated).
   /// - Parameters:
-  ///   - array: The plist array to evaluate.
+  ///   - array: The array to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated plist array, or a failure if evaluation fails.
-  static func evaluateVariables(
-    in array: [PlistValue],
+  /// - Returns: The evaluated array, or a failure if evaluation fails.
+  static func evaluateVariables<Tree: VariableEvaluatable>(
+    in array: [Tree],
     with context: Context
-  ) -> Result<[PlistValue], VariableEvaluatorError> {
-    var evaluatedArray: [PlistValue] = []
+  ) -> Result<[Tree], VariableEvaluatorError> {
+    var evaluatedArray: [Tree] = []
     for value in array {
       switch evaluateVariables(in: value, with: context) {
         case .success(let evaluatedValue):
@@ -230,16 +249,17 @@ enum VariableEvaluator {
     return .success(evaluatedArray)
   }
 
-  /// Evaluates the variables present in a plist dictionary (only string values are evaluated).
+  /// Evaluates the variables present in a map containing tree-like structures
+  /// (only string values within the tree-like structures are evaluated).
   /// - Parameters:
-  ///   - value: The plist dictionary to evaluate.
+  ///   - value: The dictionary to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated plist dictionary, or a failure if evaluation fails.
-  static func evaluateVariables(
-    in dictionary: [String: PlistValue],
+  /// - Returns: The evaluated dictionary, or a failure if evaluation fails.
+  static func evaluateVariables<Tree: VariableEvaluatable>(
+    in dictionary: [String: Tree],
     with context: Context
-  ) -> Result<[String: PlistValue], VariableEvaluatorError> {
-    var evaluatedDictionary: [String: PlistValue] = [:]
+  ) -> Result<[String: Tree], VariableEvaluatorError> {
+    var evaluatedDictionary: [String: Tree] = [:]
     for (key, value) in dictionary {
       switch evaluateVariables(in: value, with: context) {
         case .success(let evaluatedValue):
@@ -251,9 +271,38 @@ enum VariableEvaluator {
     return .success(evaluatedDictionary)
   }
 
+  /// Evaluates the variables present in supported sections of an app
+  /// configuration overlay.
+  ///
+  /// The only currently supported sections are ``AppConfiguration.Overlay/plist``
+  /// and ``AppConfiguration.Overlay/metadata``.
+  /// - Parameters:
+  ///   - overlay: The configuration overlay to evaluate expressions in.
+  ///   - context: The context required to evaluate variables.
+  /// - Returns: The evaluated configuration overlay, or a failure if
+  ///   evaluation fails.
+  static func evaluateVariables(
+    in overlay: AppConfiguration.Overlay,
+    with context: Context
+  ) -> Result<AppConfiguration.Overlay, VariableEvaluatorError> {
+    return Result.success(overlay)
+      .andThen(ifLet: \AppConfiguration.Overlay.plist) { overlay, plist in
+        evaluateVariables(in: plist, with: context).map { plist in
+          with(overlay, set(\.plist, plist))
+        }
+      }
+      .andThen(ifLet: \AppConfiguration.Overlay.metadata) { overlay, metadata in
+        evaluateVariables(in: metadata, with: context).map { metadata in
+          with(overlay, set(\.metadata, metadata))
+        }
+      }
+  }
+
   /// Evaluates the variables present in supported sections of an app's configuration.
   ///
-  /// The only currently supported section is ``AppConfiguration/plist``.
+  /// The only currently supported sections are ``AppConfiguration/plist``
+  /// and ``AppConfiguration/metadata`` (and the equivalent sections within the
+  /// configuration's overlays).
   /// - Parameters:
   ///   - configuration: The configuration to evaluate expressions in.
   ///   - appName: The app's name.
@@ -264,26 +313,33 @@ enum VariableEvaluator {
     named appName: String,
     packageDirectory: URL
   ) -> Result<AppConfiguration, VariableEvaluatorError> {
-    var configuration = configuration
+    let context = Context(
+      appName: appName,
+      productName: configuration.product,
+      date: Date(),
+      packageDirectory: packageDirectory,
+      version: configuration.version,
+      identifier: configuration.identifier
+    )
 
-    if let plist = configuration.plist {
-      let context = Context(
-        appName: appName,
-        productName: configuration.product,
-        packageDirectory: packageDirectory,
-        version: configuration.version,
-        identifier: configuration.identifier
-      )
-
-      switch evaluateVariables(in: plist, with: context) {
-        case .success(let evaluatedPlist):
-          configuration.plist = evaluatedPlist
-        case .failure(let error):
-          return .failure(error)
+    return Result.success(configuration)
+      .andThen(ifLet: \AppConfiguration.plist) { configuration, plist in
+        evaluateVariables(in: plist, with: context).map { plist in
+          with(configuration, set(\.plist, plist))
+        }
       }
-    }
-
-    return .success(configuration)
+      .andThen(ifLet: \AppConfiguration.metadata) { configuration, metadata in
+        evaluateVariables(in: metadata, with: context).map { metadata in
+          with(configuration, set(\.metadata, metadata))
+        }
+      }
+      .andThen(ifLet: \AppConfiguration.overlays) { configuration, overlays in
+        overlays.tryMap { overlay in
+          evaluateVariables(in: overlay, with: context)
+        }.map { overlays in
+          with(configuration, set(\.overlays, overlays))
+        }
+      }
   }
 
   /// Evaluates the variables present in supported sections of a package's configuration.

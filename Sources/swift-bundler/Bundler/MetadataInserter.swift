@@ -20,13 +20,16 @@ enum MetadataInserter {
     var appIdentifier: String
     /// The app's version.
     var appVersion: String
+    /// Additional user-defined metadata.
+    var additionalMetadata: [String: MetadataValue]
   }
 
   /// Generates an app's metadata from its configuration.
   static func metadata(for configuration: AppConfiguration.Flat) -> Metadata {
     Metadata(
       appIdentifier: configuration.identifier,
-      appVersion: configuration.version
+      appVersion: configuration.version,
+      additionalMetadata: configuration.metadata
     )
   }
 

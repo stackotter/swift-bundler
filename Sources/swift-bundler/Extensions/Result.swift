@@ -75,6 +75,38 @@ extension Result {
     }
   }
 
+  /// Perform a fallible transformation on success, but only if the given
+  /// value isn't `nil`. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen<Value>(
+    ifLet value: Value?,
+    _ transform: (Success, Value) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    flatMap { successValue in
+      guard let value = value else {
+        return .success(successValue)
+      }
+
+      return transform(successValue, value)
+    }
+  }
+
+  /// Perform a fallible transformation on success, but only if the given
+  /// property isn't `nil`. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen<Value>(
+    ifLet property: KeyPath<Success, Value?>,
+    _ transform: (Success, Value) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    flatMap { successValue in
+      guard let value = successValue[keyPath: property] else {
+        return .success(successValue)
+      }
+
+      return transform(successValue, value)
+    }
+  }
+
   /// Specifically just performs a side effect without affecting the underlying
   /// success value of the result (unless of course the action fails).
   func andThenDoSideEffect(
@@ -204,5 +236,17 @@ func flatten<Failure: Error>(
       }
     }
     return .success()
+  }
+}
+
+func with<T, U>(_ value: T, _ transform: (T) -> U) -> U {
+  transform(value)
+}
+
+func set<T, U>(_ property: WritableKeyPath<T, U>, _ value: U) -> (T) -> T {
+  { container in
+    var container = container
+    container[keyPath: property] = value
+    return container
   }
 }

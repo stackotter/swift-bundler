@@ -21,6 +21,11 @@ struct AppConfiguration: Codable {
   ///
   /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var plist: [String: PlistValue]?
+  /// A dictionary containing extra entries to add to the app's metadata (embedded in the
+  /// main executable).
+  ///
+  /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
+  var metadata: [String: MetadataValue]?
   /// Conditionally applied configuration overlays.
   var overlays: [Overlay]?
 
@@ -32,6 +37,7 @@ struct AppConfiguration: Codable {
     case icon
     case urlSchemes = "url_schemes"
     case plist
+    case metadata
     case overlays
   }
 
@@ -45,6 +51,7 @@ struct AppConfiguration: Codable {
     var icon: String?
     var urlSchemes: [String]
     var plist: [String: PlistValue]
+    var metadata: [String: MetadataValue]
     var dbusActivatable: Bool
   }
 
@@ -62,6 +69,7 @@ struct AppConfiguration: Codable {
     var icon: String?
     var urlSchemes: [String]?
     var plist: [String: PlistValue]?
+    var metadata: [String: MetadataValue]?
     var dbusActivatable: Bool?
 
     enum CodingKeys: String, CodingKey {
@@ -73,6 +81,7 @@ struct AppConfiguration: Codable {
       case icon
       case urlSchemes = "url_schemes"
       case plist
+      case metadata
       case dbusActivatable = "dbus_activatable"
     }
 

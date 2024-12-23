@@ -15,7 +15,7 @@ import TOMLKit
 ///   "value": "2022-05-18T00:54:55Z"
 /// }
 /// ```
-enum PlistValue: Codable, Equatable {
+enum PlistValue: Codable, Equatable, VariableEvaluatable {
   /// The JSON schema for a plist value.
   private static var schema = """
     {
@@ -31,6 +31,33 @@ enum PlistValue: Codable, Equatable {
   case date(Date)
   case data(Data)
   case string(String)
+
+  var stringValue: String? {
+    switch self {
+      case .string(let value):
+        return value
+      default:
+        return nil
+    }
+  }
+
+  var dictionaryValue: [String: PlistValue]? {
+    switch self {
+      case .dictionary(let value):
+        return value
+      default:
+        return nil
+    }
+  }
+
+  var arrayValue: [PlistValue]? {
+    switch self {
+      case .array(let value):
+        return value
+      default:
+        return nil
+    }
+  }
 
   /// A string representation of the value's explicit type.
   var type: String {
