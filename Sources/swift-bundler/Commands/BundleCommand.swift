@@ -341,14 +341,6 @@ struct BundleCommand: AsyncCommand {
         ).unwrap()
       }
 
-      // TODO: Insert when moving to the bundle directory, perhaps via a method
-      //   on some sort of BuildProducts struct. Otherwise we end up adding
-      //   metadata multiple times if the user uses `--skip-build`, which is
-      //   harmless, but janky.
-      let executable = productsDirectory.appendingPathComponent(appConfiguration.product)
-      let metadata = MetadataInserter.metadata(for: appConfiguration)
-      try MetadataInserter.insert(metadata, into: executable).unwrap()
-
       try Self.removeExistingOutputs(
         outputDirectory: outputDirectory,
         skip: [dependenciesScratchDirectory.lastPathComponent]

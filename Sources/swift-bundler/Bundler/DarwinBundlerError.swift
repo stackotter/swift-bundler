@@ -26,6 +26,7 @@ enum DarwinBundlerError: LocalizedError {
   case failedToCopyProvisioningProfile(Error)
   case missingDarwinPlatformVersion(Platform)
   case unsupportedPlatform(Platform)
+  case failedToInsertMetadata(MetadataInserterError)
 
   var errorDescription: String? {
     switch self {
@@ -85,6 +86,8 @@ enum DarwinBundlerError: LocalizedError {
           Platform '\(platform.name)' not supported by \
           '\(BundlerChoice.darwinApp.rawValue)' bundler.
           """
+      case .failedToInsertMetadata(let error):
+        return error.localizedDescription
     }
   }
 }

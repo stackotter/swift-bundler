@@ -199,6 +199,19 @@ enum DarwinBundler: Bundler {
       createAppIconIfPresent,
       copyResourcesBundles,
       copyDynamicLibraries,
+      {
+        // Insert metadata after copying dynamic library dependencies cause
+        // trailing data can cause `install_name_tool` to fail. It requires
+        // __LINKEDIT to be the last segment and it requires all data in
+        // __LINKEDIT to be accounted for. I spent a few hours implementing
+        // a basic Mach-O editor just to figure out that my approach didn't
+        // work...
+        let metadata = MetadataInserter.metadata(for: context.appConfiguration)
+        return MetadataInserter.insert(
+          metadata,
+          into: bundleStructure.mainExecutable
+        ).mapError(DarwinBundlerError.failedToInsertMetadata)
+      },
       embedProfile,
       sign
     )

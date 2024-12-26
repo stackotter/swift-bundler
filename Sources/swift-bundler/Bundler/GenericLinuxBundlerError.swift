@@ -20,6 +20,7 @@ enum GenericLinuxBundlerError: LocalizedError {
   case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
   case failedToUpdateMainExecutableRunpath(executable: URL, Error)
   case failedToCreateDirectory(URL, Error)
+  case failedToInsertMetadata(MetadataInserterError)
 
   var errorDescription: String? {
     switch self {
@@ -71,6 +72,8 @@ enum GenericLinuxBundlerError: LocalizedError {
           """
       case .failedToCreateDirectory(let directory, _):
         return "Failed to create directory at '\(directory.relativePath)'"
+      case .failedToInsertMetadata(let error):
+        return error.localizedDescription
     }
   }
 }
