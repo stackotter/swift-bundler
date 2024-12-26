@@ -329,7 +329,7 @@ enum ProjectBuilder {
         }
         dependency = """
                   .package(
-                      url: "\(url.absoluteString)"
+                      url: "\(url.absoluteString)",
                       revision: "\(revision)"
                   )
           """
