@@ -225,6 +225,27 @@ enum GenericLinuxBundler: Bundler {
         copyExecutable(at: executableArtifact, to: structure.mainExecutable)
       }
       .andThen { _ in
+        // Copy all executable dependencies into the bundle next to the main
+        // executable
+        context.builtDependencies.filter { (_, dependency) in
+          dependency.product.type == .executable
+        }.tryForEach { (name, dependency) in
+          let source = dependency.location
+          let destination = structure.bin / dependency.location.lastPathComponent
+          return FileManager.default.copyItem(
+            at: source,
+            to: destination
+          ).mapError { error in
+            GenericLinuxBundlerError.failedToCopyExecutableDependency(
+              name: name,
+              source: source,
+              destination: destination,
+              error
+            )
+          }
+        }
+      }
+      .andThen { _ in
         copyResources(
           from: context.productsDirectory,
           to: structure.resources
@@ -257,7 +278,8 @@ enum GenericLinuxBundler: Bundler {
       .andThen { _ in
         copyDynamicLibraryDependencies(
           of: structure.mainExecutable,
-          to: structure.lib
+          to: structure.lib,
+          productsDirectory: context.productsDirectory
         )
       }
       .replacingSuccessValue(with: structure)
@@ -269,17 +291,23 @@ enum GenericLinuxBundler: Bundler {
   /// the `AppDir`, and updates the runpaths of the executable and moved dynamic
   /// libraries accordingly.
   ///
-  /// For now this sticks to handling the Swift runtime libraries because there
-  /// are many problematic dynamic libraries out there such as Gtk which break
-  /// things when you try to distribute them.
+  /// For now this sticks to handling the Swift runtime libraries and dynamic
+  /// libraries produced directly by the build, because there are many
+  /// problematic dynamic libraries out there such as Gtk which break things
+  /// when you try to distribute them.
   private static func copyDynamicLibraryDependencies(
     of appExecutable: URL,
-    to destination: URL
+    to destination: URL,
+    productsDirectory: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
-    log.info("Copying Swift runtime libraries")
+    log.info("Copying dynamic libraries (and Swift runtime)")
+    let allowedLibrariesDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
     return Process.create(
       "ldd",
       arguments: [appExecutable.path],
+      environment: [
+        "LD_LIBRARY_PATH": allowedLibrariesDirectory.path
+      ],
       runSilentlyWhenNotVerbose: false
     ).getOutput()
       .mapError { error in
@@ -293,9 +321,13 @@ enum GenericLinuxBundler: Bundler {
           }
           .map(URL.init(fileURLWithPath:))
           .filter { library in
-            // Ensure that library is on our allow list
+            // Ensure that the library is on our allow list or was a product of
+            // the built.
             let libraryName = String(library.lastPathComponent.split(separator: ".")[0])
             return dynamicLibraryBundlingAllowList.contains(libraryName)
+              || library.actuallyResolvingSymlinksInPath().path.starts(
+                with: allowedLibrariesDirectory.path
+              )
           }
           .tryForEach { library in
             return copyDynamicLibrary(library, toDirectory: destination)

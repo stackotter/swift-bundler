@@ -232,9 +232,12 @@ enum RPMBundler: Bundler {
       """
   }
 
+  // TODO: I'm pretty sure this is wrong (leaving it for now cause I'm busy with
+  //   something else and single quotes in directory names should be relatively rare)
   private static func shellQuoted(_ string: String) -> String {
     "'\(string.replacingOccurrences(of: "'", with: "\\'"))'"
   }
+
   private static func rpmEscapedFilePath(_ string: String) -> String {
     let value =
       string

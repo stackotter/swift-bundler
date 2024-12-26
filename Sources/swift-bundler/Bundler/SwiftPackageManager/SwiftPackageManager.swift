@@ -90,8 +90,6 @@ enum SwiftPackageManager {
     product: String,
     buildContext: BuildContext
   ) -> Result<Void, SwiftPackageManagerError> {
-    log.info("Starting \(buildContext.configuration.rawValue) build")
-
     return createBuildArguments(
       product: product,
       buildContext: buildContext
@@ -451,19 +449,12 @@ enum SwiftPackageManager {
       }
     #endif
 
-    let toolsVersionProcess = Process.create(
-      "swift",
-      arguments: ["package", "tools-version"],
-      directory: packageDirectory
-    )
-    let toolsVersion: String
-    let swiftMajorVersion: String
-    switch toolsVersionProcess.getOutput() {
-      case .success(let output):
-        toolsVersion = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        swiftMajorVersion = String(toolsVersion.first!)
+    let toolsVersion: Version
+    switch getToolsVersion(packageDirectory) {
+      case .success(let version):
+        toolsVersion = version
       case .failure(let error):
-        return .failure(.failedToParsePackageManifestToolsVersion(error))
+        return .failure(error)
     }
 
     // Compile to object file
@@ -473,7 +464,8 @@ enum SwiftPackageManager {
         "-I", manifestAPIDirectory.path,
         "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
         "-lPackageDescription",
-        "-swift-version", swiftMajorVersion, "-package-description-version", toolsVersion,
+        "-swift-version", String(toolsVersion.major),
+        "-package-description-version", toolsVersion.description,
         "-disable-implicit-concurrency-module-import",
         "-disable-implicit-string-processing-module-import",
         "-o", temporaryExecutableFile,
@@ -528,6 +520,27 @@ enum SwiftPackageManager {
         .mapError { error in
           .failedToParseTargetInfo(json: output, error)
         }
+    }
+  }
+
+  static func getToolsVersion(
+    _ packageDirectory: URL
+  ) -> Result<Version, SwiftPackageManagerError> {
+    Process.create(
+      "swift",
+      arguments: ["package", "tools-version"],
+      directory: packageDirectory
+    ).getOutput().mapError { error in
+      .failedToGetToolsVersion(error)
+    }.andThen { version in
+      guard
+        let parsedVersion = Version(
+          version.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+      else {
+        return .failure(.invalidToolsVersion(version))
+      }
+      return .success(parsedVersion)
     }
   }
 }

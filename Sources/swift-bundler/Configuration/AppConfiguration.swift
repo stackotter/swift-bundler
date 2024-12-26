@@ -26,6 +26,11 @@ struct AppConfiguration: Codable {
   ///
   /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var metadata: [String: MetadataValue]?
+  /// Dependency identifiers of dependencies built by Swift Bundler before this
+  /// build is invoked. Allows for integration with non-SwiftPM build tools, and
+  /// applications pulling other applications (e.g. helper applications) into
+  /// their build process.
+  var dependencies: [Dependency]?
   /// Conditionally applied configuration overlays.
   var overlays: [Overlay]?
 
@@ -39,6 +44,7 @@ struct AppConfiguration: Codable {
     case plist
     case metadata
     case overlays
+    case dependencies
   }
 
   /// A flattened version of ``AppConfiguration`` (generally with all applicable
@@ -52,7 +58,54 @@ struct AppConfiguration: Codable {
     var urlSchemes: [String]
     var plist: [String: PlistValue]
     var metadata: [String: MetadataValue]
+    var dependencies: [Dependency]
     var dbusActivatable: Bool
+  }
+
+  struct Dependency: Codable, Hashable {
+    var project: String
+    var product: String
+
+    var identifier: String {
+      "\(project).\(product)"
+    }
+
+    init(project: String, product: String) {
+      self.project = project
+      self.product = product
+    }
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      let parser = OneOf {
+        Parse {
+          PrefixUpTo(".")
+          "."
+          Rest<Substring>()
+        }.map { project, product in
+          Dependency(
+            project: String(project),
+            product: String(product)
+          )
+        }
+
+        Parse {
+          Rest<Substring>()
+        }.map { product in
+          Dependency(
+            project: ProjectConfiguration.defaultProjectName,
+            product: String(product)
+          )
+        }
+      }
+      let value = try container.decode(String.self)
+      self = try parser.parse(value)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+      var container = encoder.singleValueContainer()
+      try container.encode(identifier)
+    }
   }
 
   struct Overlay: Codable {
@@ -70,6 +123,7 @@ struct AppConfiguration: Codable {
     var urlSchemes: [String]?
     var plist: [String: PlistValue]?
     var metadata: [String: MetadataValue]?
+    var dependencies: [Dependency]?
     var dbusActivatable: Bool?
 
     enum CodingKeys: String, CodingKey {
@@ -82,6 +136,7 @@ struct AppConfiguration: Codable {
       case urlSchemes = "url_schemes"
       case plist
       case metadata
+      case dependencies
       case dbusActivatable = "dbus_activatable"
     }
 

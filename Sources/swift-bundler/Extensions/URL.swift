@@ -31,6 +31,11 @@ extension URL {
     return relComponents.joined(separator: "/")
   }
 
+  /// The current directory.
+  static var currentDirectory: URL {
+    URL(fileURLWithPath: ".")
+  }
+
   /// ``URL/resolvingSymlinksInPath()`` is broken on Linux, and that's why I
   /// created this function. Tl;dr, if the last path component is a symlink it
   /// doesn't seem to get resolved (at least in the cases I've tried). I don't

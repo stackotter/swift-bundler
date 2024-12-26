@@ -73,6 +73,9 @@ struct BundlerContext {
   /// The platform version getting built for.
   var platformVersion: String?
 
+  /// The app's built dependencies.
+  var builtDependencies: [String: ProjectBuilder.BuiltProduct]
+
   /// The app's main built executable file.
   var executableArtifact: URL {
     productsDirectory.appendingPathComponent(appConfiguration.product)

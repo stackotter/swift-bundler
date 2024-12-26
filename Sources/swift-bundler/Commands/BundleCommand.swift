@@ -39,7 +39,12 @@ struct BundleCommand: AsyncCommand {
 
   // TODO: fix this weird pattern with a better config loading system
   /// Used to avoid loading configuration twice when RunCommand is used.
-  static var app: (name: String, app: AppConfiguration.Flat)?
+  static var bundlerConfiguration:
+    (
+      appName: String,
+      appConfiguration: AppConfiguration.Flat,
+      configuration: PackageConfiguration.Flat
+    )?
 
   init() {
     _arguments = OptionGroup()
@@ -216,11 +221,11 @@ struct BundleCommand: AsyncCommand {
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
-      let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
+      let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
-        arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
+        arguments.scratchDirectory ?? (packageDirectory / ".build")
 
-      let (appName, appConfiguration) = try Self.getAppConfiguration(
+      let (appName, appConfiguration, configuration) = try Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
         context: ConfigurationFlattener.Context(platform: arguments.platform),
@@ -264,25 +269,16 @@ struct BundleCommand: AsyncCommand {
         try arguments.productsDirectory
         ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
 
-      let bundlerContext = BundlerContext(
+      var bundlerContext = BundlerContext(
         appName: appName,
         packageName: manifest.displayName,
         appConfiguration: appConfiguration,
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: outputDirectory,
-        platform: arguments.platform
+        platform: arguments.platform,
+        builtDependencies: [:]
       )
-
-      // Create build job
-      let build: () -> Result<Void, Error> = {
-        SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).mapError { error in
-          return error
-        }
-      }
 
       // If this is a dry run, drop out just before we start actually do stuff.
       guard !dryRun else {
@@ -294,9 +290,55 @@ struct BundleCommand: AsyncCommand {
         )
       }
 
-      // Run all of the tasks that we've built up.
+      let dependenciesScratchDirectory = outputDirectory / "projects"
+
+      let dependencies = try ProjectBuilder.buildDependencies(
+        appConfiguration.dependencies,
+        packageConfiguration: configuration,
+        packageDirectory: packageDirectory,
+        scratchDirectory: dependenciesScratchDirectory,
+        appProductsDirectory: productsDirectory,
+        appName: appName,
+        platform: buildContext.platform,
+        dryRun: skipBuild
+      ).unwrap()
+      bundlerContext.builtDependencies = dependencies
+
       if !skipBuild {
-        try build().unwrap()
+        // Copy built library products
+        log.info("Copying dependencies")
+
+        if !FileManager.default.itemExists(at: productsDirectory, withType: .directory) {
+          try FileManager.default.createDirectory(
+            at: productsDirectory,
+            withIntermediateDirectories: true
+          )
+        }
+
+        for (_, dependency) in dependencies {
+          guard
+            dependency.product.type == .dynamicLibrary
+              || dependency.product.type == .staticLibrary
+          else {
+            continue
+          }
+
+          let destination = productsDirectory / dependency.location.lastPathComponent
+          if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+          }
+
+          try FileManager.default.copyItem(
+            at: dependency.location,
+            to: destination
+          )
+        }
+
+        log.info("Starting \(buildContext.configuration.rawValue) build")
+        try SwiftPackageManager.build(
+          product: appConfiguration.product,
+          buildContext: buildContext
+        ).unwrap()
       }
 
       // TODO: Insert when moving to the bundle directory, perhaps via a method
@@ -307,7 +349,11 @@ struct BundleCommand: AsyncCommand {
       let metadata = MetadataInserter.metadata(for: appConfiguration)
       try MetadataInserter.insert(metadata, into: executable).unwrap()
 
-      try Self.removeExistingOutputs(outputDirectory: outputDirectory).unwrap()
+      try Self.removeExistingOutputs(
+        outputDirectory: outputDirectory,
+        skip: [dependenciesScratchDirectory.lastPathComponent]
+      ).unwrap()
+
       return try Self.bundle(
         with: arguments.bundler.bundler,
         context: bundlerContext,
@@ -330,10 +376,22 @@ struct BundleCommand: AsyncCommand {
   }
 
   /// Removes the given output directory if it exists.
-  static func removeExistingOutputs(outputDirectory: URL) -> Result<Void, CLIError> {
+  static func removeExistingOutputs(
+    outputDirectory: URL,
+    skip excludedItems: [String]
+  ) -> Result<Void, CLIError> {
     if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
       do {
-        try FileManager.default.removeItem(at: outputDirectory)
+        let contents = try FileManager.default.contentsOfDirectory(
+          at: outputDirectory,
+          includingPropertiesForKeys: nil
+        )
+        for item in contents {
+          guard !excludedItems.contains(item.lastPathComponent) else {
+            continue
+          }
+          try FileManager.default.removeItem(at: item)
+        }
       } catch {
         return .failure(
           CLIError.failedToRemoveExistingOutputs(
@@ -392,14 +450,18 @@ struct BundleCommand: AsyncCommand {
   ///   - context: The context used to evaluate configuration overlays.
   ///   - customFile: A custom configuration file not at the standard location.
   /// - Returns: The app's configuration if successful.
-  static func getAppConfiguration(
+  static func getConfiguration(
     _ appName: String?,
     packageDirectory: URL,
     context: ConfigurationFlattener.Context,
     customFile: URL? = nil
-  ) throws -> (name: String, app: AppConfiguration.Flat) {
-    if let app = Self.app {
-      return app
+  ) throws -> (
+    appName: String,
+    appConfiguration: AppConfiguration.Flat,
+    configuration: PackageConfiguration.Flat
+  ) {
+    if let configuration = Self.bundlerConfiguration {
+      return configuration
     }
 
     let configuration = try PackageConfiguration.load(
@@ -412,9 +474,12 @@ struct BundleCommand: AsyncCommand {
       with: context
     ).unwrap()
 
-    let app = try flatConfiguration.getAppConfiguration(appName).unwrap()
-    Self.app = app
-    return app
+    let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
+      appName
+    ).unwrap()
+
+    Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
+    return (appName, appConfiguration, flatConfiguration)
   }
 
   /// Unwraps an optional output directory and returns the default output

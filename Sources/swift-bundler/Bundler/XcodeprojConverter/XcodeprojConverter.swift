@@ -434,7 +434,7 @@ enum XcodeprojConverter {
       }
     }
 
-    return .success(PackageConfiguration(apps))
+    return .success(PackageConfiguration(apps: apps))
   }
 
   /// Creates a `Package.swift` file declaring the given targets.

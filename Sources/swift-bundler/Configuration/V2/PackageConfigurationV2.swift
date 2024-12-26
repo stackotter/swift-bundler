@@ -7,8 +7,8 @@ struct PackageConfigurationV2: Codable {
 
   /// Migrates this configuration to the latest version.
   func migrate() -> PackageConfiguration {
-    return PackageConfiguration(
-      apps.mapValues { app in
+    PackageConfiguration(
+      apps: apps.mapValues { app in
         return app.migrate()
       }
     )

@@ -1,22 +1,36 @@
+import Foundation
+
+/// Evaluates a configuration's overlays and performs any other useful
+/// transformations or validations at the same time.
 enum ConfigurationFlattener {
   struct Context {
     var platform: Platform
-
   }
 
   static func flatten(
     _ configuration: PackageConfiguration,
     with context: Context
-  ) -> Result<PackageConfiguration.Flat, ConfigurationFlattenerError> {
+  ) -> Result<PackageConfiguration.Flat, Error> {
     Array(configuration.apps).tryMap { (name, appConfiguration) in
       flatten(appConfiguration, with: context).map { app in
         (name, app)
       }
     }
-    .map { appPairs in
+    .andThen { flattenedApps in
+      Array(configuration.projects).tryMap { (name, projectConfiguration) in
+        flatten(projectConfiguration, with: context).map { project in
+          (name, project)
+        }
+      }
+      .map { flattenedProjects in
+        (flattenedApps, flattenedProjects)
+      }
+    }
+    .map { (flattenedApps, flattenedProjects) in
       PackageConfiguration.Flat(
         formatVersion: configuration.formatVersion,
-        apps: Dictionary(appPairs) { first, _ in first }
+        apps: Dictionary(flattenedApps) { first, _ in first },
+        projects: Dictionary(flattenedProjects) { first, _ in first }
       )
     }
   }
@@ -24,7 +38,7 @@ enum ConfigurationFlattener {
   static func flatten(
     _ configuration: AppConfiguration,
     with context: Context
-  ) -> Result<AppConfiguration.Flat, ConfigurationFlattenerError> {
+  ) -> Result<AppConfiguration.Flat, Error> {
     let base = AppConfiguration.Flat(
       identifier: configuration.identifier,
       product: configuration.product,
@@ -34,6 +48,7 @@ enum ConfigurationFlattener {
       urlSchemes: configuration.urlSchemes ?? [],
       plist: configuration.plist ?? [:],
       metadata: configuration.metadata ?? [:],
+      dependencies: configuration.dependencies ?? [],
       dbusActivatable: false
     )
     let overlays = configuration.overlays ?? []
@@ -81,6 +96,7 @@ enum ConfigurationFlattener {
           merge(&partialResult.urlSchemes, overlay.urlSchemes)
           merge(&partialResult.plist, overlay.plist)
           merge(&partialResult.metadata, overlay.metadata)
+          merge(&partialResult.dependencies, overlay.dependencies)
           merge(&partialResult.dbusActivatable, overlay.dbusActivatable)
         }
     }
@@ -94,5 +110,55 @@ enum ConfigurationFlattener {
       case .platform(let identifier):
         identifier == context.platform.rawValue
     }
+  }
+
+  static func flatten(
+    _ configuration: ProjectConfiguration,
+    with context: Context
+  ) -> Result<ProjectConfiguration.Flat, Error> {
+    guard configuration.builder.name.hasSuffix(".swift") else {
+      return .failure(
+        Error.projectBuilderNotASwiftFile(
+          configuration.builder.name
+        )
+      )
+    }
+
+    let builderAPI: ProjectConfiguration.Builder.Flat.API
+    switch configuration.builder.apiSource {
+      case .local(let path):
+        guard configuration.builder.api == nil else {
+          return .failure(
+            Error.localBuilderAPIMustNotSpecifyRevision(path)
+          )
+        }
+        builderAPI = .local(path)
+      case .git(let url):
+        guard let apiRequirement = configuration.builder.api else {
+          return .failure(
+            Error.gitBasedBuilderAPIMissingAPIRequirement(url)
+          )
+        }
+        builderAPI = .git(url, requirement: apiRequirement)
+      case nil:
+        guard let apiRequirement = configuration.builder.api else {
+          return .failure(
+            Error.defaultBuilderAPIMissingAPIRequirement
+          )
+        }
+        builderAPI = .git(nil, requirement: apiRequirement)
+    }
+
+    return .success(
+      ProjectConfiguration.Flat(
+        source: configuration.source,
+        builder: ProjectConfiguration.Builder.Flat(
+          name: configuration.builder.name,
+          type: configuration.builder.type,
+          api: builderAPI
+        ),
+        products: configuration.products
+      )
+    )
   }
 }

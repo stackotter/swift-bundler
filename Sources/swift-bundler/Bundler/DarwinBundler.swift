@@ -163,6 +163,29 @@ enum DarwinBundler: Bundler {
           to: bundleStructure.mainExecutable
         )
       },
+      {
+        // Copy all executable dependencies into the bundle next to the main
+        // executable
+        context.builtDependencies.filter { (_, dependency) in
+          dependency.product.type == .executable
+        }.tryForEach { (name, dependency) in
+          let source = dependency.location
+          let destination =
+            bundleStructure.mainExecutable.deletingLastPathComponent()
+            / dependency.location.lastPathComponent
+          return FileManager.default.copyItem(
+            at: source,
+            to: destination
+          ).mapError { error in
+            DarwinBundlerError.failedToCopyExecutableDependency(
+              name: name,
+              source: source,
+              destination: destination,
+              error
+            )
+          }
+        }
+      },
       { Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile) },
       {
         Self.createInfoPlistFile(

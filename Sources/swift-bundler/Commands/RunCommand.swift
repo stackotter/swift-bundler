@@ -73,11 +73,10 @@ struct RunCommand: AsyncCommand {
     }
 
     // Load configuration
-    let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
-    let scratchDirectory =
-      arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
+    let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
+    let scratchDirectory = arguments.scratchDirectory ?? packageDirectory / ".build"
 
-    let (_, appConfiguration) = try BundleCommand.getAppConfiguration(
+    let (_, appConfiguration, _) = try BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       context: ConfigurationFlattener.Context(platform: arguments.platform),

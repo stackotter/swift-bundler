@@ -8,6 +8,7 @@ let package = Package(
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
     .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
+    .library(name: "SwiftBundlerBuilders", targets: ["SwiftBundlerBuilders"]),
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
@@ -45,6 +46,7 @@ let package = Package(
         "FileSystemWatcher",
         "Yams",
         "SwiftXcodeProj",
+        "SwiftBundlerBuilders",
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftFormat", package: "swift-format"),
@@ -67,6 +69,11 @@ let package = Package(
         "Socket",
         "HotReloadingProtocol",
       ]
+    ),
+
+    .target(
+      name: "SwiftBundlerBuilders",
+      dependencies: []
     ),
 
     .target(

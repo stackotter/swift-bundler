@@ -4,6 +4,12 @@ import Foundation
 enum GenericLinuxBundlerError: LocalizedError {
   case failedToCreateBundleStructure(root: URL, Error)
   case failedToCopyExecutable(source: URL, destination: URL, Error)
+  case failedToCopyExecutableDependency(
+    name: String,
+    source: URL,
+    destination: URL,
+    Error
+  )
   case failedToCopyIcon(source: URL, destination: URL, Error)
   case failedToCreateDesktopFile(URL, Error)
   case failedToCreateDBusServiceFile(URL, Error)
@@ -23,6 +29,12 @@ enum GenericLinuxBundlerError: LocalizedError {
         return """
           Failed to copy executable from '\(source.relativePath)' to \
           '\(destination.relativePath)'
+          """
+      case .failedToCopyExecutableDependency(let dependencyName, let source, let destination, _):
+        return
+          """
+          Failed to copy executable dependency '\(dependencyName)' from \
+          '\(source.relativePath)' to '\(destination.relativePath)'
           """
       case .failedToCopyIcon(let source, let destination, _):
         return """
