@@ -51,7 +51,14 @@ extension Process {
     var output = Data()
     var currentLine: String?
 
+    let semaphore = DispatchSemaphore(value: 1)
+
     func handleData(_ data: Data, isFinal: Bool = false) {
+      semaphore.wait()
+      defer {
+        semaphore.signal()
+      }
+
       if pipe.fileHandleForReading.readabilityHandler == nil {
         return
       }
@@ -97,6 +104,8 @@ extension Process {
         }
 
         pipe.fileHandleForReading.readabilityHandler = nil
+        semaphore.wait()
+        semaphore.signal()
 
         if let currentLine = currentLine {
           handleLine?(currentLine)

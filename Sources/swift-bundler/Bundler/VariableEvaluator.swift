@@ -162,7 +162,7 @@ enum VariableEvaluator {
           return .failure(.packageDirectoryRequiredToEvaluateRevisionNumber)
         }
 
-        // TODO: Consider using git library
+        // TODO: Consider using a git library
         let result = Process.create(
           "git",
           arguments: ["rev-list", "--count", "HEAD"],
