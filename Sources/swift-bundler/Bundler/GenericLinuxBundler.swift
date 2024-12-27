@@ -106,6 +106,8 @@ enum GenericLinuxBundler: Bundler {
     var icon1024x1024: URL
     /// The app's `.desktop` file.
     var desktopFile: URL
+    ///  The app's `.service` file. Only used for DBus activatable apps.
+    var dbusServiceFile: URL
 
     /// Represents the bundle structure using the simple ``BundlerOutputStructure``
     /// data type.
@@ -120,21 +122,28 @@ enum GenericLinuxBundler: Bundler {
         root, bin, lib, resources,
         icon1024x1024.deletingLastPathComponent(),
         desktopFile.deletingLastPathComponent(),
+        dbusServiceFile.deletingLastPathComponent(),
       ]
     }
 
     /// Computes the bundle structure corresponding to the provided context.
-    init(at root: URL, forApp appName: String) {
+    init(at root: URL, forApp appName: String, withIdentifier appIdentifier: String) {
       self.root = root
       bin = root.appendingPathComponent("usr/bin")
       mainExecutable = bin.appendingPathComponent(appName)
       lib = root.appendingPathComponent("usr/lib")
       resources = bin
+      // TODO: Resize the icon to 512x512, 1024x1024 isn't supported by xdg stuff
+      //   but no one checks the actual size so we store it in 512x512 and it
+      //   works as a workaround.
       icon1024x1024 = root.appendingPathComponent(
-        "usr/share/icons/hicolor/1024x1024/apps/\(appName).png"
+        "usr/share/icons/hicolor/512x512/apps/\(appIdentifier).png"
       )
       desktopFile = root.appendingPathComponent(
-        "usr/share/applications/\(Self.desktopFileName(for: appName))"
+        "usr/share/applications/\(Self.desktopFileName(for: appIdentifier))"
+      )
+      dbusServiceFile = root.appendingPathComponent(
+        "usr/share/dbus-1/services/\(Self.dbusServiceFileName(for: appIdentifier))"
       )
     }
 
@@ -149,9 +158,14 @@ enum GenericLinuxBundler: Bundler {
       }
     }
 
-    /// Computes the `.desktop` file name to use for the given app name.
-    static func desktopFileName(for appName: String) -> String {
-      "\(appName).desktop"
+    /// Computes the `.desktop` file name to use for the given app identifier.
+    static func desktopFileName(for appIdentifier: String) -> String {
+      "\(appIdentifier).desktop"
+    }
+
+    /// Computes the `.service` file name to use for the given app identifier.
+    static func dbusServiceFileName(for appIdentifier: String) -> String {
+      "\(appIdentifier).service"
     }
   }
 
@@ -172,7 +186,11 @@ enum GenericLinuxBundler: Bundler {
   ) -> BundlerOutputStructure {
     let bundle = context.outputDirectory
       .appendingPathComponent("\(context.appName).generic")
-    let structure = BundleStructure(at: bundle, forApp: context.appName)
+    let structure = BundleStructure(
+      at: bundle,
+      forApp: context.appName,
+      withIdentifier: context.appConfiguration.identifier
+    )
     return structure.asOutputStructure
   }
 
@@ -196,42 +214,84 @@ enum GenericLinuxBundler: Bundler {
     let executableArtifact = context.productsDirectory
       .appendingPathComponent(context.appConfiguration.product)
 
-    let structure = BundleStructure(at: root, forApp: context.appName)
+    let structure = BundleStructure(
+      at: root,
+      forApp: context.appName,
+      withIdentifier: context.appConfiguration.identifier
+    )
 
-    let bundleApp = flatten(
-      structure.createDirectories,
-      { copyExecutable(at: executableArtifact, to: structure.mainExecutable) },
-      {
+    return structure.createDirectories()
+      .andThen { _ in
+        copyExecutable(at: executableArtifact, to: structure.mainExecutable)
+      }
+      .andThen { _ in
+        // Copy all executable dependencies into the bundle next to the main
+        // executable
+        context.builtDependencies.filter { (_, dependency) in
+          dependency.product.type == .executable
+        }.tryForEach { (name, dependency) in
+          let source = dependency.location
+          let destination = structure.bin / dependency.location.lastPathComponent
+          return FileManager.default.copyItem(
+            at: source,
+            to: destination
+          ).mapError { error in
+            GenericLinuxBundlerError.failedToCopyExecutableDependency(
+              name: name,
+              source: source,
+              destination: destination,
+              error
+            )
+          }
+        }
+      }
+      .andThen { _ in
         copyResources(
           from: context.productsDirectory,
           to: structure.resources
         )
-      },
-      {
+      }
+      .andThen { _ in
+        // Create desktop file (and DBus service file if required)
         let relativeExecutablePath = structure.mainExecutable.path(
           relativeTo: structure.root
         )
+        let executableLocation =
+          additionalContext.installationRoot / relativeExecutablePath
         return createDesktopFile(
           at: structure.desktopFile,
           appName: context.appName,
           appConfiguration: context.appConfiguration,
-          installedExecutableLocation:
-            additionalContext.installationRoot / relativeExecutablePath
+          installedExecutableLocation: executableLocation
         )
-      },
-      {
+        .andThen(if: context.appConfiguration.dbusActivatable) { _ in
+          createDBusServiceFile(
+            at: structure.dbusServiceFile,
+            appIdentifier: context.appConfiguration.identifier,
+            installedExecutableLocation: executableLocation
+          )
+        }
+      }
+      .andThen { _ in
         copyAppIconIfPresent(context, structure)
-      },
-      {
+      }
+      .andThen { _ in
         copyDynamicLibraryDependencies(
           of: structure.mainExecutable,
-          to: structure.lib
+          to: structure.lib,
+          productsDirectory: context.productsDirectory
         )
       }
-    )
-
-    return bundleApp()
-      .map { _ in structure }
+      .andThen { _ in
+        // Insert metadata after copying dynamic library dependencies cause
+        // trailing data can probably cause some ELF editing tools to explode
+        let metadata = MetadataInserter.metadata(for: context.appConfiguration)
+        return MetadataInserter.insert(
+          metadata,
+          into: structure.mainExecutable
+        ).mapError(GenericLinuxBundlerError.failedToInsertMetadata)
+      }
+      .replacingSuccessValue(with: structure)
   }
 
   // MARK: Private methods
@@ -240,17 +300,23 @@ enum GenericLinuxBundler: Bundler {
   /// the `AppDir`, and updates the runpaths of the executable and moved dynamic
   /// libraries accordingly.
   ///
-  /// For now this sticks to handling the Swift runtime libraries because there
-  /// are many problematic dynamic libraries out there such as Gtk which break
-  /// things when you try to distribute them.
+  /// For now this sticks to handling the Swift runtime libraries and dynamic
+  /// libraries produced directly by the build, because there are many
+  /// problematic dynamic libraries out there such as Gtk which break things
+  /// when you try to distribute them.
   private static func copyDynamicLibraryDependencies(
     of appExecutable: URL,
-    to destination: URL
+    to destination: URL,
+    productsDirectory: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
-    log.info("Copying Swift runtime libraries")
+    log.info("Copying dynamic libraries (and Swift runtime)")
+    let allowedLibrariesDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
     return Process.create(
       "ldd",
       arguments: [appExecutable.path],
+      environment: [
+        "LD_LIBRARY_PATH": allowedLibrariesDirectory.path
+      ],
       runSilentlyWhenNotVerbose: false
     ).getOutput()
       .mapError { error in
@@ -264,9 +330,13 @@ enum GenericLinuxBundler: Bundler {
           }
           .map(URL.init(fileURLWithPath:))
           .filter { library in
-            // Ensure that library is on our allow list
+            // Ensure that the library is on our allow list or was a product of
+            // the built.
             let libraryName = String(library.lastPathComponent.split(separator: ".")[0])
             return dynamicLibraryBundlingAllowList.contains(libraryName)
+              || library.actuallyResolvingSymlinksInPath().path.starts(
+                with: allowedLibrariesDirectory.path
+              )
           }
           .tryForEach { library in
             return copyDynamicLibrary(library, toDirectory: destination)
@@ -402,33 +472,74 @@ enum GenericLinuxBundler: Bundler {
   private static func createDesktopFile(
     at desktopFile: URL,
     appName: String,
-    appConfiguration: AppConfiguration,
+    appConfiguration: AppConfiguration.Flat,
     installedExecutableLocation: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
     log.info("Creating '\(desktopFile.lastPathComponent)'")
 
-    let properties = [
+    let escapedExecPath = installedExecutableLocation.path
+      .replacingOccurrences(of: " ", with: "\\ ")
+    var properties = [
       ("Type", "Application"),
       ("Version", "1.0"),  // The version of the target desktop spec, not the app
       ("Name", appName),
       ("Comment", ""),
-      ("Exec", "\(installedExecutableLocation.path)"),
+      ("Exec", "\(escapedExecPath) %U"),
       ("Icon", appName),
       ("Terminal", "false"),
       ("Categories", ""),
     ]
 
-    let contents =
-      "[Desktop Entry]\n"
-      + properties.map { "\($0)=\($1)" }.joined(separator: "\n")
-
-    guard let data = contents.data(using: .utf8) else {
-      return .failure(.failedToCreateDesktopFile(desktopFile, nil))
+    if appConfiguration.dbusActivatable {
+      properties.append(("DBusActivatable", "true"))
     }
 
-    return data.write(to: desktopFile)
-      .mapError { error in
-        .failedToCreateDesktopFile(desktopFile, error)
-      }
+    if !appConfiguration.urlSchemes.isEmpty {
+      properties.append(
+        (
+          "MimeType",
+          appConfiguration.urlSchemes.map { scheme in
+            "x-scheme-handler/\(scheme)"
+          }.joined(separator: ";")
+        )
+      )
+    }
+
+    let contents = encodeIniSection(title: "Desktop Entry", properties: properties)
+    let data = Data(contents.utf8)
+    return data.write(to: desktopFile).mapError { error in
+      .failedToCreateDesktopFile(desktopFile, error)
+    }
+  }
+
+  /// Creates an app's `.service` file.
+  /// - Parameters:
+  ///   - dbusServiceFile: The DBus service file to create.
+  ///   - appIdentifier: The app's identifier.
+  ///   - installedExecutableLocation: The location the the executable will end
+  ///     up at on disk once installed.
+  /// - Returns: If an error occurs, a failure is returned.
+  private static func createDBusServiceFile(
+    at dbusServiceFile: URL,
+    appIdentifier: String,
+    installedExecutableLocation: URL
+  ) -> Result<Void, GenericLinuxBundlerError> {
+    let properties = [
+      ("Name", appIdentifier),
+      ("Exec", "\"\(installedExecutableLocation.path)\""),
+    ]
+
+    let contents = encodeIniSection(title: "D-BUS Service", properties: properties)
+    let data = Data(contents.utf8)
+    return data.write(to: dbusServiceFile).mapError { error in
+      .failedToCreateDBusServiceFile(dbusServiceFile, error)
+    }
+  }
+
+  private static func encodeIniSection(
+    title: String,
+    properties: [(String, String)]
+  ) -> String {
+    "[\(title)]\n" + properties.map { "\($0)=\($1)" }.joined(separator: "\n")
   }
 }

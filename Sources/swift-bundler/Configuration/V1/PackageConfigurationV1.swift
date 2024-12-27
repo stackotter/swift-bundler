@@ -98,6 +98,6 @@ struct PackageConfigurationV1: Codable {
       plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
     )
 
-    return PackageConfiguration([target: appConfiguration])
+    return PackageConfiguration(apps: [target: appConfiguration])
   }
 }

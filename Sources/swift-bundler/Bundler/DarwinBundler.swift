@@ -176,6 +176,29 @@ enum DarwinBundler: Bundler {
           to: bundleStructure.mainExecutable
         )
       },
+      {
+        // Copy all executable dependencies into the bundle next to the main
+        // executable
+        context.builtDependencies.filter { (_, dependency) in
+          dependency.product.type == .executable
+        }.tryForEach { (name, dependency) in
+          let source = dependency.location
+          let destination =
+            bundleStructure.mainExecutable.deletingLastPathComponent()
+            / dependency.location.lastPathComponent
+          return FileManager.default.copyItem(
+            at: source,
+            to: destination
+          ).mapError { error in
+            DarwinBundlerError.failedToCopyExecutableDependency(
+              name: name,
+              source: source,
+              destination: destination,
+              error
+            )
+          }
+        }
+      },
       { Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile) },
       {
         Self.createInfoPlistFile(
@@ -189,6 +212,19 @@ enum DarwinBundler: Bundler {
       createAppIconIfPresent,
       copyResourcesBundles,
       copyDynamicLibraries,
+      {
+        // Insert metadata after copying dynamic library dependencies cause
+        // trailing data can cause `install_name_tool` to fail. It requires
+        // __LINKEDIT to be the last segment and it requires all data in
+        // __LINKEDIT to be accounted for. I spent a few hours implementing
+        // a basic Mach-O editor just to figure out that my approach didn't
+        // work...
+        let metadata = MetadataInserter.metadata(for: context.appConfiguration)
+        return MetadataInserter.insert(
+          metadata,
+          into: bundleStructure.mainExecutable
+        ).mapError(DarwinBundlerError.failedToInsertMetadata)
+      },
       embedProfile,
       sign
     )
@@ -242,7 +278,7 @@ enum DarwinBundler: Bundler {
   private static func createInfoPlistFile(
     at infoPlistFile: URL,
     appName: String,
-    appConfiguration: AppConfiguration,
+    appConfiguration: AppConfiguration.Flat,
     platform: ApplePlatform,
     platformVersion: String
   ) -> Result<Void, DarwinBundlerError> {

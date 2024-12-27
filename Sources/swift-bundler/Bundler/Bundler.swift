@@ -59,7 +59,7 @@ struct BundlerContext {
   /// The name of the package.
   var packageName: String
   /// The app's configuration.
-  var appConfiguration: AppConfiguration
+  var appConfiguration: AppConfiguration.Flat
 
   /// The root directory of the package containing the app.
   var packageDirectory: URL
@@ -73,9 +73,12 @@ struct BundlerContext {
   /// The platform version getting built for.
   var platformVersion: String?
 
+  /// The app's built dependencies.
+  var builtDependencies: [String: ProjectBuilder.BuiltProduct]
+
   /// The app's main built executable file.
   var executableArtifact: URL {
-    productsDirectory.appendingPathComponent(appName)
+    productsDirectory.appendingPathComponent(appConfiguration.product)
   }
 }
 

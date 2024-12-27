@@ -2,7 +2,7 @@ import Foundation
 import StackOtterArgParser
 
 /// The subcommand for creating app bundles for a package.
-struct BundleCommand: AsyncCommand {
+struct BundleCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Create an app bundle from a package."
@@ -27,16 +27,25 @@ struct BundleCommand: AsyncCommand {
       name: .long,
       help: .init(
         stringLiteral:
-          "Treats the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM)."
-          + " Can only be set when `--skip-build` is supplied."
+          """
+          Treats the products in the products directory as if they were built \
+          by Xcode (which is the same as universal builds by SwiftPM). Can \
+          only be set when `--skip-build` is supplied.
+          """
       ))
   #endif
   var builtWithXcode = false
 
   var hotReloadingEnabled = false
 
+  // TODO: fix this weird pattern with a better config loading system
   /// Used to avoid loading configuration twice when RunCommand is used.
-  static var app: (name: String, app: AppConfiguration)? // TODO: fix this weird pattern with a better config loading system
+  static var bundlerConfiguration:
+    (
+      appName: String,
+      appConfiguration: AppConfiguration.Flat,
+      configuration: PackageConfiguration.Flat
+    )?
 
   init() {
     _arguments = OptionGroup()
@@ -65,7 +74,10 @@ struct BundleCommand: AsyncCommand {
       if !skipBuild {
         guard arguments.productsDirectory == nil, !builtWithXcode else {
           log.error(
-            "'--products-directory' and '--built-with-xcode' are only compatible with '--skip-build'"
+            """
+            '--products-directory' and '--built-with-xcode' are only compatible \
+            with '--skip-build'
+            """
           )
           return false
         }
@@ -110,7 +122,10 @@ struct BundleCommand: AsyncCommand {
         builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
       {
         log.error(
-          "'--built-with-xcode', '--universal' and '--arch' are not compatible with '--platform \(platform.rawValue)'"
+          """
+          '--built-with-xcode', '--universal' and '--arch' are not compatible \
+          with '--platform \(platform.rawValue)'
+          """
         )
         return false
       }
@@ -136,7 +151,10 @@ struct BundleCommand: AsyncCommand {
           || arguments.provisioningProfile == nil
       {
         log.error(
-          "Must specify `--identity`, `--codesign` and `--provisioning-profile` when '--platform \(platform.rawValue)'"
+          """
+          Must specify `--identity`, `--codesign` and `--provisioning-profile` \
+          when '--platform \(platform.rawValue)'
+          """
         )
         if arguments.identity == nil {
           Output {
@@ -160,7 +178,11 @@ struct BundleCommand: AsyncCommand {
         default:
           if arguments.provisioningProfile != nil {
             log.error(
-              "`--provisioning-profile` is only available when building visionOS and iOS apps")
+              """
+              `--provisioning-profile` is only available when building \
+              visionOS and iOS apps
+              """
+            )
             return false
           }
       }
@@ -187,8 +209,8 @@ struct BundleCommand: AsyncCommand {
     return architectures
   }
 
-  func wrappedRun() async throws {
-    _ = try await doBundling()
+  func wrappedRun() throws {
+    _ = try doBundling()
   }
 
   /// - Parameter dryRun: During a dry run, all of the validation steps are
@@ -196,19 +218,20 @@ struct BundleCommand: AsyncCommand {
   ///   `RunCommand` to figure out where the output bundle will end up even
   ///   when the user instructs it to skip bundling.
   /// - Returns: A description of the structure of the bundler's output.
-  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
+  func doBundling(dryRun: Bool = false) throws -> BundlerOutputStructure {
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
+    let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
       // Load configuration
-      let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
+      let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
-        arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
+        arguments.scratchDirectory ?? (packageDirectory / ".build")
 
-      let (appName, appConfiguration) = try Self.getAppConfiguration(
+      let (appName, appConfiguration, configuration) = try Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
+        context: ConfigurationFlattener.Context(platform: arguments.platform),
         customFile: arguments.configurationFileOverride
-      ).unwrap()
+      )
 
       if !Self.validateArguments(
         arguments, platform: arguments.platform, skipBuild: skipBuild,
@@ -248,7 +271,7 @@ struct BundleCommand: AsyncCommand {
 
       // Load package manifest
       log.info("Loading package manifest")
-      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+      let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
       let platformVersion = manifest.platformVersion(for: arguments.platform)
@@ -280,35 +303,16 @@ struct BundleCommand: AsyncCommand {
           )
       }
 
-      // Create bundle job
-      let bundlerContext = BundlerContext(
+      var bundlerContext = BundlerContext(
         appName: appName,
         packageName: manifest.displayName,
         appConfiguration: appConfiguration,
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: outputDirectory,
-        platform: arguments.platform
+        platform: arguments.platform,
+        builtDependencies: [:]
       )
-
-      // Create build job
-      let build: () -> Result<Void, Error> = {
-        if isUsingXcodeBuild {
-          XcodeBuildManager.build(
-            product: appConfiguration.product,
-            buildContext: buildContext
-          ).mapError { error in
-            return error
-          }
-        } else {
-          SwiftPackageManager.build(
-            product: appConfiguration.product,
-            buildContext: buildContext
-          ).mapError { error in
-            return error
-          }
-        }
-      }
 
       // If this is a dry run, drop out just before we start actually do stuff.
       guard !dryRun else {
@@ -320,12 +324,69 @@ struct BundleCommand: AsyncCommand {
         )
       }
 
-      // Run all of the tasks that we've built up.
+      let dependenciesScratchDirectory = outputDirectory / "projects"
+
+      let dependencies = try ProjectBuilder.buildDependencies(
+        appConfiguration.dependencies,
+        packageConfiguration: configuration,
+        packageDirectory: packageDirectory,
+        scratchDirectory: dependenciesScratchDirectory,
+        appProductsDirectory: productsDirectory,
+        appName: appName,
+        platform: buildContext.platform,
+        dryRun: skipBuild
+      ).unwrap()
+      bundlerContext.builtDependencies = dependencies
+
       if !skipBuild {
-        try build().unwrap()
+        // Copy built library products
+        log.info("Copying dependencies")
+
+        if !FileManager.default.itemExists(at: productsDirectory, withType: .directory) {
+          try FileManager.default.createDirectory(
+            at: productsDirectory,
+            withIntermediateDirectories: true
+          )
+        }
+
+        for (_, dependency) in dependencies {
+          guard
+            dependency.product.type == .dynamicLibrary
+              || dependency.product.type == .staticLibrary
+          else {
+            continue
+          }
+
+          let destination = productsDirectory / dependency.location.lastPathComponent
+          if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+          }
+
+          try FileManager.default.copyItem(
+            at: dependency.location,
+            to: destination
+          )
+        }
+
+        log.info("Starting \(buildContext.configuration.rawValue) build")
+        if isUsingXcodeBuild {
+          XcodeBuildManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).unwrap()
+        } else {
+          SwiftPackageManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).unwrap()
+        }
       }
 
-      try Self.removeExistingOutputs(outputDirectory: outputDirectory).unwrap()
+      try Self.removeExistingOutputs(
+        outputDirectory: outputDirectory,
+        skip: [dependenciesScratchDirectory.lastPathComponent]
+      ).unwrap()
+
       return try Self.bundle(
         with: arguments.bundler.bundler,
         context: bundlerContext,
@@ -348,10 +409,22 @@ struct BundleCommand: AsyncCommand {
   }
 
   /// Removes the given output directory if it exists.
-  static func removeExistingOutputs(outputDirectory: URL) -> Result<Void, CLIError> {
+  static func removeExistingOutputs(
+    outputDirectory: URL,
+    skip excludedItems: [String]
+  ) -> Result<Void, CLIError> {
     if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
       do {
-        try FileManager.default.removeItem(at: outputDirectory)
+        let contents = try FileManager.default.contentsOfDirectory(
+          at: outputDirectory,
+          includingPropertiesForKeys: nil
+        )
+        for item in contents {
+          guard !excludedItems.contains(item.lastPathComponent) else {
+            continue
+          }
+          try FileManager.default.removeItem(at: item)
+        }
       } catch {
         return .failure(
           CLIError.failedToRemoveExistingOutputs(
@@ -407,25 +480,39 @@ struct BundleCommand: AsyncCommand {
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
+  ///   - context: The context used to evaluate configuration overlays.
   ///   - customFile: A custom configuration file not at the standard location.
   /// - Returns: The app's configuration if successful.
-  static func getAppConfiguration(
+  static func getConfiguration(
     _ appName: String?,
     packageDirectory: URL,
+    context: ConfigurationFlattener.Context,
     customFile: URL? = nil
-  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
-    if let app = Self.app {
-      return .success(app)
+  ) throws -> (
+    appName: String,
+    appConfiguration: AppConfiguration.Flat,
+    configuration: PackageConfiguration.Flat
+  ) {
+    if let configuration = Self.bundlerConfiguration {
+      return configuration
     }
 
-    return PackageConfiguration.load(
+    let configuration = try PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
-    ).andThen { configuration in
-      configuration.getAppConfiguration(appName)
-    }.ifSuccess { app in
-      Self.app = app
-    }
+    ).unwrap()
+
+    let flatConfiguration = try ConfigurationFlattener.flatten(
+      configuration,
+      with: context
+    ).unwrap()
+
+    let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
+      appName
+    ).unwrap()
+
+    Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
+    return (appName, appConfiguration, flatConfiguration)
   }
 
   /// Unwraps an optional output directory and returns the default output

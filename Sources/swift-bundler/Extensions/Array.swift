@@ -51,3 +51,44 @@ extension Array {
     return .success()
   }
 }
+
+struct Verb {
+  var singular: String
+  var plural: String
+
+  static let be = Verb(singular: "is", plural: "are")
+}
+
+extension [String] {
+  func joinedGrammatically(
+    singular: String,
+    plural: String,
+    withTrailingVerb trailingVerb: Verb?
+  ) -> String {
+    let base: String
+    let requiresPluralVerb: Bool
+    if count == 0 {
+      base = "No \(plural)"
+      requiresPluralVerb = true
+    } else if count == 1 {
+      base = "The \(singular) \(self[0])"
+      requiresPluralVerb = false
+    } else {
+      base = """
+        The properties \(self[0..<(count - 1)].joined(separator: ", ")) \
+        and \(self[count - 1])
+        """
+      requiresPluralVerb = true
+    }
+
+    if let trailingVerb {
+      if requiresPluralVerb {
+        return "\(base) \(trailingVerb.plural)"
+      } else {
+        return "\(base) \(trailingVerb.singular)"
+      }
+    } else {
+      return base
+    }
+  }
+}

@@ -12,9 +12,8 @@ extension URL {
   ///   but since I know I'll be moving to a proper file path type soon, I won't
   ///   clog up new code with the issues of `URL`.
   func path(relativeTo base: URL) -> String {
-    // Remove/replace "." and "..", make paths absolute:
-    let destComponents = self.standardized.pathComponents
-    let baseComponents = base.standardized.pathComponents
+    let destComponents = self.pathComponents
+    let baseComponents = base.pathComponents
 
     // Find number of common path components:
     var commonComponentCount = 0
@@ -29,6 +28,11 @@ extension URL {
     var relComponents = Array(repeating: "..", count: baseComponents.count - commonComponentCount)
     relComponents.append(contentsOf: destComponents[commonComponentCount...])
     return relComponents.joined(separator: "/")
+  }
+
+  /// The current directory.
+  static var currentDirectory: URL {
+    URL(fileURLWithPath: ".")
   }
 
   /// ``URL/resolvingSymlinksInPath()`` is broken on Linux, and that's why I
@@ -46,6 +50,11 @@ extension URL {
     #else
       return resolvingSymlinksInPath()
     #endif
+  }
+
+  /// Gets whether the URL exists on disk or not.
+  func exists() -> Bool {
+    FileManager.default.fileExists(atPath: path)
   }
 }
 

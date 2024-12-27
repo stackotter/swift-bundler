@@ -8,17 +8,18 @@ let package = Package(
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
     .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
-    .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"])
+    .library(name: "SwiftBundlerBuilders", targets: ["SwiftBundlerBuilders"]),
+    .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
     .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", "0.11.0"..<"0.12.0"),
-    .package(url: "https://github.com/furby-tm/TOMLKit", from: "0.5.6"),
+    .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
     .package(url: "https://github.com/mxcl/Version.git", from: "2.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-    .package(url: "https://github.com/stackotter/XcodeGen", exact: "2.35.2"),
+    .package(url: "https://github.com/stackotter/SwiftXcodeProj", from: "8.11.0"),
     .package(url: "https://github.com/apple/swift-syntax", exact: "510.0.1"),
     .package(url: "https://github.com/apple/swift-format", exact: "510.0.1"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
@@ -44,8 +45,8 @@ let package = Package(
         "HotReloadingProtocol",
         "FileSystemWatcher",
         "Yams",
-        .product(name: "XcodeGenKit", package: "XcodeGen"),
-        .product(name: "ProjectSpec", package: "XcodeGen"),
+        "SwiftXcodeProj",
+        "SwiftBundlerBuilders",
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftFormat", package: "swift-format"),
@@ -68,6 +69,11 @@ let package = Package(
         "Socket",
         "HotReloadingProtocol",
       ]
+    ),
+
+    .target(
+      name: "SwiftBundlerBuilders",
+      dependencies: []
     ),
 
     .target(

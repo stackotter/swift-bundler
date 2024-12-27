@@ -75,6 +75,38 @@ extension Result {
     }
   }
 
+  /// Perform a fallible transformation on success, but only if the given
+  /// value isn't `nil`. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen<Value>(
+    ifLet value: Value?,
+    _ transform: (Success, Value) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    flatMap { successValue in
+      guard let value = value else {
+        return .success(successValue)
+      }
+
+      return transform(successValue, value)
+    }
+  }
+
+  /// Perform a fallible transformation on success, but only if the given
+  /// property isn't `nil`. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen<Value>(
+    ifLet property: KeyPath<Success, Value?>,
+    _ transform: (Success, Value) -> Result<Success, Failure>
+  ) -> Result<Success, Failure> {
+    flatMap { successValue in
+      guard let value = successValue[keyPath: property] else {
+        return .success(successValue)
+      }
+
+      return transform(successValue, value)
+    }
+  }
+
   /// Specifically just performs a side effect without affecting the underlying
   /// success value of the result (unless of course the action fails).
   func andThenDoSideEffect(
@@ -173,16 +205,6 @@ extension Result where Success == Void {
   }
 }
 
-extension Result where Failure == Error {
-  init(of action: () throws -> Success) {
-    do {
-      self = .success(try action())
-    } catch {
-      self = .failure(error)
-    }
-  }
-}
-
 /// Returns a closure that runs the given operations one by one and stops on failure.
 /// - Parameter operations: The operations to chain together.
 /// - Returns: If an error occurs, a failure is returned.
@@ -200,19 +222,14 @@ func flatten<Failure: Error>(
   }
 }
 
-/// Returns a closure that runs the given operations one by one and stops on failure.
-/// - Parameter operations: The operations to chain together.
-/// - Returns: If an error occurs, a failure is returned.
-func flatten<Failure: Error>(
-  _ operations: (() async -> Result<Void, Failure>)...
-) -> (() async -> Result<Void, Failure>) {
-  return {
-    for operation in operations {
-      let result = await operation()
-      if case .failure = result {
-        return result
-      }
-    }
-    return .success()
+func with<T, U>(_ value: T, _ transform: (T) -> U) -> U {
+  transform(value)
+}
+
+func set<T, U>(_ property: WritableKeyPath<T, U>, _ value: U) -> (T) -> T {
+  { container in
+    var container = container
+    container[keyPath: property] = value
+    return container
   }
 }

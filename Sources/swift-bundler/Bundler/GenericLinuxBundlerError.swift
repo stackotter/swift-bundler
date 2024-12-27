@@ -4,8 +4,15 @@ import Foundation
 enum GenericLinuxBundlerError: LocalizedError {
   case failedToCreateBundleStructure(root: URL, Error)
   case failedToCopyExecutable(source: URL, destination: URL, Error)
+  case failedToCopyExecutableDependency(
+    name: String,
+    source: URL,
+    destination: URL,
+    Error
+  )
   case failedToCopyIcon(source: URL, destination: URL, Error)
-  case failedToCreateDesktopFile(URL, Error?)
+  case failedToCreateDesktopFile(URL, Error)
+  case failedToCreateDBusServiceFile(URL, Error)
   case failedToCreateSymlink(source: URL, relativeDestination: String, Error)
   case failedToCopyResourceBundle(source: URL, destination: URL, Error)
   case failedToEnumerateResourceBundles(directory: URL, Error)
@@ -13,6 +20,7 @@ enum GenericLinuxBundlerError: LocalizedError {
   case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
   case failedToUpdateMainExecutableRunpath(executable: URL, Error)
   case failedToCreateDirectory(URL, Error)
+  case failedToInsertMetadata(MetadataInserterError)
 
   var errorDescription: String? {
     switch self {
@@ -23,6 +31,12 @@ enum GenericLinuxBundlerError: LocalizedError {
           Failed to copy executable from '\(source.relativePath)' to \
           '\(destination.relativePath)'
           """
+      case .failedToCopyExecutableDependency(let dependencyName, let source, let destination, _):
+        return
+          """
+          Failed to copy executable dependency '\(dependencyName)' from \
+          '\(source.relativePath)' to '\(destination.relativePath)'
+          """
       case .failedToCopyIcon(let source, let destination, _):
         return """
           Failed to copy 'icns' file from '\(source.relativePath)' to \
@@ -30,6 +44,8 @@ enum GenericLinuxBundlerError: LocalizedError {
           """
       case .failedToCreateDesktopFile(let file, _):
         return "Failed to create desktop file at '\(file.relativePath)'"
+      case .failedToCreateDBusServiceFile(let file, _):
+        return "Failed to create DBus service file at '\(file.relativePath)'"
       case .failedToCreateSymlink(let source, let destination, _):
         return """
           Failed to create symlink from '\(source.relativePath)' to relative \
@@ -56,6 +72,8 @@ enum GenericLinuxBundlerError: LocalizedError {
           """
       case .failedToCreateDirectory(let directory, _):
         return "Failed to create directory at '\(directory.relativePath)'"
+      case .failedToInsertMetadata(let error):
+        return error.localizedDescription
     }
   }
 }

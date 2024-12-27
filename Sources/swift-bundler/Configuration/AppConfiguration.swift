@@ -1,4 +1,5 @@
 import Foundation
+import Parsing
 
 /// The configuration for an app.
 struct AppConfiguration: Codable {
@@ -13,10 +14,202 @@ struct AppConfiguration: Codable {
   var category: String?
   /// The path to the app's icon.
   var icon: String?
+  /// URL schemes supported by the app. Generally causes these URL schemes to get registered
+  /// on app installation so that they get directed to the app system-wide.
+  var urlSchemes: [String]?
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   ///
   /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var plist: [String: PlistValue]?
+  /// A dictionary containing extra entries to add to the app's metadata (embedded in the
+  /// main executable).
+  ///
+  /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
+  var metadata: [String: MetadataValue]?
+  /// Dependency identifiers of dependencies built by Swift Bundler before this
+  /// build is invoked. Allows for integration with non-SwiftPM build tools, and
+  /// applications pulling other applications (e.g. helper applications) into
+  /// their build process.
+  var dependencies: [Dependency]?
+  /// Conditionally applied configuration overlays.
+  var overlays: [Overlay]?
+
+  private enum CodingKeys: String, CodingKey {
+    case identifier
+    case product
+    case version
+    case category
+    case icon
+    case urlSchemes = "url_schemes"
+    case plist
+    case metadata
+    case overlays
+    case dependencies
+  }
+
+  /// A flattened version of ``AppConfiguration`` (generally with all applicable
+  /// overlays applied).
+  struct Flat {
+    var identifier: String
+    var product: String
+    var version: String
+    var category: String?
+    var icon: String?
+    var urlSchemes: [String]
+    var plist: [String: PlistValue]
+    var metadata: [String: MetadataValue]
+    var dependencies: [Dependency]
+    var dbusActivatable: Bool
+  }
+
+  struct Dependency: Codable, Hashable {
+    var project: String
+    var product: String
+
+    var identifier: String {
+      "\(project).\(product)"
+    }
+
+    init(project: String, product: String) {
+      self.project = project
+      self.product = product
+    }
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      let parser = OneOf {
+        Parse {
+          PrefixUpTo(".")
+          "."
+          Rest<Substring>()
+        }.map { project, product in
+          Dependency(
+            project: String(project),
+            product: String(product)
+          )
+        }
+
+        Parse {
+          Rest<Substring>()
+        }.map { product in
+          Dependency(
+            project: ProjectConfiguration.defaultProjectName,
+            product: String(product)
+          )
+        }
+      }
+      let value = try container.decode(String.self)
+      self = try parser.parse(value)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+      var container = encoder.singleValueContainer()
+      try container.encode(identifier)
+    }
+  }
+
+  struct Overlay: Codable {
+    static let exclusiveProperties: [Condition: PropertySet] = [
+      .platform("linux"): PropertySet()
+        .add(.dbusActivatable, \.dbusActivatable)
+    ]
+
+    var condition: Condition
+    var identifier: String?
+    var product: String?
+    var version: String?
+    var category: String?
+    var icon: String?
+    var urlSchemes: [String]?
+    var plist: [String: PlistValue]?
+    var metadata: [String: MetadataValue]?
+    var dependencies: [Dependency]?
+    var dbusActivatable: Bool?
+
+    enum CodingKeys: String, CodingKey {
+      case condition
+      case identifier
+      case product
+      case version
+      case category
+      case icon
+      case urlSchemes = "url_schemes"
+      case plist
+      case metadata
+      case dependencies
+      case dbusActivatable = "dbus_activatable"
+    }
+
+    struct PropertySet {
+      var propertyPresenceCheckers: [(name: String, checker: (Overlay) -> Bool)] = []
+
+      func add<T>(
+        _ codingKey: CodingKeys,
+        _ property: KeyPath<Overlay, T?>
+      ) -> PropertySet {
+        var list = self
+        list.propertyPresenceCheckers.append(
+          (
+            codingKey.rawValue,
+            { overlay in
+              overlay[keyPath: property] != nil
+            }
+          )
+        )
+        return list
+      }
+
+      func propertiesPresent(in overlay: Overlay) -> [String] {
+        propertyPresenceCheckers.filter { (_, check) in
+          check(overlay)
+        }.map(\.0)
+      }
+    }
+
+    enum Condition: Codable, Hashable, CustomStringConvertible {
+      case platform(String)
+
+      var description: String {
+        switch self {
+          case .platform(let identifier):
+            return "platform(\(identifier))"
+        }
+      }
+
+      init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+
+        let parser = Parse {
+          "platform("
+          OneOf {
+            for platform in Platform.allCases {
+              platform.rawValue.map {
+                platform
+              }
+            }
+          }
+          ")"
+        }.map { platform in
+          Condition.platform(platform.rawValue)
+        }
+
+        self = try parser.parse(value)
+      }
+
+      func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        let value: String
+        switch self {
+          case .platform(let identifier):
+            value = "platform\(identifier)"
+        }
+
+        try container.encode(value)
+      }
+    }
+  }
 
   /// Creates a new app configuration. Uses an `Info.plist` file to supplement missing values where possible.
   /// - Parameters:

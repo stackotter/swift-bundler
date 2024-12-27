@@ -23,6 +23,8 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToComputeLinkingCommand(details: String)
   case failedToRunLinkingCommand(command: String, Error)
   case missingDarwinPlatformVersion(Platform)
+  case failedToGetToolsVersion(ProcessError)
+  case invalidToolsVersion(String)
 
   var errorDescription: String? {
     switch self {
@@ -87,6 +89,13 @@ enum SwiftPackageManagerError: LocalizedError {
           and try again. Building for Darwin platforms requires a target \
           platform.
           """
+      case .failedToGetToolsVersion(let error):
+        return """
+          Failed to get Swift package manifest tools version: \
+          \(error.localizedDescription)
+          """
+      case .invalidToolsVersion(let version):
+        return "Invalid Swift tools version '\(version)' (expected a semantic version)"
     }
   }
 }

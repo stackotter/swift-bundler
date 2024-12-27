@@ -1,23 +1,23 @@
 import Foundation
 import StackOtterArgParser
 
-/// An extension to the `AsyncParsableCommand` API with custom error handling.
-protocol AsyncCommand: AsyncParsableCommand {
+/// An extension to the `ParsableCommand` API with custom error handling.
+protocol ErrorHandledCommand: ParsableCommand {
   /// Implement this instead of `validate()` to get custom Swift Bundler error handling.
   func wrappedValidate() throws
 
   /// Implement this instead of `run()` to get custom Swift Bundler error handling.
-  func wrappedRun() async throws
+  func wrappedRun() throws
 }
 
-extension AsyncCommand {
+extension ErrorHandledCommand {
   func wrappedValidate() {}
 }
 
-extension AsyncCommand {
-  func run() async {
+extension ErrorHandledCommand {
+  func run() {
     do {
-      try await wrappedRun()
+      try wrappedRun()
     } catch {
       log.error("\(error.localizedDescription)")
       log.debug("Error details: \(error)")

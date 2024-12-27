@@ -51,7 +51,14 @@ extension Process {
     var output = Data()
     var currentLine: String?
 
+    let semaphore = DispatchSemaphore(value: 1)
+
     func handleData(_ data: Data, isFinal: Bool = false) {
+      semaphore.wait()
+      defer {
+        semaphore.signal()
+      }
+
       if pipe.fileHandleForReading.readabilityHandler == nil {
         return
       }
@@ -97,6 +104,8 @@ extension Process {
         }
 
         pipe.fileHandleForReading.readabilityHandler = nil
+        semaphore.wait()
+        semaphore.signal()
 
         if let currentLine = currentLine {
           handleLine?(currentLine)
@@ -169,6 +178,7 @@ extension Process {
   static func create(
     _ tool: String,
     arguments: [String] = [],
+    environment: [String: String] = [:],
     directory: URL? = nil,
     pipe: Pipe? = nil,
     runSilentlyWhenNotVerbose: Bool = true
@@ -193,12 +203,16 @@ extension Process {
       process.arguments = [tool] + arguments
     }
 
-    // Fix an issue to do with Xcode breaking SwiftPackageManager (https://stackoverflow.com/a/67613515)
-    if ProcessInfo.processInfo.environment.keys.contains("OS_ACTIVITY_DT_MODE") {
-      var env = ProcessInfo.processInfo.environment
+    var env = ProcessInfo.processInfo.environment
+    if env.keys.contains("OS_ACTIVITY_DT_MODE") {
+      // Fix an issue to do with Xcode breaking SwiftPackageManager
+      // (https://stackoverflow.com/a/67613515)
       env["OS_ACTIVITY_DT_MODE"] = nil
-      process.environment = env
     }
+    for (key, value) in environment {
+      env[key] = value
+    }
+    process.environment = env
 
     processes.append(process)
 

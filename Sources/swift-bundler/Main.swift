@@ -6,8 +6,8 @@ import Rainbow
 #endif
 
 @main
-struct AsyncMain {
-  static func main() async {
+struct Main {
+  static func main() {
     #if os(macOS) || os(Linux)
       // Kill all running processes on exit
       for signal in Signal.allCases {
@@ -31,6 +31,6 @@ struct AsyncMain {
         ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] == nil
     #endif
 
-    await SwiftBundler.main()
+    SwiftBundler.main()
   }
 }

@@ -118,6 +118,7 @@ enum XcodeprojConverter {
     rootDirectory: URL
   ) -> [XcodePackageDependency] {
     var packageDependencies: [XcodePackageDependency] = []
+
     for dependency in target.packageProductDependencies {
       guard
         let package = dependency.package,
@@ -300,7 +301,8 @@ enum XcodeprojConverter {
       with: .default(
         .init(
           appName: targetName,
-          productName: targetName
+          productName: targetName,
+          date: Date()
         )
       )
     )
@@ -432,7 +434,7 @@ enum XcodeprojConverter {
       }
     }
 
-    return .success(PackageConfiguration(apps))
+    return .success(PackageConfiguration(apps: apps))
   }
 
   /// Creates a `Package.swift` file declaring the given targets.

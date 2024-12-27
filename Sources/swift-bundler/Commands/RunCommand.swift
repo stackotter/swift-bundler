@@ -5,7 +5,7 @@ import Socket
 import StackOtterArgParser
 
 /// The subcommand for running an app from a package.
-struct RunCommand: AsyncCommand {
+struct RunCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "run",
     abstract: "Run a package as an app."
@@ -48,7 +48,7 @@ struct RunCommand: AsyncCommand {
 
   // MARK: Methods
 
-  func wrappedRun() async throws {
+  func wrappedRun() throws {
     // Validate arguments
     guard arguments.platform.isSimulator || simulatorSearchTerm == nil else {
       log.error("'--simulator' can only be used when the selected platform is a simulator")
@@ -73,15 +73,15 @@ struct RunCommand: AsyncCommand {
     }
 
     // Load configuration
-    let packageDirectory = arguments.packageDirectory ?? URL(fileURLWithPath: ".")
-    let scratchDirectory =
-      arguments.scratchDirectory ?? packageDirectory.appendingPathComponent(".build")
+    let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
+    let scratchDirectory = arguments.scratchDirectory ?? packageDirectory / ".build"
 
-    let (_, appConfiguration) = try BundleCommand.getAppConfiguration(
+    let (_, appConfiguration, _) = try BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
+      context: ConfigurationFlattener.Context(platform: arguments.platform),
       customFile: arguments.configurationFileOverride
-    ).unwrap()
+    )
 
     // Get the device to run on
     let device = try Self.getDevice(
@@ -98,7 +98,7 @@ struct RunCommand: AsyncCommand {
 
     // Perform bundling, or do a dry run if instructed to skip building (so
     // that we still know where the output bundle is located).
-    let bundlerOutput = try await bundleCommand.doBundling(dryRun: skipBuild)
+    let bundlerOutput = try bundleCommand.doBundling(dryRun: skipBuild)
 
     let environmentVariables =
       try environmentFile.map { file in
@@ -123,10 +123,10 @@ struct RunCommand: AsyncCommand {
         }
       }
 
-      let socket = try await createSocket()
-      try await socket.listen()
-
       Task {
+        let socket = try await createSocket()
+        try await socket.listen()
+
         var client = try await socket.accept()
         log.info("Received connection from runtime")
 
@@ -139,7 +139,7 @@ struct RunCommand: AsyncCommand {
         }
 
         // TODO: Avoid loading manifest twice
-        let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+        let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
           .unwrap()
 
         guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {

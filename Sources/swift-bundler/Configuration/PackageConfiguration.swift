@@ -10,17 +10,56 @@ struct PackageConfiguration: Codable {
   var formatVersion: Int
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]
+  /// The configuration for each lib in the package. Maps library name to
+  /// library configuration. Generally used when integrating libraries built
+  /// with different build systems such as CMake.
+  var projects: [String: ProjectConfiguration]
 
   private enum CodingKeys: String, CodingKey {
     case formatVersion = "format_version"
     case apps
+    case projects
+  }
+
+  struct Flat {
+    var formatVersion: Int
+    var apps: [String: AppConfiguration.Flat]
+    var projects: [String: ProjectConfiguration.Flat]
+
+    /// Gets the configuration for the specified app. If no app is specified
+    /// and there is only one app, that app is returned.
+    /// - Parameter name: The name of the app to get.
+    /// - Returns: The app's name and configuration. If no app is specified, and
+    ///   there is more than one app, a failure is returned.
+    func getAppConfiguration(
+      _ name: String?
+    ) -> Result<
+      (name: String, app: AppConfiguration.Flat),
+      PackageConfigurationError
+    > {
+      if let name = name {
+        guard let selected = apps[name] else {
+          return .failure(.noSuchApp(name))
+        }
+        return .success((name: name, app: selected))
+      } else if let first = apps.first, apps.count == 1 {
+        return .success((name: first.key, app: first.value))
+      } else {
+        return .failure(.multipleAppsAndNoneSpecified)
+      }
+    }
   }
 
   /// Creates a new package configuration.
   /// - Parameter apps: The package's apps.
-  init(_ apps: [String: AppConfiguration]) {
+  /// - Parameter projects: The package's subprojects.
+  init(
+    apps: [String: AppConfiguration] = [:],
+    projects: [String: ProjectConfiguration] = [:]
+  ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
+    self.projects = projects
   }
 
   // MARK: Static methods
@@ -89,7 +128,7 @@ struct PackageConfiguration: Codable {
           .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
           .andThen { table in
             guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-              return .failure(.failedToDeserializeConfiguration(error))
+              return .failure(error)
             }
 
             return migrateV2Configuration(
@@ -249,13 +288,15 @@ struct PackageConfiguration: Codable {
     app: String,
     product: String
   ) -> Result<Void, PackageConfigurationError> {
-    let configuration = PackageConfiguration([
-      app: AppConfiguration(
-        identifier: "com.example.\(product)",
-        product: product,
-        version: "0.1.0"
-      )
-    ])
+    let configuration = PackageConfiguration(
+      apps: [
+        app: AppConfiguration(
+          identifier: "com.example.\(product)",
+          product: product,
+          version: "0.1.0"
+        )
+      ]
+    )
     let file = directory.appendingPathComponent("Bundler.toml")
 
     return writeConfiguration(configuration, to: file)

@@ -39,10 +39,10 @@ struct AppConfigurationV2: Codable {
       return .string(value)
     }
 
-    // Update variable delimeters from '{' and '}' to '$(' and ')' (they were changed to match Xcode)
+    // Update variable delimiters from '{' and '}' to '$(' and ')' (they were changed to match Xcode)
     plist = plist.map { plist in
       return plist.mapValues { value in
-        return Self.updateVariableDelimeters(value)
+        return Self.updateVariableDelimiters(value)
       }
     }
 
@@ -56,10 +56,10 @@ struct AppConfigurationV2: Codable {
     )
   }
 
-  /// Updates the variable delimeters present in any strings contained within a plist value.
+  /// Updates the variable delimiters present in any strings contained within a plist value.
   /// - Parameter value: The value to update.
-  /// - Returns: The value with delimeters updated (if any were present).
-  static func updateVariableDelimeters(_ value: PlistValue) -> PlistValue {
+  /// - Returns: The value with delimiters updated (if any were present).
+  static func updateVariableDelimiters(_ value: PlistValue) -> PlistValue {
     switch value {
       case .string(let string):
         let result = VariableEvaluator.evaluateVariables(
@@ -67,8 +67,8 @@ struct AppConfigurationV2: Codable {
           with: .custom { variable in
             return .success("$(\(variable))")
           },
-          openingDelimeter: "{",
-          closingDelimeter: "}"
+          openingDelimiter: "{",
+          closingDelimiter: "}"
         )
 
         switch result {
@@ -76,20 +76,20 @@ struct AppConfigurationV2: Codable {
             return .string(newValue)
           case .failure(let error):
             log.warning(
-              "Failed to update variable delimeters in plist value '\(string)': \(error.localizedDescription)"
+              "Failed to update variable delimiters in plist value '\(string)': \(error.localizedDescription)"
             )
             return value
         }
       case .array(let array):
         return .array(
           array.map { value in
-            return updateVariableDelimeters(value)
+            return updateVariableDelimiters(value)
           }
         )
       case .dictionary(let dictionary):
         return .dictionary(
           dictionary.mapValues { value in
-            return updateVariableDelimeters(value)
+            return updateVariableDelimiters(value)
           }
         )
       default:

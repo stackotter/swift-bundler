@@ -8,6 +8,12 @@ enum DarwinBundlerError: LocalizedError {
   case failedToCreatePkgInfo(file: URL, Error)
   case failedToCreateInfoPlist(PlistCreatorError)
   case failedToCopyExecutable(source: URL, destination: URL, Error)
+  case failedToCopyExecutableDependency(
+    name: String,
+    source: URL,
+    destination: URL,
+    Error
+  )
   case failedToCreateIcon(IconSetCreatorError)
   case failedToCopyICNS(source: URL, destination: URL, Error)
   case failedToCopyResourceBundles(ResourceBundlerError)
@@ -20,6 +26,7 @@ enum DarwinBundlerError: LocalizedError {
   case failedToCopyProvisioningProfile(Error)
   case missingDarwinPlatformVersion(Platform)
   case unsupportedPlatform(Platform)
+  case failedToInsertMetadata(MetadataInserterError)
 
   var errorDescription: String? {
     switch self {
@@ -36,6 +43,12 @@ enum DarwinBundlerError: LocalizedError {
       case .failedToCopyExecutable(let source, let destination, _):
         return
           "Failed to copy executable from '\(source.relativePath)' to '\(destination.relativePath)'"
+      case .failedToCopyExecutableDependency(let dependencyName, let source, let destination, _):
+        return
+          """
+          Failed to copy executable dependency '\(dependencyName)' from \
+          '\(source.relativePath)' to '\(destination.relativePath)'
+          """
       case .failedToCreateIcon(let iconSetCreatorError):
         return "Failed to create app icon: \(iconSetCreatorError.localizedDescription)"
       case .failedToCopyICNS(let source, let destination, _):
@@ -73,6 +86,8 @@ enum DarwinBundlerError: LocalizedError {
           Platform '\(platform.name)' not supported by \
           '\(BundlerChoice.darwinApp.rawValue)' bundler.
           """
+      case .failedToInsertMetadata(let error):
+        return error.localizedDescription
     }
   }
 }
