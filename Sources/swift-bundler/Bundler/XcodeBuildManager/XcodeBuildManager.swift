@@ -110,6 +110,9 @@ enum XcodeBuildManager {
       ]
     }
 
+    // add any additional arguments passed to --Xswiftpm
+    additionalArgs += buildContext.additionalArguments
+
     process = Process.create(
       "xcodebuild",
       arguments: [
