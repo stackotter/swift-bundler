@@ -16,8 +16,6 @@ enum XcodeBuildManager {
     product: String,
     buildContext: SwiftPackageManager.BuildContext
   ) -> Result<Void, XcodeBuildManagerError> {
-    log.info("Starting \(buildContext.configuration.rawValue) build")
-
     let pipe = Pipe()
     let process: Process
 
