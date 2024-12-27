@@ -370,12 +370,12 @@ struct BundleCommand: ErrorHandledCommand {
 
         log.info("Starting \(buildContext.configuration.rawValue) build")
         if isUsingXcodeBuild {
-          XcodeBuildManager.build(
+          try XcodeBuildManager.build(
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
         } else {
-          SwiftPackageManager.build(
+          try SwiftPackageManager.build(
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
