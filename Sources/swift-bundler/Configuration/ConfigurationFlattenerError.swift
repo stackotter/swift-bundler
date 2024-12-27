@@ -31,7 +31,7 @@ extension ConfigurationFlattener {
         case .gitBasedBuilderAPIMissingAPIRequirement:
           return "Builder API sourced from git missing API requirement (provide the 'api' field)"
         case .defaultBuilderAPIMissingAPIRequirement:
-          return "Deafult Builder API missing API requirement (provide the 'api' field)"
+          return "Default Builder API missing API requirement (provide the 'api' field)"
         case .gitSourceMissingRevision(let gitURL):
           return
             """
