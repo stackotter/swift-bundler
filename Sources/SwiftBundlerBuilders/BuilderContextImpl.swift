@@ -28,19 +28,8 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
 
   public func run(_ command: String, _ arguments: [String]) throws {
     let process = Process()
-    #if os(Linux)
-      // Processes often seem to hang on Linux (reproducibly) if we use /usr/bin/env
-      // but not if we use /usr/bin/bash. This requires string interpolation and is
-      // quite dodgy, but should have minimal impact if the quoting is incorrect
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/bash")
-      process.arguments = [
-        "-c",
-        "\(bashQuote(command)) \(arguments.map(bashQuote).joined(separator: " "))",
-      ]
-    #else
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-      process.arguments = [command] + arguments
-    #endif
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = [command] + arguments
 
     try process.run()
     process.waitUntilExit()

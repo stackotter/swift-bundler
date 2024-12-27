@@ -222,23 +222,6 @@ func flatten<Failure: Error>(
   }
 }
 
-/// Returns a closure that runs the given operations one by one and stops on failure.
-/// - Parameter operations: The operations to chain together.
-/// - Returns: If an error occurs, a failure is returned.
-func flatten<Failure: Error>(
-  _ operations: (() async -> Result<Void, Failure>)...
-) -> (() async -> Result<Void, Failure>) {
-  return {
-    for operation in operations {
-      let result = await operation()
-      if case .failure = result {
-        return result
-      }
-    }
-    return .success()
-  }
-}
-
 func with<T, U>(_ value: T, _ transform: (T) -> U) -> U {
   transform(value)
 }

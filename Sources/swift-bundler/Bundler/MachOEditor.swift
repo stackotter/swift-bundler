@@ -183,7 +183,8 @@ enum MachOEditor {
           ]
         }
         return []
-      case .universal(let universalFile):
+      case .universal:
+        // Not supported at this time.
         return []
     }
   }

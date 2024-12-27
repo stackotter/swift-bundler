@@ -404,7 +404,7 @@ enum SwiftPackageManager {
   /// - Returns: The loaded manifest, or a failure if an error occurs.
   static func loadPackageManifest(
     from packageDirectory: URL
-  ) async -> Result<PackageManifest, SwiftPackageManagerError> {
+  ) -> Result<PackageManifest, SwiftPackageManagerError> {
     // We used to use the SwiftPackageManager library to load package manifests,
     // but that caused issues when the library version didn't match the user's
     // installed Swift version and was very fiddly to fix. It was easier to just

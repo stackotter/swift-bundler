@@ -2,7 +2,7 @@ import Foundation
 import StackOtterArgParser
 
 /// The subcommand for creating app bundles for a package.
-struct BundleCommand: AsyncCommand {
+struct BundleCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Create an app bundle from a package."
@@ -208,8 +208,8 @@ struct BundleCommand: AsyncCommand {
     return architectures
   }
 
-  func wrappedRun() async throws {
-    _ = try await doBundling()
+  func wrappedRun() throws {
+    _ = try doBundling()
   }
 
   /// - Parameter dryRun: During a dry run, all of the validation steps are
@@ -217,9 +217,9 @@ struct BundleCommand: AsyncCommand {
   ///   `RunCommand` to figure out where the output bundle will end up even
   ///   when the user instructs it to skip bundling.
   /// - Returns: A description of the structure of the bundler's output.
-  func doBundling(dryRun: Bool = false) async throws -> BundlerOutputStructure {
+  func doBundling(dryRun: Bool = false) throws -> BundlerOutputStructure {
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
+    let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
@@ -249,7 +249,7 @@ struct BundleCommand: AsyncCommand {
 
       // Load package manifest
       log.info("Loading package manifest")
-      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+      let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
       let platformVersion = manifest.platformVersion(for: arguments.platform)
