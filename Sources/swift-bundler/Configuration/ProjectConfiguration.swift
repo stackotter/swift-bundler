@@ -7,6 +7,8 @@ struct ProjectConfiguration: Codable {
   static let defaultProjectName = "default"
 
   var source: Source
+  var revision: String?
+
   var builder: Builder
   var products: [String: Product]
 
@@ -22,19 +24,15 @@ struct ProjectConfiguration: Codable {
   }
 
   struct Flat {
-    var source: Source
+    var source: Source.Flat
     var builder: Builder.Flat
     var products: [String: Product]
-  }
-
-  enum Source {
-    case git(URL)
   }
 
   struct Builder: Codable {
     var name: String
     var type: BuilderType
-    var apiSource: APISource?
+    var apiSource: Source?
     var api: APIRequirement?
 
     enum CodingKeys: String, CodingKey {
@@ -47,89 +45,106 @@ struct ProjectConfiguration: Codable {
     struct Flat {
       var name: String
       var type: BuilderType
-      var api: API
-
-      enum API {
-        case local(_ path: String)
-        case git(URL?, requirement: APIRequirement)
-      }
-    }
-
-    enum APIRequirement: Codable {
-      case revision(String)
-
-      init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let value = try container.decode(String.self)
-        let parser = OneOf {
-          Parse {
-            "revision("
-            PrefixUpTo(")")
-            ")"
-          }.map { revision in
-            APIRequirement.revision(String(revision))
-          }
-        }
-        self = try parser.parse(value)
-      }
-
-      func encode(to encoder: any Encoder) throws {
-        let value: String
-        switch self {
-          case .revision(let revision):
-            value = "revision(\(revision))"
-        }
-        var container = encoder.singleValueContainer()
-        try container.encode(value)
-      }
-    }
-
-    enum APISource: Codable {
-      case git(URL)
-      case local(String)
-
-      init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let value = try container.decode(String.self)
-        let parser = OneOf {
-          Parse {
-            "git("
-            PrefixUpTo(")")
-            ")"
-          }
-          .map { (url: Substring) -> Result<APISource, Error> in
-            guard let url = URL(string: String(url)) else {
-              return .failure(Error.invalidGitURL(String(url)))
-            }
-            return .success(APISource.git(url))
-          }
-
-          Parse {
-            "local("
-            PrefixUpTo(")")
-            ")"
-          }.map { path in
-            Result<_, Error>.success(APISource.local(String(path)))
-          }
-        }
-        self = try parser.parse(value).unwrap()
-      }
-
-      func encode(to encoder: any Encoder) throws {
-        let value: String
-        switch self {
-          case .git(let url):
-            value = "git(\(url.absoluteString))"
-          case .local(let path):
-            value = "local(\(path))"
-        }
-        var container = encoder.singleValueContainer()
-        try container.encode(value)
-      }
+      var api: Source.FlatWithDefaultRepository
     }
 
     enum BuilderType: String, Codable {
       case wholeProject
+    }
+  }
+
+  enum Source: Codable {
+    case git(URL)
+    case local(String)
+
+    enum Flat {
+      case local(_ path: String)
+      case git(URL, requirement: APIRequirement)
+    }
+
+    /// A flattened version of source for usecases where there's a sensible
+    /// default git repository (e.g. the stackotter/swift-bundler repository
+    /// is the default if no builder API source is explicitly provided).
+    enum FlatWithDefaultRepository {
+      case local(_ path: String)
+      case git(URL?, requirement: APIRequirement)
+
+      func normalized(usingDefault defaultGitURL: URL) -> Flat {
+        switch self {
+          case .local(let path):
+            return .local(path)
+          case .git(let url, let requirement):
+            return .git(url ?? defaultGitURL, requirement: requirement)
+        }
+      }
+    }
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      let value = try container.decode(String.self)
+      let parser = OneOf {
+        Parse {
+          "git("
+          PrefixUpTo(")")
+          ")"
+        }
+        .map { (url: Substring) -> Result<Self, Error> in
+          guard let url = URL(string: String(url)) else {
+            return .failure(Error.invalidGitURL(String(url)))
+          }
+          return .success(Self.git(url))
+        }
+
+        Parse {
+          "local("
+          PrefixUpTo(")")
+          ")"
+        }.map { path in
+          Result<_, Error>.success(Self.local(String(path)))
+        }
+      }
+      self = try parser.parse(value).unwrap()
+    }
+
+    func encode(to encoder: any Encoder) throws {
+      let value: String
+      switch self {
+        case .git(let url):
+          value = "git(\(url.absoluteString))"
+        case .local(let path):
+          value = "local(\(path))"
+      }
+      var container = encoder.singleValueContainer()
+      try container.encode(value)
+    }
+  }
+
+  enum APIRequirement: Codable {
+    case revision(String)
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      let value = try container.decode(String.self)
+      let parser = OneOf {
+        Parse {
+          "revision("
+          PrefixUpTo(")")
+          ")"
+        }.map { revision in
+          APIRequirement.revision(String(revision))
+        }
+      }
+      self = try parser.parse(value)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+      let value: String
+      switch self {
+        case .revision(let revision):
+          value = "revision(\(revision))"
+      }
+      var container = encoder.singleValueContainer()
+      try container.encode(value)
     }
   }
 
@@ -183,36 +198,5 @@ struct ProjectConfiguration: Codable {
         return fileName
       }
     }
-  }
-}
-
-extension ProjectConfiguration.Source: Codable {
-  init(from decoder: any Decoder) throws {
-    let parser = Parse {
-      "git("
-      PrefixUpTo(")")
-      ")"
-    }.map { url in
-      URL(string: String(url)).map(Self.git)
-    }
-
-    let container = try decoder.singleValueContainer()
-    let value = try container.decode(String.self)
-
-    guard let parsedValue = try parser.parse(value) else {
-      throw ProjectConfiguration.Error.invalidGitURL(value)
-    }
-
-    self = parsedValue
-  }
-
-  func encode(to encoder: any Encoder) throws {
-    var container = encoder.singleValueContainer()
-    let value =
-      switch self {
-        case .git(let url):
-          "git(\(url.absoluteString))"
-      }
-    try container.encode(value)
   }
 }

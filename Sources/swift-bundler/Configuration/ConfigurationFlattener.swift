@@ -124,7 +124,7 @@ enum ConfigurationFlattener {
       )
     }
 
-    let builderAPI: ProjectConfiguration.Builder.Flat.API
+    let builderAPI: ProjectConfiguration.Source.FlatWithDefaultRepository
     switch configuration.builder.apiSource {
       case .local(let path):
         guard configuration.builder.api == nil else {
@@ -149,9 +149,22 @@ enum ConfigurationFlattener {
         builderAPI = .git(nil, requirement: apiRequirement)
     }
 
+    let source: ProjectConfiguration.Source.Flat
+    switch configuration.source {
+      case .git(let url):
+        guard let revision = configuration.revision else {
+          return .failure(
+            Error.gitSourceMissingRevision(url)
+          )
+        }
+        source = .git(url, requirement: .revision(revision))
+      case .local(let path):
+        source = .local(path)
+    }
+
     return .success(
       ProjectConfiguration.Flat(
-        source: configuration.source,
+        source: source,
         builder: ProjectConfiguration.Builder.Flat(
           name: configuration.builder.name,
           type: configuration.builder.type,

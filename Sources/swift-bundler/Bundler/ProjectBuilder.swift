@@ -18,6 +18,9 @@ enum ProjectBuilder {
     case failedToCopyProduct(source: URL, destination: URL, any Swift.Error)
     case other(any Swift.Error)
 
+    /// An internal error used in control flow.
+    case mismatchedGitURL(_ actual: String, expected: URL)
+
     var errorDescription: String? {
       switch self {
         case .failedToCloneRepo(let gitURL, let error):
@@ -46,6 +49,11 @@ enum ProjectBuilder {
             """
         case .other(let error):
           return error.localizedDescription
+        case .mismatchedGitURL(let actualURL, let expectedURL):
+          return """
+            Expected repository to have origin url \
+            '\(expectedURL.absoluteString)' but had '\(actualURL)'
+            """
       }
     }
   }
@@ -184,6 +192,80 @@ enum ProjectBuilder {
     }
   }
 
+  static func checkoutSource(
+    _ source: ProjectConfiguration.Source.Flat,
+    at destination: URL,
+    packageDirectory: URL
+  ) -> Result<(), Error> {
+    func clone(_ repository: URL, to destination: URL) -> Result<(), Error> {
+      Process.create(
+        "git",
+        arguments: [
+          "clone",
+          "--recursive",
+          repository.absoluteString,
+          destination.path,
+        ],
+        runSilentlyWhenNotVerbose: false
+      ).runAndWait().mapError { error in
+        Error.failedToCloneRepo(repository, error)
+      }
+    }
+
+    let destinationExists = (try? destination.checkResourceIsReachable()) == true
+
+    switch source {
+      case .git(let url, let requirement):
+        return Process.create(
+          "git",
+          arguments: [
+            "remote",
+            "get-url",
+            "origin",
+          ],
+          directory: destination
+        ).getOutput().mapError(Error.other).andThen { output in
+          let currentURL = output.trimmingCharacters(in: .whitespacesAndNewlines)
+          guard currentURL == url.absoluteString else {
+            return .failure(.mismatchedGitURL(currentURL, expected: url))
+          }
+          return .success()
+        }.tryRecover { _ in
+          Result.success().andThen(if: destinationExists) { _ in
+            FileManager.default.removeItem(at: destination)
+              .mapError(Error.other)
+          }.andThen { _ in
+            clone(url, to: destination)
+          }
+        }.andThen { _ in
+          let revision: String
+          switch requirement {
+            case .revision(let value):
+              revision = value
+          }
+
+          return Process.create(
+            "git",
+            arguments: ["checkout", revision],
+            directory: destination
+          ).runAndWait().mapError(Error.other)
+        }
+      case .local(let path):
+        return Result.success().andThen(if: destinationExists) { _ in
+          FileManager.default.removeItem(at: destination)
+            .mapError(Error.other)
+        }.andThen { _ in
+          let source = packageDirectory / path
+          return FileManager.default.createSymlink(
+            at: destination,
+            withRelativeDestination: source.path(
+              relativeTo: destination.deletingLastPathComponent()
+            )
+          ).mapError(Error.other)
+        }
+    }
+  }
+
   /// Builds a project and returns the directory containing the built
   /// products on success.
   static func buildProject(
@@ -192,35 +274,19 @@ enum ProjectBuilder {
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure
   ) -> Result<Void, Error> {
-    let gitURL: URL
-    switch configuration.source {
-      case .git(let url):
-        gitURL = url
-    }
-
     // Just sitting here to raise alarms when more types are added
     switch configuration.builder.type {
       case .wholeProject:
         break
     }
 
-    let checkedOut = FileManager.default.itemExists(
-      at: scratchDirectory.sources,
-      withType: .directory
-    )
-
     return Result.success()
-      .andThen(if: !checkedOut) { _ in
-        // Clone sources
-        Process.create(
-          "git",
-          arguments: [
-            "clone", "--recursive", gitURL.absoluteString, scratchDirectory.sources.path,
-          ],
-          runSilentlyWhenNotVerbose: false
-        ).runAndWait().mapError { error in
-          Error.failedToCloneRepo(gitURL, error)
-        }
+      .andThen { _ in
+        checkoutSource(
+          configuration.source,
+          at: scratchDirectory.sources,
+          packageDirectory: packageDirectory
+        )
       }
       .andThen { _ in
         // Create builder source file symlink
@@ -242,7 +308,9 @@ enum ProjectBuilder {
           .map { toolsVersion in
             generateBuilderPackageManifest(
               toolsVersion,
-              builderAPI: configuration.builder.api
+              builderAPI: configuration.builder.api.normalized(
+                usingDefault: SwiftBundler.gitURL
+              )
             )
           }
           .andThen { manifestContents in
@@ -276,6 +344,8 @@ enum ProjectBuilder {
         process.executableURL = productsDirectory / builderProductName
         process.standardInput = inputPipe
         process.currentDirectoryURL = scratchDirectory.sources
+          .actuallyResolvingSymlinksInPath()
+        process.arguments = []
 
         let context = _BuilderContextImpl(
           buildDirectory: scratchDirectory.build
@@ -302,14 +372,16 @@ enum ProjectBuilder {
             return .failure(Error.builderFailed(processError))
           }
         }.ifFailure { _ in
-          process.terminate()
+          if process.isRunning {
+            process.terminate()
+          }
         }.mapError(Error.builderFailed)
       }
   }
 
   static func generateBuilderPackageManifest(
     _ swiftVersion: Version,
-    builderAPI: ProjectConfiguration.Builder.Flat.API
+    builderAPI: ProjectConfiguration.Source.Flat
   ) -> String {
     let dependency: String
     switch builderAPI {
@@ -321,7 +393,6 @@ enum ProjectBuilder {
                   )
           """
       case .git(let url, let requirement):
-        let url = url ?? SwiftBundler.gitURL
         let revision: String
         switch requirement {
           case .revision(let value):

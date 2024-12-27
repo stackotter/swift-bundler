@@ -11,6 +11,7 @@ extension ConfigurationFlattener {
     case localBuilderAPIMustNotSpecifyRevision(_ path: String)
     case gitBasedBuilderAPIMissingAPIRequirement(_ url: URL)
     case defaultBuilderAPIMissingAPIRequirement
+    case gitSourceMissingRevision(URL)
 
     var errorDescription: String? {
       switch self {
@@ -31,6 +32,12 @@ extension ConfigurationFlattener {
           return "Builder API sourced from git missing API requirement (provide the 'api' field)"
         case .defaultBuilderAPIMissingAPIRequirement:
           return "Deafult Builder API missing API requirement (provide the 'api' field)"
+        case .gitSourceMissingRevision(let gitURL):
+          return
+            """
+            Git source '\(gitURL.absoluteString)' requires a revision. Provide
+            the 'projects.YourProject.revision' field.
+            """
       }
     }
   }
