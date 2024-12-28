@@ -17,7 +17,7 @@ enum ConfigurationFlattener {
       }
     }
     .andThen { flattenedApps in
-      Array(configuration.projects).tryMap { (name, projectConfiguration) in
+      Array(configuration.projects ?? [:]).tryMap { (name, projectConfiguration) in
         flatten(projectConfiguration, with: context).map { project in
           (name, project)
         }

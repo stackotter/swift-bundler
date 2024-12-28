@@ -13,7 +13,7 @@ struct PackageConfiguration: Codable {
   /// The configuration for each lib in the package. Maps library name to
   /// library configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
-  var projects: [String: ProjectConfiguration]
+  var projects: [String: ProjectConfiguration]?
 
   private enum CodingKeys: String, CodingKey {
     case formatVersion = "format_version"
@@ -55,7 +55,7 @@ struct PackageConfiguration: Codable {
   /// - Parameter projects: The package's subprojects.
   init(
     apps: [String: AppConfiguration] = [:],
-    projects: [String: ProjectConfiguration] = [:]
+    projects: [String: ProjectConfiguration]? = nil
   ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
