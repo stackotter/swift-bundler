@@ -234,46 +234,53 @@ enum SwiftPackageManager {
     let platformArguments: [String]
     switch buildContext.platform {
       case .iOS, .visionOS, .tvOS, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        let sdkPath: String
-        switch getLatestSDKPath(for: buildContext.platform) {
-          case .success(let path):
-            sdkPath = path
-          case .failure(let error):
-            return .failure(error)
-        }
+        #if os(macOS)
+          let sdkPath: String
+          switch getLatestSDKPath(for: buildContext.platform) {
+            case .success(let path):
+              sdkPath = path
+            case .failure(let error):
+              return .failure(error)
+          }
 
-        guard let platformVersion = buildContext.platformVersion else {
-          return .failure(.missingDarwinPlatformVersion(buildContext.platform))
-        }
-        let hostArchitecture = BuildArchitecture.current
+          guard let platformVersion = buildContext.platformVersion else {
+            return .failure(.missingDarwinPlatformVersion(buildContext.platform))
+          }
+          let hostArchitecture = BuildArchitecture.current
 
-        let targetTriple: LLVMTargetTriple
-        switch buildContext.platform {
-          case .iOS:
-            targetTriple = .apple(.arm64, .iOS(platformVersion))
-          case .visionOS:
-            targetTriple = .apple(.arm64, .visionOS(platformVersion))
-          case .tvOS:
-            targetTriple = .apple(.arm64, .tvOS(platformVersion))
-          case .iOSSimulator:
-            targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
-          case .visionOSSimulator:
-            targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
-          case .tvOSSimulator:
-            targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
-          default:
-            fatalError("Unreachable (supposedly)")
-        }
+          let targetTriple: LLVMTargetTriple
+          switch buildContext.platform {
+            case .iOS:
+              targetTriple = .apple(.arm64, .iOS(platformVersion))
+            case .visionOS:
+              targetTriple = .apple(.arm64, .visionOS(platformVersion))
+            case .tvOS:
+              targetTriple = .apple(.arm64, .tvOS(platformVersion))
+            case .iOSSimulator:
+              targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
+            case .visionOSSimulator:
+              targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
+            case .tvOSSimulator:
+              targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
+            default:
+              fatalError("Unreachable (supposedly)")
+          }
 
-        platformArguments =
-          [
-            "-sdk", sdkPath,
-            "-target", targetTriple.description,
-          ].flatMap { ["-Xswiftc", $0] }
-          + [
-            "--target=\(targetTriple)",
-            "-isysroot", sdkPath,
-          ].flatMap { ["-Xcc", $0] }
+          // TODO: Should this be omitted on non-mac hosts?
+          // adding '-target' requires setting '-sdk', which can be retrieved on mac platforms via `xcrun`, but if using
+          // cross-compilation how do we get the SDK path?
+          platformArguments =
+            [
+              "-sdk", sdkPath,
+              "-target", targetTriple.description,
+            ].flatMap { ["-Xswiftc", $0] }
+            + [
+              "--target=\(targetTriple)",
+              "-isysroot", sdkPath,
+            ].flatMap { ["-Xcc", $0] }
+        #else
+          platformArguments = []
+        #endif
       case .macOS, .linux:
         platformArguments = []
     }
@@ -298,22 +305,26 @@ enum SwiftPackageManager {
     return .success(arguments)
   }
 
-  /// Gets the path to the latest SDK for a given platform.
-  /// - Parameter platform: The platform to get the SDK path for.
-  /// - Returns: The SDK's path, or a failure if an error occurs.
-  static func getLatestSDKPath(for platform: Platform) -> Result<String, SwiftPackageManagerError> {
-    return Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "--sdk", platform.sdkName,
-        "--show-sdk-path",
-      ]
-    ).getOutput().map { output in
-      return output.trimmingCharacters(in: .whitespacesAndNewlines)
-    }.mapError { error in
-      return .failedToGetLatestSDKPath(platform, error)
+  /// xcrun is only available on macOS.
+  #if os(macOS)
+    /// Gets the path to the latest SDK for a given platform.
+    /// - Parameter platform: The platform to get the SDK path for.
+    /// - Returns: The SDK's path, or a failure if an error occurs.
+    static func getLatestSDKPath(for platform: Platform) -> Result<String, SwiftPackageManagerError>
+    {
+      return Process.create(
+        "/usr/bin/xcrun",
+        arguments: [
+          "--sdk", platform.sdkName,
+          "--show-sdk-path",
+        ]
+      ).getOutput().map { output in
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+      }.mapError { error in
+        return .failedToGetLatestSDKPath(platform, error)
+      }
     }
-  }
+  #endif
 
   /// Gets the version of the current Swift installation.
   /// - Returns: The swift version, or a failure if an error occurs.
