@@ -15,7 +15,8 @@ struct BundleCommand: ErrorHandledCommand {
   /// Whether to skip the build step or not.
   @Flag(
     name: .long,
-    help: "Skip the build step.")
+    help: "Skip the build step."
+  )
   var skipBuild = false
 
   #if os(macOS)
@@ -242,6 +243,27 @@ struct BundleCommand: ErrorHandledCommand {
       // Get relevant configuration
       let architectures = getArchitectures(platform: arguments.platform)
 
+      // Whether or not we are building with xcodebuild instead of swiftpm.
+      let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: self)
+
+      if isUsingXcodeBuild {
+        // Terminate the program if the project is an Xcodeproj based project.
+        let xcodeprojs = try FileManager.default.contentsOfDirectory(
+          at: packageDirectory,
+          includingPropertiesForKeys: nil
+        ).filter({ $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace") })
+        guard xcodeprojs.isEmpty else {
+          for xcodeproj in xcodeprojs {
+            if xcodeproj.path.contains("xcodeproj") {
+              log.error("An xcodeproj was located at the following path: \(xcodeproj.path)")
+            } else if xcodeproj.path.contains("xcworkspace") {
+              log.error("An xcworkspace was located at the following path: \(xcodeproj.path)")
+            }
+          }
+          throw CLIError.invalidXcodeprojDetected
+        }
+      }
+
       let outputDirectory = Self.getOutputDirectory(
         arguments.outputDirectory,
         scratchDirectory: scratchDirectory
@@ -265,9 +287,21 @@ struct BundleCommand: ErrorHandledCommand {
       )
 
       // Get build output directory
-      let productsDirectory =
-        try arguments.productsDirectory
-        ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      let productsDirectory: URL
+      
+      if !isUsingXcodeBuild {
+        productsDirectory = try arguments.productsDirectory
+          ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      } else {
+        let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+        // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
+        // however; for macOS there is no platform suffix at all.
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
+        productsDirectory = arguments.productsDirectory
+          ?? packageDirectory.appendingPathComponent(
+            ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
+          )
+      }
 
       var bundlerContext = BundlerContext(
         appName: appName,
@@ -335,10 +369,17 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         log.info("Starting \(buildContext.configuration.rawValue) build")
-        try SwiftPackageManager.build(
-          product: appConfiguration.product,
-          buildContext: buildContext
-        ).unwrap()
+        if isUsingXcodeBuild {
+          try XcodeBuildManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).unwrap()
+        } else {
+          try SwiftPackageManager.build(
+            product: appConfiguration.product,
+            buildContext: buildContext
+          ).unwrap()
+        }
       }
 
       try Self.removeExistingOutputs(
