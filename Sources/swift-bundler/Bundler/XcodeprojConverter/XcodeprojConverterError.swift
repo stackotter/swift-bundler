@@ -15,7 +15,6 @@ enum XcodeprojConverterError: LocalizedError {
   case failedToLoadXcodeWorkspace(URL, Error)
   case failedToGetRelativePath(PBXFileElement, Error?)
   case failedToCreateAppConfiguration(target: String, AppConfigurationError)
-  case failedToFormatPackageManifest(Error)
 
   var errorDescription: String? {
     switch self {
@@ -44,8 +43,6 @@ enum XcodeprojConverterError: LocalizedError {
         return "Failed to get relative path of '\(file.name ?? "unknown file")'"
       case .failedToCreateAppConfiguration(let target, let error):
         return "Failed to create app configuration for '\(target)': \(error.localizedDescription)"
-      case .failedToFormatPackageManifest(let error):
-        return "Failed to format generated package manifest: \(error)"
     }
   }
 }

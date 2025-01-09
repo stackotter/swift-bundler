@@ -1,6 +1,4 @@
 import Foundation
-import SwiftFormat
-import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftXcodeProj
@@ -209,19 +207,13 @@ enum XcodeprojConverter {
         // Extract the rest of the executable target
         let macOSDeploymentVersion = buildSettings?["MACOSX_DEPLOYMENT_TARGET"] as? String
         var iOSDeploymentVersion = buildSettings?["IPHONEOS_DEPLOYMENT_TARGET"] as? String
-        var visionOSDeploymentVersion = buildSettings?["XROS_DEPLOYMENT_TARGET"] as? String
+        let visionOSDeploymentVersion = buildSettings?["XROS_DEPLOYMENT_TARGET"] as? String
         let infoPlistPath = buildSettings?["INFOPLIST_FILE"] as? String
 
         // iOS deployment version doesn't always seem to be included, so we can just guess if iOS is supported
         if iOSDeploymentVersion == nil && buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
           iOSDeploymentVersion = "15.0"
           log.warning("Could not find target iOS version, assuming 15.0")
-        }
-
-        // visionOS deployment version doesn't always seem to be included, so we can just guess if visionOS is supported
-        if visionOSDeploymentVersion == nil, buildSettings?["TARGETED_DEVICE_FAMILY"] != nil {
-          visionOSDeploymentVersion = "1.0"
-          log.warning("Could not find target visionOS version, assuming 1.0")
         }
 
         let evaluate = { (value: String) -> String in
@@ -477,91 +469,94 @@ enum XcodeprojConverter {
       return names.insert(dependency.package).inserted
     }
 
-    let dependenciesSource = ArrayExprSyntax {
-      for dependency in uniquePackageDependencies {
+    func stringLiteral(_ value: String) -> String {
+      ExprSyntax("\(literal: value)").description
+    }
+
+    let indentSpaces = 4
+
+    func indent(
+      _ expression: String,
+      amount indentLevel: Int,
+      skipFirstLine: Bool = false
+    ) -> String {
+      let indentation = String(repeating: " ", count: indentLevel * indentSpaces)
+      return expression.split(separator: "\n").enumerated().map { (index, line) in
+        if skipFirstLine && index == 0 {
+          return line
+        } else {
+          return indentation + line
+        }
+      }.joined(separator: "\n")
+    }
+
+    func arrayLiteral(_ elementExpressions: [String]) -> String {
+      if elementExpressions.isEmpty {
+        return "[]"
+      } else {
+        return """
+          [
+          \(elementExpressions.map { indent($0, amount: 1) }.joined(separator: ",\n"))
+          ]
+          """
+      }
+    }
+
+    let dependenciesSource = arrayLiteral(
+      uniquePackageDependencies.map { dependency in
         let url = dependency.url.absoluteString
         let requirement = dependency.requirementParameterSource
-        ArrayElementSyntax(
-          expression: ExprSyntax(
-            ".package(url: \(literal: url), \(raw: requirement))"
-          ))
+        return """
+          .package(
+              url: \(stringLiteral(url)),
+              \(requirement)
+          )
+          """
       }
-    }
+    )
 
-    let targetsSource = ArrayExprSyntax {
-      for target in targets {
-        ArrayElementSyntax(
-          expression: FunctionCallExprSyntax(
-            callee: ExprSyntax(".\(raw: target.targetType.manifestName)")
-          ) {
-            LabeledExprSyntax(label: "name", expression: ExprSyntax("\(literal: target.name)"))
-            LabeledExprSyntax(
-              label: "dependencies",
-              expression: ExprSyntax(
-                ArrayExprSyntax {
-                  for dependency in target.dependencies {
-                    ArrayElementSyntax(expression: ExprSyntax("\(literal: dependency)"))
-                  }
+    let targetsSource = arrayLiteral(
+      targets.map { target in
+        let targetDependencies =
+          target.dependencies.map { dependency in
+            stringLiteral(dependency)
+          }
+          + target.packageDependencies.map { dependency in
+            ".product(name: \(stringLiteral(dependency.product)), package: \(stringLiteral(dependency.package)))"
+          }
+        let targetDependenciesSource = arrayLiteral(targetDependencies)
 
-                  for dependency in target.packageDependencies {
-                    ArrayElementSyntax(
-                      expression: ExprSyntax(
-                        ".product(name: \(literal: dependency.product), package: \(literal: dependency.package))"
-                      )
-                    )
-                  }
-                }
-              )
-            )
-            LabeledExprSyntax(
-              label: "resources",
-              expression: ExprSyntax(
-                ArrayExprSyntax {
-                  for resource in target.resources {
-                    let path = resource.bundlerPath(target: target.name)
-                    ArrayElementSyntax(expression: ExprSyntax(".copy(\(literal: path))"))
-                  }
-                }
-              )
-            )
+        let resourcesSource = arrayLiteral(
+          target.resources.map { resource in
+            let path = resource.bundlerPath(target: target.name)
+            return ".copy(\(stringLiteral(path)))"
           }
         )
+
+        return """
+          .\(target.targetType.manifestName)(
+              name: \(stringLiteral(target.name)),
+              dependencies: \(indent(targetDependenciesSource, amount: 1, skipFirstLine: true)),
+              resources: \(indent(resourcesSource, amount: 1, skipFirstLine: true))
+          )
+          """
       }
-    }
+    )
 
-    let source = SourceFileSyntax {
-      DeclSyntax(
-        """
-        // swift-tools-version: 5.6
-        import PackageDescription
+    let source = """
+      // swift-tools-version: 5.9
 
-        """
+      import PackageDescription
+
+      let package = Package(
+          name: \(stringLiteral(packageName)),
+          platforms: \(platformStrings == [] ? "[]" : "[\(platformStrings.joined(separator: ", "))]"),
+          dependencies: \(indent(dependenciesSource, amount: 1, skipFirstLine: true)),
+          targets: \(indent(targetsSource, amount: 1, skipFirstLine: true))
       )
+      """
 
-      DeclSyntax(
-        """
-        let package = Package(
-            name: \(literal: packageName),
-            platforms: \(raw: platformStrings == [] ? "[]" : "[\(platformStrings.joined(separator: ", "))]"),
-            dependencies: \(dependenciesSource),
-            targets: \(targetsSource)
-        )
-        """
-      )
-    }
-
-    var config = Configuration()
-    config.indentation = .spaces(4)
-
-    let formatter = SwiftFormatter(configuration: config)
-    var formattedSource = ""
-    do {
-      try formatter.format(source: source.description, assumingFileURL: nil, to: &formattedSource)
-    } catch {
-      return .failure(.failedToFormatPackageManifest(error))
-    }
-
-    return .success(formattedSource)
+    return .success(source)
   }
 
   static func minimalPlatformStrings(for targets: [any XcodeTarget]) -> [String] {
