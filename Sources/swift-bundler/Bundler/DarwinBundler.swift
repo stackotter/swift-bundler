@@ -53,10 +53,15 @@ enum DarwinBundler: Bundler {
       return .failure(.missingDarwinPlatformVersion(context.platform))
     }
 
+    // Whether a universal application binary (arm64 and x86_64) will be created.
     let universal = command.arguments.universal || command.arguments.architectures.count > 1
+
+    // Whether or not we are building with xcodebuild instead of swiftpm.
+    let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: command)
+
     return .success(
       Context(
-        isXcodeBuild: command.builtWithXcode,
+        isXcodeBuild: command.builtWithXcode || isUsingXcodeBuild,
         universal: universal,
         standAlone: command.arguments.standAlone,
         platform: applePlatform,
@@ -142,6 +147,7 @@ enum DarwinBundler: Bundler {
     }
 
     let sign: () -> Result<Void, DarwinBundlerError> = {
+      // if credentials are supplied for codesigning, use them.
       if let codeSigningContext = additionalContext.codeSigningContext {
         return CodeSigner.signAppBundle(
           bundle: appBundle,
@@ -151,7 +157,20 @@ enum DarwinBundler: Bundler {
           return .failedToCodesign(error)
         }
       } else {
-        return .success()
+
+        if context.platform != .macOS {
+          // otherwise codesign using an adhoc signature only on embedded.
+          return CodeSigner.signAppBundle(
+            bundle: appBundle,
+            identityId: "-",
+            entitlements: nil
+          ).mapError { error in
+            return .failedToCodesign(error)
+          }
+        } else {
+          // on macOS we can skip codesigning for running locally.
+          return .success()
+        }
       }
     }
 
@@ -231,6 +250,7 @@ enum DarwinBundler: Bundler {
     at source: URL, to destination: URL
   ) -> Result<Void, DarwinBundlerError> {
     log.info("Copying executable")
+
     do {
       try FileManager.default.copyItem(at: source, to: destination)
       return .success()
