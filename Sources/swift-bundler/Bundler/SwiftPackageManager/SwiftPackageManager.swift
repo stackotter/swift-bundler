@@ -337,11 +337,11 @@ enum SwiftPackageManager {
             Prefix { $0 != "(" }
             "(swiftlang-"
             Parse({ Version(major: $0, minor: $1, patch: $2) }) {
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Substring, version: Version, _: Substring) in
@@ -354,9 +354,9 @@ enum SwiftPackageManager {
             }
             "Swift version "
             Parse({ Version(major: $0, minor: $1, patch: 0) }) {
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
               "."
-              Int.parser(of: Substring.self, radix: 10)
+              Int.parser(radix: 10)
             }
             Rest<Substring>()
           }.map { (_: Void?, version: Version, _: Substring) in
