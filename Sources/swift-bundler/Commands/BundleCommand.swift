@@ -83,33 +83,28 @@ struct BundleCommand: ErrorHandledCommand {
       }
     #endif
 
-    if Platform.host == .linux && platform != .linux {
-      log.error("'--platform \(platform)' is not supported on Linux")
-      return false
-    }
-
-    guard arguments.bundler.isSupportedOnHostPlatform else {
-      log.error(
-        """
-        The '\(arguments.bundler.rawValue)' bundler is not supported on the \
-        current host platform. Supported values: \
-        \(BundlerChoice.supportedHostValuesDescription)
-        """
-      )
-      return false
-    }
+    // TODO: Should this be removed now that cross-compilation works?
+    // guard arguments.bundler.isSupportedOnHostPlatform else {
+    //     log.error(
+    //         """
+    //         The '\(arguments.bundler.rawValue)' bundler is not supported on the \
+    //         current host platform. Supported values: \
+    //         \(BundlerChoice.supportedHostValuesDescription)
+    //         """
+    //     )
+    //     return false
+    // }
 
     guard arguments.bundler.supportedTargetPlatforms.contains(platform) else {
-      let alternatives = BundlerChoice.allCases.filter { choice in
-        choice.supportedTargetPlatforms.contains(platform)
-      }
-      let alternativesDescription = "(\(alternatives.map(\.rawValue).joined(separator: "|")))"
+      let alternativesDescription =
+        "(\(BundlerChoice.allCases.map(\.rawValue).joined(separator: "|")))"
+      let bundleTargetsDescription =
+        "(\(arguments.bundler.supportedTargetPlatforms.map(\.rawValue).joined(separator: "|")))"
       log.error(
         """
-        The '\(arguments.bundler.rawValue)' bundler doesn't support bundling \
-        for '\(platform)'. Supported target platforms: \
-        \(BundlerChoice.supportedHostValuesDescription). Valid alternative \
-        bundlers: \(alternativesDescription)
+        The '\(arguments.bundler.rawValue)' bundler doesn't support bundling for '\(platform)'.
+          * Supported platforms for bundler '\(arguments.bundler.rawValue)': \(bundleTargetsDescription). 
+          * Alternative bundlers: \(alternativesDescription)
         """
       )
       return false

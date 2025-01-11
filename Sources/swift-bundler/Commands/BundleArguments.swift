@@ -8,7 +8,10 @@ struct BundleArguments: ParsableArguments {
   var appName: String?
 
   @Option(
-    help: "The bundler to use \(BundlerChoice.possibleValuesDescription).",
+    help: """
+      The bundler to use \(BundlerChoice.possibleValuesDescription). \
+      (default: \(BundlerChoice.defaultForHostPlatform))
+      """,
     transform: {
       guard let choice = BundlerChoice(rawValue: $0) else {
         throw CLIError.invalidBundlerChoice($0)
@@ -70,11 +73,10 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: [.customShort("a"), .customLong("arch")],
     parsing: .singleValue,
-    help: {
-      let possibleValues = BuildArchitecture.possibleValuesDescription
-      let defaultValue = BuildArchitecture.current.rawValue
-      return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
-    }(),
+    help: """
+      The architectures to build for \(BuildArchitecture.possibleValuesDescription). \
+      (default: [\(BuildArchitecture.current.rawValue)])
+      """,
     transform: { string in
       guard let arch = BuildArchitecture.init(rawValue: string) else {
         throw CLIError.invalidArchitecture(string)
@@ -100,10 +102,10 @@ struct BundleArguments: ParsableArguments {
   /// The platform to build for.
   @Option(
     name: .shortAndLong,
-    help: {
-      let possibleValues = Platform.possibleValuesDescription
-      return "The platform to build for \(possibleValues). (default: macOS)"
-    }(),
+    help: """
+      The platform to build for \(Platform.possibleValuesDescription). \
+      (default: \(SwiftBundler.host.defaultForHostPlatform))
+      """,
     transform: { string in
       // also support getting a platform by its apple sdk equivalent.
       if let appleSDK = AppleSDKPlatform(rawValue: string) {
@@ -115,12 +117,14 @@ struct BundleArguments: ParsableArguments {
       }
       return platform
     })
-  var platform = Platform.host
+  var platform = SwiftBundler.host.defaultForHostPlatform
 
   /// A codesigning identity to use.
-  @Option(
-    name: .customLong("identity"),
-    help: "The identity to use for codesigning")
+  #if os(macOS)
+    @Option(
+      name: .customLong("identity"),
+      help: "The identity to use for codesigning")
+  #endif
   var identity: String?
 
   /// A provisioning profile to use.

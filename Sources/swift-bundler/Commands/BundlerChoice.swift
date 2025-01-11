@@ -20,16 +20,14 @@ enum BundlerChoice: String, CaseIterable {
   }
 
   /// Whether the choice is supported on the host platform.
-  var isSupportedOnHostPlatform: Bool {
-    supportedHostPlatforms.contains(Platform.host)
-  }
+  // var isSupportedOnHostPlatform: Bool {
+  //   supportedHostPlatforms.contains(SwiftBundler.host.defaultForHostPlatform)
+  // }
 
   /// The default choice for the host platform.
   static var defaultForHostPlatform: Self {
-    // TODO: Give Platform.host its own type so that we don't have to pretend
-    //   that iOS is a valid host platform (for now...)
-    switch Platform.host {
-      case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+    switch SwiftBundler.host {
+      case .macOS:
         return .darwinApp
       case .linux:
         return .linuxGeneric
@@ -37,12 +35,12 @@ enum BundlerChoice: String, CaseIterable {
   }
 
   /// A list of supported values for human consumption.
-  static var supportedHostValuesDescription: String {
-    let supportedChoices = allCases.filter { choice in
-      choice.isSupportedOnHostPlatform
-    }
-    return "(\(supportedChoices.map(\.rawValue).joined(separator: "|")))"
-  }
+  // static var supportedHostValuesDescription: String {
+  //   let supportedChoices = allCases.filter { choice in
+  //     choice.isSupportedOnHostPlatform
+  //   }
+  //   return "(\(supportedChoices.map(\.rawValue).joined(separator: "|")))"
+  // }
 
   /// Target platforms that the choice is valid for.
   var supportedTargetPlatforms: [Platform] {
@@ -55,9 +53,9 @@ enum BundlerChoice: String, CaseIterable {
   }
 
   /// Host platforms that the choice is valid for.
-  var supportedHostPlatforms: [Platform] {
-    // Nice and simple one-to-one for now. With SwiftPM cross-compilation advancing
-    // I'm sure I'll eventually get cross-bundling working.
-    supportedTargetPlatforms
-  }
+  // var supportedHostPlatforms: [Platform] {
+  //   // Nice and simple one-to-one for now. With SwiftPM cross-compilation advancing
+  //   // I'm sure I'll eventually get cross-bundling working.
+  //   supportedTargetPlatforms
+  // }
 }

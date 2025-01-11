@@ -101,15 +101,6 @@ enum Platform: String, CaseIterable {
       case .tvOSSimulator: self = .tvOSSimulator
     }
   }
-
-  /// The platform that Swift Bundler is currently being run on.
-  static var host: Platform {
-    #if os(macOS)
-      return .macOS
-    #elseif os(Linux)
-      return .linux
-    #endif
-  }
 }
 
 extension Platform: Equatable {
