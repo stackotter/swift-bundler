@@ -280,7 +280,18 @@ enum DynamicLibraryBundler {
         .filter { $0.pathExtension == "framework" }
         .map { framework in
           let name = framework.deletingPathExtension().lastPathComponent
-          return (name: name, file: framework.appendingPathComponent("Versions/A/\(name)"))
+          let versionsDirectory = framework / "Versions"
+          if versionsDirectory.exists() {
+            return (
+              name: name,
+              file: versionsDirectory / "A/\(name)"
+            )
+          } else {
+            return (
+              name: name,
+              file: framework / name
+            )
+          }
         }
     } else {
       libraries =
