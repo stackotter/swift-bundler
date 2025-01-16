@@ -5,8 +5,7 @@ import Version
 import Yams
 
 /// A utility for interacting with xcodebuild.
-enum XcodeBuildManager {
-
+enum Xcodebuild {
   /// Builds the specified product using a Swift package target as an xcodebuild scheme.
   /// - Parameters:
   ///   - product: The product to build.
@@ -15,7 +14,11 @@ enum XcodeBuildManager {
   static func build(
     product: String,
     buildContext: SwiftPackageManager.BuildContext
-  ) -> Result<Void, XcodeBuildManagerError> {
+  ) -> Result<Void, XcodebuildError> {
+    guard let applePlatform = buildContext.platform.asApplePlatform else {
+      return .failure(.unsupportedPlatform(buildContext.platform))
+    }
+
     let pipe = Pipe()
     let process: Process
 
@@ -46,84 +49,25 @@ enum XcodeBuildManager {
         )
     }
 
-    let archString = buildContext.architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+    let archString = buildContext.architectures
+      .compactMap(\.rawValue)
+      .joined(separator: "_")
 
-    var additionalArgs: [String] = []
-    if buildContext.platform != .macOS {
-      // retrieving simulators for the -destination argument is only relevant for non-macOS platforms.
-      guard
-        let simulators = try? SimulatorManager.listAvailableOSSimulators(for: buildContext.platform)
-          .unwrap()
-      else {
-        return .failure(
-          .failedToRunXcodeBuild(
-            command: "xcodebuild: could not retrieve list of available destinations.",
-            .nonZeroExitStatus(-1)
-          )
-        )
-      }
-
-      var destinations: [XcodeBuildDestination] = []
-      for os in simulators.map(\.OS) {
-        for simulators in simulators.filter({ $0.OS == os }).map(\.simulators) {
-          for simulator in simulators {
-            destinations.append(
-              XcodeBuildDestination(
-                name: simulator.name,
-                platform: buildContext.platform.name.replacingOccurrences(
-                  of: "Simulator", with: " Simulator"),
-                OS: os
-              )
-            )
-          }
-        }
-      }
-
-      // ----- some filters -----
-
-      // we only care about matching the specifed platform name.
-      let forPlatform: (XcodeBuildDestination) -> Bool = { simulator in
-        return simulator.platform.contains(
-          buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
-      }
-      // we prefer to ignore iPhone SE models.
-      let removeBlacklisted: (XcodeBuildDestination) -> Bool = { simulator in
-        return !simulator.name.contains("iPhone SE")
-      }
-
-      // ------------------------
-
-      // 1. sort from highest to lowest semantic versions...
-      destinations.sort { OSVersion($0.OS) > OSVersion($1.OS) }
-
-      var destination: XcodeBuildDestination? = nil
-      for dest in destinations.filter({ forPlatform($0) && removeBlacklisted($0) }) {
-        // 2. because we grab the latest semantic version available here.
-        destination = dest
-        break
-      }
-
-      guard let buildDest = destination else {
-        return .failure(
-          .failedToRunXcodeBuild(
-            command: "xcodebuild: could not retrieve a valid build destination.",
-            .nonZeroExitStatus(-1)
-          ))
-      }
-
-      additionalArgs += [
-        "-destination",
-        "generic/platform=\(buildDest.platform)",
-      ]
-    } else {
-      additionalArgs += [
+    let destinationArguments: [String]
+    if buildContext.platform == .macOS {
+      destinationArguments = [
         "-destination",
         "platform=macOS,arch=\(archString)",
       ]
+    } else {
+      destinationArguments = [
+        "-destination",
+        "generic/platform=\(applePlatform.xcodeDestinationName)",
+      ]
     }
 
-    // add any additional arguments passed to --Xswiftpm
-    additionalArgs += buildContext.additionalArguments
+    // TODO: Introduce a way to take custom xcodebuild arguments from the
+    //   command line via --Xxcodebuild or something along those lines.
 
     process = Process.create(
       "xcodebuild",
@@ -136,7 +80,7 @@ enum XcodeBuildManager {
         buildContext.packageDirectory.appendingPathComponent(
           ".build/\(archString)-apple-\(buildContext.platform.sdkName)"
         ).path,
-      ] + additionalArgs,
+      ] + destinationArguments,
       directory: buildContext.packageDirectory,
       runSilentlyWhenNotVerbose: false
     )
@@ -160,8 +104,8 @@ enum XcodeBuildManager {
     }
 
     return process.runAndWait().mapError { error in
-      return .failedToRunXcodeBuild(
-        command: "xcodebuild: failed to build.",
+      return .failedToRunXcodebuild(
+        command: "Failed to run xcodebuild.",
         error
       )
     }
@@ -171,26 +115,26 @@ enum XcodeBuildManager {
   /// - Parameters:
   ///   - command: The subcommand for creating app bundles for a package.
   /// - Returns: Whether or not xcodebuild is invoked instead of swiftpm.
-  static func isUsingXcodeBuild(for command: BundleCommand) -> Bool {
-    var forceUsingXcodeBuild = command.arguments.xcodebuild
+  static func isUsingXcodebuild(for command: BundleCommand) -> Bool {
+    var forceUsingXcodebuild = command.arguments.xcodebuild
     // For non-macOS Apple platforms (e.g. iOS) we default to using the
     // xcodebuild builder instead of SwiftPM because SwiftPM doesn't
     // properly support cross-compiling to other Apple platforms from
     // macOS (and the workaround Swift Bundler uses to do so breaks down
     // when the package uses macros or has conditional dependencies in
     // its Package.swift).
-    let platformBreaksWithoutXcodeBuild =
+    let platformBreaksWithoutXcodebuild =
       command.arguments.platform.isApplePlatform
       && command.arguments.platform != .macOS
-    if forceUsingXcodeBuild
-      || platformBreaksWithoutXcodeBuild
+    if forceUsingXcodebuild
+      || platformBreaksWithoutXcodebuild
     {
-      forceUsingXcodeBuild = true
+      forceUsingXcodebuild = true
     }
 
     // Allows the '--no-xcodebuild' flag to be passed in, to override whether
     // or not the swiftpm-based build system is used, even for embedded apple
     // platforms (ex. visionOS, iOS, tvOS, watchOS).
-    return command.arguments.noXcodebuild ? false : forceUsingXcodeBuild
+    return command.arguments.noXcodebuild ? false : forceUsingXcodebuild
   }
 }

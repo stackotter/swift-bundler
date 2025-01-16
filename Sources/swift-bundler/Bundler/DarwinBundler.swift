@@ -57,11 +57,11 @@ enum DarwinBundler: Bundler {
     let universal = command.arguments.universal || command.arguments.architectures.count > 1
 
     // Whether or not we are building with xcodebuild instead of swiftpm.
-    let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: command)
+    let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(for: command)
 
     return .success(
       Context(
-        isXcodeBuild: command.builtWithXcode || isUsingXcodeBuild,
+        isXcodeBuild: command.builtWithXcode || isUsingXcodebuild,
         universal: universal,
         standAlone: command.arguments.standAlone,
         platform: applePlatform,

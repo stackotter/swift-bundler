@@ -40,4 +40,24 @@ enum ApplePlatform: String, CaseIterable {
         return .tvOSSimulator
     }
   }
+
+  /// The name of this platform when used in Xcode build destinations.
+  var xcodeDestinationName: String {
+    switch self {
+      case .macOS:
+        return "macOS"
+      case .iOS:
+        return "iOS"
+      case .iOSSimulator:
+        return "iOS Simulator"
+      case .tvOS:
+        return "tvOS"
+      case .tvOSSimulator:
+        return "tvOS Simulator"
+      case .visionOS:
+        return "visionOS"
+      case .visionOSSimulator:
+        return "visionOS Simulator"
+    }
+  }
 }

@@ -244,14 +244,16 @@ struct BundleCommand: ErrorHandledCommand {
       let architectures = getArchitectures(platform: arguments.platform)
 
       // Whether or not we are building with xcodebuild instead of swiftpm.
-      let isUsingXcodeBuild = XcodeBuildManager.isUsingXcodeBuild(for: self)
+      let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(for: self)
 
-      if isUsingXcodeBuild {
+      if isUsingXcodebuild {
         // Terminate the program if the project is an Xcodeproj based project.
         let xcodeprojs = try FileManager.default.contentsOfDirectory(
           at: packageDirectory,
           includingPropertiesForKeys: nil
-        ).filter({ $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace") })
+        ).filter({
+          $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace")
+        })
         guard xcodeprojs.isEmpty else {
           for xcodeproj in xcodeprojs {
             if xcodeproj.path.contains("xcodeproj") {
@@ -288,16 +290,18 @@ struct BundleCommand: ErrorHandledCommand {
 
       // Get build output directory
       let productsDirectory: URL
-      
-      if !isUsingXcodeBuild {
-        productsDirectory = try arguments.productsDirectory
+
+      if !isUsingXcodebuild {
+        productsDirectory =
+          try arguments.productsDirectory
           ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
       } else {
         let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
         // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
         // however; for macOS there is no platform suffix at all.
         let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
-        productsDirectory = arguments.productsDirectory
+        productsDirectory =
+          arguments.productsDirectory
           ?? packageDirectory.appendingPathComponent(
             ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
           )
@@ -369,8 +373,8 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         log.info("Starting \(buildContext.configuration.rawValue) build")
-        if isUsingXcodeBuild {
-          try XcodeBuildManager.build(
+        if isUsingXcodebuild {
+          try Xcodebuild.build(
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
