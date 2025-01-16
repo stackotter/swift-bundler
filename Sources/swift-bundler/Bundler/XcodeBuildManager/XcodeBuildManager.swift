@@ -38,10 +38,12 @@ enum XcodeBuildManager {
         #else
           let helpMsg = "mint install cpisciotta/xcbeautify"
         #endif
-        log.warning("""
-        xcbeautify was not found, for pretty build output please intall it with:\n
-        \(helpMsg)
-        """)
+        log.warning(
+          """
+          xcbeautify was not found, for pretty build output please intall it with:\n
+          \(helpMsg)
+          """
+        )
     }
 
     let archString = buildContext.architectures.compactMap({ $0.rawValue }).joined(separator: "_")
@@ -49,11 +51,16 @@ enum XcodeBuildManager {
     var additionalArgs: [String] = []
     if buildContext.platform != .macOS {
       // retrieving simulators for the -destination argument is only relevant for non-macOS platforms.
-      guard let simulators = try? SimulatorManager.listAvailableOSSimulators(for: buildContext.platform).unwrap() else {
-        return .failure(.failedToRunXcodeBuild(
-          command: "xcodebuild: could not retrieve list of available destinations.",
-          .nonZeroExitStatus(-1)
-        ))
+      guard
+        let simulators = try? SimulatorManager.listAvailableOSSimulators(for: buildContext.platform)
+          .unwrap()
+      else {
+        return .failure(
+          .failedToRunXcodeBuild(
+            command: "xcodebuild: could not retrieve list of available destinations.",
+            .nonZeroExitStatus(-1)
+          )
+        )
       }
 
       var destinations: [XcodeBuildDestination] = []
@@ -62,8 +69,9 @@ enum XcodeBuildManager {
           for simulator in simulators {
             destinations.append(
               XcodeBuildDestination(
-                name: simulator.name, 
-                platform: buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"),
+                name: simulator.name,
+                platform: buildContext.platform.name.replacingOccurrences(
+                  of: "Simulator", with: " Simulator"),
                 OS: os
               )
             )
@@ -75,7 +83,8 @@ enum XcodeBuildManager {
 
       // we only care about matching the specifed platform name.
       let forPlatform: (XcodeBuildDestination) -> Bool = { simulator in
-        return simulator.platform.contains(buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
+        return simulator.platform.contains(
+          buildContext.platform.name.replacingOccurrences(of: "Simulator", with: " Simulator"))
       }
       // we prefer to ignore iPhone SE models.
       let removeBlacklisted: (XcodeBuildDestination) -> Bool = { simulator in
@@ -95,18 +104,21 @@ enum XcodeBuildManager {
       }
 
       guard let buildDest = destination else {
-        return .failure(.failedToRunXcodeBuild(
-          command: "xcodebuild: could not retrieve a valid build destination.",
-          .nonZeroExitStatus(-1)
-        ))
+        return .failure(
+          .failedToRunXcodeBuild(
+            command: "xcodebuild: could not retrieve a valid build destination.",
+            .nonZeroExitStatus(-1)
+          ))
       }
 
       additionalArgs += [
-        "-destination", "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)"
+        "-destination",
+        "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)",
       ]
     } else {
       additionalArgs += [
-        "-destination", "platform=macOS,arch=\(archString)"
+        "-destination",
+        "platform=macOS,arch=\(archString)",
       ]
     }
 
@@ -119,7 +131,11 @@ enum XcodeBuildManager {
         "-scheme", product,
         "-configuration", buildContext.configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
-        "-derivedDataPath", buildContext.packageDirectory.appendingPathComponent(".build/\(archString)-apple-\(buildContext.platform.sdkName)").path
+        "-skipMacroValidation",
+        "-derivedDataPath",
+        buildContext.packageDirectory.appendingPathComponent(
+          ".build/\(archString)-apple-\(buildContext.platform.sdkName)"
+        ).path,
       ] + additionalArgs,
       directory: buildContext.packageDirectory,
       runSilentlyWhenNotVerbose: false
@@ -157,14 +173,21 @@ enum XcodeBuildManager {
   /// - Returns: Whether or not xcodebuild is invoked instead of swiftpm.
   static func isUsingXcodeBuild(for command: BundleCommand) -> Bool {
     var forceUsingXcodeBuild = command.arguments.xcodebuild
-    // For all apple platforms (not including macOS), we generate xcode
-    // support, because macOS cannot cross-compile for any of the other
-    // darwin platforms like it can with linux, and thus we need to use
-    // xcodebuild to build for these platforms (ex. visionOS, iOS, etc)
-    if forceUsingXcodeBuild || ![Platform.linux, Platform.macOS].contains(command.arguments.platform) {
+    // For non-macOS Apple platforms (e.g. iOS) we default to using the
+    // xcodebuild builder instead of SwiftPM because SwiftPM doesn't
+    // properly support cross-compiling to other Apple platforms from
+    // macOS (and the workaround Swift Bundler uses to do so breaks down
+    // when the package uses macros or has conditional dependencies in
+    // its Package.swift).
+    let platformBreaksWithoutXcodeBuild =
+      command.arguments.platform.isApplePlatform
+      && command.arguments.platform != .macOS
+    if forceUsingXcodeBuild
+      || platformBreaksWithoutXcodeBuild
+    {
       forceUsingXcodeBuild = true
     }
-    
+
     // Allows the '--no-xcodebuild' flag to be passed in, to override whether
     // or not the swiftpm-based build system is used, even for embedded apple
     // platforms (ex. visionOS, iOS, tvOS, watchOS).

@@ -77,6 +77,11 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// Gets whether the platform is an Apple platform (e.g. iOS) or not.
+  var isApplePlatform: Bool {
+    asApplePlatform != nil
+  }
+
   /// The platform's os (e.g. ``Platform/iOS`` and ``Platform/iOSSimulator``
   /// are both ``OS/iOS``).
   var os: OS {
