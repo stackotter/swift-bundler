@@ -20,31 +20,42 @@ enum CodeSigner {
 
   /// Signs an iOS app bundle and generates entitlements file.
   /// - Parameters:
+  ///   - outputFile: The destination for the generated entitlements file.
   ///   - bundle: The app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
   ///   - bundleIdentifier: The identifier of the app bundle.
   /// - Returns: A failure if the `codesign` command fails to run.
-  static func signWithGeneratedEntitlements(
-    bundle: URL, identityId: String, bundleIdentifier: String
+  static func generateEntitlementsFile(
+    at outputFile: URL,
+    for bundle: URL,
+    identityId: String,
+    bundleIdentifier: String
   ) -> Result<Void, CodeSignerError> {
-    let entitlements = bundle.deletingLastPathComponent().appendingPathComponent(
-      "entitlements.xcent")
-
     return getTeamIdentifier(from: bundle)
       .map { teamIdentifier -> String in
-        generateEntitlementsContent(
+        let content = generateEntitlementsContent(
           teamIdentifier: teamIdentifier,
           bundleIdentifier: bundleIdentifier
         )
+        return content
       }
       .andThen { entitlementsContent in
         do {
-          try entitlementsContent.write(to: entitlements, atomically: false, encoding: .utf8)
+          try entitlementsContent.write(
+            to: outputFile,
+            atomically: false,
+            encoding: .utf8
+          )
         } catch {
           return .failure(.failedToWriteEntitlements(error))
         }
 
-        return signAppBundle(bundle: bundle, identityId: identityId, entitlements: entitlements)
+        return signAppBundle(
+          bundle: bundle,
+          identityId: identityId,
+          bundleIdentifier: bundleIdentifier,
+          entitlements: outputFile
+        )
       }
   }
 
@@ -52,13 +63,15 @@ enum CodeSigner {
   /// - Parameters:
   ///   - bundle: The app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
+  ///   - bundleIdentifier: The app's bundle identifier.
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
   static func signAppBundle(
-    bundle: URL, identityId: String, entitlements: URL? = nil
-  ) -> Result<
-    Void, CodeSignerError
-  > {
+    bundle: URL,
+    identityId: String,
+    bundleIdentifier: String,
+    entitlements: URL?
+  ) -> Result<Void, CodeSignerError> {
     log.info("Codesigning app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
@@ -66,7 +79,9 @@ enum CodeSigner {
       let contents: [URL]
       do {
         contents = try FileManager.default.contentsOfDirectory(
-          at: librariesDirectory, includingPropertiesForKeys: nil)
+          at: librariesDirectory,
+          includingPropertiesForKeys: nil
+        )
       } catch {
         return .failure(.failedToEnumerateDynamicLibraries(error))
       }
@@ -78,7 +93,29 @@ enum CodeSigner {
       }
     }
 
-    return sign(file: bundle, identityId: identityId, entitlements: entitlements)
+    let entitlementsFile: URL
+    if let entitlements = entitlements {
+      entitlementsFile = entitlements
+    } else {
+      entitlementsFile =
+        FileManager.default.temporaryDirectory
+        / "\(UUID().uuidString).xcent"
+
+      if case .failure(let error) = CodeSigner.generateEntitlementsFile(
+        at: entitlementsFile,
+        for: bundle,
+        identityId: identityId,
+        bundleIdentifier: bundleIdentifier
+      ) {
+        return .failure(error)
+      }
+    }
+
+    return sign(
+      file: bundle,
+      identityId: identityId,
+      entitlements: entitlementsFile
+    )
   }
 
   /// Signs a binary or app bundle.
@@ -88,10 +125,10 @@ enum CodeSigner {
   ///   - entitlements: The entitlements to give the file (only valid for app bundles).
   /// - Returns: A failure if the `codesign` command fails.
   static func sign(
-    file: URL, identityId: String, entitlements: URL? = nil
-  ) -> Result<
-    Void, CodeSignerError
-  > {
+    file: URL,
+    identityId: String,
+    entitlements: URL? = nil
+  ) -> Result<Void, CodeSignerError> {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
@@ -219,10 +256,9 @@ enum CodeSigner {
 
   /// Generates the contents of an entitlements file.
   static func generateEntitlementsContent(
-    teamIdentifier: String, bundleIdentifier: String
-  )
-    -> String
-  {
+    teamIdentifier: String,
+    bundleIdentifier: String
+  ) -> String {
     return """
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

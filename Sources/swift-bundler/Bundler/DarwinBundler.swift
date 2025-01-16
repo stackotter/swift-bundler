@@ -153,6 +153,7 @@ enum DarwinBundler: Bundler {
         return CodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity,
+          bundleIdentifier: context.appConfiguration.identifier,
           entitlements: codeSigningContext.entitlements
         ).mapError { error in
           return .failedToCodesign(error)
@@ -163,6 +164,7 @@ enum DarwinBundler: Bundler {
           return CodeSigner.signAppBundle(
             bundle: appBundle,
             identityId: "-",
+            bundleIdentifier: context.appConfiguration.identifier,
             entitlements: nil
           ).mapError { error in
             return .failedToCodesign(error)
