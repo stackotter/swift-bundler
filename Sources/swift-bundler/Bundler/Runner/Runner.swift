@@ -192,7 +192,7 @@ enum Runner {
               return ["--args", argument]
             },
           runSilentlyWhenNotVerbose: false
-        ).runAndWait().mapError(RunnerError.failedToLocateIOSDeploy)
+        ).runAndWait().mapError(RunnerError.failedToRunIOSDeploy)
       }
   }
 

@@ -113,7 +113,7 @@ enum XcodeBuildManager {
 
       additionalArgs += [
         "-destination",
-        "platform=\(buildDest.platform),OS=\(buildDest.OS),name=\(buildDest.name)",
+        "generic/platform=\(buildDest.platform)",
       ]
     } else {
       additionalArgs += [
