@@ -146,8 +146,9 @@ enum DarwinBundler: Bundler {
       return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
     }
 
+    let willSign = additionalContext.codeSigningContext != nil || context.platform != .macOS
     let sign: () -> Result<Void, DarwinBundlerError> = {
-      // if credentials are supplied for codesigning, use them.
+      // If credentials are supplied for codesigning, use them
       if let codeSigningContext = additionalContext.codeSigningContext {
         return CodeSigner.signAppBundle(
           bundle: appBundle,
@@ -157,9 +158,8 @@ enum DarwinBundler: Bundler {
           return .failedToCodesign(error)
         }
       } else {
-
         if context.platform != .macOS {
-          // otherwise codesign using an adhoc signature only on embedded.
+          // Otherwise codesign using an adhoc signature only on embedded
           return CodeSigner.signAppBundle(
             bundle: appBundle,
             identityId: "-",
@@ -168,7 +168,7 @@ enum DarwinBundler: Bundler {
             return .failedToCodesign(error)
           }
         } else {
-          // on macOS we can skip codesigning for running locally.
+          // On macOS we can skip codesigning for running locally
           return .success()
         }
       }
@@ -225,6 +225,16 @@ enum DarwinBundler: Bundler {
         // __LINKEDIT to be accounted for. I spent a few hours implementing
         // a basic Mach-O editor just to figure out that my approach didn't
         // work...
+
+        // Metadata insertion breaks codesigning (and vice versa), so for now
+        // we just don't insert metadata when codesigning. We'll need to
+        // introduce a non-binary-insertion metadata approach for Apple
+        // platforms. Likely just putting a JSON file next to the main
+        // executable or something along those lines.
+        guard !willSign else {
+          return .success()
+        }
+
         let metadata = MetadataInserter.metadata(for: context.appConfiguration)
         return MetadataInserter.insert(
           metadata,
