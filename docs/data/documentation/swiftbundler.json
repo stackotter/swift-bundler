@@ -88,7 +88,8 @@
       "anchor" : "Articles",
       "generated" : true,
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps"
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps",
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting"
       ],
       "title" : "Articles"
     }
@@ -218,6 +219,20 @@
   "title" : "Stand alone apps",
   "type" : "topic",
   "url" : "\/documentation\/swiftbundler\/stand-alone-apps"
+},
+"doc://SwiftBundler/documentation/SwiftBundler/troubleshooting": {
+  "abstract" : [
+    {
+      "text" : "Troubleshooting common issues.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Troubleshooting",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler\/troubleshooting"
 }
 }
 }

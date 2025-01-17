@@ -56,6 +56,11 @@
             "path" : "\/documentation\/swiftbundler\/stand-alone-apps",
             "title" : "Stand alone apps",
             "type" : "article"
+          },
+          {
+            "path" : "\/documentation\/swiftbundler\/troubleshooting",
+            "title" : "Troubleshooting",
+            "type" : "article"
           }
         ],
         "path" : "\/documentation\/swiftbundler",

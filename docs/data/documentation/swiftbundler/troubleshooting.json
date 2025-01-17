@@ -1,0 +1,709 @@
+{
+  "abstract" : [
+    {
+      "text" : "Troubleshooting common issues.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "SwiftBundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Troubleshooting"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This article will act as a knowledge base of Swift Bundler troubleshooting",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "tips. Most tips relate to development environment or usage issues. Some",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "tips may be more general cross-platform Swift troubleshooting tips rather than",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "being inherently related to Swift Bundler.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "If you encounter an issue that isn’t covered by this article, and isn’t a bug",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "in Swift Bundler (e.g. it’s an environment issue or a usage issue), please consider",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "opening a PR (or GitHub issue) containing the troubleshooting tip, for the benefit",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "of future developers!",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "xcodebuild-related-issues",
+          "level" : 2,
+          "text" : "`xcodebuild`-related issues",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "When building for non-macOS Apple platforms such as iOS, or building with the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "code" : "--xcodebuild",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " command line option, you may face some Xcode-specific issues.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Unable-to-find-a-destination-matching-the-provided-destination-specifier",
+          "level" : 3,
+          "text" : "Unable to find a destination matching the provided destination specifier",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "code" : "xcodebuild",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " sometimes spits out this error even when other tools (such Swift",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "Bundler’s Swift Package Manager backend) can locate a suitable SDK just fine.",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "It turns out that Xcode ",
+              "type" : "text"
+            },
+            {
+              "inlineContent" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "requires",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "strong"
+                }
+              ],
+              "type" : "emphasis"
+            },
+            {
+              "text" : " you to install the platform SDK",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "corresponding to your Xcode version, even if you’re targeting an older SDK",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "version and have a suitable older SDK installed.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "As an example, you may get this error if you have the iOS 17.2 SDK installed",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "(from an older Xcode version) and attempt to build an iOS app using Xcode 16",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "(which requires the iOS 18 SDK).",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To resolve this issue, open a project in Xcode, select the run destination",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "dropdown menu in the tool bar, and click the ",
+              "type" : "text"
+            },
+            {
+              "code" : "GET",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " button next to the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "platform you’re building for. If you don’t see a ",
+              "type" : "text"
+            },
+            {
+              "code" : "GET",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " button, your issue",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "likely has a different underlying cause.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "The-developer-disk-image-could-not-be-mounted-on-this-device-The-bundle-image-is-missing-the-requested-variant-for-this-device",
+          "level" : 3,
+          "text" : "The developer disk image could not be mounted on this device: The bundle image is missing the requested variant for this device",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "Previous preparation error: The developer disk image could not be mounted on this device.; Error mounting image: 0xe800010f (kAMDMobileImageMounterPersonalizedBundleMissingVariantError: The bundle image is missing the requested variant for this device.)"
+          ],
+          "syntax" : null,
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This has been known to occur when attempting to pair iPhone 16s for development",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "using beta versions of Xcode 16.0, but may of course occur in other situations",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "as well.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "A fix that has worked for some is simply updating to the latest stable version of",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "Xcode.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "The-app-identifier-xxxxxxxxxxxxxxxxxx-cannot-be-registered-to-your-development-team-because-it-is-not-available-Change-your-bundle-identifier-to-a-unique-string-to-try-again",
+          "level" : 3,
+          "text" : "The app identifier “xxx.xxxxxx.xxxxxxxxx” cannot be registered to your development team because it is not available. Change your bundle identifier to a unique string to try again.",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Someone else has already registered the bundle identifier under their account.",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "Bundle identifiers must be unique across all Apple Developer accounts.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "As per Quinn “The Eskimo!”‘s response in ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/developer.apple.com\/forums\/thread\/123198",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : ",",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "you can either track down whoever registered the bundle identifier and convince",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "them to transfer it to you, or you can change to a different bundle identifier.",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "There is no easy way to do the former, so usually it’s best to just go with the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "latter.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "The-application-could-not-be-verified",
+          "level" : 3,
+          "text" : "The application could not be verified",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This can occur when installing an application on a physical device. It usually",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "relates to mismatches between the app’s provisioning profile, and code signing",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "and\/or Info.plist.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Right click your application in Finder (on your Mac) and select ",
+              "type" : "text"
+            },
+            {
+              "code" : "Show Package Contents",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ".",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "Then check the following things;",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Ensure that the ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "CFBundleIdentifier",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " in ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "Info.plist",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " matches the bundle identifier in",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "embedded.mobileprovision",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " (use Quick Look to inspect the properties of",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "embedded.mobileprovision",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ").",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Ensure that the app’s code signing information matches one of the certificates listed",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : "in ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "embedded.mobileprovision",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ". Use ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "codesign -dvvvv --extract-certificates path\/to\/Your.app",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : "to list information about the codesigning present in the app.",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Ensure that the value for ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "application-identifier",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " in the app’s entitlements matches",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : "the format ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "TEAM_IDENTIFIER.BUNDLE_IDENTIFIER",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " and that the team identifier and bundle",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : "identifier match those in ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "Info.plist",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " and ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "embedded.mobileprovision",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ". You can use",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "codesign -d --entitlements - path\/to\/Your.app",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " to extract the entitlements from the",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : " ",
+                      "type" : "text"
+                    },
+                    {
+                      "text" : "app.",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "unorderedList"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "If all of those seem to hold and you’re still facing the issue, good luck 😬",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "And please open a GitHub issue or PR to let us know how you end up fixing it!",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swiftbundler\/troubleshooting"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://SwiftBundler/documentation/SwiftBundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "SwiftBundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swiftbundler"
+},
+"https://developer.apple.com/forums/thread/123198": {
+  "identifier" : "https:\/\/developer.apple.com\/forums\/thread\/123198",
+  "title" : "an Apple Developer Forums thread",
+  "titleInlineContent" : [
+    {
+      "text" : "an Apple Developer Forums thread",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/developer.apple.com\/forums\/thread\/123198"
+}
+}
+}
