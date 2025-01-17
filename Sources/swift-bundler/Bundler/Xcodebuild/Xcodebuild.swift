@@ -19,6 +19,48 @@ enum Xcodebuild {
       return .failure(.unsupportedPlatform(buildContext.platform))
     }
 
+    let scheme =
+      buildContext.packageDirectory
+      / ".swiftpm/xcode/xcshareddata/xcschemes/\(product).xcscheme"
+
+    let cleanup: (() -> Void)?
+    if scheme.exists() {
+      let temporaryScheme = FileManager.default.temporaryDirectory / "\(UUID().uuidString).xcscheme"
+
+      do {
+        try FileManager.default.moveItem(at: scheme, to: temporaryScheme)
+      } catch {
+        return .failure(
+          .failedToMoveInterferingScheme(
+            scheme,
+            destination: temporaryScheme,
+            error
+          )
+        )
+      }
+
+      cleanup = {
+        do {
+          try FileManager.default.moveItem(at: temporaryScheme, to: scheme)
+        } catch {
+          let relativePath = scheme.path(relativeTo: URL(fileURLWithPath: "."))
+          log.warning(
+            """
+            Failed to restore xcscheme to \(relativePath). You may need to \
+            re-run 'swift bundler generate-xcode-support' if you use \
+            Xcode to build your project.
+            """
+          )
+        }
+      }
+    } else {
+      cleanup = nil
+    }
+
+    defer {
+      cleanup?()
+    }
+
     let pipe = Pipe()
     let process: Process
 
