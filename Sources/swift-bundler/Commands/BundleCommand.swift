@@ -155,12 +155,11 @@ struct BundleCommand: ErrorHandledCommand {
 
       if platform.asApplePlatform?.requiresProvisioningProfiles == true,
         !arguments.shouldCodesign || arguments.identity == nil
-          || arguments.provisioningProfile == nil
       {
         log.error(
           """
-          Must specify `--identity`, `--codesign` and `--provisioning-profile` \
-          when targeting \(platform.rawValue)
+          Must specify `--identity`, `--codesign` when targeting \
+          \(platform.rawValue)
           """
         )
         if arguments.identity == nil {
@@ -206,13 +205,15 @@ struct BundleCommand: ErrorHandledCommand {
     return true
   }
 
+  /// Resolves the target platform, returning the resolved target device as
+  /// well if the user specified a target device.
   static func resolvePlatform(
     platform: Platform?,
     deviceSpecifier: String?,
     simulatorSpecifier: String?
-  ) throws -> Platform {
+  ) throws -> (Platform, Device?) {
     if let platform = platform, deviceSpecifier == nil, simulatorSpecifier == nil {
-      return platform
+      return (platform, nil)
     }
 
     let device = try resolveDevice(
@@ -220,7 +221,7 @@ struct BundleCommand: ErrorHandledCommand {
       deviceSpecifier: deviceSpecifier,
       simulatorSpecifier: simulatorSpecifier
     )
-    return device.platform
+    return (device.platform, device)
   }
 
   static func resolveDevice(
@@ -354,7 +355,12 @@ struct BundleCommand: ErrorHandledCommand {
   }
 
   func wrappedRun() throws {
-    _ = try doBundling()
+    let (platform, device) = try Self.resolvePlatform(
+      platform: arguments.platform,
+      deviceSpecifier: arguments.deviceSpecifier,
+      simulatorSpecifier: arguments.simulatorSpecifier
+    )
+    _ = try doBundling(resolvedPlatform: platform, resolvedDevice: device)
   }
 
   /// - Parameters
@@ -363,23 +369,17 @@ struct BundleCommand: ErrorHandledCommand {
   ///     `RunCommand` to figure out where the output bundle will end up even
   ///     when the user instructs it to skip bundling.
   ///   - resolvedPlatform: The target platform resolved from the various
-  ///     arguments users can use to specify it. Computed if not provided. This
-  ///     parameter purely exists to allow ``RunCommand`` to avoid resolving the
-  ///     target platform twice (once for its own use and once when this method
-  ///     gets called).
+  ///     arguments users can use to specify it. This parameter purely exists
+  ///     to allow ``RunCommand`` to avoid resolving the target platform twice
+  ///     (once for its own use and once when this method gets called).
+  ///   - resolvedDevice: Must be provided when provisioning profiles are
+  ///     expected to be generated.
   /// - Returns: A description of the structure of the bundler's output.
   func doBundling(
     dryRun: Bool = false,
-    resolvedPlatform: Platform? = nil
+    resolvedPlatform: Platform,
+    resolvedDevice: Device? = nil
   ) throws -> BundlerOutputStructure {
-    let platform =
-      try resolvedPlatform
-      ?? Self.resolvePlatform(
-        platform: arguments.platform,
-        deviceSpecifier: arguments.deviceSpecifier,
-        simulatorSpecifier: arguments.simulatorSpecifier
-      )
-
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
       // Load configuration
@@ -390,14 +390,14 @@ struct BundleCommand: ErrorHandledCommand {
       let (appName, appConfiguration, configuration) = try Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
-        context: ConfigurationFlattener.Context(platform: platform),
+        context: ConfigurationFlattener.Context(platform: resolvedPlatform),
         customFile: arguments.configurationFileOverride
       )
 
       guard
         Self.validateArguments(
           arguments,
-          platform: platform,
+          platform: resolvedPlatform,
           skipBuild: skipBuild,
           builtWithXcode: builtWithXcode
         )
@@ -406,12 +406,12 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       // Get relevant configuration
-      let architectures = getArchitectures(platform: platform)
+      let architectures = getArchitectures(platform: resolvedPlatform)
 
       // Whether or not we are building with xcodebuild instead of swiftpm.
       let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(
         for: self,
-        resolvedPlatform: platform
+        resolvedPlatform: resolvedPlatform
       )
 
       if isUsingXcodebuild {
@@ -444,13 +444,13 @@ struct BundleCommand: ErrorHandledCommand {
       let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
-      let platformVersion = manifest.platformVersion(for: platform)
+      let platformVersion = manifest.platformVersion(for: resolvedPlatform)
       let buildContext = SwiftPackageManager.BuildContext(
         packageDirectory: packageDirectory,
         scratchDirectory: scratchDirectory,
         configuration: arguments.buildConfiguration,
         architectures: architectures,
-        platform: platform,
+        platform: resolvedPlatform,
         platformVersion: platformVersion,
         additionalArguments: isUsingXcodebuild
           ? arguments.additionalXcodeBuildArguments
@@ -470,11 +470,11 @@ struct BundleCommand: ErrorHandledCommand {
         // xcodebuild adds a platform suffix to the products directory for
         // certain platforms. E.g. it's 'Release-xrsimulator' for visionOS.
         let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
-        let platformSuffix = arguments.platform == .macOS ? "" : "-\(platform.sdkName)"
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(resolvedPlatform.sdkName)"
         productsDirectory =
           arguments.productsDirectory
           ?? (packageDirectory
-            / ".build/\(archString)-apple-\(platform.sdkName)"
+            / ".build/\(archString)-apple-\(resolvedPlatform.sdkName)"
             / "Build/Products/\(productsDirectoryBase)\(platformSuffix)")
       }
 
@@ -485,7 +485,8 @@ struct BundleCommand: ErrorHandledCommand {
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: outputDirectory,
-        platform: platform,
+        platform: resolvedPlatform,
+        device: resolvedDevice,
         builtDependencies: [:]
       )
 

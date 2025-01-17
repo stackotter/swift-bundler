@@ -6,8 +6,7 @@ enum CodeSignerError: LocalizedError {
   case failedToParseIdentityList(Error)
   case failedToRunCodesignTool(ProcessError)
   case failedToWriteEntitlements(Error)
-  case failedToVerifyProvisioningProfile(ProcessError)
-  case failedToDeserializeProvisioningProfile(Error)
+  case failedToLoadProvisioningProfile(URL, ProvisioningProfileManager.Error)
   case provisioningProfileMissingTeamIdentifier
   case failedToEnumerateDynamicLibraries(Error)
 
@@ -21,10 +20,10 @@ enum CodeSignerError: LocalizedError {
         return "Failed to run 'codesign' command: \(error)"
       case .failedToWriteEntitlements:
         return "Failed to write entitlements"
-      case .failedToVerifyProvisioningProfile:
-        return "Failed to verify provisioning profile"
-      case .failedToDeserializeProvisioningProfile:
-        return "Failed to deserialize provisioning profile plist"
+      case .failedToLoadProvisioningProfile(let file, let error):
+        return """
+          Failed to load '\(file.path)': \(error.localizedDescription)
+          """
       case .provisioningProfileMissingTeamIdentifier:
         return "The supplied provisioning profile is missing the 'TeamIdentifier' entry"
       case .failedToEnumerateDynamicLibraries:

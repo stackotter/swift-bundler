@@ -4,6 +4,18 @@ enum NonMacAppleOS: CaseIterable {
   case tvOS
   case visionOS
 
+  /// The name used for this OS when listed in a provisioning profile.
+  var provisioningProfileName: String {
+    switch self {
+      case .iOS:
+        return "iOS"
+      case .tvOS:
+        return "tvOS"
+      case .visionOS:
+        return "xrOS"
+    }
+  }
+
   /// The prefix that simulator runtimes matching this operating system will
   /// have.
   var simulatorRuntimePrefix: String {

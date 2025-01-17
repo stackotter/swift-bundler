@@ -7,8 +7,6 @@ enum CodeSigner {
   static let codesignToolPath = "/usr/bin/codesign"
   /// The path to the `security` tool.
   static let securityToolPath = "/usr/bin/security"
-  /// The path to the `openssl` tool.
-  static let opensslToolPath = "/usr/bin/openssl"
 
   /// An identity that can be used to codesign a bundle.
   struct Identity {
@@ -225,35 +223,17 @@ enum CodeSigner {
   }
 
   static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
-    Process.create(
-      opensslToolPath,
-      arguments: [
-        "smime", "-verify",
-        "-in", bundle.appendingPathComponent("embedded.mobileprovision").path,
-        "-noverify",
-        "-inform", "der",
-      ]
-    )
-    .getOutput(excludeStdError: true).mapError { error in
-      return .failedToVerifyProvisioningProfile(error)
-    }
-    .andThen { plistContent in
-      let profile: ProvisioningProfile
-      do {
-        profile = try PropertyListDecoder().decode(
-          ProvisioningProfile.self,
-          from: plistContent.data(using: .utf8) ?? Data()
-        )
-      } catch {
-        return .failure(.failedToDeserializeProvisioningProfile(error))
+    let provisioningProfile = bundle / "embedded.mobileprovision"
+    return ProvisioningProfileManager.loadProvisioningProfile(provisioningProfile)
+      .mapError { error in
+        CodeSignerError.failedToLoadProvisioningProfile(provisioningProfile, error)
       }
-
-      guard let identifier = profile.teamIdentifierArray.first else {
-        return .failure(.provisioningProfileMissingTeamIdentifier)
+      .andThen { profile in
+        guard let identifier = profile.teamIdentifierArray.first else {
+          return .failure(.provisioningProfileMissingTeamIdentifier)
+        }
+        return .success(identifier)
       }
-
-      return .success(identifier)
-    }
   }
 
   /// Generates the contents of an entitlements file.

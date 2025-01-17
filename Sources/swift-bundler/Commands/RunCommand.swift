@@ -87,7 +87,8 @@ struct RunCommand: ErrorHandledCommand {
     // that we still know where the output bundle is located).
     let bundlerOutput = try bundleCommand.doBundling(
       dryRun: skipBuild,
-      resolvedPlatform: device.platform
+      resolvedPlatform: device.platform,
+      resolvedDevice: device
     )
 
     let environmentVariables =

@@ -126,7 +126,7 @@ struct BundleArguments: ParsableArguments {
 
   /// The device to build for (or run on).
   @Option(
-    name: .long,
+    name: [.customLong("device")],
     help: """
       A device name, id or search term to select a target device \
       (e.g. 'Apple TV' or \"John Appleseed's iPhone\"). Can be a simulator. \

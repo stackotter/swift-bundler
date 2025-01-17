@@ -68,10 +68,10 @@ struct BundlerContext {
   /// The directory to output the app into.
   var outputDirectory: URL
 
-  /// The platform that the app's product was built for.
+  /// The target platform.
   var platform: Platform
-  /// The platform version getting built for.
-  var platformVersion: String?
+  /// The target device if any.
+  var device: Device?
 
   /// The app's built dependencies.
   var builtDependencies: [String: ProjectBuilder.BuiltProduct]

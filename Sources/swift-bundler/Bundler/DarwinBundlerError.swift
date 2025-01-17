@@ -27,6 +27,8 @@ enum DarwinBundlerError: LocalizedError {
   case missingDarwinPlatformVersion(Platform)
   case unsupportedPlatform(Platform)
   case failedToInsertMetadata(MetadataInserterError)
+  case missingTargetDevice(Platform)
+  case failedToGenerateProvisioningProfile(ProvisioningProfileManager.Error?)
 
   var errorDescription: String? {
     switch self {
@@ -88,6 +90,13 @@ enum DarwinBundlerError: LocalizedError {
           """
       case .failedToInsertMetadata(let error):
         return error.localizedDescription
+      case .missingTargetDevice(let platform):
+        return """
+          Platform '\(platform.name)' requires a target device t
+          """
+      case .failedToGenerateProvisioningProfile(let error):
+        return error?.localizedDescription
+          ?? "Failed to generate provisioning profile"
     }
   }
 }

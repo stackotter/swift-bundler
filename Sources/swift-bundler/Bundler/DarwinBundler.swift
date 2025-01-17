@@ -24,8 +24,8 @@ enum DarwinBundler: Bundler {
       var identity: String
       /// A file containing entitlements to give the app if codesigning.
       var entitlements: URL?
-      /// If not `nil`, this provisioning profile will get embedded in the app.
-      var provisioningProfile: URL?
+      /// A provisioning profile provided by the user.
+      var manualProvisioningProfile: URL?
     }
   }
 
@@ -43,7 +43,7 @@ enum DarwinBundler: Bundler {
       codeSigningContext = DarwinBundler.Context.CodeSigningContext(
         identity: identity,
         entitlements: command.arguments.entitlements,
-        provisioningProfile: command.arguments.provisioningProfile
+        manualProvisioningProfile: command.arguments.provisioningProfile
       )
     } else {
       codeSigningContext = nil
@@ -141,11 +141,40 @@ enum DarwinBundler: Bundler {
     }
 
     let embedProfile: () -> Result<Void, DarwinBundlerError> = {
-      guard
-        let provisioningProfile = additionalContext.codeSigningContext?.provisioningProfile
-      else {
-        return .success()
+      // If the user provided a provisioning profile, use it
+      let provisioningProfile: URL
+      if let profile = additionalContext.codeSigningContext?.manualProvisioningProfile {
+        provisioningProfile = profile
+      } else {
+        // If the target platform requires provisioning profiles, locate or
+        // generate one.
+        switch context.device {
+          case .connected(let device):
+            // Simulators don't need provisioning profiles
+            guard !device.platform.isSimulator else {
+              return .success()
+            }
+
+            // Locate an existing suitable provisioning profile
+            switch ProvisioningProfileManager.locateSuitableProvisioningProfile(
+              bundleIdentifier: context.appConfiguration.identifier,
+              deviceId: device.id,
+              deviceOS: device.platform.os,
+              identity: additionalContext.codeSigningContext!.identity
+            ) {
+              case .success(let profile):
+                guard let profile = profile else {
+                  return .failure(.failedToGenerateProvisioningProfile(nil))
+                }
+                provisioningProfile = profile
+              case .failure(let error):
+                return .failure(.failedToGenerateProvisioningProfile(error))
+            }
+          default:
+            return .success()
+        }
       }
+
       return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
     }
 
