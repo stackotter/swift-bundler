@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Disable Xcode's macro validation (required to build a universal binary)
+        run: defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+
       - name: Build
         run: swift build -c release --arch arm64 --arch x86_64
 
