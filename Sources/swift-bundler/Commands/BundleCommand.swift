@@ -194,10 +194,10 @@ struct BundleCommand: ErrorHandledCommand {
           }
       }
     #else
-      if arguments.builtWithXcode {
+      if builtWithXcode {
         log.error(
           """
-          `--built-with-xcode` is only available on macOS
+          '--built-with-xcode' is only available on macOS
           """
         )
       }
