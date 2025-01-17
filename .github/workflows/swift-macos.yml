@@ -12,9 +12,6 @@ jobs:
       - name: List Xcode versions
         run: ls /Applications | grep Xcode
 
-      - name: Force Xcode 15.0.1 to work around swiftlang/swift-package-manager#8013
-        run: sudo xcode-select -switch /Applications/Xcode_15.0.1.app
-
       - name: Swift version
         run: swift --version
 
@@ -24,11 +21,24 @@ jobs:
       - name: Disable Xcode's macro validation (required to build a universal binary)
         run: defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
 
-      - name: Build
-        run: swift build -c release --arch arm64 --arch x86_64
+      # We build separately for arm64 and x86_64 instead of building a universal binary
+      # directly because of swiftlang/swift-package-manager#8013. I've tried both Xcode
+      # 15.0.1 (Swift 5.9) and Xcode 16.2 (Swift 6.0.3), both had the same issue.
+      - name: Build for arm64
+        run: |
+          swift build -c release --arch arm64 && \
+          cp .build/release/swift-bundler swift-bundler-arm64
+
+      - name: Build for x86_64
+        run: |
+          swift build -c release --arch x86_64 && \
+          cp .build/release/swift-bundler swift-bundler-x86_64
+
+      - name: Combine into universal binary
+        run: lipo -create -output swift-bundler swift-bundler-x86_64 swift-bundler-arm64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: swift-bundler
-          path: ./.build/apple/Products/Release/swift-bundler
+          path: ./swift-bundler
