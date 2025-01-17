@@ -15,6 +15,9 @@ jobs:
       - name: List Xcode versions
         run: ls /Applications | grep Xcode
 
+      - name: Force Xcode 16.2
+        run: sudo xcode-select -switch /Applications/Xcode_16.2.app
+
       - name: Checkout
         uses: actions/checkout@v4
 
