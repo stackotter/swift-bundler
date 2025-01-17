@@ -41,6 +41,17 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
+  /// Whether the platform requires app bundles to contain provisioning
+  /// profiles or not.
+  var requiresProvisioningProfiles: Bool {
+    switch self {
+      case .iOS, .tvOS, .visionOS:
+        return true
+      case .macOS, .iOSSimulator, .tvOSSimulator, .visionOSSimulator:
+        return false
+    }
+  }
+
   /// The name of this platform when used in Xcode build destinations.
   var xcodeDestinationName: String {
     switch self {

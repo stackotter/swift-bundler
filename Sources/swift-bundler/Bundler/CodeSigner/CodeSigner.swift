@@ -18,7 +18,7 @@ enum CodeSigner {
     var name: String
   }
 
-  /// Signs an iOS app bundle and generates entitlements file.
+  /// Generates an iOS entitlements file.
   /// - Parameters:
   ///   - outputFile: The destination for the generated entitlements file.
   ///   - bundle: The app bundle to sign.
@@ -40,36 +40,33 @@ enum CodeSigner {
         return content
       }
       .andThen { entitlementsContent in
-        do {
+        Result {
           try entitlementsContent.write(
             to: outputFile,
             atomically: false,
             encoding: .utf8
           )
-        } catch {
-          return .failure(.failedToWriteEntitlements(error))
-        }
-
-        return signAppBundle(
-          bundle: bundle,
-          identityId: identityId,
-          bundleIdentifier: bundleIdentifier,
-          entitlements: outputFile
-        )
+        }.mapError(CodeSignerError.failedToWriteEntitlements)
       }
   }
 
   /// Signs a Darwin app bundle.
+  ///
+  /// If no entitlements are provided and the platform requires provisioning
+  /// profiles, some basic entitlements get automatically generated. Otherwise
+  /// the application bundle will fail to verify.
   /// - Parameters:
   ///   - bundle: The app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
   ///   - bundleIdentifier: The app's bundle identifier.
+  ///   - platform: The target platform getting built for.
   ///   - entitlements: The app's entitlements file.
   /// - Returns: A failure if the `codesign` command fails to run.
   static func signAppBundle(
     bundle: URL,
     identityId: String,
     bundleIdentifier: String,
+    platform: ApplePlatform,
     entitlements: URL?
   ) -> Result<Void, CodeSignerError> {
     log.info("Codesigning app bundle")
@@ -93,22 +90,27 @@ enum CodeSigner {
       }
     }
 
-    let entitlementsFile: URL
+    // Generate entitlements file if required by platform and not provided
+    let entitlementsFile: URL?
     if let entitlements = entitlements {
       entitlementsFile = entitlements
-    } else {
-      entitlementsFile =
+    } else if platform.requiresProvisioningProfiles {
+      let file =
         FileManager.default.temporaryDirectory
         / "\(UUID().uuidString).xcent"
 
+      entitlementsFile = file
+
       if case .failure(let error) = CodeSigner.generateEntitlementsFile(
-        at: entitlementsFile,
+        at: file,
         for: bundle,
         identityId: identityId,
         bundleIdentifier: bundleIdentifier
       ) {
         return .failure(error)
       }
+    } else {
+      entitlementsFile = nil
     }
 
     return sign(

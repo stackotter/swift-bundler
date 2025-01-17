@@ -76,7 +76,7 @@ enum SimulatorManager {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
-        "simctl", "launch", connectConsole ? "--console" : nil,
+        "simctl", "launch", connectConsole ? "--console-pty" : nil,
         simulatorId, bundleIdentifier,
       ].compactMap { $0 } + arguments,
       runSilentlyWhenNotVerbose: false

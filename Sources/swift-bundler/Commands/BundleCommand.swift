@@ -118,16 +118,23 @@ struct BundleCommand: ErrorHandledCommand {
 
     // macOS-only arguments
     #if os(macOS)
-      if platform == .iOS || platform == .visionOS,
-        builtWithXcode || arguments.universal || !arguments.architectures.isEmpty
-      {
-        log.error(
-          """
-          '--built-with-xcode', '--universal' and '--arch' are not compatible \
-          with '--platform \(platform.rawValue)'
-          """
-        )
-        return false
+      if platform.isApplePlatform && platform != .macOS {
+        if arguments.universal {
+          log.error(
+            """
+            '--universal' is not compatible with '--platform \
+            \(platform.rawValue)'
+            """
+          )
+          return false
+        }
+
+        if !arguments.architectures.isEmpty {
+          log.error(
+            "'--arch' is not compatible with '--platform \(platform.rawValue)'"
+          )
+          return false
+        }
       }
 
       if arguments.shouldCodesign && arguments.identity == nil {
@@ -146,7 +153,7 @@ struct BundleCommand: ErrorHandledCommand {
         return false
       }
 
-      if platform == .iOS || platform == .visionOS || platform == .tvOS,
+      if platform.asApplePlatform?.requiresProvisioningProfiles == true,
         !arguments.shouldCodesign || arguments.identity == nil
           || arguments.provisioningProfile == nil
       {
@@ -185,6 +192,14 @@ struct BundleCommand: ErrorHandledCommand {
             )
             return false
           }
+      }
+    #else
+      if arguments.builtWithXcode {
+        log.error(
+          """
+          `--built-with-xcode` is only available on macOS
+          """
+        )
       }
     #endif
 

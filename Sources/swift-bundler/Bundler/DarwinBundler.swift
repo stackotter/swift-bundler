@@ -154,23 +154,27 @@ enum DarwinBundler: Bundler {
           bundle: appBundle,
           identityId: codeSigningContext.identity,
           bundleIdentifier: context.appConfiguration.identifier,
+          platform: additionalContext.platform,
           entitlements: codeSigningContext.entitlements
         ).mapError { error in
           return .failedToCodesign(error)
         }
       } else {
         if context.platform != .macOS {
-          // Otherwise codesign using an adhoc signature only on embedded
+          // Codesign using an adhoc signature if the target platform requires
+          // codesigning
           return CodeSigner.signAppBundle(
             bundle: appBundle,
             identityId: "-",
             bundleIdentifier: context.appConfiguration.identifier,
+            platform: additionalContext.platform,
             entitlements: nil
           ).mapError { error in
             return .failedToCodesign(error)
           }
         } else {
-          // On macOS we can skip codesigning for running locally
+          // On macOS (and for simulators) we can skip codesigning for running
+          // locally
           return .success()
         }
       }
