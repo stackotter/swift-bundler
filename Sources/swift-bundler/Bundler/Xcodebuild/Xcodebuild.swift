@@ -148,8 +148,12 @@ enum Xcodebuild {
   /// Whether or not the bundle command utilizes xcodebuild instead of swiftpm.
   /// - Parameters:
   ///   - command: The subcommand for creating app bundles for a package.
+  ///   - resolvedPlatform: The resolved target platform.
   /// - Returns: Whether or not xcodebuild is invoked instead of swiftpm.
-  static func isUsingXcodebuild(for command: BundleCommand) -> Bool {
+  static func isUsingXcodebuild(
+    for command: BundleCommand,
+    resolvedPlatform: Platform
+  ) -> Bool {
     var forceUsingXcodebuild = command.arguments.xcodebuild
     // For non-macOS Apple platforms (e.g. iOS) we default to using the
     // xcodebuild builder instead of SwiftPM because SwiftPM doesn't
@@ -158,8 +162,8 @@ enum Xcodebuild {
     // when the package uses macros or has conditional dependencies in
     // its Package.swift).
     let platformBreaksWithoutXcodebuild =
-      command.arguments.platform.isApplePlatform
-      && command.arguments.platform != .macOS
+      resolvedPlatform.isApplePlatform
+      && resolvedPlatform != .macOS
     if forceUsingXcodebuild
       || platformBreaksWithoutXcodebuild
     {

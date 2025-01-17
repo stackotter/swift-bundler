@@ -23,12 +23,26 @@ enum SimulatorManager {
         .mapError(SimulatorManagerError.failedToDecodeJSON)
     }.map { simulatorList in
       simulatorList.devices
-        .filter { (platform, platformSimulators) in
-          platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.iOS")
-            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.xrOS")
-            || platform.hasPrefix("com.apple.CoreSimulator.SimRuntime.tvOS")
+        .compactMap { (platform, platformSimulators) -> [Simulator]? in
+          guard
+            let os = NonMacAppleOS.allCases.first(where: { osCandidate in
+              platform.hasPrefix(osCandidate.simulatorRuntimePrefix)
+            })
+          else {
+            return nil
+          }
+
+          return platformSimulators.map { simulator in
+            Simulator(
+              id: simulator.id,
+              name: simulator.name,
+              isAvailable: simulator.isAvailable,
+              isBooted: simulator.state == .booted,
+              os: os
+            )
+          }
         }
-        .flatMap(\.value)
+        .flatMap { $0 }
     }
   }
 

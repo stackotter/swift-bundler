@@ -84,7 +84,7 @@ struct BundleCommand: ErrorHandledCommand {
       }
     #endif
 
-    if Platform.host == .linux && platform != .linux {
+    if HostPlatform.hostPlatform == .linux && platform != .linux {
       log.error("'--platform \(platform)' is not supported on Linux")
       return false
     }
@@ -160,7 +160,7 @@ struct BundleCommand: ErrorHandledCommand {
         log.error(
           """
           Must specify `--identity`, `--codesign` and `--provisioning-profile` \
-          when '--platform \(platform.rawValue)'
+          when targeting \(platform.rawValue)
           """
         )
         if arguments.identity == nil {
@@ -186,8 +186,8 @@ struct BundleCommand: ErrorHandledCommand {
           if arguments.provisioningProfile != nil {
             log.error(
               """
-              `--provisioning-profile` is only available when building \
-              visionOS and iOS apps
+              '--provisioning-profile' is only available when building \
+              apps for physical iOS, visionOS and tvOS devices
               """
             )
             return false
@@ -206,15 +206,144 @@ struct BundleCommand: ErrorHandledCommand {
     return true
   }
 
+  static func resolvePlatform(
+    platform: Platform?,
+    deviceSpecifier: String?,
+    simulatorSpecifier: String?
+  ) throws -> Platform {
+    if let platform = platform, deviceSpecifier == nil, simulatorSpecifier == nil {
+      return platform
+    }
+
+    let device = try resolveDevice(
+      platform: platform,
+      deviceSpecifier: deviceSpecifier,
+      simulatorSpecifier: simulatorSpecifier
+    )
+    return device.platform
+  }
+
+  static func resolveDevice(
+    platform: Platform?,
+    deviceSpecifier: String?,
+    simulatorSpecifier: String?
+  ) throws -> Device {
+    // '--device' and '--simulator' are mutually exclusive
+    guard deviceSpecifier == nil || simulatorSpecifier == nil else {
+      throw CLIError.failedToResolveTargetDevice(
+        reason: "'--device' and '--simulator' cannot be used at the same time"
+      )
+    }
+
+    if let deviceSpecifier {
+      // This will also find simulators (--device can be used to specify any
+      // destination).
+      return try DeviceManager.resolve(
+        specifier: deviceSpecifier,
+        platform: platform
+      ).unwrap()
+    } else if let simulatorSpecifier {
+      if let platform = platform, !platform.isSimulator {
+        throw CLIError.failedToResolveTargetDevice(
+          reason: "'--simulator' is incompatible with '--platform \(platform)'"
+        )
+      }
+
+      let matchedSimulators = try SimulatorManager.listAvailableSimulators(
+        searchTerm: simulatorSpecifier
+      ).unwrap().sorted { first, second in
+        // Put booted simulators first for convenience and put shorter names
+        // first (otherwise there'd be no guarantee the "iPhone 15" matches
+        // "iPhone 15" when both "iPhone 15" and "iPhone 15 Pro" exist, and
+        // you'd be left with no way to disambiguate).
+        if !first.isBooted && second.isBooted {
+          return false
+        } else if first.name.count > second.name.count {
+          return false
+        } else {
+          return true
+        }
+      }.filter { simulator in
+        // Filter out simulators with the wrong platform
+        if let platform = platform {
+          return simulator.os.simulatorPlatform.platform == platform
+        } else {
+          return true
+        }
+      }
+
+      guard let simulator = matchedSimulators.first else {
+        let platformCondition = platform.map { " with platform '\($0)'" } ?? ""
+        throw CLIError.failedToResolveTargetDevice(
+          reason: """
+            No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
+            'swift bundler simulators list' to list available simulators.
+            """
+        )
+      }
+
+      if matchedSimulators.count > 1 {
+        log.warning(
+          "Multiple simulators matched '\(simulatorSpecifier)', using '\(simulator.name)'"
+        )
+      }
+
+      return simulator.device
+    } else {
+      let hostPlatform = HostPlatform.hostPlatform
+      if platform == nil || platform == hostPlatform.platform {
+        return Device.host(hostPlatform)
+      } else if let platform = platform, platform.isSimulator {
+        let matchedSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
+          .filter { simulator in
+            simulator.isBooted
+              && simulator.isAvailable
+              && simulator.os.simulatorPlatform.platform == platform
+          }
+          .sorted { first, second in
+            first.name < second.name
+          }
+
+        guard let simulator = matchedSimulators.first else {
+          throw CLIError.failedToResolveTargetDevice(
+            reason: """
+              No booted simulators found for platform '\(platform)'. Boot \
+              \(platform.os.rawValue.withIndefiniteArticle) simulator or specify a simulator to use via '--simulator <id_or_search_term>'
+              """
+          )
+        }
+
+        if matchedSimulators.count > 1 {
+          log.warning(
+            "Found multiple booted \(platform.os.rawValue) simulators, using '\(simulator.name)'"
+          )
+        }
+
+        return simulator.device
+      } else {
+        let platform = platform ?? hostPlatform.platform
+        throw CLIError.failedToResolveTargetDevice(
+          reason: """
+            '--platform \(platform.name)' requires '--device <id_or_search_term>' \
+            or '--simulator <id_or_search_term>'
+            """
+        )
+      }
+    }
+  }
+
   func getArchitectures(platform: Platform) -> [BuildArchitecture] {
     let architectures: [BuildArchitecture]
     switch platform {
       case .macOS:
-        architectures =
-          arguments.universal
-          ? [.arm64, .x86_64]
-          : (!arguments.architectures.isEmpty
-            ? arguments.architectures : [BuildArchitecture.current])
+        if arguments.universal {
+          architectures = [.arm64, .x86_64]
+        } else {
+          architectures =
+            !arguments.architectures.isEmpty
+            ? arguments.architectures
+            : [BuildArchitecture.current]
+        }
       case .iOS, .visionOS, .tvOS:
         architectures = [.arm64]
       case .linux, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
@@ -228,12 +357,29 @@ struct BundleCommand: ErrorHandledCommand {
     _ = try doBundling()
   }
 
-  /// - Parameter dryRun: During a dry run, all of the validation steps are
-  ///   performed without performing any side effects. This allows the
-  ///   `RunCommand` to figure out where the output bundle will end up even
-  ///   when the user instructs it to skip bundling.
+  /// - Parameters
+  ///   - dryRun: During a dry run, all of the validation steps are
+  ///     performed without performing any side effects. This allows the
+  ///     `RunCommand` to figure out where the output bundle will end up even
+  ///     when the user instructs it to skip bundling.
+  ///   - resolvedPlatform: The target platform resolved from the various
+  ///     arguments users can use to specify it. Computed if not provided. This
+  ///     parameter purely exists to allow ``RunCommand`` to avoid resolving the
+  ///     target platform twice (once for its own use and once when this method
+  ///     gets called).
   /// - Returns: A description of the structure of the bundler's output.
-  func doBundling(dryRun: Bool = false) throws -> BundlerOutputStructure {
+  func doBundling(
+    dryRun: Bool = false,
+    resolvedPlatform: Platform? = nil
+  ) throws -> BundlerOutputStructure {
+    let platform =
+      try resolvedPlatform
+      ?? Self.resolvePlatform(
+        platform: arguments.platform,
+        deviceSpecifier: arguments.deviceSpecifier,
+        simulatorSpecifier: arguments.simulatorSpecifier
+      )
+
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
       // Load configuration
@@ -244,22 +390,29 @@ struct BundleCommand: ErrorHandledCommand {
       let (appName, appConfiguration, configuration) = try Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
-        context: ConfigurationFlattener.Context(platform: arguments.platform),
+        context: ConfigurationFlattener.Context(platform: platform),
         customFile: arguments.configurationFileOverride
       )
 
-      if !Self.validateArguments(
-        arguments, platform: arguments.platform, skipBuild: skipBuild,
-        builtWithXcode: builtWithXcode)
-      {
+      guard
+        Self.validateArguments(
+          arguments,
+          platform: platform,
+          skipBuild: skipBuild,
+          builtWithXcode: builtWithXcode
+        )
+      else {
         Foundation.exit(1)
       }
 
       // Get relevant configuration
-      let architectures = getArchitectures(platform: arguments.platform)
+      let architectures = getArchitectures(platform: platform)
 
       // Whether or not we are building with xcodebuild instead of swiftpm.
-      let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(for: self)
+      let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(
+        for: self,
+        resolvedPlatform: platform
+      )
 
       if isUsingXcodebuild {
         // Terminate the program if the project is an Xcodeproj based project.
@@ -291,13 +444,13 @@ struct BundleCommand: ErrorHandledCommand {
       let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
-      let platformVersion = manifest.platformVersion(for: arguments.platform)
+      let platformVersion = manifest.platformVersion(for: platform)
       let buildContext = SwiftPackageManager.BuildContext(
         packageDirectory: packageDirectory,
         scratchDirectory: scratchDirectory,
         configuration: arguments.buildConfiguration,
         architectures: architectures,
-        platform: arguments.platform,
+        platform: platform,
         platformVersion: platformVersion,
         additionalArguments: isUsingXcodebuild
           ? arguments.additionalXcodeBuildArguments
@@ -314,14 +467,15 @@ struct BundleCommand: ErrorHandledCommand {
           ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
       } else {
         let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
-        // for some reason xcodebuild adds a platform suffix like Release-xrsimulator for visionOS
-        // however; for macOS there is no platform suffix at all.
-        let platformSuffix = arguments.platform == .macOS ? "" : "-\(arguments.platform.sdkName)"
+        // xcodebuild adds a platform suffix to the products directory for
+        // certain platforms. E.g. it's 'Release-xrsimulator' for visionOS.
+        let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
+        let platformSuffix = arguments.platform == .macOS ? "" : "-\(platform.sdkName)"
         productsDirectory =
           arguments.productsDirectory
-          ?? packageDirectory.appendingPathComponent(
-            ".build/\(archString)-apple-\(arguments.platform.sdkName)/Build/Products/\(arguments.buildConfiguration.rawValue.capitalized)\(platformSuffix)"
-          )
+          ?? (packageDirectory
+            / ".build/\(archString)-apple-\(platform.sdkName)"
+            / "Build/Products/\(productsDirectoryBase)\(platformSuffix)")
       }
 
       var bundlerContext = BundlerContext(
@@ -331,7 +485,7 @@ struct BundleCommand: ErrorHandledCommand {
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: outputDirectory,
-        platform: arguments.platform,
+        platform: platform,
         builtDependencies: [:]
       )
 

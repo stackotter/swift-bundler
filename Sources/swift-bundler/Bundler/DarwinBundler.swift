@@ -34,7 +34,7 @@ enum DarwinBundler: Bundler {
     command: BundleCommand,
     manifest: PackageManifest
   ) -> Result<Context, DarwinBundlerError> {
-    guard let applePlatform = command.arguments.platform.asApplePlatform else {
+    guard let applePlatform = context.platform.asApplePlatform else {
       return .failure(.unsupportedPlatform(context.platform))
     }
 
@@ -57,7 +57,10 @@ enum DarwinBundler: Bundler {
     let universal = command.arguments.universal || command.arguments.architectures.count > 1
 
     // Whether or not we are building with xcodebuild instead of swiftpm.
-    let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(for: command)
+    let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(
+      for: command,
+      resolvedPlatform: context.platform
+    )
 
     return .success(
       Context(

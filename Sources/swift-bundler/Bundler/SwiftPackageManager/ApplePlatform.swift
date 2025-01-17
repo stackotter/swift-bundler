@@ -10,6 +10,32 @@ enum ApplePlatform: String, CaseIterable {
   case tvOS
   case tvOSSimulator
 
+  enum Partitioned {
+    case macOS
+    case other(NonMacApplePlatform)
+  }
+
+  /// The platform represented in a structure that partitions macOS from
+  /// all other Apple platforms.
+  var partitioned: Partitioned {
+    switch self {
+      case .macOS:
+        return .macOS
+      case .iOS:
+        return .other(.physical(.iOS))
+      case .iOSSimulator:
+        return .other(.simulator(.iOS))
+      case .visionOS:
+        return .other(.physical(.visionOS))
+      case .visionOSSimulator:
+        return .other(.simulator(.visionOS))
+      case .tvOS:
+        return .other(.physical(.tvOS))
+      case .tvOSSimulator:
+        return .other(.simulator(.tvOS))
+    }
+  }
+
   /// The platform's os (e.g. ``ApplePlatform/iOS`` and ``ApplePlatform/iOSSimulator``
   /// are both ``AppleOS/iOS``).
   var os: AppleOS {
@@ -69,6 +95,12 @@ enum ApplePlatform: String, CaseIterable {
         return "visionOS"
       case .visionOSSimulator:
         return "visionOS Simulator"
+    }
+  }
+
+  static func parseXcodeDestinationName(_ destinationName: String) -> Self? {
+    Self.allCases.first { destination in
+      destination.xcodeDestinationName == destinationName
     }
   }
 }

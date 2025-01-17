@@ -26,4 +26,25 @@ extension String {
       try write(to: file, atomically: true, encoding: .utf8)
     }
   }
+
+  /// Gets the string with 'a' or 'an' prepended depending on whether the
+  /// word starts with a vowel or not. May not be perfect (English probably
+  /// has edge cases).
+  var withIndefiniteArticle: String {
+    guard let first = first else {
+      return self
+    }
+
+    if ["a", "e", "i", "o", "u"].contains(first) {
+      return "an \(self)"
+    } else {
+      return "a \(self)"
+    }
+  }
+}
+
+extension String.Index {
+  func offset(in string: String) -> Int {
+    string.distance(from: string.startIndex, to: self)
+  }
 }

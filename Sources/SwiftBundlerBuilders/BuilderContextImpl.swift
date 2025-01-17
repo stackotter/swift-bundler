@@ -1,5 +1,6 @@
 import Foundation
 
+//swiftlint:disable type_name
 // TODO: Use `package` access level when we bump to Swift 5.9
 /// Implementation detail, may have breaking changes from time to time.
 /// "Hidden" from users to avoid exposing implementation details such as
@@ -40,3 +41,4 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
     }
   }
 }
+//swiftlint:enable type_name

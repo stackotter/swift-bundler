@@ -111,7 +111,7 @@ struct BundleArguments: ParsableArguments {
       let possibleValues = Platform.possibleValuesDescription
       return "The platform to build for \(possibleValues). (default: macOS)"
     }(),
-    transform: { string in
+    transform: { string -> Platform in
       // also support getting a platform by its apple sdk equivalent.
       if let appleSDK = AppleSDKPlatform(rawValue: string) {
         return appleSDK.platform
@@ -122,19 +122,45 @@ struct BundleArguments: ParsableArguments {
       }
       return platform
     })
-  var platform = Platform.host
+  var platform: Platform?
+
+  /// The device to build for (or run on).
+  @Option(
+    name: .long,
+    help: """
+      A device name, id or search term to select a target device \
+      (e.g. 'Apple TV' or \"John Appleseed's iPhone\"). Can be a simulator. \
+      Use 'host' to refer to the host machine.
+      """
+  )
+  var deviceSpecifier: String?
+
+  #if os(macOS)
+    @Option(
+      name: [.customLong("simulator")],
+      help: """
+        A simulator name, id or search term to select the target simulator (e.g. \
+        'iPhone 8' or 'Apple Vision Pro').
+        """)
+  #endif
+  var simulatorSpecifier: String?
 
   /// A codesigning identity to use.
-  @Option(
-    name: .customLong("identity"),
-    help: "The identity to use for codesigning")
+  #if os(macOS)
+    @Option(
+      name: .customLong("identity"),
+      help: "The identity to use for codesigning")
+  #endif
   var identity: String?
 
   /// A provisioning profile to use.
   #if os(macOS)
     @Option(
       name: .customLong("provisioning-profile"),
-      help: "The provisioning profile to embed in the app (only applicable to visionOS and iOS).",
+      help: """
+        The provisioning profile to embed in the app (only applicable when \
+        targeting non-macOS physical Apple devices).
+        """,
       transform: URL.init(fileURLWithPath:))
   #endif
   var provisioningProfile: URL?
@@ -151,7 +177,7 @@ struct BundleArguments: ParsableArguments {
   #if os(macOS)
     @Option(
       name: .customLong("entitlements"),
-      help: "The entitlements file to use for codesigning",
+      help: "Provide an entitlements file to use when codesigning.",
       transform: URL.init(fileURLWithPath:))
   #endif
   var entitlements: URL?
@@ -164,34 +190,47 @@ struct BundleArguments: ParsableArguments {
   #endif
   var universal = false
 
-  /// If `true`, a stand-alone application will be created (which doesn't depend on any third-party
-  /// system-wide dynamic libraries being installed such as gtk).
+  /// If `true`, a stand-alone application will be created (which doesn't
+  /// depend on any third-party system-wide dynamic libraries being installed
+  /// such as gtk).
   #if os(macOS)
     @Flag(
       name: .customLong("experimental-stand-alone"),
-      help:
-        "Build an application which doesn't rely on any system-wide third-party libraries being installed (such as gtk). This features is experimental and potentially incompatible with '--universal', use with care."
+      help: """
+        Build an application which doesn't rely on any system-wide third-party \
+        libraries being installed (such as gtk). This features is experimental \
+        and potentially incompatible with '--universal', use with care.
+        """
     )
   #endif
   var standAlone = false
 
-  /// Builds with xcodebuild instead of swiftpm.
+  /// Builds with xcodebuild instead of swiftpm. This is the default when
+  /// building for non-macOS Apple platforms from a Mac, since SwiftPM has
+  /// issues doing so.
   #if os(macOS)
     @Flag(
       name: .customLong("xcodebuild"),
-      help: "Builds with xcodebuild instead of swiftpm."
+      help: """
+        Build with xcodebuild instead of SwiftPM. This is the default when \
+        building for non-macOS Apple platforms from a Mac, since SwiftPM has \
+        issues doing so.
+        """
     )
   #endif
   var xcodebuild = false
 
-  /// Builds without xcodebuild, to override embedded
-  /// darwin platforms which automatically force xcodebuild,
-  /// to build with swiftpm instead.
+  /// Forces swiftpm to be used when targeting non-macOS Apple platforms. Use
+  /// with care because many features, such as conditional dependencies in
+  /// package manifests, may break.
   #if os(macOS)
     @Flag(
       name: .customLong("no-xcodebuild"),
-      help:
-        "Builds without xcodebuild, to override embedded darwin platforms which automatically force xcodebuild, to build with swiftpm instead."
+      help: """
+        Force swiftpm to be used when targeting non-macOS Apple platforms. Use \
+        with care because many features, such as conditional dependencies in \
+        package manifests, may break.
+        """
     )
   #endif
   var noXcodebuild = false

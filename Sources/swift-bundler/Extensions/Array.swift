@@ -20,11 +20,11 @@ extension Array {
   /// short-circuit as soon as a failure occurs. Elements are processed in the
   /// order that they appear.
   func tryMap<Failure: Error, NewElement>(
-    conversion convert: (Element) -> Result<NewElement, Failure>
+    _ transform: (Element) -> Result<NewElement, Failure>
   ) -> Result<[NewElement], Failure> {
     var result: [NewElement] = []
     for element in self {
-      switch convert(element) {
+      switch transform(element) {
         case .success(let newElement):
           result.append(newElement)
         case .failure(let error):
@@ -38,10 +38,10 @@ extension Array {
   /// short-circuit as soon as a failure occurs. Elements are processed in the
   /// order that they appear.
   func tryForEach<Failure: Error>(
-    do action: (Element) -> Result<Void, Failure>
+    _ body: (Element) -> Result<Void, Failure>
   ) -> Result<Void, Failure> {
     for element in self {
-      switch action(element) {
+      switch body(element) {
         case .success:
           continue
         case .failure(let error):

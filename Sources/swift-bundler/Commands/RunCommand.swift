@@ -22,13 +22,6 @@ struct RunCommand: ErrorHandledCommand {
     transform: URL.init(fileURLWithPath:))
   var environmentFile: URL?
 
-  @Option(
-    name: [.customLong("simulator")],
-    help:
-      "A simulator name, id or search term to select the target simulator (e.g. 'iPhone 8' or 'Apple Vision Pro')."
-  )
-  var simulatorSearchTerm: String?
-
   /// If `true`, the building and bundling step is skipped.
   @Flag(
     name: .long,
@@ -49,12 +42,6 @@ struct RunCommand: ErrorHandledCommand {
   // MARK: Methods
 
   func wrappedRun() throws {
-    // Validate arguments
-    guard arguments.platform.isSimulator || simulatorSearchTerm == nil else {
-      log.error("'--simulator' can only be used when the selected platform is a simulator")
-      Foundation.exit(1)
-    }
-
     guard !(skipBuild && hot) else {
       log.error("'--skip-build' is incompatible with '--hot' (nonsensical)")
       Foundation.exit(1)
@@ -76,17 +63,17 @@ struct RunCommand: ErrorHandledCommand {
     let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
     let scratchDirectory = arguments.scratchDirectory ?? packageDirectory / ".build"
 
+    let device = try BundleCommand.resolveDevice(
+      platform: arguments.platform,
+      deviceSpecifier: arguments.deviceSpecifier,
+      simulatorSpecifier: arguments.simulatorSpecifier
+    )
+
     let (_, appConfiguration, _) = try BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
-      context: ConfigurationFlattener.Context(platform: arguments.platform),
+      context: ConfigurationFlattener.Context(platform: device.platform),
       customFile: arguments.configurationFileOverride
-    )
-
-    // Get the device to run on
-    let device = try Self.getDevice(
-      for: arguments.platform,
-      simulatorSearchTerm: simulatorSearchTerm
     )
 
     let bundleCommand = BundleCommand(
@@ -98,7 +85,10 @@ struct RunCommand: ErrorHandledCommand {
 
     // Perform bundling, or do a dry run if instructed to skip building (so
     // that we still know where the output bundle is located).
-    let bundlerOutput = try bundleCommand.doBundling(dryRun: skipBuild)
+    let bundlerOutput = try bundleCommand.doBundling(
+      dryRun: skipBuild,
+      resolvedPlatform: device.platform
+    )
 
     let environmentVariables =
       try environmentFile.map { file in
@@ -142,16 +132,16 @@ struct RunCommand: ErrorHandledCommand {
         let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
           .unwrap()
 
-        guard let platformVersion = manifest.platformVersion(for: arguments.platform) else {
+        guard let platformVersion = manifest.platformVersion(for: device.platform) else {
           let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
           throw CLIError.failedToGetPlatformVersion(
-            platform: arguments.platform,
+            platform: device.platform,
             manifest: manifestFile
           )
         }
 
         let architectures = bundleCommand.getArchitectures(
-          platform: bundleCommand.arguments.platform
+          platform: device.platform
         )
 
         try await FileSystemWatcher.watch(
@@ -169,7 +159,7 @@ struct RunCommand: ErrorHandledCommand {
                     scratchDirectory: scratchDirectory,
                     configuration: arguments.buildConfiguration,
                     architectures: architectures,
-                    platform: arguments.platform,
+                    platform: device.platform,
                     platformVersion: platformVersion,
                     additionalArguments: arguments.additionalSwiftPMArguments,
                     hotReloadingEnabled: true
@@ -205,87 +195,5 @@ struct RunCommand: ErrorHandledCommand {
         additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
       )
     ).unwrap()
-  }
-
-  static func getDevice(for platform: Platform, simulatorSearchTerm: String?) throws -> Device {
-    switch platform {
-      case .macOS:
-        return .macOS
-      case .iOS:
-        return .iOS
-      case .visionOS:
-        return .visionOS
-      case .tvOS:
-        return .tvOS
-      case .linux:
-        return .linux
-      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        // TODO: Refactor this whole case block into a separate function.
-        let device: (String) -> Device
-        switch platform {
-          case .iOSSimulator:
-            device = Device.iOSSimulator
-          case .visionOSSimulator:
-            device = Device.visionOSSimulator
-          case .tvOSSimulator:
-            device = Device.tvOSSimulator
-          default:
-            fatalError("Unreachable (supposedly)")
-        }
-        if let searchTerm = simulatorSearchTerm {
-          // Get matching simulators
-          let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: searchTerm)
-            .unwrap().sorted { first, second in
-              // Put booted simulators first and sort by name length
-              if first.state == .shutdown && second.state == .booted {
-                return false
-              } else if first.name.count > second.name.count {
-                return false
-              } else {
-                return true
-              }
-            }
-
-          guard let simulator = simulators.first else {
-            log.error(
-              """
-              Search term '\(searchTerm)' did not match any simulators. To list \
-              available simulators, use the following command:
-              """
-            )
-
-            Output {
-              ""
-              ExampleCommand("swift bundler simulators list")
-            }.show()
-
-            Foundation.exit(1)
-          }
-
-          if simulators.count > 1 {
-            log.info("Found multiple matching simulators, using '\(simulator.name)'")
-          }
-
-          return device(simulator.id)
-        } else {
-          let allSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
-
-          // If an iOS simulator is booted, use that
-          if allSimulators.contains(where: { $0.state == .booted }) {
-            return device("booted")
-          } else {
-            // swiftlint:disable:next line_length
-            log.error(
-              "To run on a simulator, you must either use the '--simulator' option or have a valid simulator running already. To list available simulators, use the following command:"
-            )
-
-            Output {
-              ExampleCommand("swift bundler simulators list")
-            }.show()
-
-            Foundation.exit(1)
-          }
-        }
-    }
   }
 }

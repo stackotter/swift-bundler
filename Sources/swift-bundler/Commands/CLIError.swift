@@ -10,6 +10,7 @@ enum CLIError: LocalizedError {
   case failedToGetPlatformVersion(platform: Platform, manifest: URL)
   case failedToRemoveExistingOutputs(outputDirectory: URL, Error)
   case invalidXcodeprojDetected
+  case failedToResolveTargetDevice(reason: String)
 
   var errorDescription: String? {
     switch self {
@@ -59,6 +60,8 @@ enum CLIError: LocalizedError {
           to override embedded Darwin platforms such as iOS, visionOS, tvOS, and watchOS to use the
           SwiftPM-based build system instead of the xcodebuild one.
           """
+      case .failedToResolveTargetDevice(let reason):
+        return "Failed to resolve target device: \(reason)"
     }
   }
 }

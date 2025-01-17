@@ -25,47 +25,32 @@ enum Runner {
     log.info("Running '\(bundlerOutput.bundle.lastPathComponent)'")
 
     switch device {
-      case .macOS:
-        guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
-          return .failure(.missingExecutable(device, bundlerOutput))
+      case .host(let platform):
+        switch platform {
+          case .macOS:
+            guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
+              return .failure(.missingExecutable(device, bundlerOutput))
+            }
+            return runMacOSAppOnHost(
+              bundlerOutput: bundlerOutput,
+              arguments: arguments,
+              environmentVariables: environmentVariables
+            )
+          case .linux:
+            guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
+              return .failure(.missingExecutable(device, bundlerOutput))
+            }
+            return runLinuxAppOnHost(
+              bundlerOutput: bundlerOutput,
+              arguments: arguments,
+              environmentVariables: environmentVariables
+            )
         }
-        return runMacOSApp(
-          bundlerOutput: bundlerOutput,
-          arguments: arguments,
-          environmentVariables: environmentVariables
-        )
-      case .linux:
-        guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
-          return .failure(.missingExecutable(device, bundlerOutput))
-        }
-        return runLinuxExecutable(
-          bundlerOutput: bundlerOutput,
-          arguments: arguments,
-          environmentVariables: environmentVariables
-        )
-      case .iOS:
-        return runIOSApp(
-          bundlerOutput: bundlerOutput,
-          arguments: arguments,
-          environmentVariables: environmentVariables
-        )
-      case .visionOS:
-        return runVisionOSApp(
-          bundlerOutput: bundlerOutput,
-          arguments: arguments,
-          environmentVariables: environmentVariables
-        )
-      case .tvOS:
-        return runTVOSApp(
-          bundlerOutput: bundlerOutput,
-          arguments: arguments,
-          environmentVariables: environmentVariables
-        )
-      case .iOSSimulator(let id), .visionOSSimulator(let id), .tvOSSimulator(let id):
-        return runSimulatorApp(
+      case .connected(let connectedDevice):
+        return runApp(
+          on: connectedDevice,
           bundlerOutput: bundlerOutput,
           bundleIdentifier: bundleIdentifier,
-          simulatorId: id,
           arguments: arguments,
           environmentVariables: environmentVariables
         )
@@ -98,13 +83,14 @@ enum Runner {
     return .success(variables)
   }
 
-  /// Runs an app on the current macOS device.
+  /// Runs an app on the host device. Assumes that the host is a macOS
+  /// machine.
   /// - Parameters:
   ///   - bundlerOutput: The output of the bundler.
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
-  static func runMacOSApp(
+  static func runMacOSAppOnHost(
     bundlerOutput: RunnableBundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
@@ -154,13 +140,61 @@ enum Runner {
     }
   }
 
-  /// Runs an app on the first connected iOS device.
+  /// Runs a linux app on the host device. Assumes that the host is a Linux
+  /// machine.
   /// - Parameters:
   ///   - bundlerOutput: The output of the bundler.
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
-  static func runIOSApp(
+  static func runLinuxAppOnHost(
+    bundlerOutput: RunnableBundlerOutputStructure,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    // runAppImage is a workaround required to run certain app images, but it
+    // works for regular executable too so we just use it in all cases.
+    Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
+      .mapError { error in
+        .failedToRunExecutable(error)
+      }
+  }
+
+  /// Runs an app on a connected device or simulator.
+  /// - Parameters:
+  ///   - connectedDevice: The device/simulator to run the app on.
+  ///   - bundlerOutput: The output of the bundler.
+  ///   - bundleIdentifier: The app's bundle identifier.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  /// - Returns: A failure if an error occurs.
+  static func runApp(
+    on connectedDevice: ConnectedDevice,
+    bundlerOutput: BundlerOutputStructure,
+    bundleIdentifier: String,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    if connectedDevice.platform.isSimulator {
+      return runAppOnSimulator(
+        simulatorId: connectedDevice.id,
+        bundlerOutput: bundlerOutput,
+        bundleIdentifier: bundleIdentifier,
+        arguments: arguments,
+        environmentVariables: environmentVariables
+      )
+    } else {
+      return runAppOnPhysicalDevice(
+        deviceId: connectedDevice.id,
+        bundlerOutput: bundlerOutput,
+        arguments: arguments,
+        environmentVariables: environmentVariables
+      )
+    }
+  }
+
+  static func runAppOnPhysicalDevice(
+    deviceId: String,
     bundlerOutput: BundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
@@ -187,6 +221,7 @@ enum Runner {
           arguments: [
             "--noninteractive",
             "--bundle", bundlerOutput.bundle.path,
+            "--id", deviceId,
           ] + environmentArguments
             + arguments.flatMap { argument in
               return ["--args", argument]
@@ -196,52 +231,18 @@ enum Runner {
       }
   }
 
-  /// Runs an app on the first connected visionOS device.
-  /// - Parameters:
-  ///   - bundlerOutput: The output of the bundler.
-  ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentVariables: Environment variables to pass to the app.
-  /// - Returns: A failure if an error occurs.
-  static func runVisionOSApp(
-    bundlerOutput: BundlerOutputStructure,
-    arguments: [String],
-    environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
-    // TODO: Implement deploying to physical visionOS devices.
-    fatalError(
-      "Running on visionOS devices not supported. Please open an issue if you'd like to be a tester, "
-        + "none of us have any visionOS devices, hence why we haven't been able to implement or test running "
-        + "Swift Bundler apps on visionOS."
-    )
-  }
-
-  /// Runs an app on the first connected tvOS device.
-  /// - Parameters:
-  ///   - bundlerOutput: The output of the bundler.
-  ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentVariables: Environment variables to pass to the app.
-  /// - Returns: A failure if an error occurs.
-  static func runTVOSApp(
-    bundlerOutput: BundlerOutputStructure,
-    arguments: [String],
-    environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
-    // TODO: Implement deploying to physical tvOS devices.
-    fatalError("Running on tvOS devices is not yet supported.")
-  }
-
   /// Runs an app on an Apple device simulator.
   /// - Parameters:
+  ///   - simulatorId: The id of the simulator to run.
   ///   - bundlerOutput: The output of the bundler.
   ///   - bundleIdentifier: The app's identifier.
-  ///   - simulatorId: The id of the simulator to run.
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   /// - Returns: A failure if an error occurs.
-  static func runSimulatorApp(
+  static func runAppOnSimulator(
+    simulatorId: String,
     bundlerOutput: BundlerOutputStructure,
     bundleIdentifier: String,
-    simulatorId: String,
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
@@ -264,22 +265,5 @@ enum Runner {
     }.mapError { error in
       return .failedToRunOnSimulator(error)
     }
-  }
-
-  /// Runs a linux executable.
-  /// - Parameters:
-  ///   - bundlerOutput: The output of the bundler.
-  ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentVariables: Environment variables to pass to the app.
-  /// - Returns: A failure if an error occurs.
-  static func runLinuxExecutable(
-    bundlerOutput: RunnableBundlerOutputStructure,
-    arguments: [String],
-    environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
-    Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
-      .mapError { error in
-        .failedToRunExecutable(error)
-      }
   }
 }

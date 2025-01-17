@@ -60,12 +60,14 @@ enum MachOEditor {
       case other(type: UInt32, remainingBytes: [UInt8])
 
       struct SegmentLoad64 {
+        //swiftlint:disable large_tuple
         typealias SegmentName = (
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8
         )
+        //swiftlint:enable large_tuple
 
         /// The Mach-O load command type of this load command.
         static let commandType: UInt32 = 0x0000_0019
@@ -90,11 +92,11 @@ enum MachOEditor {
           var bytes: [UInt8] = []
           withUnsafeBytes(of: segmentName) { pointer in
             let pointer = pointer.assumingMemoryBound(to: UInt8.self)
-            for i in 0..<MemoryLayout<SegmentName>.stride {
-              guard pointer[i] != 0 else {
+            for index in 0..<MemoryLayout<SegmentName>.stride {
+              guard pointer[index] != 0 else {
                 return
               }
-              bytes.append(pointer[i])
+              bytes.append(pointer[index])
             }
           }
           return bytes
@@ -149,8 +151,8 @@ enum MachOEditor {
           return .failure(.outOfBoundsEdit(edit, bufferSize: bytes.count))
         }
 
-        for (i, byte) in newBytes.enumerated() {
-          bytes[offset.value + i] = byte
+        for (index, byte) in newBytes.enumerated() {
+          bytes[offset.value + index] = byte
         }
 
         return .success()
