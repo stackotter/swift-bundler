@@ -299,7 +299,9 @@ struct BundleCommand: ErrorHandledCommand {
         architectures: architectures,
         platform: arguments.platform,
         platformVersion: platformVersion,
-        additionalArguments: arguments.additionalSwiftPMArguments,
+        additionalArguments: isUsingXcodebuild
+          ? arguments.additionalXcodeBuildArguments
+          : arguments.additionalSwiftPMArguments,
         hotReloadingEnabled: hotReloadingEnabled
       )
 

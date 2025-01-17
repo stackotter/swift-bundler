@@ -64,31 +64,26 @@ enum Xcodebuild {
     let pipe = Pipe()
     let process: Process
 
-    var xcbeautify: Process?
-    let xcbeautifyCmd = Process.locate("xcbeautify")
-    switch xcbeautifyCmd
-    {
-      case .success(let cmd):
-        xcbeautify = Process.create(
-          cmd,
-          arguments: [
-            "--disable-logging"
-          ],
-          directory: buildContext.packageDirectory,
-          runSilentlyWhenNotVerbose: false
-        )
-      case .failure(_):
-        #if os(macOS)
-          let helpMsg = "brew install xcbeautify"
-        #else
-          let helpMsg = "mint install cpisciotta/xcbeautify"
-        #endif
-        log.warning(
-          """
-          xcbeautify was not found, for pretty build output please intall it with:\n
-          \(helpMsg)
-          """
-        )
+    let useXCBeautify = ProcessInfo.processInfo.bundlerEnvironment.useXCBeautify
+    let xcbeautifyProcess: Process?
+    if useXCBeautify {
+      let xcbeautifyCommand = Process.locate("xcbeautify")
+      switch xcbeautifyCommand {
+        case .success(let command):
+          xcbeautifyProcess = Process.create(
+            command,
+            arguments: [
+              "--disable-logging",
+              "--preserve-unbeautified",
+            ],
+            directory: buildContext.packageDirectory,
+            runSilentlyWhenNotVerbose: false
+          )
+        case .failure(_):
+          xcbeautifyProcess = nil
+      }
+    } else {
+      xcbeautifyProcess = nil
     }
 
     let archString = buildContext.architectures
@@ -108,9 +103,6 @@ enum Xcodebuild {
       ]
     }
 
-    // TODO: Introduce a way to take custom xcodebuild arguments from the
-    //   command line via --Xxcodebuild or something along those lines.
-
     process = Process.create(
       "xcodebuild",
       arguments: [
@@ -122,7 +114,7 @@ enum Xcodebuild {
         buildContext.packageDirectory.appendingPathComponent(
           ".build/\(archString)-apple-\(buildContext.platform.sdkName)"
         ).path,
-      ] + destinationArguments,
+      ] + destinationArguments + buildContext.additionalArguments,
       directory: buildContext.packageDirectory,
       runSilentlyWhenNotVerbose: false
     )
@@ -134,15 +126,15 @@ enum Xcodebuild {
     }
 
     // pipe xcodebuild output to xcbeautify.
-    if let xcbeautify = xcbeautify {
+    if let xcbeautifyProcess = xcbeautifyProcess {
       process.standardOutput = pipe
-      xcbeautify.standardInput = pipe
-    }
+      xcbeautifyProcess.standardInput = pipe
 
-    do {
-      try xcbeautify?.run()
-    } catch {
-      log.warning("xcbeautify error: \(error)")
+      do {
+        try xcbeautifyProcess.run()
+      } catch {
+        log.warning("xcbeautify error: \(error)")
+      }
     }
 
     return process.runAndWait().mapError { error in

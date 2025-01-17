@@ -94,8 +94,15 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: .customLong("Xswiftpm"),
     parsing: .unconditionalSingleValue,
-    help: "Additional arguments to pass to SwiftPM when building.")
+    help: "Additional arguments to pass to the SwiftPM builder when building.")
   var additionalSwiftPMArguments: [String] = []
+
+  /// Additional arguments to pass to xcodebuild when building.
+  @Option(
+    name: .customLong("Xxcodebuild"),
+    parsing: .unconditionalSingleValue,
+    help: "Additional arguments to pass to the xcodebuild builder when building.")
+  var additionalXcodeBuildArguments: [String] = []
 
   /// The platform to build for.
   @Option(
@@ -183,7 +190,8 @@ struct BundleArguments: ParsableArguments {
   #if os(macOS)
     @Flag(
       name: .customLong("no-xcodebuild"),
-      help: "Builds without xcodebuild, to override embedded darwin platforms which automatically force xcodebuild, to build with swiftpm instead."
+      help:
+        "Builds without xcodebuild, to override embedded darwin platforms which automatically force xcodebuild, to build with swiftpm instead."
     )
   #endif
   var noXcodebuild = false
