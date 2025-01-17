@@ -87,7 +87,7 @@ enum Xcodebuild {
     }
 
     let archString = buildContext.architectures
-      .compactMap(\.rawValue)
+      .map(\.rawValue)
       .joined(separator: "_")
 
     let destinationArguments: [String]

@@ -18,9 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Disable Xcode's macro validation (required to build a universal binary)
-        run: defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
-
       # We build separately for arm64 and x86_64 instead of building a universal binary
       # directly because of swiftlang/swift-package-manager#8013. I've tried both Xcode
       # 15.0.1 (Swift 5.9) and Xcode 16.2 (Swift 6.0.3), both had the same issue.
