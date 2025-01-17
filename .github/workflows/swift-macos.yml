@@ -12,6 +12,9 @@ jobs:
       - name: Swift version
         run: swift --version
 
+      - name: List Xcode versions
+        run: ls /Applications | grep Xcode
+
       - name: Checkout
         uses: actions/checkout@v4
 
