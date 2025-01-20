@@ -11,6 +11,7 @@ enum CLIError: LocalizedError {
   case failedToRemoveExistingOutputs(outputDirectory: URL, Error)
   case invalidXcodeprojDetected
   case failedToResolveTargetDevice(reason: String)
+  case failedToResolveCodesigningConfiguration(reason: String)
 
   var errorDescription: String? {
     switch self {
@@ -62,6 +63,8 @@ enum CLIError: LocalizedError {
           """
       case .failedToResolveTargetDevice(let reason):
         return "Failed to resolve target device: \(reason)"
+      case .failedToResolveCodesigningConfiguration(let reason):
+        return "Failed to resolve codesigning configuration: \(reason)"
     }
   }
 }

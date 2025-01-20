@@ -6,4 +6,9 @@ enum AppleOS: String, CaseIterable {
   case iOS
   case visionOS
   case tvOS
+
+  /// The display name of the os.
+  var name: String {
+    return rawValue
+  }
 }

@@ -16,17 +16,6 @@ enum DarwinBundler: Bundler {
     var platform: ApplePlatform
     /// The platform version that the executable was built for.
     var platformVersion: String
-    /// The code signing context if code signing has been requested.
-    var codeSigningContext: CodeSigningContext?
-
-    struct CodeSigningContext {
-      /// The identity to sign the app with.
-      var identity: String
-      /// A file containing entitlements to give the app if codesigning.
-      var entitlements: URL?
-      /// A provisioning profile provided by the user.
-      var manualProvisioningProfile: URL?
-    }
   }
 
   static func computeContext(
@@ -36,17 +25,6 @@ enum DarwinBundler: Bundler {
   ) -> Result<Context, DarwinBundlerError> {
     guard let applePlatform = context.platform.asApplePlatform else {
       return .failure(.unsupportedPlatform(context.platform))
-    }
-
-    let codeSigningContext: Context.CodeSigningContext?
-    if let identity = command.arguments.identity {
-      codeSigningContext = DarwinBundler.Context.CodeSigningContext(
-        identity: identity,
-        entitlements: command.arguments.entitlements,
-        manualProvisioningProfile: command.arguments.provisioningProfile
-      )
-    } else {
-      codeSigningContext = nil
     }
 
     guard let platformVersion = manifest.platformVersion(for: context.platform) else {
@@ -62,16 +40,14 @@ enum DarwinBundler: Bundler {
       resolvedPlatform: context.platform
     )
 
-    return .success(
-      Context(
-        isXcodeBuild: command.builtWithXcode || isUsingXcodebuild,
-        universal: universal,
-        standAlone: command.arguments.standAlone,
-        platform: applePlatform,
-        platformVersion: platformVersion,
-        codeSigningContext: codeSigningContext
-      )
+    let additionalContext = Context(
+      isXcodeBuild: command.builtWithXcode || isUsingXcodebuild,
+      universal: universal,
+      standAlone: command.arguments.standAlone,
+      platform: applePlatform,
+      platformVersion: platformVersion
     )
+    return .success(additionalContext)
   }
 
   static func intendedOutput(
@@ -143,22 +119,32 @@ enum DarwinBundler: Bundler {
     let embedProfile: () -> Result<Void, DarwinBundlerError> = {
       return Result.success().andThen { _ -> Result<URL?, DarwinBundlerError> in
         // If the user provided a provisioning profile, use it
-        if let profile = additionalContext.codeSigningContext?.manualProvisioningProfile {
+        if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
           return .success(profile)
         }
 
-        guard case .connected(let device) = context.device else {
-          // Simulators don't require provisioning profiles
+        guard
+          case .connected(let device) = context.device,
+          !device.platform.isSimulator
+        else {
+          // Simulators and hosts don't require provisioning profiles
           return .success(nil)
         }
 
         // If the target platform requires provisioning profiles, locate or
-        // generate one.
+        // generate one. This requires a code signing context.
+        guard let codeSigningContext = context.darwinCodeSigningContext else {
+          let error = DarwinBundlerError.missingCodeSigningContextForProvisioning(
+            device.platform.os
+          )
+          return .failure(error)
+        }
+
         return ProvisioningProfileManager.locateOrGenerateSuitableProvisioningProfile(
           bundleIdentifier: context.appConfiguration.identifier,
           deviceId: device.id,
           deviceOS: device.platform.os,
-          identity: additionalContext.codeSigningContext!.identity
+          identity: codeSigningContext.identity
         )
         .mapError(DarwinBundlerError.failedToGenerateProvisioningProfile)
         .map(Optional.some)
@@ -171,13 +157,13 @@ enum DarwinBundler: Bundler {
       }
     }
 
-    let willSign = additionalContext.codeSigningContext != nil || context.platform != .macOS
+    let willSign = context.darwinCodeSigningContext != nil || context.platform != .macOS
     let sign: () -> Result<Void, DarwinBundlerError> = {
       // If credentials are supplied for codesigning, use them
-      if let codeSigningContext = additionalContext.codeSigningContext {
+      if let codeSigningContext = context.darwinCodeSigningContext {
         return CodeSigner.signAppBundle(
           bundle: appBundle,
-          identityId: codeSigningContext.identity,
+          identityId: codeSigningContext.identity.id,
           bundleIdentifier: context.appConfiguration.identifier,
           platform: additionalContext.platform,
           entitlements: codeSigningContext.entitlements

@@ -169,12 +169,13 @@ struct BundleArguments: ParsableArguments {
   #if os(macOS)
     @Flag(
       name: .customLong("codesign"),
+      inversion: .prefixedNo,
       help: """
         Codesign the application. Defaults to false on macOS, Linux and \
         simulators, and true on non-macOS Apple devices.
         """)
   #endif
-  var shouldCodesign = false
+  var codesign: Bool?
 
   /// A codesigning entitlements file to use.
   #if os(macOS)

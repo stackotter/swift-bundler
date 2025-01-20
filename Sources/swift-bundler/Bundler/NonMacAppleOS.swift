@@ -4,6 +4,18 @@ enum NonMacAppleOS: CaseIterable {
   case tvOS
   case visionOS
 
+  /// The corresponding value in the generic Apple operating system enumeration.
+  var os: AppleOS {
+    switch self {
+      case .iOS:
+        return .iOS
+      case .tvOS:
+        return .tvOS
+      case .visionOS:
+        return .visionOS
+    }
+  }
+
   /// The name used for this OS when listed in a provisioning profile.
   var provisioningProfileName: String {
     switch self {

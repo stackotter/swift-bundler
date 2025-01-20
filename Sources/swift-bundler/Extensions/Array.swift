@@ -69,14 +69,30 @@ extension [String] {
     let requiresPluralVerb: Bool
     if count == 0 {
       base = "No \(plural)"
-      requiresPluralVerb = true
     } else if count == 1 {
-      base = "The \(singular) \(self[0])"
+      base = "The \(singular)"
+      requiresPluralVerb = false
+    } else {
+      base = "The \(plural)"
+      requiresPluralVerb = true
+    }
+
+    return "\(base) \(joinedGrammatically(withTrailingVerb: trailingVerb))"
+  }
+
+  func joinedGrammatically(
+    withTrailingVerb trailingVerb: Verb?
+  ) -> String {
+    let base: String
+    let requiresPluralVerb: Bool
+    if count == 0 {
+      return trailingVerb?.plural ?? ""
+    } else if count == 1 {
+      base = "\(self[0])"
       requiresPluralVerb = false
     } else {
       base = """
-        The properties \(self[0..<(count - 1)].joined(separator: ", ")) \
-        and \(self[count - 1])
+        \(self[0..<(count - 1)].joined(separator: ", ")) and \(self[count - 1])
         """
       requiresPluralVerb = true
     }

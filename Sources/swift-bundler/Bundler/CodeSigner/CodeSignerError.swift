@@ -9,10 +9,11 @@ enum CodeSignerError: LocalizedError {
   case failedToLoadProvisioningProfile(URL, ProvisioningProfileManager.Error)
   case provisioningProfileMissingTeamIdentifier
   case failedToEnumerateDynamicLibraries(Error)
-  case failedToLocateSigningCertificate(fullIdentityName: String, Error)
-  case failedToParseSigningCertificate(Error)
-  case signingCertificateMissingTeamIdentifier(fullIdentityName: String)
+  case failedToLocateSigningCertificate(CodeSigner.Identity, Error)
+  case failedToParseSigningCertificate(pem: String, Error)
+  case signingCertificateMissingTeamIdentifier(CodeSigner.Identity)
   case identityShortNameNotMatched(String)
+  case failedToLocateLatestCertificate(CodeSigner.Identity)
 
   var errorDescription: String? {
     switch self {
@@ -32,22 +33,27 @@ enum CodeSignerError: LocalizedError {
         return "The supplied provisioning profile is missing the 'TeamIdentifier' entry"
       case .failedToEnumerateDynamicLibraries:
         return "Failed to enumerate dynamic libraries"
-      case .failedToLocateSigningCertificate(let fullIdentityName, let error):
+      case .failedToLocateSigningCertificate(let identity, let error):
         return """
           Failed to locate signing certificate for identity \
-          '\(fullIdentityName)': \(error.localizedDescription)
+          '\(identity.name)': \(error.localizedDescription)
           """
-      case .failedToParseSigningCertificate(let error):
+      case .failedToParseSigningCertificate(_, let error):
         return "Failed to parse signing certificate: \(error.localizedDescription)"
-      case .signingCertificateMissingTeamIdentifier(let fullIdentityName):
+      case .signingCertificateMissingTeamIdentifier(let identity):
         return """
           Failed to locate team identifier in signing certificate for \
-          identity '\(fullIdentityName)'
+          identity '\(identity.name)'
           """
       case .identityShortNameNotMatched(let shortName):
         return """
           Identity short name '\(shortName)' didn't match any known identities. \
           Run 'swift bundler list-identities' to list available identities.
+          """
+      case .failedToLocateLatestCertificate(let identity):
+        return """
+          Failed to locate latest signing certificate for identity \
+          '\(identity.name)'
           """
     }
   }

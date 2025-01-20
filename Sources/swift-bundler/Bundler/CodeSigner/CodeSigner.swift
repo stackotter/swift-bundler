@@ -31,7 +31,7 @@ enum CodeSigner {
     identityId: String,
     bundleIdentifier: String
   ) -> Result<Void, CodeSignerError> {
-    return getTeamIdentifier(from: bundle)
+    return extractTeamIdentifier(from: bundle)
       .map { teamIdentifier -> String in
         let content = generateEntitlementsContent(
           teamIdentifier: teamIdentifier,
@@ -251,19 +251,55 @@ enum CodeSigner {
     }
   }
 
-  static func getTeamIdentifier(for fullIdentityName: String) -> Result<String, CodeSignerError> {
+  static func loadCertificates(for identity: Identity) -> Result<[Certificate], CodeSignerError> {
     Process.create(
       securityToolPath,
       arguments: [
-        "find-certificate", "-c", fullIdentityName, "-p",
+        "find-certificate", "-c", identity.name, "-p", "-a",
       ]
     ).getOutput().mapError { error in
-      .failedToLocateSigningCertificate(fullIdentityName: fullIdentityName, error)
-    }.andThen { certificatePEM in
-      Result {
-        try Certificate(pemEncoded: certificatePEM)
-      }.mapError(CodeSignerError.failedToParseSigningCertificate)
-    }.andThen { certificate in
+      .failedToLocateSigningCertificate(identity, error)
+    }.andThen { (output: String) in
+      let separator = "-----BEGIN CERTIFICATE-----\n"
+      let certificates = output.components(separatedBy: separator).filter { part in
+        !part.isEmpty
+      }.map { part in
+        // Add separator back to each certificate
+        String(separator + part)
+      }
+
+      return certificates.tryMap { certificatePEM in
+        Result {
+          try Certificate(pemEncoded: certificatePEM)
+        }.mapError { error in
+          CodeSignerError.failedToParseSigningCertificate(
+            pem: certificatePEM,
+            error
+          )
+        }
+      }
+    }
+  }
+
+  static func getLatestCertificate(for identity: Identity) -> Result<Certificate, CodeSignerError> {
+    let now = Date()
+    return loadCertificates(for: identity).andThen { certificates in
+      guard
+        let latest = certificates.filter({ certificate in
+          certificate.notValidAfter > now
+        }).sorted(by: { first, second in
+          first.notValidBefore > second.notValidBefore
+        }).first
+      else {
+        return .failure(.failedToLocateLatestCertificate(identity))
+      }
+
+      return .success(latest)
+    }
+  }
+
+  static func getTeamIdentifier(for identity: Identity) -> Result<String, CodeSignerError> {
+    getLatestCertificate(for: identity).andThen { certificate in
       for element in certificate.subject {
         for attribute in element {
           guard
@@ -276,13 +312,13 @@ enum CodeSigner {
       }
 
       let error = CodeSignerError.signingCertificateMissingTeamIdentifier(
-        fullIdentityName: fullIdentityName
+        identity
       )
       return .failure(error)
     }
   }
 
-  static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
+  static func extractTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
     let provisioningProfile = bundle / "embedded.mobileprovision"
     return ProvisioningProfileManager.loadProvisioningProfile(provisioningProfile)
       .mapError { error in

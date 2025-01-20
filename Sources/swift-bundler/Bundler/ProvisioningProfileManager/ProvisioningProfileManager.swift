@@ -14,10 +14,11 @@ enum ProvisioningProfileManager {
     case failedToDeserializeProvisioningProfile(URL, Swift.Error)
     case failedToParseBundleIdentifier(String)
     case failedToGenerateDummyXcodeproj(message: String?, Swift.Error?)
-    case failedToRunXcodebuildAutoProvisioning(ProcessError)
+    case failedToRunXcodebuildAutoProvisioning(message: String?, ProcessError)
     case failedToParseXcodebuildOutput(_ message: String)
     case failedToLocateGeneratedProvisioningProfile(_ predictedLocation: URL)
     case failedToGetTeamIdentifier(CodeSignerError)
+    case failedToLoadCertificates(CodeSignerError)
 
     var errorDescription: String? {
       switch self {
@@ -47,9 +48,10 @@ enum ProvisioningProfileManager {
             Failed to generate dummy xcodeproj for automatic provisioning: \
             \(message ?? error?.localizedDescription ?? "Unknown reason")
             """
-        case .failedToRunXcodebuildAutoProvisioning(let error):
+        case .failedToRunXcodebuildAutoProvisioning(let message, let error):
           return """
-            Failed to run dummy xcodebuild build with auto provisioning: \(error)
+            Failed to generate provisioning profile: \
+            \(message ?? error.localizedDescription)
             """
         case .failedToParseXcodebuildOutput(let message):
           return "Failed to parse xcodebuild output: \(message)"
@@ -58,7 +60,8 @@ enum ProvisioningProfileManager {
             Failed to locate generated provisioning profile. Expected it be \
             located at '\(predictedLocation.path)'
             """
-        case .failedToGetTeamIdentifier(let error):
+        case .failedToGetTeamIdentifier(let error),
+          .failedToLoadCertificates(let error):
           return error.localizedDescription
       }
     }
@@ -76,7 +79,7 @@ enum ProvisioningProfileManager {
     bundleIdentifier: String,
     deviceId: String,
     deviceOS: NonMacAppleOS,
-    identity: String
+    identity: CodeSigner.Identity
   ) -> Result<URL, Error> {
     locateSuitableProvisioningProfile(
       bundleIdentifier: bundleIdentifier,
@@ -88,11 +91,9 @@ enum ProvisioningProfileManager {
         return .success(provisioningProfile)
       }
 
-      return CodeSigner.resolveIdentity(shortName: identity).andThen { identity in
-        CodeSigner.getTeamIdentifier(
-          for: identity.name
-        )
-      }.mapError { error in
+      return CodeSigner.getTeamIdentifier(
+        for: identity
+      ).mapError { error in
         Error.failedToGetTeamIdentifier(error)
       }.andThen { teamIdentifier in
         generateProvisioningProfile(
@@ -111,7 +112,7 @@ enum ProvisioningProfileManager {
     bundleIdentifier: String,
     deviceId: String,
     deviceOS: NonMacAppleOS,
-    identity: String
+    identity: CodeSigner.Identity
   ) -> Result<URL?, Error> {
     switch HostPlatform.hostPlatform {
       case .linux:
@@ -120,14 +121,23 @@ enum ProvisioningProfileManager {
         break
     }
 
-    return loadProvisioningProfiles().map { profiles in
-      profiles.filter { (_, profile) in
-        profile.provisionedDevices.contains(deviceId)
-          && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
-          && profile.platforms.contains(deviceOS.provisioningProfileName)
-          && profile.suitable(forBundleIdentifier: bundleIdentifier)
-      }.first?.0
-    }
+    return CodeSigner.loadCertificates(for: identity)
+      .mapError(Error.failedToLoadCertificates)
+      .andThen { certificates in
+        loadProvisioningProfiles().map { profiles in
+          profiles.filter { (_, profile) in
+            profile.provisionedDevices.contains(deviceId)
+              && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
+              && profile.platforms.contains(deviceOS.provisioningProfileName)
+              && profile.suitable(forBundleIdentifier: bundleIdentifier)
+              && profile.certificates.contains { certificate in
+                certificates.contains { other in
+                  other.serialNumber == certificate.serialNumber
+                }
+              }
+          }.first?.0
+        }
+      }
   }
 
   static func loadProvisioningProfiles()
@@ -173,8 +183,6 @@ enum ProvisioningProfileManager {
   static func loadProvisioningProfile(
     _ provisioningProfile: URL
   ) -> Result<ProvisioningProfile, Error> {
-    // security find-certificate -c "Apple Development: stackotter@stackotter.dev (HU3VJ82X52)" -p | openssl x509 -noout -subject
-
     return Process.create(
       opensslToolPath,
       arguments: [
@@ -233,7 +241,27 @@ enum ProvisioningProfileManager {
           "build",
         ]
       ).getOutput(excludeStdError: false).mapError { error in
-        .failedToRunXcodebuildAutoProvisioning(error)
+        guard
+          case ProcessError.nonZeroExitStatusWithOutput(let data, _) = error,
+          let output = String(data: data, encoding: .utf8)
+        else {
+          return .failedToRunXcodebuildAutoProvisioning(message: nil, error)
+        }
+
+        // Print the process' output to help users debug
+        log.error("\(output)")
+
+        let message: String?
+        if output.contains("Failed Registering Bundle Identifier") {
+          message = """
+            Bundle identifier '\(bundleIdentifier)' is already taken. Change \
+            your bundle identifier to a unique string and try again
+            """
+        } else {
+          message = nil
+        }
+
+        return .failedToRunXcodebuildAutoProvisioning(message: message, error)
       }
     }.andThen { output in
       // We attempt to locate and parse the following part of xcodebuild's output;

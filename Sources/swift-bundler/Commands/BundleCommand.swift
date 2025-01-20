@@ -1,5 +1,6 @@
 import Foundation
 import StackOtterArgParser
+import X509
 
 /// The subcommand for creating app bundles for a package.
 struct BundleCommand: ErrorHandledCommand {
@@ -137,42 +138,6 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
 
-      if arguments.shouldCodesign && arguments.identity == nil {
-        log.error("Please provide a codesigning identity with `--identity`")
-        Output {
-          ""
-          Section("Tip: Listing available identities") {
-            ExampleCommand("swift bundler list-identities")
-          }
-        }.show()
-        return false
-      }
-
-      if arguments.identity != nil && !arguments.shouldCodesign {
-        log.error("`--identity` can only be used with `--codesign`")
-        return false
-      }
-
-      if platform.asApplePlatform?.requiresProvisioningProfiles == true,
-        !arguments.shouldCodesign || arguments.identity == nil
-      {
-        log.error(
-          """
-          Must specify `--identity`, `--codesign` when targeting \
-          \(platform.rawValue)
-          """
-        )
-        if arguments.identity == nil {
-          Output {
-            ""
-            Section("Tip: Listing available identities") {
-              ExampleCommand("swift bundler list-identities")
-            }
-          }.show()
-        }
-        return false
-      }
-
       if platform != .macOS && arguments.standAlone {
         log.error("'--experimental-stand-alone' only works on macOS")
         return false
@@ -203,6 +168,111 @@ struct BundleCommand: ErrorHandledCommand {
     #endif
 
     return true
+  }
+
+  static func resolveCodesigningContext(
+    codesignArgument: Bool?,
+    identityArgument: String?,
+    provisioningProfile: URL?,
+    entitlements: URL?,
+    platform: Platform
+  ) throws -> BundlerContext.DarwinCodeSigningContext? {
+    guard let platform = platform.asApplePlatform else {
+      let invalidArguments = [
+        ("--codesign", codesignArgument == true),
+        ("--identity", identityArgument != nil),
+        ("--entitlements", entitlements != nil),
+        ("--provisioning-profile", provisioningProfile != nil),
+      ].filter { $0.1 }.map { $0.0 }
+
+      guard invalidArguments.count == 0 else {
+        let list = invalidArguments.map { "'\($0)'" }
+          .joinedGrammatically(
+            withTrailingVerb: Verb(
+              singular: "isn't",
+              plural: "aren't"
+            )
+          )
+        throw CLIError.failedToResolveCodesigningConfiguration(
+          reason: "\(list) supported when targeting '\(platform.name)'"
+        )
+      }
+
+      return nil
+    }
+
+    let codesign: Bool
+    if platform.requiresProvisioningProfiles {
+      if codesignArgument == nil || codesignArgument == true {
+        codesign = true
+      } else {
+        throw CLIError.failedToResolveCodesigningConfiguration(
+          reason: """
+            \(platform.platform.name) is incompatible with '--no-codesign' \
+            because it requires provisioning profiles
+            """
+        )
+      }
+    } else {
+      codesign = codesignArgument ?? false
+    }
+
+    guard codesign else {
+      let invalidArguments = [
+        ("--identity", identityArgument != nil),
+        ("--entitlements", entitlements != nil),
+        ("--provisioning-profile", provisioningProfile != nil),
+      ].filter { $0.1 }.map { $0.0 }
+      guard invalidArguments.count == 0 else {
+        let list = invalidArguments.map { "'\($0)'" }
+          .joinedGrammatically(withTrailingVerb: .be)
+        throw CLIError.failedToResolveCodesigningConfiguration(
+          reason: "\(list) invalid when not codesigning"
+        )
+      }
+      return nil
+    }
+
+    do {
+      let identity: CodeSigner.Identity
+      if let identityShortName = identityArgument {
+        identity = try CodeSigner.resolveIdentity(shortName: identityShortName)
+          .unwrap()
+      } else {
+        let identities = try CodeSigner.enumerateIdentities().unwrap()
+
+        guard let firstIdentity = identities.first else {
+          throw CLIError.failedToResolveCodesigningConfiguration(
+            reason: """
+              No codesigning identities found. Please sign into Xcode and try again.
+              """
+          )
+        }
+
+        if identities.count > 1 {
+          log.info("Multiple codesigning identities found, using \(firstIdentity.name)")
+        }
+
+        identity = firstIdentity
+      }
+
+      return BundlerContext.DarwinCodeSigningContext(
+        identity: identity,
+        entitlements: entitlements,
+        manualProvisioningProfile: provisioningProfile
+      )
+    } catch {
+      // Add clarification in case codesigning inference causes any confusion
+      if codesignArgument == nil {
+        log.info(
+          """
+          \(platform.platform.name) requires codesigning, so '--codesign' has \
+          been inferred.
+          """
+        )
+      }
+      throw error
+    }
   }
 
   /// Resolves the target platform, returning the resolved target device as
@@ -380,6 +450,14 @@ struct BundleCommand: ErrorHandledCommand {
     resolvedPlatform: Platform,
     resolvedDevice: Device? = nil
   ) throws -> BundlerOutputStructure {
+    let resolvedCodesigningContext = try Self.resolveCodesigningContext(
+      codesignArgument: arguments.codesign,
+      identityArgument: arguments.identity,
+      provisioningProfile: arguments.provisioningProfile,
+      entitlements: arguments.entitlements,
+      platform: resolvedPlatform
+    )
+
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
       // Load configuration
@@ -487,6 +565,7 @@ struct BundleCommand: ErrorHandledCommand {
         outputDirectory: outputDirectory,
         platform: resolvedPlatform,
         device: resolvedDevice,
+        darwinCodeSigningContext: resolvedCodesigningContext,
         builtDependencies: [:]
       )
 
@@ -624,11 +703,9 @@ struct BundleCommand: ErrorHandledCommand {
       context: context,
       command: command,
       manifest: manifest
-    )
-    .andThen { additionalContext in
+    ).andThen { additionalContext in
       bundler.bundle(context, additionalContext)
-    }
-    .unwrap()
+    }.unwrap()
   }
 
   /// This generic function is required to operate on `any Bundler`s.
@@ -642,11 +719,9 @@ struct BundleCommand: ErrorHandledCommand {
       context: context,
       command: command,
       manifest: manifest
-    )
-    .map { additionalContext in
+    ).map { additionalContext in
       bundler.intendedOutput(in: context, additionalContext)
-    }
-    .unwrap()
+    }.unwrap()
   }
 
   /// Gets the configuration for the specified app.

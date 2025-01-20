@@ -29,6 +29,7 @@ enum DarwinBundlerError: LocalizedError {
   case failedToInsertMetadata(MetadataInserterError)
   case missingTargetDevice(Platform)
   case failedToGenerateProvisioningProfile(ProvisioningProfileManager.Error?)
+  case missingCodeSigningContextForProvisioning(NonMacAppleOS)
 
   var errorDescription: String? {
     switch self {
@@ -97,6 +98,11 @@ enum DarwinBundlerError: LocalizedError {
       case .failedToGenerateProvisioningProfile(let error):
         return error?.localizedDescription
           ?? "Failed to generate provisioning profile"
+      case .missingCodeSigningContextForProvisioning(let os):
+        return """
+          Missing code signing context (required to generate provisioning \
+          profiles for \(os.os.name))
+          """
     }
   }
 }
