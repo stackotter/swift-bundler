@@ -9,6 +9,8 @@ enum RunnerError: LocalizedError {
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnSimulator(SimulatorManagerError)
   case missingExecutable(Device, BundlerOutputStructure)
+  case failedToGetXcodeDeveloperDirectory(ProcessError)
+  case failedToRunAppOnConnectedDevice(ProcessError)
 
   var errorDescription: String? {
     switch self {
@@ -16,7 +18,11 @@ enum RunnerError: LocalizedError {
         return "Failed to run executable: \(error)"
       case .failedToLocateIOSDeploy:
         return Output {
-          "'ios-deploy' must be installed to run apps on iOS and visionOS"
+          """
+          Running apps on iOS and tvOS devices requires ios-deploy or Xcode 15+ \
+          (devicectl).
+
+          """
           ExampleCommand("brew install ios-deploy")
         }.body
       case .failedToRunIOSDeploy:
@@ -38,6 +44,14 @@ enum RunnerError: LocalizedError {
           format instead of an executable format. Try another bundler or stick \
           to bundling.
           """
+      case .failedToGetXcodeDeveloperDirectory(let error):
+        return """
+          Failed to get Xcode 'Developer' directory path: \
+          \(error.localizedDescription)
+          """
+      case .failedToRunAppOnConnectedDevice(let error):
+        return
+          "Failed to run app on connected device: \(error.localizedDescription)"
     }
   }
 }

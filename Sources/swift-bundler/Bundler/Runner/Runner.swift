@@ -187,6 +187,7 @@ enum Runner {
       return runAppOnPhysicalDevice(
         deviceId: connectedDevice.id,
         bundlerOutput: bundlerOutput,
+        bundleIdentifier: bundleIdentifier,
         arguments: arguments,
         environmentVariables: environmentVariables
       )
@@ -196,6 +197,7 @@ enum Runner {
   static func runAppOnPhysicalDevice(
     deviceId: String,
     bundlerOutput: BundlerOutputStructure,
+    bundleIdentifier: String,
     arguments: [String],
     environmentVariables: [String: String]
   ) -> Result<Void, RunnerError> {
@@ -210,24 +212,63 @@ enum Runner {
       environmentArguments = []
     }
 
-    // `ios-deploy` is explicitly resolved (instead of allowing `Process.create`
-    // to handle running programs located on the user's PATH) so that a detailed
-    // error message can be emitted for this easy misconfiguration issue.
-    return Process.locate("ios-deploy")
-      .mapError(RunnerError.failedToLocateIOSDeploy)
-      .andThen { iosDeployExecutable in
-        Process.create(
-          iosDeployExecutable,
+    return Process.create("xcode-select", arguments: ["--print-path"])
+      .getOutput()
+      .mapError(RunnerError.failedToGetXcodeDeveloperDirectory)
+      .map { output in
+        let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return URL(fileURLWithPath: path) / "usr/bin/devicectl"
+      }
+      .andThen { (devicectlExecutable: URL) in
+        // ios-deploy doesn't work well with newer Xcode versions because Apple
+        // made a few breaking changes. Luckily, Apple created the devicectl
+        // tool at around the same time. If we detect devicectl, we use it
+        // because it's more likely to work, otherwise we fall back to
+        // ios-deploy.
+
+        guard devicectlExecutable.exists() else {
+          // Fall back to ios-deploy.
+          // `ios-deploy` is explicitly resolved so that a detailed error
+          // message can be emitted for this easy misconfiguration issue.
+          return Process.locate("ios-deploy")
+            .mapError(RunnerError.failedToLocateIOSDeploy)
+            .andThen { iosDeployExecutable in
+              Process.create(
+                iosDeployExecutable,
+                arguments: [
+                  "--noninteractive",
+                  "--bundle", bundlerOutput.bundle.path,
+                  "--id", deviceId,
+                ] + environmentArguments
+                  + arguments.flatMap { argument in
+                    return ["--args", argument]
+                  },
+                runSilentlyWhenNotVerbose: false
+              ).runAndWait().mapError(RunnerError.failedToRunIOSDeploy)
+            }
+        }
+
+        // Install and run with devicectl
+        return Process.create(
+          devicectlExecutable.path,
           arguments: [
-            "--noninteractive",
-            "--bundle", bundlerOutput.bundle.path,
-            "--id", deviceId,
-          ] + environmentArguments
-            + arguments.flatMap { argument in
-              return ["--args", argument]
-            },
+            "device", "install", "app",
+            "--device", deviceId,
+            bundlerOutput.bundle.path,
+          ],
           runSilentlyWhenNotVerbose: false
-        ).runAndWait().mapError(RunnerError.failedToRunIOSDeploy)
+        ).runAndWait().andThen { _ in
+          Process.create(
+            devicectlExecutable.path,
+            arguments: [
+              "device", "process", "launch",
+              "--device", deviceId,
+              "--console",
+              bundleIdentifier,
+            ],
+            runSilentlyWhenNotVerbose: false
+          ).runAndWait()
+        }.mapError(RunnerError.failedToRunAppOnConnectedDevice)
       }
   }
 
