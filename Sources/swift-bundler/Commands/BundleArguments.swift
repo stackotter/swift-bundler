@@ -169,7 +169,10 @@ struct BundleArguments: ParsableArguments {
   #if os(macOS)
     @Flag(
       name: .customLong("codesign"),
-      help: "Codesign the application (use `--identity` to select the identity).")
+      help: """
+        Codesign the application. Defaults to false on macOS, Linux and \
+        simulators, and true on non-macOS Apple devices.
+        """)
   #endif
   var shouldCodesign = false
 

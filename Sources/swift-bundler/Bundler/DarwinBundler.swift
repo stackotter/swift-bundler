@@ -141,41 +141,34 @@ enum DarwinBundler: Bundler {
     }
 
     let embedProfile: () -> Result<Void, DarwinBundlerError> = {
-      // If the user provided a provisioning profile, use it
-      let provisioningProfile: URL
-      if let profile = additionalContext.codeSigningContext?.manualProvisioningProfile {
-        provisioningProfile = profile
-      } else {
+      return Result.success().andThen { _ -> Result<URL?, DarwinBundlerError> in
+        // If the user provided a provisioning profile, use it
+        if let profile = additionalContext.codeSigningContext?.manualProvisioningProfile {
+          return .success(profile)
+        }
+
+        guard case .connected(let device) = context.device else {
+          // Simulators don't require provisioning profiles
+          return .success(nil)
+        }
+
         // If the target platform requires provisioning profiles, locate or
         // generate one.
-        switch context.device {
-          case .connected(let device):
-            // Simulators don't need provisioning profiles
-            guard !device.platform.isSimulator else {
-              return .success()
-            }
-
-            // Locate an existing suitable provisioning profile
-            switch ProvisioningProfileManager.locateSuitableProvisioningProfile(
-              bundleIdentifier: context.appConfiguration.identifier,
-              deviceId: device.id,
-              deviceOS: device.platform.os,
-              identity: additionalContext.codeSigningContext!.identity
-            ) {
-              case .success(let profile):
-                guard let profile = profile else {
-                  return .failure(.failedToGenerateProvisioningProfile(nil))
-                }
-                provisioningProfile = profile
-              case .failure(let error):
-                return .failure(.failedToGenerateProvisioningProfile(error))
-            }
-          default:
-            return .success()
+        return ProvisioningProfileManager.locateOrGenerateSuitableProvisioningProfile(
+          bundleIdentifier: context.appConfiguration.identifier,
+          deviceId: device.id,
+          deviceOS: device.platform.os,
+          identity: additionalContext.codeSigningContext!.identity
+        )
+        .mapError(DarwinBundlerError.failedToGenerateProvisioningProfile)
+        .map(Optional.some)
+      }.andThen { provisioningProfile in
+        guard let provisioningProfile = provisioningProfile else {
+          return .success()
         }
-      }
 
-      return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
+        return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
+      }
     }
 
     let willSign = additionalContext.codeSigningContext != nil || context.platform != .macOS

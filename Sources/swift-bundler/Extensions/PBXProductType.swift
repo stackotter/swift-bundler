@@ -1,4 +1,4 @@
-import SwiftXcodeProj
+import XcodeProj
 
 extension PBXProductType {
   /// Whether the product is executable or not.

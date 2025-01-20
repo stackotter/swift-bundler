@@ -1,5 +1,5 @@
 import Foundation
-import SwiftXcodeProj
+import XcodeProj
 
 extension XcodeprojConverter {
   /// An Xcode target's dependency on a package's product.

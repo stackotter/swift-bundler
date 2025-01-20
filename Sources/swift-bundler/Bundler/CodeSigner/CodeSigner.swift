@@ -1,5 +1,7 @@
 import Foundation
 import Parsing
+import SwiftASN1
+import X509
 
 /// A utility for codesigning Darwin application bundles
 enum CodeSigner {
@@ -220,6 +222,64 @@ enum CodeSigner {
 
         return .success(identities)
       }
+  }
+
+  /// Resolves a short-hand identity name. Can either be a full identity id or
+  /// a substring of an identity's display name.
+  static func resolveIdentity(
+    shortName: String
+  ) -> Result<Identity, CodeSignerError> {
+    enumerateIdentities().map { identities in
+      identities.filter { identity in
+        identity.id == shortName || identity.name.contains(shortName)
+      }
+    }.andThen { matchedIdentities in
+      guard let identity = matchedIdentities.first else {
+        return .failure(.identityShortNameNotMatched(shortName))
+      }
+
+      if matchedIdentities.count > 1 {
+        log.warning(
+          """
+          Multiple identities matched short name '\(shortName)', using \
+          '\(identity.name)' (id: \(identity.id))
+          """
+        )
+      }
+
+      return .success(identity)
+    }
+  }
+
+  static func getTeamIdentifier(for fullIdentityName: String) -> Result<String, CodeSignerError> {
+    Process.create(
+      securityToolPath,
+      arguments: [
+        "find-certificate", "-c", fullIdentityName, "-p",
+      ]
+    ).getOutput().mapError { error in
+      .failedToLocateSigningCertificate(fullIdentityName: fullIdentityName, error)
+    }.andThen { certificatePEM in
+      Result {
+        try Certificate(pemEncoded: certificatePEM)
+      }.mapError(CodeSignerError.failedToParseSigningCertificate)
+    }.andThen { certificate in
+      for element in certificate.subject {
+        for attribute in element {
+          guard
+            attribute.type == ASN1ObjectIdentifier.RDNAttributeType.organizationalUnitName
+          else {
+            continue
+          }
+          return .success(attribute.value.description)
+        }
+      }
+
+      let error = CodeSignerError.signingCertificateMissingTeamIdentifier(
+        fullIdentityName: fullIdentityName
+      )
+      return .failure(error)
+    }
   }
 
   static func getTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {

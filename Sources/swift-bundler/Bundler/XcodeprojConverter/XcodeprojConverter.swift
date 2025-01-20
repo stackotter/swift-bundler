@@ -1,9 +1,9 @@
 import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftXcodeProj
 import TOMLKit
 import Version
+import XcodeProj
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
 enum XcodeprojConverter {
