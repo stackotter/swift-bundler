@@ -17,6 +17,7 @@ struct SwiftBundler: ParsableCommand {
       CreateCommand.self,
       ConvertCommand.self,
       MigrateCommand.self,
+      DevicesCommand.self,
       SimulatorsCommand.self,
       TemplatesCommand.self,
       GenerateXcodeSupportCommand.self,
