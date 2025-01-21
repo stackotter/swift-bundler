@@ -362,43 +362,61 @@ struct BundleCommand: ErrorHandledCommand {
       return simulator.device
     } else {
       let hostPlatform = HostPlatform.hostPlatform
-      if platform == nil || platform == hostPlatform.platform {
-        return Device.host(hostPlatform)
-      } else if let platform = platform, platform.isSimulator {
-        let matchedSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
-          .filter { simulator in
-            simulator.isBooted
-              && simulator.isAvailable
-              && simulator.os.simulatorPlatform.platform == platform
-          }
-          .sorted { first, second in
-            first.name < second.name
+      switch platform {
+        case .none, hostPlatform.platform:
+          return Device.host(hostPlatform)
+        case .some(let platform) where platform.isSimulator:
+          let matchedSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
+            .filter { simulator in
+              simulator.isBooted
+                && simulator.isAvailable
+                && simulator.os.simulatorPlatform.platform == platform
+            }
+            .sorted { first, second in
+              first.name < second.name
+            }
+
+          guard let simulator = matchedSimulators.first else {
+            throw CLIError.failedToResolveTargetDevice(
+              reason: Output {
+                """
+                No booted simulators found for platform '\(platform)'. Boot \
+                \(platform.os.rawValue.withIndefiniteArticle) simulator, or \
+                specify a simulator to use via '--simulator <id-or-search-term>'
+
+                """
+
+                Section("List available simulators") {
+                  ExampleCommand("swift bundler simulators list")
+                }
+
+                Section("Boot a simulator", trailingNewline: false) {
+                  ExampleCommand("swift bundler simulators boot <id-or-name>")
+                }
+              }.description
+            )
           }
 
-        guard let simulator = matchedSimulators.first else {
-          throw CLIError.failedToResolveTargetDevice(
-            reason: """
-              No booted simulators found for platform '\(platform)'. Boot \
-              \(platform.os.rawValue.withIndefiniteArticle) simulator or specify a simulator to use via '--simulator <id_or_search_term>'
+          if matchedSimulators.count > 1 {
+            log.warning(
+              "Found multiple booted \(platform.os.rawValue) simulators, using '\(simulator.name)'"
+            )
+          }
+
+          return simulator.device
+        case .some(let platform):
+          let reason =
+            Output {
               """
-          )
-        }
+              '--platform \(platform.name)' requires '--device <id-or-search-term>'
 
-        if matchedSimulators.count > 1 {
-          log.warning(
-            "Found multiple booted \(platform.os.rawValue) simulators, using '\(simulator.name)'"
-          )
-        }
+              """
 
-        return simulator.device
-      } else {
-        let platform = platform ?? hostPlatform.platform
-        throw CLIError.failedToResolveTargetDevice(
-          reason: """
-            '--platform \(platform.name)' requires '--device <id_or_search_term>' \
-            or '--simulator <id_or_search_term>'
-            """
-        )
+              Section("List available devices", trailingNewline: false) {
+                ExampleCommand("swift bundler devices list")
+              }
+            }.description
+          throw CLIError.failedToResolveTargetDevice(reason: reason)
       }
     }
   }
