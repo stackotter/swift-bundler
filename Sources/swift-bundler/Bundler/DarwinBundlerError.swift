@@ -79,10 +79,8 @@ enum DarwinBundlerError: LocalizedError {
         return "Failed to copy provisioning profile to output bundle"
       case .missingDarwinPlatformVersion(let platform):
         return """
-          Missing target platform version for '\(platform.rawValue)' in \
-          'Package.swift'. Please update the `Package.platforms` array \
-          and try again. Bundling for Darwin platforms requires a target \
-          platform.
+          Missing target platform version for \(platform.os.name) in \
+          'Package.swift'. Update the `Package.platforms` array and try again.
           """
       case .unsupportedPlatform(let platform):
         return """

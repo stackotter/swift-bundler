@@ -238,6 +238,7 @@ enum ProvisioningProfileManager {
           "-sdk", deviceOS.physicalPlatform.platform.sdkName,
           "-destination", "id=\(deviceId)",
           "-allowProvisioningUpdates",
+          "-allowProvisioningDeviceRegistration",
           "build",
         ]
       ).getOutput(excludeStdError: false).mapError { error in

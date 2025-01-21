@@ -11,4 +11,17 @@ enum AppleOS: String, CaseIterable {
   var name: String {
     return rawValue
   }
+
+  var os: OS {
+    switch self {
+      case .macOS:
+        return .macOS
+      case .iOS:
+        return .iOS
+      case .visionOS:
+        return .visionOS
+      case .tvOS:
+        return .tvOS
+    }
+  }
 }
