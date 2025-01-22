@@ -41,13 +41,8 @@ let package = Package(
         "TOMLKit",
         "Rainbow",
         "Version",
-        "Socket",
-        "HotReloadingProtocol",
-        "FileSystemWatcher",
         "Yams",
-        "XcodeProj",
         "SwiftBundlerBuilders",
-        "PathKit",
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),
         .product(name: "StackOtterArgParser", package: "swift-arg-parser"),
@@ -56,8 +51,45 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
-        .product(name: "XcodeGenKit", package: "XcodeGen"),
-        .product(name: "ProjectSpec", package: "XcodeGen"),
+
+        .product(
+          name: "XcodeProj",
+          package: "XcodeProj",
+          condition: .when(platforms: [.macOS])
+        ),
+        .product(
+          name: "PathKit",
+          package: "PathKit",
+          condition: .when(platforms: [.macOS])
+        ),
+        .product(
+          name: "XcodeGenKit",
+          package: "XcodeGen",
+          condition: .when(platforms: [.macOS])
+        ),
+        .product(
+          name: "ProjectSpec",
+          package: "XcodeGen",
+          condition: .when(platforms: [.macOS])
+        ),
+
+        .product(
+          name: "Socket",
+          package: "Socket",
+          condition: .when(platforms: [.macOS, .linux])
+        ),
+        .target(
+          name: "HotReloadingProtocol",
+          condition: .when(platforms: [.macOS, .linux])
+        ),
+        .target(
+          name: "FileSystemWatcher",
+          condition: .when(platforms: [.macOS, .linux])
+        ),
+      ],
+      swiftSettings: [
+        .define("SUPPORT_HOT_RELOADING", .when(platforms: [.macOS, .linux])),
+        .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS, .linux])),
       ]
     ),
 

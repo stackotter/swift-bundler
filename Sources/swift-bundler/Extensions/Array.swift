@@ -66,15 +66,12 @@ extension [String] {
     withTrailingVerb trailingVerb: Verb?
   ) -> String {
     let base: String
-    let requiresPluralVerb: Bool
     if count == 0 {
       base = "No \(plural)"
     } else if count == 1 {
       base = "The \(singular)"
-      requiresPluralVerb = false
     } else {
       base = "The \(plural)"
-      requiresPluralVerb = true
     }
 
     return "\(base) \(joinedGrammatically(withTrailingVerb: trailingVerb))"

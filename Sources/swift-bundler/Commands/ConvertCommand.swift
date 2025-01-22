@@ -1,7 +1,6 @@
 import Foundation
 import StackOtterArgParser
 import TOMLKit
-import XcodeProj
 
 /// The command for converting xcodeprojs to Swift Bundler projects.
 struct ConvertCommand: Command {
@@ -37,25 +36,31 @@ struct ConvertCommand: Command {
     // - [ ] Extract indentation settings
     // - [ ] Handle tests
 
-    if !dontWarn {
-      log.warning(
-        "Converting xcodeprojs is currently an experimental feature. Proceed with caution."
-      )
-      print("[press ENTER to continue]", terminator: "")
-      _ = readLine()
-    }
-
-    switch xcodeFile.pathExtension {
-      case "xcodeproj":
-        try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory).unwrap()
-      case "xcworkspace":
-        try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
-          .unwrap()
-      default:
-        log.error(
-          "Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'"
+    #if !SUPPORT_XCODEPROJ
+      // Throw an error as early as possible if the host platform isn't supported
+      throw XcodeprojConverterError.hostPlatformNotSupported
+    #else
+      if !dontWarn {
+        log.warning(
+          "Converting xcodeprojs is currently an experimental feature. Proceed with caution."
         )
-        Foundation.exit(1)
-    }
+        print("[press ENTER to continue]", terminator: "")
+        _ = readLine()
+      }
+
+      switch xcodeFile.pathExtension {
+        case "xcodeproj":
+          try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory)
+            .unwrap()
+        case "xcworkspace":
+          try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
+            .unwrap()
+        default:
+          log.error(
+            "Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'"
+          )
+          Foundation.exit(1)
+      }
+    #endif
   }
 }

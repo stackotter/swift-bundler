@@ -19,6 +19,8 @@ enum HostPlatform {
       return .macOS
     #elseif os(Linux)
       return .linux
+    #elseif os(Windows)
+      return .linux
     #endif
   }
 }

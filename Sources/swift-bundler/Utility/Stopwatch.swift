@@ -1,4 +1,3 @@
-import CoreFoundation
 import Foundation
 
 /// A utility for timing arbitrary actions.
@@ -27,18 +26,18 @@ enum Stopwatch {
   /// Times how long an action takes to run.
   /// - Returns: The time taken to execute the provided action.
   static func time(_ action: () throws -> Void) rethrows -> Measurement {
-    let start = CFAbsoluteTimeGetCurrent()
+    let start = ProcessInfo.processInfo.systemUptime
     try action()
-    let elapsed = CFAbsoluteTimeGetCurrent() - start
+    let elapsed = ProcessInfo.processInfo.systemUptime - start
     return Measurement(seconds: elapsed)
   }
 
   /// Times how long an action takes to run.
   /// - Returns: The time taken along with the result of the provided action.
   static func time<R>(_ action: () throws -> R) rethrows -> (Measurement, R) {
-    let start = CFAbsoluteTimeGetCurrent()
+    let start = ProcessInfo.processInfo.systemUptime
     let result = try action()
-    let elapsed = CFAbsoluteTimeGetCurrent() - start
+    let elapsed = ProcessInfo.processInfo.systemUptime - start
     return (Measurement(seconds: elapsed), result)
   }
 }

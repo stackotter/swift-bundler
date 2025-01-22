@@ -2,6 +2,8 @@
   import Darwin
 #elseif os(Linux)
   import Glibc
+#elseif os(Windows)
+  import WinSDK
 #else
   #error("Must implement signal handling for new platforms")
 #endif
@@ -32,6 +34,20 @@
       }
     }
   }
+#elseif os(Windows)
+  enum Signal: Int32, CaseIterable {
+    case abort
+    case interrupt
+    case terminate
+
+    var rawValue: Int32 {
+      switch self {
+        case .abort: return SIGABRT
+        case .interrupt: return SIGINT
+        case .terminate: return SIGTERM
+      }
+    }
+  }
 #endif
 
 /// Sets a trap for the specified signal.
@@ -55,5 +71,7 @@ func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
     signalAction.sa_mask = mask
     signalAction.sa_flags = 0
     sigaction(signal.rawValue, &signalAction, nil)
+  #elseif os(Windows)
+    WinSDK.signal(signal.rawValue, unsafeBitCast(action, to: (@convention(c) (Int32) -> Void).self))
   #endif
 }
