@@ -394,7 +394,7 @@ enum SwiftPackageManager {
       return process.getOutput().map { output in
         URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
       }.mapError { error in
-        .failedToGetProductsDirectory(command: "swift " + process.argumentsString, error)
+        .failedToGetProductsDirectory(command: process.commandStringForLogging, error)
       }
     }
   }
@@ -405,100 +405,22 @@ enum SwiftPackageManager {
   static func loadPackageManifest(
     from packageDirectory: URL
   ) -> Result<PackageManifest, SwiftPackageManagerError> {
-    // We used to use the SwiftPackageManager library to load package manifests,
-    // but that caused issues when the library version didn't match the user's
-    // installed Swift version and was very fiddly to fix. It was easier to just
-    // hand roll a custom solution that we can update in the future to maintain
-    // backwards compatability.
-    //
-    // Overview of loading a manifest manually:
-    // - Compile and link manifest with Swift driver
-    // - Run the resulting executable with `-fileno 1` as its args
-    // - Parse the JSON that the executable outputs to stdout
+    let process = Process.create(
+      "swift",
+      arguments: ["package", "describe", "--type", "json"]
+    )
 
-    let manifestPath = packageDirectory.appendingPathComponent("Package.swift").path
-    let temporaryDirectory = FileManager.default.temporaryDirectory
-    let uuid = UUID().uuidString
-    let temporaryExecutableFile =
-      temporaryDirectory
-      .appendingPathComponent("\(uuid)-PackageManifest").path
-
-    let targetInfo: SwiftTargetInfo
-    switch self.getTargetInfo() {
-      case .success(let info):
-        targetInfo = info
-      case .failure(let error):
-        return .failure(error)
-    }
-
-    let manifestAPIDirectory = targetInfo.paths.runtimeResourcePath
-      .appendingPathComponent("pm/ManifestAPI")
-
-    var librariesPaths: [String] = []
-    librariesPaths += targetInfo.paths.runtimeLibraryPaths.map(\.path)
-    librariesPaths += [manifestAPIDirectory.path]
-
-    var additionalSwiftArguments: [String] = []
-    #if os(macOS)
-      switch self.getLatestSDKPath(for: .macOS) {
-        case .success(let path):
-          librariesPaths += [path + "/usr/lib/swift"]
-          additionalSwiftArguments += ["-sdk", path]
-        case .failure(let error):
-          return .failure(error)
-      }
-    #endif
-
-    let toolsVersion: Version
-    switch getToolsVersion(packageDirectory) {
-      case .success(let version):
-        toolsVersion = version
-      case .failure(let error):
-        return .failure(error)
-    }
-
-    // Compile to object file
-    let swiftArguments =
-      [
-        manifestPath,
-        "-I", manifestAPIDirectory.path,
-        "-Xlinker", "-rpath", "-Xlinker", manifestAPIDirectory.path,
-        "-lPackageDescription",
-        "-swift-version", String(toolsVersion.major),
-        "-package-description-version", toolsVersion.description,
-        "-disable-implicit-concurrency-module-import",
-        "-disable-implicit-string-processing-module-import",
-        "-o", temporaryExecutableFile,
-      ]
-      + librariesPaths.flatMap { ["-L", $0] }
-      + additionalSwiftArguments
-
-    let swiftProcess = Process.create("swiftc", arguments: swiftArguments)
-    if case let .failure(error) = swiftProcess.runAndWait() {
-      return .failure(.failedToCompilePackageManifest(error))
-    }
-
-    // Execute compiled manifest
-    let process = Process.create(temporaryExecutableFile, arguments: ["-fileno", "1"])
-    let json: String
-    switch process.getOutput() {
-      case .success(let output):
-        json = output
-      case .failure(let error):
-        return .failure(.failedToExecutePackageManifest(error))
-    }
-
-    // Parse manifest output
-    guard let jsonData = json.data(using: .utf8) else {
-      return .failure(.failedToParsePackageManifestOutput(json: json, nil))
-    }
-
-    do {
-      return .success(
-        try JSONDecoder().decode(PackageManifest.self, from: jsonData)
+    return process.getOutput().mapError { error in
+      .failedToRunSwiftPackageDescribe(
+        command: process.commandStringForLogging,
+        error
       )
-    } catch {
-      return .failure(.failedToParsePackageManifestOutput(json: json, error))
+    }.andThen { output in
+      let jsonData = Data(output.utf8)
+      return JSONDecoder().decode(PackageManifest.self, from: jsonData)
+        .mapError { error in
+          .failedToParsePackageManifestOutput(json: output, error)
+        }
     }
   }
 
@@ -510,7 +432,7 @@ enum SwiftPackageManager {
     )
 
     return process.getOutput().mapError { error in
-      .failedToGetTargetInfo(command: "swift " + process.argumentsString, error)
+      .failedToGetTargetInfo(command: process.commandStringForLogging, error)
     }.andThen { output in
       guard let data = output.data(using: .utf8) else {
         return .failure(.failedToParseTargetInfo(json: output, nil))

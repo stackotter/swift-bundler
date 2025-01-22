@@ -52,20 +52,6 @@ enum Platform: String, CaseIterable {
     }
   }
 
-  /// The platform's name in a SwiftPM manifest's JSON representation.
-  var manifestName: String {
-    switch self {
-      case .macOS, .iOS, .visionOS, .tvOS, .linux, .windows:
-        return name.lowercased()
-      case .iOSSimulator:
-        return Platform.iOS.name.lowercased()
-      case .visionOSSimulator:
-        return Platform.visionOS.name.lowercased()
-      case .tvOSSimulator:
-        return Platform.tvOS.name.lowercased()
-    }
-  }
-
   /// Gets the platform as an ``ApplePlatform`` if it is in fact an Apple
   /// platform.
   var asApplePlatform: ApplePlatform? {

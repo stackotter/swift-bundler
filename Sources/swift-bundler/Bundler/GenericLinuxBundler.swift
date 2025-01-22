@@ -4,11 +4,12 @@ import Parsing
 /// A bundler targeting generic Linux systems. Arranges executables, resources,
 /// and dynamic libraries into a standard directory layout based off the
 /// Filesystem Hierarchy Standard that Linux systems generally follow.
-/// This is a great bundler to use during development as it provides a realistic
+///
+/// This bundler is great to use during development as it provides a realistic
 /// runtime environment while keeping bundling overhead low, allowing for quick
 /// iteration.
 ///
-/// Most other Linux bundlers provided by Swift Bundler rely on this bundler to
+/// The other Linux bundlers provided by Swift Bundler rely on this bundler to
 /// do all of the heavy lifting. After running the generic bundler they simply
 /// take the output and bundle it up into an often distro-specific package file
 /// or standalone executable.
@@ -297,7 +298,8 @@ enum GenericLinuxBundler: Bundler {
   // MARK: Private methods
 
   /// Copies dynamic library dependencies of the specified executable file into
-  /// the `AppDir`, and updates the runpaths of the executable and moved dynamic
+  /// a given destination directory, and updates the runpaths of the executable
+  /// and moved dynamic
   /// libraries accordingly.
   ///
   /// For now this sticks to handling the Swift runtime libraries and dynamic

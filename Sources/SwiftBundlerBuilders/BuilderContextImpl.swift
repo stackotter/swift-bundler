@@ -17,20 +17,15 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
     case nonZeroExitStatus(Int)
   }
 
-  #if os(Linux)
-    private func bashQuote(_ string: String) -> String {
-      let escapedContents = string.replacingOccurrences(of: "\\", with: "\\\\")
-        .replacingOccurrences(of: "\"", with: "\\\"")
-        .replacingOccurrences(of: "$", with: "\\$")
-        .replacingOccurrences(of: "`", with: "\\`")
-      return "\"\(escapedContents)\""
-    }
-  #endif
-
   public func run(_ command: String, _ arguments: [String]) throws {
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = [command] + arguments
+    #if os(Windows)
+      process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
+      process.arguments = ["/c", command] + arguments
+    #else
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+      process.arguments = [command] + arguments
+    #endif
 
     try process.run()
     process.waitUntilExit()

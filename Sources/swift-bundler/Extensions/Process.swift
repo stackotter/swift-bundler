@@ -18,11 +18,16 @@ var processes: [Process] = []
 extension Process {
   /// A string created by concatenating all of the program's arguments together. Suitable for error messages,
   /// but not necessarily 100% correct.
-  var argumentsString: String {
-    // TODO: This could instead be `commandString` and we infer the human friendly name from the executableURL
-    //   (remembering that if the url is `/usr/bin/env`, the path we care about is actually the first argument)
+  private var argumentsString: String {
     // TODO: This is pretty janky (i.e. what if an arg contains spaces)
     return arguments?.joined(separator: " ") ?? ""
+  }
+
+  /// A string representation of the command, suitable only for logging (not running).
+  /// Doesn't guarantee that the produced representation is faithful, but does strive
+  /// to improve in that respect over time.
+  var commandStringForLogging: String {
+    "\(executableURL?.path ?? "<unknown>") \(argumentsString)"
   }
 
   /// Sets the pipe for the process's stdout and stderr.
@@ -199,8 +204,14 @@ extension Process {
       process.executableURL = URL(fileURLWithPath: tool)
       process.arguments = arguments
     } else {
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-      process.arguments = [tool] + arguments
+      switch HostPlatform.hostPlatform {
+        case .linux, .macOS:
+          process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+          process.arguments = [tool] + arguments
+        case .windows:
+          process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
+          process.arguments = ["/c", tool] + arguments
+      }
     }
 
     var env = ProcessInfo.processInfo.environment

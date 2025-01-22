@@ -149,14 +149,10 @@ struct RunCommand: ErrorHandledCommand {
           let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
             .unwrap()
 
-          guard let platformVersion = manifest.platformVersion(for: device.platform) else {
-            let manifestFile = packageDirectory.appendingPathComponent("Package.swift")
-            throw CLIError.failedToGetPlatformVersion(
-              platform: device.platform,
-              manifest: manifestFile
-            )
-          }
-
+          let platformVersion =
+            device.platform.asApplePlatform.map { platform in
+              manifest.platformVersion(for: platform.os)
+            } ?? nil
           let architectures = bundleCommand.getArchitectures(
             platform: device.platform
           )

@@ -18,7 +18,7 @@ enum BundlerChoice: String, CaseIterable {
       case .linuxRPM:
         return RPMBundler.self
       case .windowsGeneric:
-        return GenericLinuxBundler.self
+        return GenericWindowsBundler.self
     }
   }
 

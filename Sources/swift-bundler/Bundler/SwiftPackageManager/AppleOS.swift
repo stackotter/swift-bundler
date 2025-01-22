@@ -12,6 +12,11 @@ enum AppleOS: String, CaseIterable {
     return rawValue
   }
 
+  /// The OS's name in a SwiftPM manifest's JSON representation.
+  var manifestName: String {
+    name.lowercased()
+  }
+
   var os: OS {
     switch self {
       case .macOS:

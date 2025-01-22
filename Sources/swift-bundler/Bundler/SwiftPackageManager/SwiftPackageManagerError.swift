@@ -12,10 +12,7 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToGetLatestSDKPath(Platform, ProcessError)
   case failedToGetTargetInfo(command: String, ProcessError)
   case failedToParseTargetInfo(json: String, Error?)
-  case failedToCompilePackageManifest(Error)
-  case failedToExtractManifestAutolinkInfo(Error)
-  case failedToLinkPackageManifest(Error)
-  case failedToExecutePackageManifest(Error)
+  case failedToRunSwiftPackageDescribe(command: String, ProcessError)
   case failedToParsePackageManifestOutput(json: String, Error?)
   case failedToParsePackageManifestToolsVersion(Error?)
   case failedToReadBuildPlan(path: URL, Error)
@@ -51,15 +48,8 @@ enum SwiftPackageManagerError: LocalizedError {
         // make that weak assumption about the implementation
         return
           "Failed to parse Swift target info: \(error?.localizedDescription ?? "Unknown error")"
-      case .failedToCompilePackageManifest(let error):
-        return "Failed to compile package manifest: \(error.localizedDescription)"
-      case .failedToExtractManifestAutolinkInfo(let error):
-        return
-          "Failed to extract autolink info from Package manifest object file: \(error.localizedDescription)"
-      case .failedToLinkPackageManifest(let error):
-        return "Failed to link package manifest: \(error.localizedDescription)"
-      case .failedToExecutePackageManifest(let error):
-        return "Failed to execute package manifest: \(error.localizedDescription)"
+      case .failedToRunSwiftPackageDescribe(let command, let error):
+        return "Failed to run '\(command)': \(error.localizedDescription)"
       case .failedToParsePackageManifestOutput(_, let error):
         // 'Unknown error' means failed to convert string to data, but I didn't want to
         // make that weak assumption about the implementation

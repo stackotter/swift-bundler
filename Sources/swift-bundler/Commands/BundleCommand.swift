@@ -540,7 +540,10 @@ struct BundleCommand: ErrorHandledCommand {
       let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
-      let platformVersion = manifest.platformVersion(for: resolvedPlatform)
+      let platformVersion =
+        resolvedPlatform.asApplePlatform.map { platform in
+          manifest.platformVersion(for: platform.os)
+        } ?? nil
       let buildContext = SwiftPackageManager.BuildContext(
         packageDirectory: packageDirectory,
         scratchDirectory: scratchDirectory,
@@ -576,7 +579,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       var bundlerContext = BundlerContext(
         appName: appName,
-        packageName: manifest.displayName,
+        packageName: manifest.name,
         appConfiguration: appConfiguration,
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
@@ -612,14 +615,16 @@ struct BundleCommand: ErrorHandledCommand {
       bundlerContext.builtDependencies = dependencies
 
       if !skipBuild {
-        // Copy built library products
-        log.info("Copying dependencies")
-
         if !FileManager.default.itemExists(at: productsDirectory, withType: .directory) {
           try FileManager.default.createDirectory(
             at: productsDirectory,
             withIntermediateDirectories: true
           )
+        }
+
+        // Copy built library products
+        if !dependencies.isEmpty {
+          log.info("Copying dependencies")
         }
 
         for (_, dependency) in dependencies {

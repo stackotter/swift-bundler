@@ -27,7 +27,7 @@ enum DarwinBundler: Bundler {
       return .failure(.unsupportedPlatform(context.platform))
     }
 
-    guard let platformVersion = manifest.platformVersion(for: context.platform) else {
+    guard let platformVersion = manifest.platformVersion(for: applePlatform.os) else {
       return .failure(.missingDarwinPlatformVersion(context.platform))
     }
 

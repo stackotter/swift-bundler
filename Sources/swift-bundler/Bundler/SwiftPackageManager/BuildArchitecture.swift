@@ -20,7 +20,7 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
   /// different names for architectures.
   func argument(for platform: Platform) -> String {
     switch (platform, self) {
-      case (.linux, .arm64):
+      case (.linux, .arm64), (.windows, .arm64):
         return "aarch64"
       default:
         return rawValue
