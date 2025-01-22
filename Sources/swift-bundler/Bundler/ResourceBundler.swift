@@ -158,9 +158,9 @@ enum ResourceBundler {
           )
         case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
           destinationBundleResources = destinationBundle
-        case .linux:
-          // TODO: Implement on linux
-          fatalError("TODO: Implement resource bundling for linux")
+        case .linux, .windows:
+          // TODO: Implement on Linux and Windows if neccessary
+          fatalError("TODO: Implement resource bundle fixing for linux and Windows")
       }
     }
 
@@ -254,9 +254,9 @@ enum ResourceBundler {
         directory = bundleResources
       case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
         directory = bundle
-      case .linux:
+      case .linux, .windows:
         // TODO: Implement for linux
-        fatalError("TODO: Implement resource bundling on linux")
+        fatalError("TODO: Implement resource bundle fixing on Linux and Windows")
     }
 
     return FileManager.default.createDirectory(at: directory)
@@ -289,9 +289,9 @@ enum ResourceBundler {
         infoPlist =
           bundle
           .appendingPathComponent("Info.plist")
-      case .linux:
-        // TODO: Implement for linux
-        fatalError("Implement for linux")
+      case .linux, .windows:
+        // TODO: Implement for Linux and Windows
+        fatalError("Implement for Linux and Windows")
     }
 
     let result = PlistCreator.createResourceBundleInfoPlist(

@@ -232,8 +232,9 @@ enum SwiftPackageManager {
     buildContext: BuildContext
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
-    switch buildContext.platform {
-      case .iOS, .visionOS, .tvOS, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+    switch buildContext.platform.asApplePlatform?.partitioned {
+      case .other(let nonMacApplePlatform):
+        // Handle all non-Mac Apple platforms
         let sdkPath: String
         switch getLatestSDKPath(for: buildContext.platform) {
           case .success(let path):
@@ -248,21 +249,19 @@ enum SwiftPackageManager {
         let hostArchitecture = BuildArchitecture.current
 
         let targetTriple: LLVMTargetTriple
-        switch buildContext.platform {
-          case .iOS:
+        switch nonMacApplePlatform {
+          case .physical(.iOS):
             targetTriple = .apple(.arm64, .iOS(platformVersion))
-          case .visionOS:
+          case .physical(.visionOS):
             targetTriple = .apple(.arm64, .visionOS(platformVersion))
-          case .tvOS:
+          case .physical(.tvOS):
             targetTriple = .apple(.arm64, .tvOS(platformVersion))
-          case .iOSSimulator:
+          case .simulator(.iOS):
             targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
-          case .visionOSSimulator:
+          case .simulator(.visionOS):
             targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
-          case .tvOSSimulator:
+          case .simulator(.tvOS):
             targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
-          default:
-            fatalError("Unreachable (supposedly)")
         }
 
         platformArguments =
@@ -274,7 +273,8 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .macOS, .linux:
+      case .macOS, .none:
+        // Handle macOS and all non-Apple platforms
         platformArguments = []
     }
 

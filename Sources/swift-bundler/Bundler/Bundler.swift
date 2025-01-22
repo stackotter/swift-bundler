@@ -134,13 +134,3 @@ struct RunnableBundlerOutputStructure {
     self.executable = executable
   }
 }
-
-/// Gets the bundler to use when targeting the specified platform.
-func getBundler(for platform: Platform) -> any Bundler.Type {
-  switch platform {
-    case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
-      return DarwinBundler.self
-    case .linux:
-      return AppImageBundler.self
-  }
-}

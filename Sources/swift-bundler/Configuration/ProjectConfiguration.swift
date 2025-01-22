@@ -164,33 +164,40 @@ struct ProjectConfiguration: Codable {
     }
 
     func path(whenNamed name: String, platform: Platform) -> String {
-      let baseName =
-        switch type {
-          case .dynamicLibrary, .staticLibrary:
-            // Uses a switch statement so that alarms are raised when Windows gets added
-            switch platform {
-              case .linux, .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS,
-                .visionOSSimulator:
-                "lib\(name)"
-            }
-          case .executable:
-            name
-        }
-      let fileExtension =
-        switch type {
-          case .dynamicLibrary:
-            switch platform {
-              case .linux:
-                ".so"
-              case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS,
-                .visionOSSimulator:
-                ".dylib"
-            }
-          case .staticLibrary:
-            ".a"
-          case .executable:
-            ""
-        }
+      let baseName: String
+      switch type {
+        case .dynamicLibrary, .staticLibrary:
+          switch platform {
+            case .linux, .macOS, .iOS, .iOSSimulator,
+              .tvOS, .tvOSSimulator,
+              .visionOS, .visionOSSimulator:
+              baseName = "lib\(name)"
+            case .windows:
+              baseName = name
+          }
+        case .executable:
+          baseName = name
+      }
+
+      let fileExtension: String
+      switch type {
+        case .dynamicLibrary:
+          switch platform {
+            case .linux:
+              fileExtension = ".so"
+            case .windows:
+              fileExtension = ".dll"
+            case .macOS, .iOS, .iOSSimulator,
+              .tvOS, .tvOSSimulator,
+              .visionOS, .visionOSSimulator:
+              fileExtension = ".dylib"
+          }
+        case .staticLibrary:
+          fileExtension = ".a"
+        case .executable:
+          fileExtension = ""
+      }
+
       let fileName = "\(baseName)\(fileExtension)"
       if let outputDirectory = outputDirectory {
         return "\(outputDirectory)/\(fileName)"

@@ -26,21 +26,25 @@ enum Runner {
 
     switch device {
       case .host(let platform):
+        guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
+          return .failure(.missingExecutable(device, bundlerOutput))
+        }
+
         switch platform {
           case .macOS:
-            guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
-              return .failure(.missingExecutable(device, bundlerOutput))
-            }
             return runMacOSAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
             )
           case .linux:
-            guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
-              return .failure(.missingExecutable(device, bundlerOutput))
-            }
             return runLinuxAppOnHost(
+              bundlerOutput: bundlerOutput,
+              arguments: arguments,
+              environmentVariables: environmentVariables
+            )
+          case .windows:
+            return runWindowsAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
@@ -158,6 +162,27 @@ enum Runner {
       .mapError { error in
         .failedToRunExecutable(error)
       }
+  }
+
+  /// Runs a Windows app on the host device. Assumes that the host is a Windows
+  /// machine.
+  /// - Parameters:
+  ///   - bundlerOutput: The output of the bundler.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  /// - Returns: A failure if an error occurs.
+  static func runWindowsAppOnHost(
+    bundlerOutput: RunnableBundlerOutputStructure,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) -> Result<Void, RunnerError> {
+    Process.create(
+      bundlerOutput.executable.path,
+      arguments: arguments,
+      environment: environmentVariables
+    ).runAndWait().mapError { error in
+      .failedToRunExecutable(error)
+    }
   }
 
   /// Runs an app on a connected device or simulator.

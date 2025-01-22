@@ -27,7 +27,7 @@ enum XcodeprojConverterError: LocalizedError {
     switch self {
       case .hostPlatformNotSupported:
         return """
-          Xcodeproj integration isn't supported on \
+          xcodeproj conversion isn't supported on \
           \(HostPlatform.hostPlatform.platform.name)
           """
       case .failedToLoadXcodeProj(let file, let error):

@@ -9,12 +9,7 @@ enum Device: Equatable, CustomStringConvertible {
   var description: String {
     switch self {
       case .host(let platform):
-        switch platform {
-          case .macOS:
-            return "macOS host machine"
-          case .linux:
-            return "Linux host machine"
-        }
+        return "\(platform.platform.name) host machine"
       case .connected(let device):
         return "\(device.name) (\(device.platform.platform), id: \(device.id))"
     }

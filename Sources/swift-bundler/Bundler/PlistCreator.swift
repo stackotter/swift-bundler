@@ -111,7 +111,7 @@ enum PlistCreator {
         ]
         entries["UINativeSizeClass"] = 1
         entries["UIDeviceFamily"] = [7]
-      case .linux:
+      case .linux, .windows:
         break
     }
 
@@ -168,7 +168,7 @@ enum PlistCreator {
         // TODO: Make the produced Info.plist for visionOS identical to Xcode's
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["XROS"]
-      case .linux:
+      case .linux, .windows:
         break
     }
 

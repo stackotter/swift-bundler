@@ -10,12 +10,14 @@ enum Platform: String, CaseIterable {
   case tvOS
   case tvOSSimulator
   case linux
+  case windows
 
   /// The platform's name.
   var name: String {
     return rawValue
   }
 
+  // TODO: Move this to `ApplePlatform` and refactor usages accordingly
   /// The platform's sdk name (e.g. for `iOS` it's `iphoneos`).
   var sdkName: String {
     switch self {
@@ -35,6 +37,8 @@ enum Platform: String, CaseIterable {
         return "appletvsimulator"
       case .linux:
         return "linux"
+      case .windows:
+        return "windows"
     }
   }
 
@@ -43,7 +47,7 @@ enum Platform: String, CaseIterable {
     switch self {
       case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         return true
-      case .macOS, .iOS, .visionOS, .tvOS, .linux:
+      case .macOS, .iOS, .visionOS, .tvOS, .linux, .windows:
         return false
     }
   }
@@ -51,7 +55,7 @@ enum Platform: String, CaseIterable {
   /// The platform's name in a SwiftPM manifest's JSON representation.
   var manifestName: String {
     switch self {
-      case .macOS, .iOS, .visionOS, .tvOS, .linux:
+      case .macOS, .iOS, .visionOS, .tvOS, .linux, .windows:
         return name.lowercased()
       case .iOSSimulator:
         return Platform.iOS.name.lowercased()
@@ -73,7 +77,7 @@ enum Platform: String, CaseIterable {
       case .visionOSSimulator: return .visionOSSimulator
       case .tvOS: return .tvOS
       case .tvOSSimulator: return .tvOSSimulator
-      case .linux: return nil
+      case .linux, .windows: return nil
     }
   }
 
@@ -91,6 +95,7 @@ enum Platform: String, CaseIterable {
       case .visionOS, .visionOSSimulator: return .visionOS
       case .tvOS, .tvOSSimulator: return .tvOS
       case .linux: return .linux
+      case .windows: return .windows
     }
   }
 

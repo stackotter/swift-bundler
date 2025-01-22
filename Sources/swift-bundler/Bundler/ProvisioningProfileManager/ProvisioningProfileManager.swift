@@ -151,13 +151,6 @@ enum ProvisioningProfileManager {
     _ provisioningProfile: URL
   ) -> Result<ProvisioningProfile, Error> {
     #if SUPPORT_XCODEPROJ
-      switch HostPlatform.hostPlatform {
-        case .macOS:
-          break
-        case .linux:
-          return .failure(.hostPlatformNotSupported)
-      }
-
       return Process.create(
         opensslToolPath,
         arguments: [

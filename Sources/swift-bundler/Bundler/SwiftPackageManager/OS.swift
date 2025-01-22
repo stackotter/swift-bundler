@@ -7,6 +7,7 @@ enum OS: String, CaseIterable {
   case visionOS
   case tvOS
   case linux
+  case windows
 
   /// The display name of the os.
   var name: String {
@@ -15,6 +16,8 @@ enum OS: String, CaseIterable {
         return rawValue
       case .linux:
         return "Linux"
+      case .windows:
+        return "Windows"
     }
   }
 }

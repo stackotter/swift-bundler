@@ -2,6 +2,7 @@
 enum HostPlatform {
   case macOS
   case linux
+  case windows
 
   /// The platform's reprsentation in the regular ``Platform`` enum.
   var platform: Platform {
@@ -10,6 +11,8 @@ enum HostPlatform {
         return .macOS
       case .linux:
         return .linux
+      case .windows:
+        return .windows
     }
   }
 
@@ -20,7 +23,7 @@ enum HostPlatform {
     #elseif os(Linux)
       return .linux
     #elseif os(Windows)
-      return .linux
+      return .windows
     #endif
   }
 }

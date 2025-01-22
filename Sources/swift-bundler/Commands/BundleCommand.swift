@@ -94,7 +94,7 @@ struct BundleCommand: ErrorHandledCommand {
       log.error(
         """
         The '\(arguments.bundler.rawValue)' bundler is not supported on the \
-        current host platform. Supported values: \
+        current host platform. Supported bundlers: \
         \(BundlerChoice.supportedHostValuesDescription)
         """
       )
@@ -435,7 +435,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
       case .iOS, .visionOS, .tvOS:
         architectures = [.arm64]
-      case .linux, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+      case .linux, .windows, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         architectures = [BuildArchitecture.current]
     }
 
