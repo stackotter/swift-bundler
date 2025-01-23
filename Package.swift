@@ -27,7 +27,9 @@ let package = Package(
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
     .package(url: "https://github.com/kylef/PathKit", from: "1.0.1"),
     .package(url: "https://github.com/apple/swift-certificates", from: "1.7.0"),
-    .package(url: "https://github.com/apple/swift-asn1.git", from: "1.1.0"),
+    .package(url: "https://github.com/apple/swift-asn1", from: "1.1.0"),
+    .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
+    .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
@@ -43,6 +45,8 @@ let package = Package(
         "Version",
         "Yams",
         "SwiftBundlerBuilders",
+        "XMLCoder",
+        .product(name: "Crypto", package: "swift-crypto"),
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),
         .product(name: "StackOtterArgParser", package: "swift-arg-parser"),
@@ -52,6 +56,7 @@ let package = Package(
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
 
+        // Xcodeproj related dependencies
         .product(
           name: "XcodeProj",
           package: "XcodeProj",
@@ -73,6 +78,7 @@ let package = Package(
           condition: .when(platforms: [.macOS])
         ),
 
+        // Hot reloading related dependencies
         .product(
           name: "Socket",
           package: "Socket",

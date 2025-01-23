@@ -5,6 +5,7 @@ enum BundlerChoice: String, CaseIterable {
   case linuxAppImage
   case linuxRPM
   case windowsGeneric
+  case windowsMSI
 
   /// The bundler this choice corresponds to.
   var bundler: any Bundler.Type {
@@ -19,6 +20,8 @@ enum BundlerChoice: String, CaseIterable {
         return RPMBundler.self
       case .windowsGeneric:
         return GenericWindowsBundler.self
+      case .windowsMSI:
+        return MSIBundler.self
     }
   }
 
@@ -61,7 +64,7 @@ enum BundlerChoice: String, CaseIterable {
         ]
       case .linuxGeneric, .linuxAppImage, .linuxRPM:
         return [.linux]
-      case .windowsGeneric:
+      case .windowsGeneric, .windowsMSI:
         return [.windows]
     }
   }

@@ -232,8 +232,13 @@ enum SwiftPackageManager {
     buildContext: BuildContext
   ) -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
-    switch buildContext.platform.asApplePlatform?.partitioned {
-      case .other(let nonMacApplePlatform):
+    switch buildContext.platform {
+      case .windows:
+        let frontendArguments = ["-entry-point-function-name", "wWinMain"]
+        let swiftcArguments = frontendArguments.flatMap { ["-Xfrontend", $0] }
+        platformArguments = swiftcArguments.flatMap { ["-Xswiftc", $0] }
+      case .iOS, .visionOS, .tvOS,
+        .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms
         let sdkPath: String
         switch getLatestSDKPath(for: buildContext.platform) {
@@ -249,19 +254,22 @@ enum SwiftPackageManager {
         let hostArchitecture = BuildArchitecture.current
 
         let targetTriple: LLVMTargetTriple
-        switch nonMacApplePlatform {
-          case .physical(.iOS):
+        switch buildContext.platform {
+          case .iOS:
             targetTriple = .apple(.arm64, .iOS(platformVersion))
-          case .physical(.visionOS):
+          case .visionOS:
             targetTriple = .apple(.arm64, .visionOS(platformVersion))
-          case .physical(.tvOS):
+          case .tvOS:
             targetTriple = .apple(.arm64, .tvOS(platformVersion))
-          case .simulator(.iOS):
+          case .iOSSimulator:
             targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
-          case .simulator(.visionOS):
+          case .visionOSSimulator:
             targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
-          case .simulator(.tvOS):
+          case .tvOSSimulator:
             targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
+          case .macOS, .linux, .windows:
+            // TODO: Refactor to make this properly unreachable
+            fatalError("Supposedly unreachable...")
         }
 
         platformArguments =
@@ -273,7 +281,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
-      case .macOS, .none:
+      case .macOS, .linux:
         // Handle macOS and all non-Apple platforms
         platformArguments = []
     }

@@ -94,7 +94,7 @@ enum GenericWindowsBundler: Bundler {
     "vcruntime140_1",
     "vcruntime140_threads",
     "dispatch",
-  ].map { "\($0).dll" }
+  ].map { "\($0).dll".lowercased() }
 
   static func computeContext(
     context: BundlerContext,
@@ -179,7 +179,8 @@ enum GenericWindowsBundler: Bundler {
         )
       }
       .andThen { _ in
-        copyDynamicLibraryDependencies(
+        log.info("Copying dynamic libraries (and Swift runtime)")
+        return copyDynamicLibraryDependencies(
           of: structure.mainExecutable,
           to: structure.modules,
           productsDirectory: context.productsDirectory
@@ -210,7 +211,6 @@ enum GenericWindowsBundler: Bundler {
     to destination: URL,
     productsDirectory: URL
   ) -> Result<Void, Error> {
-    log.info("Copying dynamic libraries (and Swift runtime)")
     let productsDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
     return Process.create(
       "dumpbin",
@@ -261,12 +261,11 @@ enum GenericWindowsBundler: Bundler {
         // copy it across if it's known (cause there are many DLLs, such as
         // ones shipped with Windows, that we shouldn't be distributing with
         // apps).
-        guard dllBundlingAllowList.contains(dllName) else {
+        guard dllBundlingAllowList.contains(dllName.lowercased()) else {
           return .success(nil)
         }
 
         // Parse the PATH environment variable.
-        print(ProcessInfo.processInfo.environment)
         let pathVar = ProcessInfo.processInfo.environment["Path"] ?? ""
         let pathDirectories = pathVar.split(separator: ";").map { path in
           URL(fileURLWithPath: String(path))
