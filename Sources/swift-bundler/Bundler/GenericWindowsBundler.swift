@@ -300,11 +300,22 @@ enum GenericWindowsBundler: Bundler {
         let resolvedSourceFile = dll.actuallyResolvingSymlinksInPath()
 
         log.debug("Copying '\(dll.path)'")
+        let pdbFile = resolvedSourceFile.replacingPathExtension(with: "pdb")
         return FileManager.default.copyItem(
           at: resolvedSourceFile,
           to: destinationFile,
           onError: Error.failedToCopyDLL
-        ).andThen { _ in
+        ).andThen(if: pdbFile.exists()) { _ in
+          // Copy dll's pdb file if present
+          let destinationPDBFile = destinationFile.replacingPathExtension(
+            with: "pdb"
+          )
+          return FileManager.default.copyItem(
+            at: pdbFile,
+            to: destinationPDBFile,
+            onError: Error.failedToCopyPDB
+          )
+        }.andThen { _ in
           // Recurse to ensure that we copy indirect dependencies of the main
           // executable as well as the direct ones that `dumpbin` lists.
           copyDynamicLibraryDependencies(
@@ -356,20 +367,30 @@ enum GenericWindowsBundler: Bundler {
     }
   }
 
-  /// Copies the built executable into the app bundle.
+  /// Copies the built executable into the app bundle. Also copies the
+  /// executable's corresponding `.pdb` debug info file if found.
   /// - Parameters:
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occus, a failure is returned.
   private static func copyExecutable(
-    at source: URL, to destination: URL
+    at source: URL,
+    to destination: URL
   ) -> Result<Void, Error> {
     log.info("Copying executable")
-    do {
-      try FileManager.default.copyItem(at: source, to: destination)
-      return .success()
-    } catch {
-      return .failure(.failedToCopyExecutable(source: source, destination: destination, error))
+
+    let pdbFile = source.replacingPathExtension(with: "pdb")
+    return FileManager.default.copyItem(
+      at: source,
+      to: destination,
+      onError: Error.failedToCopyExecutable
+    ).andThen(if: pdbFile.exists()) { _ in
+      let pdbDestination = destination.replacingPathExtension(with: "pdb")
+      return FileManager.default.copyItem(
+        at: source,
+        to: pdbDestination,
+        onError: Error.failedToCopyPDB
+      )
     }
   }
 }

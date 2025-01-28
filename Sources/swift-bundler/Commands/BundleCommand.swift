@@ -554,7 +554,8 @@ struct BundleCommand: ErrorHandledCommand {
         additionalArguments: isUsingXcodebuild
           ? arguments.additionalXcodeBuildArguments
           : arguments.additionalSwiftPMArguments,
-        hotReloadingEnabled: hotReloadingEnabled
+        hotReloadingEnabled: hotReloadingEnabled,
+        isGUIExecutable: true
       )
 
       // Get build output directory

@@ -15,6 +15,19 @@ extension URL {
     let destComponents = self.pathComponents
     let baseComponents = base.pathComponents
 
+    // If we're on Windows and the URLs point to two different drives,
+    // just return the full absolute path.
+    if HostPlatform.hostPlatform == .windows,
+      destComponents.count >= 2,
+      baseComponents.count >= 2,
+      destComponents[0] == "/",
+      baseComponents[0] == "/",
+      // The drive letters follow the `/` component.
+      destComponents[1] != baseComponents[1]
+    {
+      return self.path
+    }
+
     // Find number of common path components:
     var commonComponentCount = 0
     while commonComponentCount < destComponents.count
@@ -55,6 +68,11 @@ extension URL {
   /// Gets whether the URL exists on disk or not.
   func exists() -> Bool {
     FileManager.default.fileExists(atPath: path)
+  }
+
+  /// Returns a copy of the URL with its path extension replaced.
+  func replacingPathExtension(with newExtension: String) -> URL {
+    deletingPathExtension().appendingPathExtension(newExtension)
   }
 }
 

@@ -8,22 +8,20 @@ import Rainbow
 @main
 struct Main {
   static func main() {
-    #if os(macOS) || os(Linux)
-      // Kill all running processes on exit
-      for signal in Signal.allCases {
-        trap(signal) {
-          for process in processes {
-            process.terminate()
-          }
-          #if os(Linux)
-            for pid in appImagePIDs {
-              kill(pid, SIGKILL)
-            }
-          #endif
-          Foundation.exit(1)
+    // Kill all running processes on exit
+    for signal in Signal.allCases {
+      trap(signal) {
+        for process in processes {
+          process.terminate()
         }
+        #if os(Linux)
+          for pid in appImagePIDs {
+            kill(pid, SIGKILL)
+          }
+        #endif
+        Foundation.exit(1)
       }
-    #endif
+    }
 
     #if os(macOS)
       // Disable colored output if run from Xcode (the Xcode console does not support colors)

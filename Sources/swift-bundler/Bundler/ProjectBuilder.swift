@@ -310,7 +310,9 @@ enum ProjectBuilder {
               toolsVersion,
               builderAPI: configuration.builder.api.normalized(
                 usingDefault: SwiftBundler.gitURL
-              )
+              ),
+              rootPackageDirectory: packageDirectory,
+              builderPackageDirectory: scratchDirectory.builder
             )
           }
           .andThen { manifestContents in
@@ -326,7 +328,8 @@ enum ProjectBuilder {
           configuration: .debug,
           architectures: [.current],
           platform: .host,
-          additionalArguments: []
+          additionalArguments: [],
+          isGUIExecutable: false
         )
 
         return SwiftPackageManager.build(
@@ -339,9 +342,14 @@ enum ProjectBuilder {
         }
       }
       .andThen { productsDirectory in
+        let builderFileName = HostPlatform.hostPlatform.executableFileName(
+          forBaseName: builderProductName
+        )
+
         let inputPipe = Pipe()
         let process = Process()
-        process.executableURL = productsDirectory / builderProductName
+
+        process.executableURL = productsDirectory / builderFileName
         process.standardInput = inputPipe
         process.currentDirectoryURL = scratchDirectory.sources
           .actuallyResolvingSymlinksInPath()
@@ -368,8 +376,7 @@ enum ProjectBuilder {
           if status == 0 {
             return .success()
           } else {
-            let processError = ProcessError.nonZeroExitStatus(status)
-            return .failure(Error.builderFailed(processError))
+            return .failure(ProcessError.nonZeroExitStatus(status))
           }
         }.ifFailure { _ in
           if process.isRunning {
@@ -381,15 +388,19 @@ enum ProjectBuilder {
 
   static func generateBuilderPackageManifest(
     _ swiftVersion: Version,
-    builderAPI: ProjectConfiguration.Source.Flat
+    builderAPI: ProjectConfiguration.Source.Flat,
+    rootPackageDirectory: URL,
+    builderPackageDirectory: URL
   ) -> String {
     let dependency: String
     switch builderAPI {
       case .local(let path):
+        let fullPath = rootPackageDirectory / path
+        let relativePath = fullPath.path(relativeTo: builderPackageDirectory)
         dependency = """
                   .package(
                       name: "swift-bundler",
-                      path: "\(path)"
+                      path: "\(relativePath)"
                   )
           """
       case .git(let url, let requirement):

@@ -167,7 +167,7 @@ enum VariableEvaluator {
           "git",
           arguments: ["rev-list", "--count", "HEAD"],
           directory: packageDirectory
-        ).getOutput()
+        ).getOutput(excludeStdError: true)
 
         guard case let .success(string) = result else {
           return .failure(.failedToEvaluateRevisionNumber(directory: packageDirectory))

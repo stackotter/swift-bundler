@@ -26,4 +26,16 @@ enum HostPlatform {
       return .windows
     #endif
   }
+
+  /// Computes the file name (with file extension) that an executable
+  /// with the given base name (no file extension) would have on the
+  /// given host platform.
+  func executableFileName(forBaseName baseName: String) -> String {
+    switch self {
+      case .windows:
+        return "\(baseName).exe"
+      case .macOS, .linux:
+        return baseName
+    }
+  }
 }

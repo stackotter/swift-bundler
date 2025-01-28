@@ -26,6 +26,12 @@ enum SwiftPackageManager {
     /// Controls whether the hot reloading environment variables are added to
     /// the build command or not.
     var hotReloadingEnabled: Bool = false
+    /// Specifically controls whether whether the product gets built as a console
+    /// or a GUI exe on Windows. Doesn't affect other platforms. On Windows, exes
+    /// are either console executables (which open a command prompt window when
+    /// double clicked) or GUI executables (which open normally when double clicked
+    /// but can't really be run from command prompt because they instantly detach).
+    var isGUIExecutable: Bool
   }
 
   /// Creates a new package using the given directory as the package's root directory.
@@ -234,9 +240,28 @@ enum SwiftPackageManager {
     let platformArguments: [String]
     switch buildContext.platform {
       case .windows:
-        let frontendArguments = ["-entry-point-function-name", "wWinMain"]
-        let swiftcArguments = frontendArguments.flatMap { ["-Xfrontend", $0] }
-        platformArguments = swiftcArguments.flatMap { ["-Xswiftc", $0] }
+        let debugArguments: [String]
+        let guiArguments: [String]
+
+        if buildContext.configuration == .debug {
+          debugArguments = [
+            "-Xswiftc", "-g",
+            "-Xswiftc", "-debug-info-format=codeview",
+            "-Xlinker", "-debug",
+          ]
+        } else {
+          debugArguments = []
+        }
+
+        if buildContext.isGUIExecutable {
+          let frontendArguments = ["-entry-point-function-name", "wWinMain"]
+          let swiftcArguments = frontendArguments.flatMap { ["-Xfrontend", $0] }
+          guiArguments = swiftcArguments.flatMap { ["-Xswiftc", $0] }
+        } else {
+          guiArguments = []
+        }
+
+        platformArguments = debugArguments + guiArguments
       case .iOS, .visionOS, .tvOS,
         .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms

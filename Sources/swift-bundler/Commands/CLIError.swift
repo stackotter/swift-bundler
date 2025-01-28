@@ -43,10 +43,10 @@ enum CLIError: LocalizedError {
           version for the relevant platform in the 'platforms' field of \
           '\(manifest.relativePath)'
           """
-      case .failedToRemoveExistingOutputs(let outputDirectory, _):
+      case .failedToRemoveExistingOutputs(let outputDirectory, let error):
         return """
           Failed to remove existing bundler outputs at \
-          '\(outputDirectory.relativePath)'
+          '\(outputDirectory.relativePath): \(error.localizedDescription)'
           """
       case .invalidXcodeprojDetected:
         return
