@@ -175,7 +175,8 @@ struct RunCommand: ErrorHandledCommand {
                       platform: device.platform,
                       platformVersion: platformVersion,
                       additionalArguments: arguments.additionalSwiftPMArguments,
-                      hotReloadingEnabled: true
+                      hotReloadingEnabled: true,
+                      isGUIExecutable: true
                     )
                   ).unwrap()
                   log.info("Successfully built dylib")

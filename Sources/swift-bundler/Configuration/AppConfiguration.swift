@@ -34,6 +34,10 @@ struct AppConfiguration: Codable {
   /// Conditionally applied configuration overlays.
   var overlays: [Overlay]?
 
+  /// Only available in overlays with `platform(Linux)` or stronger. Sets whether
+  /// Swift Bundler generates a D-Bus service file for the application or not.
+  var dbusActivatable = false
+
   private enum CodingKeys: String, CodingKey {
     case identifier
     case product
@@ -108,13 +112,15 @@ struct AppConfiguration: Codable {
     }
   }
 
-  struct Overlay: Codable {
-    static let exclusiveProperties: [Condition: PropertySet] = [
+  struct Overlay: Codable, ConfigurationOverlay {
+    typealias Base = AppConfiguration
+
+    static let exclusiveProperties: [OverlayCondition: PropertySet<Self>] = [
       .platform("linux"): PropertySet()
         .add(.dbusActivatable, \.dbusActivatable)
     ]
 
-    var condition: Condition
+    var condition: OverlayCondition
     var identifier: String?
     var product: String?
     var version: String?
@@ -140,74 +146,17 @@ struct AppConfiguration: Codable {
       case dbusActivatable = "dbus_activatable"
     }
 
-    struct PropertySet {
-      var propertyPresenceCheckers: [(name: String, checker: (Overlay) -> Bool)] = []
-
-      func add<T>(
-        _ codingKey: CodingKeys,
-        _ property: KeyPath<Overlay, T?>
-      ) -> PropertySet {
-        var list = self
-        list.propertyPresenceCheckers.append(
-          (
-            codingKey.rawValue,
-            { overlay in
-              overlay[keyPath: property] != nil
-            }
-          )
-        )
-        return list
-      }
-
-      func propertiesPresent(in overlay: Overlay) -> [String] {
-        propertyPresenceCheckers.filter { (_, check) in
-          check(overlay)
-        }.map(\.0)
-      }
-    }
-
-    enum Condition: Codable, Hashable, CustomStringConvertible {
-      case platform(String)
-
-      var description: String {
-        switch self {
-          case .platform(let identifier):
-            return "platform(\(identifier))"
-        }
-      }
-
-      init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let value = try container.decode(String.self)
-
-        let parser = Parse {
-          "platform("
-          OneOf {
-            for platform in Platform.allCases {
-              platform.rawValue.map {
-                platform
-              }
-            }
-          }
-          ")"
-        }.map { platform in
-          Condition.platform(platform.rawValue)
-        }
-
-        self = try parser.parse(value)
-      }
-
-      func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-
-        let value: String
-        switch self {
-          case .platform(let identifier):
-            value = "platform\(identifier)"
-        }
-
-        try container.encode(value)
-      }
+    func merge(into base: inout Base) {
+      Self.merge(&base.identifier, identifier)
+      Self.merge(&base.product, product)
+      Self.merge(&base.version, version)
+      Self.merge(&base.category, category)
+      Self.merge(&base.icon, icon)
+      Self.merge(&base.urlSchemes, urlSchemes)
+      Self.merge(&base.plist, plist)
+      Self.merge(&base.metadata, metadata)
+      Self.merge(&base.dependencies, dependencies)
+      Self.merge(&base.dbusActivatable, dbusActivatable)
     }
   }
 

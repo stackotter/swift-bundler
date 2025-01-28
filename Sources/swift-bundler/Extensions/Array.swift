@@ -78,7 +78,7 @@ extension [String] {
   }
 
   func joinedGrammatically(
-    withTrailingVerb trailingVerb: Verb?
+    withTrailingVerb trailingVerb: Verb? = nil
   ) -> String {
     let base: String
     let requiresPluralVerb: Bool

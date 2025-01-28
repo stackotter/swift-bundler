@@ -83,27 +83,19 @@ enum PackageConfigurationError: LocalizedError, Equatable {
         if codingKey.stringValue == "bundle_identifier" {
           return "'bundle_identifier' is required for app configuration to be migrated"
         } else {
-          let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+          let path = CodingPath(context.codingPath)
           return "Expected a value at '\(path)'"
         }
       case let error as UnexpectedKeysError:
-        if error.keys.count == 1, let key = error.keys.keys.first {
-          return "Encountered unexpected key '\(key)'"
+        if error.keys.count == 1, let path = error.keys.values.first {
+          return "Encountered unexpected key \(CodingPath(path))"
         } else {
-          // Sort to make error stable
-          let keys = error.keys.keys.sorted()
-
-          // Format as a nice list
-          var keysString = ""
-          for (index, key) in keys.enumerated() {
-            keysString += "'\(key)'"
-            if index == keys.count - 2 {
-              keysString += " and "
-            } else if index < keys.count - 2 {
-              keysString += ", "
-            }
-          }
-          return "Encountered unexpected keys \(keysString)"
+          let paths = error.keys.values.map(CodingPath.init)
+          let pathsString = paths.map(\.description).joinedGrammatically()
+          return """
+            Encountered unexpected \(paths.count == 1 ? "key" : "keys") \
+            \(pathsString)
+            """
         }
       case let error as PlistError:
         return error.localizedDescription

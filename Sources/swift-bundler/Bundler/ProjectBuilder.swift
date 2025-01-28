@@ -16,6 +16,7 @@ enum ProjectBuilder {
     case missingProduct(project: String, product: String, appName: String)
     case failedToBuildProject(name: String, Error)
     case failedToCopyProduct(source: URL, destination: URL, any Swift.Error)
+    case invalidLocalSource(URL)
     case other(any Swift.Error)
 
     /// An internal error used in control flow.
@@ -47,6 +48,11 @@ enum ProjectBuilder {
             Failed to copy product '\(source.lastPathComponent)': \
             \(error.localizedDescription)
             """
+        case .invalidLocalSource(let source):
+          return """
+            Project source directory \
+            '\(source.path(relativeTo: .currentDirectory))' doesn't exist
+            """
         case .other(let error):
           return error.localizedDescription
         case .mismatchedGitURL(let actualURL, let expectedURL):
@@ -59,7 +65,7 @@ enum ProjectBuilder {
   }
 
   struct BuiltProduct {
-    var product: ProjectConfiguration.Product
+    var product: ProjectConfiguration.Product.Flat
     var location: URL
   }
 
@@ -256,6 +262,9 @@ enum ProjectBuilder {
             .mapError(Error.other)
         }.andThen { _ in
           let source = packageDirectory / path
+          guard source.exists() else {
+            return .failure(.invalidLocalSource(source))
+          }
           return FileManager.default.createSymlink(
             at: destination,
             withRelativeDestination: source.path(

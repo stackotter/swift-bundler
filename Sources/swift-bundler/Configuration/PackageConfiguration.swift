@@ -15,7 +15,7 @@ struct PackageConfiguration: Codable {
   /// with different build systems such as CMake.
   var projects: [String: ProjectConfiguration]?
 
-  private enum CodingKeys: String, CodingKey {
+  enum CodingKeys: String, CodingKey {
     case formatVersion = "format_version"
     case apps
     case projects

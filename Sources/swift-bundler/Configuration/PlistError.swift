@@ -12,13 +12,13 @@ enum PlistError: LocalizedError {
   var errorDescription: String? {
     switch self {
       case .invalidValue(let value, let type, let codingPath):
-        let path = codingPath.map(\.stringValue).joined(separator: ".")
+        let path = CodingPath(codingPath)
         return "Invalid \(type) at '\(path)': '\(value)'"
       case .failedToInferType(let codingPath):
-        let path = codingPath.map(\.stringValue).joined(separator: ".")
+        let path = CodingPath(codingPath)
         return "Failed to infer plist value type at '\(path)'"
       case .invalidExplicitlyTypedValue(let type, let codingPath):
-        let path = codingPath.map(\.stringValue).joined(separator: ".")
+        let path = CodingPath(codingPath)
         return "Expected value of type '\(type)' at '\(path).value'"
       case .failedToDeserializePlistFileContents:
         return "Failed to deserialize contents"
