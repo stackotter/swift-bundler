@@ -28,6 +28,17 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
     #endif
 
       process.standardInput = Pipe()
+      let outputPipe = Pipe()
+      process.standardOutput = outputPipe
+      process.standardError = outputPipe
+
+      outputPipe.fileHandleForReading.readabilityHandler = {
+          if let string = String(data: $0.availableData, encoding: .utf8) {
+              print("[output] \(string)", terminator: "")
+          }
+      }
+
+      defer { outputPipe.fileHandleForReading.readabilityHandler = nil }
 
     try await process.runAndWait()
 
