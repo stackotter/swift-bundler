@@ -48,7 +48,7 @@ extension Process {
   func getOutputData(
     excludeStdError: Bool = false,
     handleLine: ((String) -> Void)? = nil
-  ) -> Result<Data, ProcessError> {
+  ) async -> Result<Data, ProcessError> {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
@@ -95,7 +95,7 @@ extension Process {
       handleData(newData)
     }
 
-    return runAndWait()
+    return await runAndWait()
       .map { _ in
         try? pipe.fileHandleForWriting.close()
 
@@ -131,8 +131,8 @@ extension Process {
   /// Gets the process's stdout and stderr as a string.
   /// - Parameter excludeStdError: If `true`, only stdout is returned.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutput(excludeStdError: Bool = false) -> Result<String, ProcessError> {
-    return getOutputData(excludeStdError: excludeStdError)
+  func getOutput(excludeStdError: Bool = false) async -> Result<String, ProcessError> {
+    return await getOutputData(excludeStdError: excludeStdError)
       .andThen { data in
         String(data: data, encoding: .utf8)
           .okOr(.invalidUTF8Output(output: data))
@@ -141,15 +141,23 @@ extension Process {
 
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
-  func runAndWait() -> Result<Void, ProcessError> {
+  func runAndWait() async -> Result<Void, ProcessError> {
     log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? [])")
 
-    return Result {
-      try run()
+    return await Result {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            terminationHandler = { process in
+                continuation.resume()
+            }
+
+            do {
+                try run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
     }.mapError(ProcessError.failedToRunProcess)
       .andThen { _ in
-        waitUntilExit()
-
         let exitStatus = Int(terminationStatus)
         guard exitStatus == 0 else {
           return .failure(.nonZeroExitStatus(exitStatus))
@@ -236,7 +244,7 @@ extension Process {
   /// run the tool through `/usr/bin/env` which will find the tool on the user's `PATH`).
   /// - Parameter tool: The tool to expand into a full path.
   /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
-  static func locate(_ tool: String) -> Result<String, ProcessError> {
+  static func locate(_ tool: String) async -> Result<String, ProcessError> {
     // Restrict the set of inputs to avoid command injection. This is very dodgy but there
     // doesn't seem to be any nice way to call bash built-ins directly with an argument
     // vector. Better approaches are extremely welcome!!
@@ -250,7 +258,7 @@ extension Process {
       return .failure(.invalidToolName(tool))
     }
 
-    return Process.create(
+    return await Process.create(
       "/bin/sh",
       arguments: [
         "-c",
@@ -279,7 +287,7 @@ extension Process {
     _ appImage: String,
     arguments: [String],
     additionalEnvironmentVariables: [String: String] = [:]
-  ) -> Result<Void, ProcessError> {
+  ) async -> Result<Void, ProcessError> {
     #if os(Linux)
       var environment = ProcessInfo.processInfo.environment
       for (key, value) in additionalEnvironmentVariables {
@@ -296,7 +304,7 @@ extension Process {
 
       // Locate the tool or interpret it as a relative/absolute path.
       let executablePath: String
-      switch locate(appImage) {
+      switch await locate(appImage) {
         case .success(let path):
           executablePath = path
         case .failure(.invalidToolName):
@@ -336,7 +344,7 @@ extension Process {
         runSilentlyWhenNotVerbose: false
       )
 
-      return process.runAndWait()
+      return await process.runAndWait()
         .mapError { error in
           .failedToRunProcess(error)
         }

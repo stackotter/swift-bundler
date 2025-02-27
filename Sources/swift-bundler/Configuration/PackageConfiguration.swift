@@ -76,7 +76,7 @@ struct PackageConfiguration: Codable {
     fromDirectory packageDirectory: URL,
     customFile: URL? = nil,
     migrateConfiguration: Bool = false
-  ) -> Result<PackageConfiguration, PackageConfigurationError> {
+  ) async -> Result<PackageConfiguration, PackageConfigurationError> {
     let configurationFile = customFile ?? packageDirectory.appendingPathComponent("Bundler.toml")
 
     // Migrate old configuration if no new configuration exists
@@ -99,12 +99,12 @@ struct PackageConfiguration: Codable {
       }
     }
 
-    return String.read(from: configurationFile)
+    return await String.read(from: configurationFile)
       .mapError { error in
         .failedToReadConfigurationFile(configurationFile, error)
       }
       .andThen { contents in
-        Result {
+        await Result {
           try TOMLDecoder(strictDecoding: true).decode(
             PackageConfiguration.self,
             from: contents
@@ -122,7 +122,7 @@ struct PackageConfiguration: Codable {
           (error) -> Result<PackageConfiguration, PackageConfigurationError> in
           // Maybe the configuration is a Swift Bundler v2 configuration.
           // Attempt to migrate it.
-          Result {
+          await Result {
             try TOMLTable(string: contents)
           }
           .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
@@ -131,7 +131,7 @@ struct PackageConfiguration: Codable {
               return .failure(error)
             }
 
-            return migrateV2Configuration(
+            return await migrateV2Configuration(
               configurationFile,
               mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
             )
@@ -145,7 +145,7 @@ struct PackageConfiguration: Codable {
         return .success()
       }
       .andThen { configuration in
-        VariableEvaluator.evaluateVariables(
+        await VariableEvaluator.evaluateVariables(
           in: configuration,
           packageDirectory: packageDirectory
         ).mapError { error in
@@ -164,13 +164,13 @@ struct PackageConfiguration: Codable {
   static func migrateV2Configuration(
     _ configurationFile: URL,
     mode: MigrationMode
-  ) -> Result<PackageConfiguration, PackageConfigurationError> {
+  ) async -> Result<PackageConfiguration, PackageConfigurationError> {
     if mode == .readOnly {
       log.warning("'\(configurationFile.relativePath)' is outdated.")
       log.warning("Run 'swift bundler migrate' to migrate it to the latest config format.")
     }
 
-    return String.read(from: configurationFile)
+    return await String.read(from: configurationFile)
       .mapError { error in
         PackageConfigurationError
           .failedToReadConfigurationFile(configurationFile, error)
@@ -200,7 +200,7 @@ struct PackageConfiguration: Codable {
       }
       .map { oldConfiguration in
         // Migrate the configuration
-        oldConfiguration.migrate()
+        await oldConfiguration.migrate()
       }
       .andThenDoSideEffect { configuration in
         // Write the changes if requested

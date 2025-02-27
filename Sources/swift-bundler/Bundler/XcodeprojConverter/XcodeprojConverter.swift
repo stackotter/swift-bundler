@@ -13,7 +13,7 @@ enum XcodeprojConverter {
   static func convertWorkspace(
     _ xcodeWorkspaceFile: URL,
     outputDirectory: URL
-  ) -> Result<Void, XcodeprojConverterError> {
+  ) async -> Result<Void, XcodeprojConverterError> {
     #if SUPPORT_XCODEPROJ
       // Ensure that output directory doesn't already exist
       guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
@@ -40,7 +40,7 @@ enum XcodeprojConverter {
 
         log.info("Converting '\(projectName)' (\(index)/\(total))")
 
-        let result = convertProject(
+        let result = await convertProject(
           project,
           outputDirectory: outputDirectory.appendingPathComponent(projectName)
         )
@@ -69,7 +69,7 @@ enum XcodeprojConverter {
   static func convertProject(
     _ xcodeProjectFile: URL,
     outputDirectory: URL
-  ) -> Result<Void, XcodeprojConverterError> {
+  ) async -> Result<Void, XcodeprojConverterError> {
     #if SUPPORT_XCODEPROJ
       // Ensure that output directory doesn't already exist
       guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
@@ -80,7 +80,7 @@ enum XcodeprojConverter {
       let sourcesDirectory = outputDirectory.appendingPathComponent("Sources")
 
       // Load xcodeproj
-      return Result {
+      return await Result {
         try XcodeProj(pathString: xcodeProjectFile.path)
       }
       .mapError { error in
@@ -88,7 +88,7 @@ enum XcodeprojConverter {
       }
       .andThen { project in
         // Extract and convert targets
-        extractTargets(from: project, rootDirectory: projectRootDirectory)
+        await extractTargets(from: project, rootDirectory: projectRootDirectory)
       }
       .andThen { targets in
         // Copy targets and then create configuration files
@@ -174,7 +174,7 @@ enum XcodeprojConverter {
     private static func extractTargets(
       from project: XcodeProj,
       rootDirectory: URL
-    ) -> Result<([any XcodeTarget]), XcodeprojConverterError> {
+    ) async -> Result<([any XcodeTarget]), XcodeprojConverterError> {
       var targets: [any XcodeTarget] = []
       for target in project.pbxproj.nativeTargets {
         let name = target.name
@@ -228,18 +228,18 @@ enum XcodeprojConverter {
             log.warning("Could not find target iOS version, assuming 15.0")
           }
 
-          let evaluate = { (value: String) -> String in
-            evaluateBuildSetting(value, targetName: name)
+          let evaluate = { (value: String) async -> String in
+            await evaluateBuildSetting(value, targetName: name)
           }
 
-          let infoPlist: URL? = infoPlistPath.map { (path: String) -> URL in
-            return rootDirectory.appendingPathComponent(evaluate(path))
+          let infoPlist: URL? = await infoPlistPath.asyncMap { (path: String) -> URL in
+            return await rootDirectory.appendingPathComponent(evaluate(path))
           }
 
-          targets.append(
+          await targets.append(
             ExecutableTarget(
               name: name,
-              identifier: identifier.map(evaluate),
+              identifier: identifier.asyncMap(evaluate),
               version: version,
               sources: sources,
               resources: resources ?? [],
@@ -300,8 +300,8 @@ enum XcodeprojConverter {
     ///   - value: The value to evaluate variables in.
     ///   - targetName: The name of the target the value is from.
     /// - Returns: The evaluated string, or the original string if there are unknown variables.
-    private static func evaluateBuildSetting(_ value: String, targetName: String) -> String {
-      let result = VariableEvaluator.evaluateVariables(
+    private static func evaluateBuildSetting(_ value: String, targetName: String) async -> String {
+      let result = await VariableEvaluator.evaluateVariables(
         in: value,
         with: .default(
           .init(

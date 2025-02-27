@@ -23,7 +23,7 @@ enum DynamicLibraryBundler {
     isXcodeBuild: Bool,
     universal: Bool,
     makeStandAlone: Bool
-  ) -> Result<Void, DynamicLibraryBundlerError> {
+  ) async -> Result<Void, DynamicLibraryBundlerError> {
     log.info("Copying dynamic libraries")
 
     // Update the app's rpath
@@ -34,7 +34,7 @@ enum DynamicLibraryBundler {
         "/usr/bin/install_name_tool",
         arguments: ["-rpath", original, new, appExecutable.path]
       )
-      if case let .failure(error) = process.runAndWait() {
+      if case let .failure(error) = await process.runAndWait() {
         return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
       }
     }
@@ -82,7 +82,7 @@ enum DynamicLibraryBundler {
       }
 
       // Update the install name of the library to reflect the change of location relative to the executable
-      let result = updateLibraryInstallName(
+      let result = await updateLibraryInstallName(
         of: name,
         in: appExecutable,
         originalLibraryLocation: library,
@@ -95,7 +95,7 @@ enum DynamicLibraryBundler {
     }
 
     if makeStandAlone {
-      return moveSystemWideLibraryDependencies(
+      return await moveSystemWideLibraryDependencies(
         of: appExecutable,
         to: outputDirectory,
         for: appExecutable
@@ -109,10 +109,10 @@ enum DynamicLibraryBundler {
     of binary: URL,
     to directory: URL,
     for executable: URL
-  ) -> Result<Void, DynamicLibraryBundlerError> {
+  ) async -> Result<Void, DynamicLibraryBundlerError> {
     let otoolOutput: String
     let process = Process.create("/usr/bin/otool", arguments: ["-L", binary.path])
-    switch process.getOutput() {
+    switch await process.getOutput() {
       case .success(let output):
         otoolOutput = output
       case .failure(let error):
@@ -159,7 +159,7 @@ enum DynamicLibraryBundler {
         relativeTo: executable.deletingLastPathComponent()
       )
 
-      if case let .failure(error) = updateLibraryInstallName(
+      if case let .failure(error) = await updateLibraryInstallName(
         in: binary,
         original: dependency.path,
         new: "@rpath/\(newRelativePath)"
@@ -168,7 +168,7 @@ enum DynamicLibraryBundler {
       }
 
       if !libraryAlreadyCopied {
-        let result = moveSystemWideLibraryDependencies(
+        let result = await moveSystemWideLibraryDependencies(
           of: outputLibrary,
           to: directory,
           for: executable
@@ -178,7 +178,7 @@ enum DynamicLibraryBundler {
         }
       }
 
-      if case let .failure(error) = CodeSigner.signAdHoc(file: outputLibrary) {
+      if case let .failure(error) = await CodeSigner.signAdHoc(file: outputLibrary) {
         return .failure(.failedToSignMovedLibrary(error))
       }
     }
@@ -202,7 +202,7 @@ enum DynamicLibraryBundler {
     originalLibraryLocation: URL,
     newLibraryLocation: URL,
     librarySearchDirectory: URL
-  ) -> Result<Void, DynamicLibraryBundlerError> {
+  ) async -> Result<Void, DynamicLibraryBundlerError> {
     let originalRelativePath = originalLibraryLocation.path(
       relativeTo: librarySearchDirectory
     )
@@ -210,7 +210,7 @@ enum DynamicLibraryBundler {
       relativeTo: executable.deletingLastPathComponent()
     )
 
-    return updateLibraryInstallName(
+    return await updateLibraryInstallName(
       in: executable,
       original: "@rpath/\(originalRelativePath)",
       new: "@rpath/\(newRelativePath)"
@@ -227,7 +227,7 @@ enum DynamicLibraryBundler {
     in executable: URL,
     original originalInstallName: String,
     new newInstallName: String
-  ) -> Result<Void, DynamicLibraryBundlerError> {
+  ) async -> Result<Void, DynamicLibraryBundlerError> {
     let process = Process.create(
       "/usr/bin/install_name_tool",
       arguments: [
@@ -238,7 +238,7 @@ enum DynamicLibraryBundler {
       ]
     )
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       .failedToUpdateLibraryInstallName(
         library: nil,
         original: originalInstallName,

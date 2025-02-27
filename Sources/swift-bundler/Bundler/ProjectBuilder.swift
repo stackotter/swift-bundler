@@ -78,9 +78,9 @@ enum ProjectBuilder {
     appName: String,
     platform: Platform,
     dryRun: Bool
-  ) -> Result<[String: BuiltProduct], Error> {
+  ) async -> Result<[String: BuiltProduct], Error> {
     var builtProjects: Set<String> = []
-    return dependencies.tryMap {
+    return await dependencies.tryMap {
       dependency -> Result<(String, BuiltProduct), Error> in
       let projectName = dependency.project
 
@@ -126,18 +126,18 @@ enum ProjectBuilder {
         return .success(successValue)
       }
 
-      return Result.success()
+      return await Result.success()
         .andThen(if: requiresBuilding) { _ in
           // Set up required directories and build whole project
           log.info("Building project '\(projectName)'")
-          return Result.success()
+          return await Result.success()
             .andThenDoSideEffect(if: productsDirectoryExists) { _ in
               FileManager.default.removeItem(at: projectScratchDirectory.products)
                 .mapError(Error.other)
             }.andThen { _ in
               projectScratchDirectory.createRequiredDirectories()
             }.andThen { _ in
-              ProjectBuilder.buildProject(
+              await ProjectBuilder.buildProject(
                 projectName,
                 configuration: project,
                 packageDirectory: packageDirectory,
@@ -202,9 +202,9 @@ enum ProjectBuilder {
     _ source: ProjectConfiguration.Source.Flat,
     at destination: URL,
     packageDirectory: URL
-  ) -> Result<(), Error> {
-    func clone(_ repository: URL, to destination: URL) -> Result<(), Error> {
-      Process.create(
+  ) async -> Result<(), Error> {
+    func clone(_ repository: URL, to destination: URL) async -> Result<(), Error> {
+      await Process.create(
         "git",
         arguments: [
           "clone",
@@ -222,7 +222,7 @@ enum ProjectBuilder {
 
     switch source {
       case .git(let url, let requirement):
-        return Process.create(
+        return await Process.create(
           "git",
           arguments: [
             "remote",
@@ -237,11 +237,11 @@ enum ProjectBuilder {
           }
           return .success()
         }.tryRecover { _ in
-          Result.success().andThen(if: destinationExists) { _ in
+          await Result.success().andThen(if: destinationExists) { _ in
             FileManager.default.removeItem(at: destination)
               .mapError(Error.other)
           }.andThen { _ in
-            clone(url, to: destination)
+            await clone(url, to: destination)
           }
         }.andThen { _ in
           let revision: String
@@ -250,7 +250,7 @@ enum ProjectBuilder {
               revision = value
           }
 
-          return Process.create(
+          return await Process.create(
             "git",
             arguments: ["checkout", revision],
             directory: destination
@@ -282,16 +282,16 @@ enum ProjectBuilder {
     configuration: ProjectConfiguration.Flat,
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure
-  ) -> Result<Void, Error> {
+  ) async -> Result<Void, Error> {
     // Just sitting here to raise alarms when more types are added
     switch configuration.builder.type {
       case .wholeProject:
         break
     }
 
-    return Result.success()
+    return await Result.success()
       .andThen { _ in
-        checkoutSource(
+        await checkoutSource(
           configuration.source,
           at: scratchDirectory.sources,
           packageDirectory: packageDirectory
@@ -312,7 +312,7 @@ enum ProjectBuilder {
       }
       .andThen { _ in
         // Create/update the builder's Package.swift
-        SwiftPackageManager.getToolsVersion(packageDirectory)
+        await SwiftPackageManager.getToolsVersion(packageDirectory)
           .mapError(Error.other)
           .map { toolsVersion in
             generateBuilderPackageManifest(
@@ -341,11 +341,11 @@ enum ProjectBuilder {
           isGUIExecutable: false
         )
 
-        return SwiftPackageManager.build(
+        return await SwiftPackageManager.build(
           product: builderProductName,
           buildContext: buildContext
         ).andThen { _ in
-          SwiftPackageManager.getProductsDirectory(buildContext)
+          await SwiftPackageManager.getProductsDirectory(buildContext)
         }.mapError { error in
           Error.failedToBuildBuilder(name: configuration.builder.name, error)
         }

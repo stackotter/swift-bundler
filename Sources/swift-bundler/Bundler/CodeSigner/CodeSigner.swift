@@ -30,8 +30,8 @@ enum CodeSigner {
     for bundle: URL,
     identityId: String,
     bundleIdentifier: String
-  ) -> Result<Void, CodeSignerError> {
-    return extractTeamIdentifier(from: bundle)
+  ) async -> Result<Void, CodeSignerError> {
+    return await extractTeamIdentifier(from: bundle)
       .map { teamIdentifier -> String in
         let content = generateEntitlementsContent(
           teamIdentifier: teamIdentifier,
@@ -68,7 +68,7 @@ enum CodeSigner {
     bundleIdentifier: String,
     platform: ApplePlatform,
     entitlements: URL?
-  ) -> Result<Void, CodeSignerError> {
+  ) async -> Result<Void, CodeSignerError> {
     log.info("Codesigning app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
@@ -84,7 +84,7 @@ enum CodeSigner {
       }
 
       for file in contents where file.pathExtension == "dylib" {
-        if case let .failure(error) = sign(file: file, identityId: identityId) {
+        if case let .failure(error) = await sign(file: file, identityId: identityId) {
           return .failure(error)
         }
       }
@@ -101,7 +101,7 @@ enum CodeSigner {
 
       entitlementsFile = file
 
-      if case .failure(let error) = CodeSigner.generateEntitlementsFile(
+      if case .failure(let error) = await CodeSigner.generateEntitlementsFile(
         at: file,
         for: bundle,
         identityId: identityId,
@@ -113,7 +113,7 @@ enum CodeSigner {
       entitlementsFile = nil
     }
 
-    return sign(
+    return await sign(
       file: bundle,
       identityId: identityId,
       entitlements: entitlementsFile
@@ -130,7 +130,7 @@ enum CodeSigner {
     file: URL,
     identityId: String,
     entitlements: URL? = nil
-  ) -> Result<Void, CodeSignerError> {
+  ) async -> Result<Void, CodeSignerError> {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
@@ -153,7 +153,7 @@ enum CodeSigner {
       arguments: arguments
     )
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       return .failedToRunCodesignTool(error)
     }
   }
@@ -161,26 +161,26 @@ enum CodeSigner {
   /// Signs a binary or app bundle using ad-hoc signing.
   /// - Parameter file: The file to sign.
   /// - Returns: A failure if the `codesign` command fails.
-  static func signAdHoc(file: URL) -> Result<Void, CodeSignerError> {
+  static func signAdHoc(file: URL) async -> Result<Void, CodeSignerError> {
     let process = Process.create(
       codesignToolPath,
       arguments: ["--force", "-s", "-", file.path]
     )
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       return .failedToRunCodesignTool(error)
     }
   }
 
   /// Enumerates the user's available codesigning identities.
   /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
-  static func enumerateIdentities() -> Result<[Identity], CodeSignerError> {
+  static func enumerateIdentities() async -> Result<[Identity], CodeSignerError> {
     let process = Process.create(
       securityToolPath,
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
-    return process.getOutput()
+    return await process.getOutput()
       .mapError { error in
         return .failedToEnumerateIdentities(error)
       }
@@ -228,8 +228,8 @@ enum CodeSigner {
   /// a substring of an identity's display name.
   static func resolveIdentity(
     shortName: String
-  ) -> Result<Identity, CodeSignerError> {
-    enumerateIdentities().map { identities in
+  ) async -> Result<Identity, CodeSignerError> {
+    await enumerateIdentities().map { identities in
       identities.filter { identity in
         identity.id == shortName || identity.name.contains(shortName)
       }
@@ -251,8 +251,8 @@ enum CodeSigner {
     }
   }
 
-  static func loadCertificates(for identity: Identity) -> Result<[Certificate], CodeSignerError> {
-    Process.create(
+  static func loadCertificates(for identity: Identity) async -> Result<[Certificate], CodeSignerError> {
+    await Process.create(
       securityToolPath,
       arguments: [
         "find-certificate", "-c", identity.name, "-p", "-a",
@@ -281,9 +281,9 @@ enum CodeSigner {
     }
   }
 
-  static func getLatestCertificate(for identity: Identity) -> Result<Certificate, CodeSignerError> {
+  static func getLatestCertificate(for identity: Identity) async -> Result<Certificate, CodeSignerError> {
     let now = Date()
-    return loadCertificates(for: identity).andThen { certificates in
+    return await loadCertificates(for: identity).andThen { certificates in
       guard
         let latest = certificates.filter({ certificate in
           certificate.notValidAfter > now
@@ -298,8 +298,8 @@ enum CodeSigner {
     }
   }
 
-  static func getTeamIdentifier(for identity: Identity) -> Result<String, CodeSignerError> {
-    getLatestCertificate(for: identity).andThen { certificate in
+  static func getTeamIdentifier(for identity: Identity) async -> Result<String, CodeSignerError> {
+    await getLatestCertificate(for: identity).andThen { certificate in
       for element in certificate.subject {
         for attribute in element {
           guard
@@ -318,9 +318,9 @@ enum CodeSigner {
     }
   }
 
-  static func extractTeamIdentifier(from bundle: URL) -> Result<String, CodeSignerError> {
+  static func extractTeamIdentifier(from bundle: URL) async -> Result<String, CodeSignerError> {
     let provisioningProfile = bundle / "embedded.mobileprovision"
-    return ProvisioningProfileManager.loadProvisioningProfile(provisioningProfile)
+    return await ProvisioningProfileManager.loadProvisioningProfile(provisioningProfile)
       .mapError { error in
         CodeSignerError.failedToLoadProvisioningProfile(provisioningProfile, error)
       }

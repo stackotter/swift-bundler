@@ -42,10 +42,10 @@ enum SwiftPackageManager {
   static func createPackage(
     in directory: URL,
     name: String
-  ) -> Result<Void, SwiftPackageManagerError> {
+  ) async -> Result<Void, SwiftPackageManagerError> {
     // Create the package directory if it doesn't exist
     let directoryExists = FileManager.default.itemExists(at: directory, withType: .directory)
-    return Result.success()
+    return await Result.success()
       .andThen(if: !directoryExists) { _ in
         FileManager.default.createDirectory(
           at: directory,
@@ -67,7 +67,7 @@ enum SwiftPackageManager {
         )
         process.setOutputPipe(Pipe())
 
-        return process.runAndWait()
+        return await process.runAndWait()
           .mapError { error in
             .failedToRunSwiftInit(
               command: "swift \(arguments.joined(separator: " "))",
@@ -95,8 +95,8 @@ enum SwiftPackageManager {
   static func build(
     product: String,
     buildContext: BuildContext
-  ) -> Result<Void, SwiftPackageManagerError> {
-    return createBuildArguments(
+  ) async -> Result<Void, SwiftPackageManagerError> {
+    return await createBuildArguments(
       product: product,
       buildContext: buildContext
     ).andThen { arguments in
@@ -113,7 +113,7 @@ enum SwiftPackageManager {
         ])
       }
 
-      return process.runAndWait().mapError { error in
+      return await process.runAndWait().mapError { error in
         .failedToRunSwiftBuild(
           command: "swift \(arguments.joined(separator: " "))",
           error
@@ -131,12 +131,12 @@ enum SwiftPackageManager {
   static func buildExecutableAsDylib(
     product: String,
     buildContext: BuildContext
-  ) -> Result<URL, SwiftPackageManagerError> {
+  ) async -> Result<URL, SwiftPackageManagerError> {
     #if os(macOS)
       // TODO: Package up 'build options' into a struct so that it can be passed around
       //   more easily
       let productsDirectory: URL
-      switch SwiftPackageManager.getProductsDirectory(buildContext) {
+      switch await SwiftPackageManager.getProductsDirectory(buildContext) {
         case let .success(value):
           productsDirectory = value
         case let .failure(error):
@@ -144,7 +144,7 @@ enum SwiftPackageManager {
       }
       let dylibFile = productsDirectory.appendingPathComponent("lib\(product).dylib")
 
-      return build(
+      return await build(
         product: product,
         buildContext: buildContext
       ).andThen { _ in
@@ -204,7 +204,7 @@ enum SwiftPackageManager {
           runSilentlyWhenNotVerbose: false
         )
 
-        return process.runAndWait()
+        return await process.runAndWait()
           .map { _ in dylibFile }
           .mapError { error in
             // TODO: Make a more robust way of converting commands to strings for display (keeping
@@ -236,7 +236,7 @@ enum SwiftPackageManager {
   static func createBuildArguments(
     product: String?,
     buildContext: BuildContext
-  ) -> Result<[String], SwiftPackageManagerError> {
+  ) async -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
     switch buildContext.platform {
       case .windows:
@@ -266,7 +266,7 @@ enum SwiftPackageManager {
         .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms
         let sdkPath: String
-        switch getLatestSDKPath(for: buildContext.platform) {
+        switch await getLatestSDKPath(for: buildContext.platform) {
           case .success(let path):
             sdkPath = path
           case .failure(let error):
@@ -334,8 +334,8 @@ enum SwiftPackageManager {
   /// Gets the path to the latest SDK for a given platform.
   /// - Parameter platform: The platform to get the SDK path for.
   /// - Returns: The SDK's path, or a failure if an error occurs.
-  static func getLatestSDKPath(for platform: Platform) -> Result<String, SwiftPackageManagerError> {
-    return Process.create(
+  static func getLatestSDKPath(for platform: Platform) async -> Result<String, SwiftPackageManagerError> {
+    return await Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "--sdk", platform.sdkName,
@@ -350,12 +350,12 @@ enum SwiftPackageManager {
 
   /// Gets the version of the current Swift installation.
   /// - Returns: The swift version, or a failure if an error occurs.
-  static func getSwiftVersion() -> Result<Version, SwiftPackageManagerError> {
+  static func getSwiftVersion() async -> Result<Version, SwiftPackageManagerError> {
     let process = Process.create(
       "swift",
       arguments: ["--version"])
 
-    return process.getOutput()
+    return await process.getOutput()
       .mapError(SwiftPackageManagerError.failedToGetSwiftVersion)
       .andThen { output in
         // The first two examples are for release versions of Swift (the first on macOS, the second on Linux).
@@ -413,8 +413,8 @@ enum SwiftPackageManager {
   ///   fails, a failure is returned.
   static func getProductsDirectory(
     _ buildContext: BuildContext
-  ) -> Result<URL, SwiftPackageManagerError> {
-    return createBuildArguments(
+  ) async -> Result<URL, SwiftPackageManagerError> {
+    return await createBuildArguments(
       product: nil,
       buildContext: buildContext
     ).andThen { arguments in
@@ -424,7 +424,7 @@ enum SwiftPackageManager {
         directory: buildContext.packageDirectory
       )
 
-      return process.getOutput().map { output in
+      return await process.getOutput().map { output in
         URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
       }.mapError { error in
         .failedToGetProductsDirectory(command: process.commandStringForLogging, error)
@@ -437,13 +437,13 @@ enum SwiftPackageManager {
   /// - Returns: The loaded manifest, or a failure if an error occurs.
   static func loadPackageManifest(
     from packageDirectory: URL
-  ) -> Result<PackageManifest, SwiftPackageManagerError> {
+  ) async -> Result<PackageManifest, SwiftPackageManagerError> {
     let process = Process.create(
       "swift",
       arguments: ["package", "describe", "--type", "json"]
     )
 
-    return process.getOutput().mapError { error in
+    return await process.getOutput().mapError { error in
       .failedToRunSwiftPackageDescribe(
         command: process.commandStringForLogging,
         error
@@ -457,14 +457,14 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getTargetInfo() -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
+  static func getTargetInfo() async -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
     // TODO: This could be a nice easy one to unit test
     let process = Process.create(
       "swift",
       arguments: ["-print-target-info"]
     )
 
-    return process.getOutput().mapError { error in
+    return await process.getOutput().mapError { error in
       .failedToGetTargetInfo(command: process.commandStringForLogging, error)
     }.andThen { output in
       guard let data = output.data(using: .utf8) else {
@@ -480,8 +480,8 @@ enum SwiftPackageManager {
 
   static func getToolsVersion(
     _ packageDirectory: URL
-  ) -> Result<Version, SwiftPackageManagerError> {
-    Process.create(
+  ) async -> Result<Version, SwiftPackageManagerError> {
+    await Process.create(
       "swift",
       arguments: ["package", "tools-version"],
       directory: packageDirectory

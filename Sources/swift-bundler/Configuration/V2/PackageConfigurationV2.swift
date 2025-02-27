@@ -6,10 +6,10 @@ struct PackageConfigurationV2: Codable {
   var apps: [String: AppConfigurationV2]
 
   /// Migrates this configuration to the latest version.
-  func migrate() -> PackageConfiguration {
+  func migrate() async -> PackageConfiguration {
     PackageConfiguration(
-      apps: apps.mapValues { app in
-        return app.migrate()
+      apps: await apps.asyncMapValues { app in
+        return await app.migrate()
       }
     )
   }
