@@ -53,7 +53,11 @@ func readLineAsync(strippingNewline: Bool) async throws -> String {
            stringData.contains(where: { $0.isNewline }),
            let firstLine = stringData.components(separatedBy: .newlines).first {
             readBytesStream.continuation.finish()
-            return firstLine
+            if strippingNewline {
+                return firstLine
+            } else {
+                return firstLine + "\n"
+            }
         }
     }
 
