@@ -17,7 +17,7 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
     case nonZeroExitStatus(Int)
   }
 
-  public func run(_ command: String, _ arguments: [String]) throws {
+  public func run(_ command: String, _ arguments: [String]) async throws {
     let process = Process()
     #if os(Windows)
       process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
@@ -27,8 +27,7 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
       process.arguments = [command] + arguments
     #endif
 
-    try process.run()
-    process.waitUntilExit()
+    try await process.runAndWait()
 
     let exitStatus = Int(process.terminationStatus)
     guard exitStatus == 0 else {
@@ -37,3 +36,19 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
   }
 }
 //swiftlint:enable type_name
+
+extension Process {
+    func runAndWait() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            terminationHandler = { process in
+                continuation.resume()
+            }
+
+            do {
+                try run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+}

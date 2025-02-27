@@ -10,6 +10,15 @@
       }
     },
     {
+      "identity" : "async-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/adam-fowler/async-collections.git",
+      "state" : {
+        "revision" : "726af96095a19df6b8053ddbaed0a727aa70ccb2",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "jsonutilities",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/yonaskolb/JSONUtilities.git",
@@ -79,6 +88,15 @@
       "state" : {
         "revision" : "9cfed92b026c524674ed869a4ff2dcfdeedf8a2a",
         "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "swift-atomics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-atomics.git",
+      "state" : {
+        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
+        "version" : "1.2.0"
       }
     },
     {

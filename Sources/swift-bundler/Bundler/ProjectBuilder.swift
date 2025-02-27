@@ -1,3 +1,4 @@
+import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
 import Version
@@ -368,7 +369,13 @@ enum ProjectBuilder {
           buildDirectory: scratchDirectory.build
         )
 
-        return Result { try process.run() }.andThen { _ in
+        let processWaitSemaphore = AsyncSemaphore(value: 0)
+
+        process.terminationHandler = { _ in
+          processWaitSemaphore.signal()
+        }
+
+        return await Result { try process.run() }.andThen { _ in
           // Encode context
           JSONEncoder().encode(context)
         }.andThen { encodedContext in
@@ -379,7 +386,7 @@ enum ProjectBuilder {
           }
         }.andThen { _ in
           // Wait for builder to finish
-          process.waitUntilExit()
+          try? await processWaitSemaphore.wait()
 
           let status = Int(process.terminationStatus)
           if status == 0 {

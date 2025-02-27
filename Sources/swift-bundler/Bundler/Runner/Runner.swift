@@ -32,7 +32,7 @@ enum Runner {
 
         switch platform {
           case .macOS:
-            return runMacOSAppOnHost(
+            return await runMacOSAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
@@ -98,7 +98,7 @@ enum Runner {
     bundlerOutput: RunnableBundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     let executable = bundlerOutput.executable
 
     let process = Process.create(
@@ -129,12 +129,10 @@ enum Runner {
     #endif
 
     do {
-      try process.run()
+        try await process.runAndWait().get()
     } catch {
       return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
     }
-
-    process.waitUntilExit()
 
     let exitStatus = Int(process.terminationStatus)
     if exitStatus != 0 {

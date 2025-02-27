@@ -8,5 +8,5 @@ public protocol BuilderContext {
 
   /// Runs the given command (either a path or a tool name) with the given
   /// arguments.
-  func run(_ command: String, _ arguments: [String]) throws
+  func run(_ command: String, _ arguments: [String]) async throws
 }
