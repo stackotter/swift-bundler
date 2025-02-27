@@ -27,6 +27,8 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
       process.arguments = [command] + arguments
     #endif
 
+      process.standardInput = Pipe()
+
     try await process.runAndWait()
 
     let exitStatus = Int(process.terminationStatus)
