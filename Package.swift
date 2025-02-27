@@ -60,22 +60,22 @@ let package = Package(
         .product(
           name: "XcodeProj",
           package: "XcodeProj",
-          condition: .when(platforms: [.macOS])
+          condition: .when(platforms: [.macOS, .linux])
         ),
         .product(
           name: "PathKit",
           package: "PathKit",
-          condition: .when(platforms: [.macOS])
+          condition: .when(platforms: [.macOS, .linux])
         ),
         .product(
           name: "XcodeGenKit",
           package: "XcodeGen",
-          condition: .when(platforms: [.macOS])
+          condition: .when(platforms: [.macOS, .linux])
         ),
         .product(
           name: "ProjectSpec",
           package: "XcodeGen",
-          condition: .when(platforms: [.macOS])
+          condition: .when(platforms: [.macOS, .linux])
         ),
 
         // Hot reloading related dependencies
