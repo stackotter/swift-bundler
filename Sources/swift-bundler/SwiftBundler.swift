@@ -3,7 +3,7 @@ import StackOtterArgParser
 import Version
 
 /// The root command of Swift Bundler.
-struct SwiftBundler: ParsableCommand {
+struct SwiftBundler: AsyncParsableCommand {
   static let version = Version(3, 0, 0)
 
   static let configuration = CommandConfiguration(
