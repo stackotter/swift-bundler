@@ -386,6 +386,7 @@ enum ProjectBuilder {
 
           inputPipe.fileHandleForWriting.write(encodedContext)
           inputPipe.fileHandleForWriting.write("\n")
+          try? inputPipe.fileHandleForWriting.close()
 
           log.debug("done writing context")
 
