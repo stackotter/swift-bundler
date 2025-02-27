@@ -46,8 +46,7 @@ extension Process {
   ///   - handleLine: A handler to run every time that a line is received.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
   func getOutputData(
-    excludeStdError: Bool = false,
-    handleLine: ((String) -> Void)? = nil
+    excludeStdError: Bool = false
   ) async -> Result<Data, ProcessError> {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
@@ -56,73 +55,36 @@ extension Process {
 
     let dataStream = AsyncStream.makeStream(of: Data.self)
 
-    let handleDataTask = Task<(Data, String?), Never> {
+    let handleDataTask = Task<Data, Never> {
         var output = Data()
-        var currentLine: String?
 
         for await data in dataStream.stream {
-            if pipe.fileHandleForReading.readabilityHandler != nil {
-                if data.isEmpty {
-                  pipe.fileHandleForReading.readabilityHandler = nil
-                } else {
-                  output.append(contentsOf: data)
-                  if let handleLine = handleLine, let string = String(data: data, encoding: .utf8) {
-                    let lines = ((currentLine ?? "") + string).split(
-                      separator: "\n", omittingEmptySubsequences: false)
-                    if let lastLine = lines.last, lastLine != "" {
-                      currentLine = String(lastLine)
-                    } else {
-                      currentLine = nil
-                    }
-
-                    for line in lines.dropLast() {
-                      handleLine(String(line))
-                    }
-                  }
-                }
+            output.append(contentsOf: data)
+            if let string = String(data: data, encoding: .utf8) {
+                log.debug("[process-output] \(string)")
             }
         }
 
-        return (output, currentLine)
+        return output
     }
 
-    pipe.fileHandleForReading.readabilityHandler = { fh in
-      // TODO: All of this Process code is getting pretty ridiculous and janky, we should switch to
-      //   the experimental proposed Subprocess API (swift-experimental-subprocess)
-      let newData = fh.availableData
-      dataStream.continuation.yield(newData)
+    pipe.fileHandleForReading.readabilityHandler = {
+      dataStream.continuation.yield($0.availableData)
     }
 
     return await runAndWait()
       .map { _ in
         try? pipe.fileHandleForWriting.close()
-
-        // `readToEnd()` doesn't exist in 10.15.0, but it doesn't really matter anyway cause this
-        // code only seems to be relevant on Linux anyway (but probably doesn't hurt on macOS
-        // when available).
-        if #available(macOS 10.15.4, *) {
-          if let data = try? pipe.fileHandleForReading.readToEnd() {
-              dataStream.continuation.yield(data)
-          }
-        }
-
         pipe.fileHandleForReading.readabilityHandler = nil
 
         dataStream.continuation.finish()
 
-        let (output, currentLine) = await handleDataTask.value
-
-        if let currentLine = currentLine {
-          handleLine?(currentLine)
-        }
-
-        return output
+        return await handleDataTask.value
       }
       .mapError { error in
         switch error {
           case .nonZeroExitStatus(let status):
-            let (output, _) = await handleDataTask.value
-            return .nonZeroExitStatusWithOutput(output, status)
+            return .nonZeroExitStatusWithOutput(await handleDataTask.value, status)
           default:
             return error
         }
@@ -143,7 +105,7 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() async -> Result<Void, ProcessError> {
-    log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? [])")
+    log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)")
 
     return await Result {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
