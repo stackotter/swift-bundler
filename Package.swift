@@ -60,22 +60,22 @@ let package = Package(
         .product(
           name: "XcodeProj",
           package: "XcodeProj",
-          condition: .when(platforms: [.macOS, .linux])
+          condition: .when(platforms: [.macOS])
         ),
         .product(
           name: "PathKit",
           package: "PathKit",
-          condition: .when(platforms: [.macOS, .linux])
+          condition: .when(platforms: [.macOS])
         ),
         .product(
           name: "XcodeGenKit",
           package: "XcodeGen",
-          condition: .when(platforms: [.macOS, .linux])
+          condition: .when(platforms: [.macOS])
         ),
         .product(
           name: "ProjectSpec",
           package: "XcodeGen",
-          condition: .when(platforms: [.macOS, .linux])
+          condition: .when(platforms: [.macOS])
         ),
 
         // Hot reloading related dependencies
@@ -95,7 +95,7 @@ let package = Package(
       ],
       swiftSettings: [
         .define("SUPPORT_HOT_RELOADING", .when(platforms: [.macOS, .linux])),
-        .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS, .linux])),
+        .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS])),
       ]
     ),
 
