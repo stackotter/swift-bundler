@@ -77,6 +77,12 @@ extension Process {
         try? pipe.fileHandleForWriting.close()
         pipe.fileHandleForReading.readabilityHandler = nil
 
+        if #available(macOS 10.15.4, *) {
+          if let data = try? pipe.fileHandleForReading.readToEnd() {
+            dataStream.continuation.yield(data)
+          }
+        }
+
         dataStream.continuation.finish()
 
         return await handleDataTask.value
