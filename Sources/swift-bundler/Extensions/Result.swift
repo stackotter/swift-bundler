@@ -367,3 +367,17 @@ extension Result {
         }
       }
 }
+
+extension Result where Success: ~Copyable {
+  public consuming func mapError<NewFailure>(
+    _ transform: (Failure) async -> NewFailure
+  ) async -> Result<Success, NewFailure> {
+    switch consume self {
+    case let .success(success):
+      return .success(consume success)
+    case let .failure(failure):
+      return .failure(await transform(failure))
+    }
+  }
+}
+

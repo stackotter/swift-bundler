@@ -53,46 +53,44 @@ extension Process {
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
     // Thanks Martin! https://forums.swift.org/t/the-problem-with-a-frozen-process-in-swift-process-class/39579/6
-    var output = Data()
-    var currentLine: String?
 
-    let semaphore = DispatchSemaphore(value: 1)
+    let dataStream = AsyncStream.makeStream(of: Data.self)
 
-    func handleData(_ data: Data, isFinal: Bool = false) {
-      semaphore.wait()
-      defer {
-        semaphore.signal()
-      }
+    let handleDataTask = Task<(Data, String?), Never> {
+        var output = Data()
+        var currentLine: String?
 
-      if pipe.fileHandleForReading.readabilityHandler == nil {
-        return
-      }
+        for await data in dataStream.stream {
+            if pipe.fileHandleForReading.readabilityHandler != nil {
+                if data.isEmpty {
+                  pipe.fileHandleForReading.readabilityHandler = nil
+                } else {
+                  output.append(contentsOf: data)
+                  if let handleLine = handleLine, let string = String(data: data, encoding: .utf8) {
+                    let lines = ((currentLine ?? "") + string).split(
+                      separator: "\n", omittingEmptySubsequences: false)
+                    if let lastLine = lines.last, lastLine != "" {
+                      currentLine = String(lastLine)
+                    } else {
+                      currentLine = nil
+                    }
 
-      if data.isEmpty {
-        pipe.fileHandleForReading.readabilityHandler = nil
-      } else {
-        output.append(contentsOf: data)
-        if let handleLine = handleLine, let string = String(data: data, encoding: .utf8) {
-          let lines = ((currentLine ?? "") + string).split(
-            separator: "\n", omittingEmptySubsequences: false)
-          if let lastLine = lines.last, lastLine != "" {
-            currentLine = String(lastLine)
-          } else {
-            currentLine = nil
-          }
-
-          for line in lines.dropLast() {
-            handleLine(String(line))
-          }
+                    for line in lines.dropLast() {
+                      handleLine(String(line))
+                    }
+                  }
+                }
+            }
         }
-      }
+
+        return (output, currentLine)
     }
 
     pipe.fileHandleForReading.readabilityHandler = { fh in
       // TODO: All of this Process code is getting pretty ridiculous and janky, we should switch to
       //   the experimental proposed Subprocess API (swift-experimental-subprocess)
       let newData = fh.availableData
-      handleData(newData)
+      dataStream.continuation.yield(newData)
     }
 
     return await runAndWait()
@@ -104,13 +102,15 @@ extension Process {
         // when available).
         if #available(macOS 10.15.4, *) {
           if let data = try? pipe.fileHandleForReading.readToEnd() {
-            handleData(data, isFinal: true)
+              dataStream.continuation.yield(data)
           }
         }
 
         pipe.fileHandleForReading.readabilityHandler = nil
-        semaphore.wait()
-        semaphore.signal()
+
+        dataStream.continuation.finish()
+
+        let (output, currentLine) = await handleDataTask.value
 
         if let currentLine = currentLine {
           handleLine?(currentLine)
@@ -121,6 +121,7 @@ extension Process {
       .mapError { error in
         switch error {
           case .nonZeroExitStatus(let status):
+            let (output, _) = await handleDataTask.value
             return .nonZeroExitStatusWithOutput(output, status)
           default:
             return error
