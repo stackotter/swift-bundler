@@ -65,14 +65,18 @@ extension Process {
             }
         }
 
+        log.debug("[process-output-dataStream] complete")
+
         if #available(macOS 10.15.4, *) {
           if let data = try? pipe.fileHandleForReading.readToEnd() {
             output.append(contentsOf: data)
             if let string = String(data: data, encoding: .utf8) {
-              log.debug("[process-output] \(string)")
+              log.debug("[process-output-readToEnd] \(string)")
             }
           }
         }
+
+        log.debug("[process-output-handleDataTask] complete")
 
         return output
     }
@@ -88,6 +92,8 @@ extension Process {
 
         dataStream.continuation.finish()
 
+        log.debug("[process-output-handleDataTask-wait] begin")
+        defer { log.debug("[process-output-handleDataTask-wait] end") }
         return await handleDataTask.value
       }
       .mapError { error in
