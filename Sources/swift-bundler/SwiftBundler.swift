@@ -27,7 +27,7 @@ struct SwiftBundler: AsyncParsableCommand {
 
   /// Swift Bundler's git URL. Used when generating Swift packages that depend
   /// on the Swift Bundler runtime or builder API.
-  static let gitURL = URL(string: "https://github.com/stackotter/swift-bundler")!
+  static let gitURL = URL(string: "https://github.com/gregcotten/swift-bundler")!
 
   @Flag(
     name: .shortAndLong,
