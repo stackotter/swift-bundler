@@ -3,7 +3,7 @@ import Foundation
 /// A project builder.
 public protocol Builder {
   /// Builds the project defined by the given context.
-  static func build(_ context: some BuilderContext) throws -> BuilderResult
+  static func build(_ context: some BuilderContext) async throws -> BuilderResult
 }
 
 private enum BuilderError: LocalizedError {
@@ -19,7 +19,7 @@ private enum BuilderError: LocalizedError {
 
 extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
-  public static func main() {
+  public static func main() async {
     do {
       guard let input = readLine(strippingNewline: true) else {
         throw BuilderError.noInput
@@ -29,7 +29,7 @@ extension Builder {
         _BuilderContextImpl.self, from: Data(input.utf8)
       )
 
-      _ = try build(context)
+      _ = try await build(context)
     } catch {
       print(error)
       Foundation.exit(1)
