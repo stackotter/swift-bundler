@@ -373,6 +373,7 @@ enum ProjectBuilder {
         let processWaitSemaphore = AsyncSemaphore(value: 0)
 
         process.terminationHandler = { _ in
+          log.debug("process semaphore signaled!")
           processWaitSemaphore.signal()
         }
 
