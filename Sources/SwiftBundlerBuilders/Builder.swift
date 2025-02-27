@@ -39,11 +39,20 @@ extension Builder {
 
 func readLineAsync(strippingNewline: Bool) async throws -> String {
     if #available(macOS 12.0, *) {
-        for try await line in FileHandle.standardInput.bytes.lines {
-            if strippingNewline {
-                return line.trimmingCharacters(in: .newlines)
-            } else {
-                return line
+        let readBytesStream = AsyncStream.makeStream(of: Data.self)
+
+        FileHandle.standardInput.readabilityHandler = { handle in
+            readBytesStream.continuation.yield(handle.availableData)
+        }
+
+        var accumulatedData = Data()
+        for await data in readBytesStream.stream {
+            accumulatedData.append(data)
+            if let stringData = String(data: accumulatedData, encoding: .utf8),
+               stringData.contains(where: { $0.isNewline }),
+               let firstLine = stringData.components(separatedBy: .newlines).first {
+                readBytesStream.continuation.finish()
+                return firstLine
             }
         }
 
