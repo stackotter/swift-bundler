@@ -65,6 +65,15 @@ extension Process {
             }
         }
 
+        if #available(macOS 10.15.4, *) {
+          if let data = try? pipe.fileHandleForReading.readToEnd() {
+            output.append(contentsOf: data)
+            if let string = String(data: data, encoding: .utf8) {
+              log.debug("[process-output] \(string)")
+            }
+          }
+        }
+
         return output
     }
 
@@ -76,12 +85,6 @@ extension Process {
       .map { _ in
         try? pipe.fileHandleForWriting.close()
         pipe.fileHandleForReading.readabilityHandler = nil
-
-        if #available(macOS 10.15.4, *) {
-          if let data = try? pipe.fileHandleForReading.readToEnd() {
-            dataStream.continuation.yield(data)
-          }
-        }
 
         dataStream.continuation.finish()
 
