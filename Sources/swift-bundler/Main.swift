@@ -7,7 +7,7 @@ import Rainbow
 
 @main
 struct Main {
-  static func main() {
+  static func main() async {
     // Kill all running processes on exit
     for signal in Signal.allCases {
       trap(signal) {
@@ -29,6 +29,6 @@ struct Main {
         ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] == nil
     #endif
 
-    SwiftBundler.main()
+    await SwiftBundler.main()
   }
 }
