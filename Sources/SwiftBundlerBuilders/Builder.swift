@@ -21,9 +21,9 @@ extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
   public static func main() async {
     do {
-      guard let input = readLine(strippingNewline: true) else {
-        throw BuilderError.noInput
-      }
+      print("Reading line...")
+      let input = try await readLineAsync(strippingNewline: true)
+      print("Done reading line \(input)")
 
       let context = try JSONDecoder().decode(
         _BuilderContextImpl.self, from: Data(input.utf8)
@@ -35,4 +35,24 @@ extension Builder {
       Foundation.exit(1)
     }
   }
+}
+
+func readLineAsync(strippingNewline: Bool) async throws -> String {
+    if #available(macOS 12.0, *) {
+        for try await line in FileHandle.standardInput.bytes.lines {
+            if strippingNewline {
+                return line.trimmingCharacters(in: .newlines)
+            } else {
+                return line
+            }
+        }
+
+        throw BuilderError.noInput
+    } else {
+        guard let line = readLine(strippingNewline: strippingNewline) else {
+            throw BuilderError.noInput
+        }
+
+        return line
+    }
 }
