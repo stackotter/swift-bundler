@@ -352,6 +352,7 @@ enum ProjectBuilder {
         }
       }
       .andThen { productsDirectory in
+        log.debug("got products directory: \(productsDirectory.path)")
         let builderFileName = HostPlatform.hostPlatform.executableFileName(
           forBaseName: builderProductName
         )
@@ -375,18 +376,25 @@ enum ProjectBuilder {
           processWaitSemaphore.signal()
         }
 
+        log.debug("running builder")
         return await Result { try process.run() }.andThen { _ in
           // Encode context
           JSONEncoder().encode(context)
         }.andThen { encodedContext in
           // Write context to stdin (as a single line)
-          Result {
-            inputPipe.fileHandleForWriting.write(encodedContext)
-            inputPipe.fileHandleForWriting.write("\n")
-          }
+          log.debug("writing context in builder: \(String(data: encodedContext, encoding: .utf8) ?? "nil")")
+
+          inputPipe.fileHandleForWriting.write(encodedContext)
+          inputPipe.fileHandleForWriting.write("\n")
+
+          log.debug("done writing context")
+
+          return Result {}
         }.andThen { _ in
           // Wait for builder to finish
+          log.debug("waiting for builder to finish")
           try? await processWaitSemaphore.wait()
+          log.debug("done waiting")
 
           let status = Int(process.terminationStatus)
           if status == 0 {
