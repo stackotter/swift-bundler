@@ -442,3 +442,7 @@ enum ProjectBuilder {
       """
   }
 }
+
+enum SwiftCommandError: Error {
+    case unsuccessfulTermination(ExitStatus)
+}
