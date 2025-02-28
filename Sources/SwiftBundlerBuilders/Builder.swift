@@ -21,13 +21,13 @@ extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
   public static func main() async {
     do {
-      print("Reading line...")
       let input = try await readLineAsync(strippingNewline: true)
-      print("Done reading line \(input)")
 
       let context = try JSONDecoder().decode(
         _BuilderContextImpl.self, from: Data(input.utf8)
       )
+
+      print("[builder] building with context: \(context)")
 
       _ = try await build(context)
     } catch {
