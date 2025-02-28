@@ -570,7 +570,7 @@ struct BundleCommand: ErrorHandledCommand {
         // xcodebuild adds a platform suffix to the products directory for
         // certain platforms. E.g. it's 'Release-xrsimulator' for visionOS.
         let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
-        let platformSuffix = arguments.platform == .macOS ? "" : "-\(resolvedPlatform.sdkName)"
+        let platformSuffix = resolvedPlatform == .macOS ? "" : "-\(resolvedPlatform.sdkName)"
         productsDirectory =
           arguments.productsDirectory
           ?? (packageDirectory

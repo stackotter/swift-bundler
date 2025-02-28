@@ -39,76 +39,21 @@ enum DynamicLibraryBundler {
       }
     }
 
-    // Select directory to enumerate
-    let searchDirectory: URL
-    if isXcodeBuild {
-      searchDirectory = productsDirectory.appendingPathComponent("PackageFrameworks")
-    } else {
-      searchDirectory = productsDirectory
-    }
-
-    // Enumerate dynamic libraries
-    let libraries: [(name: String, file: URL)]
-    switch enumerateDynamicLibraries(searchDirectory, isXcodeBuild: isXcodeBuild) {
-      case let .success(value):
-        libraries = value
-      case let .failure(error):
-        return .failure(error)
-    }
-
-    // Copy dynamic libraries
-    for (name, library) in libraries {
-      log.info("Copying dynamic library '\(name)'")
-
-      // Copy and rename the library
-      let outputLibrary: URL
-      if name.prefix(3).contains("lib") {
-        // do not add a 'lib' prefix to the dynamic library if it's already prefixed with 'lib'.
-        outputLibrary = outputDirectory.appendingPathComponent("\(name).dylib")
-      } else {
-        // add a 'lib' prefix to the dynamic library if it's not already prefixed with 'lib'.
-        outputLibrary = outputDirectory.appendingPathComponent("lib\(name).dylib")
-      }
-
-      do {
-        try FileManager.default.copyItem(
-          at: library,
-          to: outputLibrary
-        )
-      } catch {
-        return .failure(
-          .failedToCopyDynamicLibrary(source: library, destination: outputLibrary, error)
-        )
-      }
-
-      // Update the install name of the library to reflect the change of location relative to the executable
-      let result = updateLibraryInstallName(
-        of: name,
-        in: appExecutable,
-        originalLibraryLocation: library,
-        newLibraryLocation: outputLibrary,
-        librarySearchDirectory: searchDirectory
-      )
-      if case .failure = result {
-        return result
-      }
-    }
-
-    if makeStandAlone {
-      return moveSystemWideLibraryDependencies(
-        of: appExecutable,
-        to: outputDirectory,
-        for: appExecutable
-      )
-    } else {
-      return .success()
-    }
+    return moveLibraryDependencies(
+      of: appExecutable,
+      to: outputDirectory,
+      for: appExecutable,
+      productsDirectory: productsDirectory,
+      includeSystemWideDependencies: makeStandAlone
+    )
   }
 
-  static func moveSystemWideLibraryDependencies(
+  static func moveLibraryDependencies(
     of binary: URL,
     to directory: URL,
-    for executable: URL
+    for executable: URL,
+    productsDirectory: URL,
+    includeSystemWideDependencies: Bool
   ) -> Result<Void, DynamicLibraryBundlerError> {
     let otoolOutput: String
     let process = Process.create("/usr/bin/otool", arguments: ["-L", binary.path])
@@ -119,26 +64,63 @@ enum DynamicLibraryBundler {
         return .failure(.failedToEnumerateSystemWideDynamicDependencies(error))
     }
 
-    let parse = pipe(
-      flip(Substring.dropFirst)(1),
-      { $0.split(separator: " ")[0] },
-      String.init,
-      URL.init(fileURLWithPath:)
-    )
-
-    let isntPrefixOf: (String) -> (String) -> Bool = { pipe($0.starts(with:), !) }
-    let uninterestingPrefixes = ["/usr/lib/", "/System/Library/", "@rpath"]
-    let dependencies = otoolOutput.split(separator: "\n").dropFirst()
-      .map(parse)
-      .filter { dependency in
-        uninterestingPrefixes.allSatisfy(isntPrefixOf(dependency.path))
+    let uninterestingPrefixes = ["/usr/lib/", "/System/Library/"]
+    let dependencies: [(installName: String, location: URL)] =
+      otoolOutput.split(separator: "\n")
+      .dropFirst()
+      .map { line in
+        // TODO: Handle entries with spaces
+        String(line.dropFirst().split(separator: " ")[0])
+      }
+      .filter { path in
+        !uninterestingPrefixes.contains { prefix in
+          path.starts(with: prefix)
+        }
+      }
+      .compactMap { path in
+        let rpathPrefix = "@rpath/"
+        let location: URL
+        if path == "@rpath/libswift_Concurrency.dylib" {
+          // Due to concurrency back deployment, the concurrency runtime install name
+          // is relative to the rpath, so we need a special case for it.
+          return nil
+        } else if path.starts(with: rpathPrefix) {
+          // TODO: Expand this logic to load search path from binary if possible (so that this
+          //   doesn't break when an upstream tool changes something in the future).
+          // Search basic rpath for library
+          let searchPath = [
+            productsDirectory,
+            productsDirectory / "PackageFrameworks",
+          ]
+          let options = searchPath.map {
+            $0 / String(path.dropFirst(rpathPrefix.count))
+          }
+          guard let libraryLocation = options.first(where: { $0.exists() }) else {
+            log.warning("Failed to locate library with install name '\(path)'")
+            return nil
+          }
+          location = libraryLocation
+        } else if includeSystemWideDependencies {
+          location = URL(fileURLWithPath: path)
+        } else {
+          return nil
+        }
+        return (installName: path, location: location)
       }
 
-    for dependency in dependencies {
-      let resolvedDependency = dependency.resolvingSymlinksInPath()
+    for (originalInstallName, location) in dependencies {
+      let resolvedDependency = location.resolvingSymlinksInPath()
 
       // Copy and rename the library
-      let outputLibrary = directory.appendingPathComponent(resolvedDependency.lastPathComponent)
+      var outputLibrary = directory / resolvedDependency.lastPathComponent
+      // Add `.dylib` path extension when copying (if not already present) so that the
+      // code signer can easily locate all dylibs to sign.
+      if outputLibrary.pathExtension == "" {
+        outputLibrary = outputLibrary.appendingPathExtension("dylib")
+      } else {
+        print(outputLibrary.path)
+      }
+
       let libraryAlreadyCopied = FileManager.default.fileExists(atPath: outputLibrary.path)
       if !libraryAlreadyCopied {
         do {
@@ -161,25 +143,23 @@ enum DynamicLibraryBundler {
 
       if case let .failure(error) = updateLibraryInstallName(
         in: binary,
-        original: dependency.path,
+        original: originalInstallName,
         new: "@rpath/\(newRelativePath)"
       ) {
         return .failure(error)
       }
 
       if !libraryAlreadyCopied {
-        let result = moveSystemWideLibraryDependencies(
+        let result = moveLibraryDependencies(
           of: outputLibrary,
           to: directory,
-          for: executable
+          for: executable,
+          productsDirectory: productsDirectory,
+          includeSystemWideDependencies: includeSystemWideDependencies
         )
         if case let .failure(error) = result {
           return .failure(error)
         }
-      }
-
-      if case let .failure(error) = CodeSigner.signAdHoc(file: outputLibrary) {
-        return .failure(.failedToSignMovedLibrary(error))
       }
     }
 
