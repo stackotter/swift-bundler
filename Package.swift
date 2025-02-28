@@ -31,11 +31,12 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
     .package(url: "https://github.com/adam-fowler/async-collections.git", .upToNextMajor(from: "0.1.0")),
+    .package(url: "https://github.com/Zollerboy1/SwiftCommand.git", from: "1.4.1"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
     .package(url: "https://github.com/apple/swift-system", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+    .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
   ],
   targets: [
     .executableTarget(
@@ -119,7 +120,9 @@ let package = Package(
 
     .target(
       name: "SwiftBundlerBuilders",
-      dependencies: []
+      dependencies: [
+        .product(name: "SwiftCommand", package: "SwiftCommand"),
+      ]
     ),
 
     .target(

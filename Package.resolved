@@ -86,8 +86,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-async-algorithms.git",
       "state" : {
-        "revision" : "9cfed92b026c524674ed869a4ff2dcfdeedf8a2a",
-        "version" : "0.1.0"
+        "revision" : "4c3ea81f81f0a25d0470188459c6d4bf20cf2f97",
+        "version" : "1.0.3"
       }
     },
     {
@@ -223,6 +223,15 @@
       "state" : {
         "revision" : "2e949055d9797c1a6bddcda0e58dada16cc8e970",
         "version" : "6.0.3"
+      }
+    },
+    {
+      "identity" : "swiftcommand",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Zollerboy1/SwiftCommand.git",
+      "state" : {
+        "revision" : "4a0ea7695a17c4e4053e15814110b5086c3c2ceb",
+        "version" : "1.4.1"
       }
     },
     {

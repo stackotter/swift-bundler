@@ -1,4 +1,5 @@
 import Foundation
+import SwiftCommand
 
 //swiftlint:disable type_name
 // TODO: Use `package` access level when we bump to Swift 5.9
@@ -14,55 +15,20 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
   }
 
   enum Error: LocalizedError {
-    case nonZeroExitStatus(Int)
+      case commandNotFound
+      case unsuccessfulExitStatus(ExitStatus)
   }
 
   public func run(_ command: String, _ arguments: [String]) async throws {
-    let process = Process()
-    #if os(Windows)
-      process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
-      process.arguments = ["/c", command] + arguments
-    #else
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-      process.arguments = [command] + arguments
-    #endif
+    guard let command = Command.findInPath(withName: command) else {
+      throw Error.commandNotFound
+    }
 
-      process.standardInput = Pipe()
-      let outputPipe = Pipe()
-      process.standardOutput = outputPipe
-      process.standardError = outputPipe
+    let exitStatus = try await command.addArguments(arguments).status
 
-      outputPipe.fileHandleForReading.readabilityHandler = {
-          if let string = String(data: $0.availableData, encoding: .utf8) {
-              print("[builder] \(string)", terminator: "")
-          }
-      }
-
-      defer { outputPipe.fileHandleForReading.readabilityHandler = nil }
-      
-    try await process.runAndWait()
-
-    let exitStatus = Int(process.terminationStatus)
-    guard exitStatus == 0 else {
-      throw Error.nonZeroExitStatus(exitStatus)
+    guard exitStatus.terminatedSuccessfully else {
+      throw Error.unsuccessfulExitStatus(exitStatus)
     }
   }
 }
 //swiftlint:enable type_name
-
-extension Process {
-    func runAndWait() async throws {
-        print("[builder] Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)")
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            terminationHandler = { process in
-                continuation.resume()
-            }
-
-            do {
-                try run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-}
