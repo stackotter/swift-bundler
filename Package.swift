@@ -30,7 +30,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-asn1", from: "1.1.0"),
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
-    .package(url: "https://github.com/adam-fowler/async-collections.git", .upToNextMajor(from: "0.1.0")),
+    .package(url: "https://github.com/adam-fowler/async-collections.git", .upToNextMajor(from: "1.0.0")),
     .package(url: "https://github.com/Zollerboy1/SwiftCommand.git", from: "1.4.1"),
 
     // File watcher dependencies
@@ -58,6 +58,8 @@ let package = Package(
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
+        .product(name: "SwiftCommand", package: "SwiftCommand"),
+        .product(name: "SystemPackage",package: "swift-system"),
 
         // Xcodeproj related dependencies
         .product(

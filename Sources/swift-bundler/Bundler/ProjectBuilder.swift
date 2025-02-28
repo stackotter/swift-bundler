@@ -2,6 +2,8 @@ import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
 import Version
+import SwiftCommand
+import SystemPackage
 
 enum ProjectBuilder {
   static let builderProductName = "Builder"
@@ -357,58 +359,30 @@ enum ProjectBuilder {
           forBaseName: builderProductName
         )
 
-        let inputPipe = Pipe()
-        let process = Process()
-
-        process.executableURL = productsDirectory / builderFileName
-        process.standardInput = inputPipe
-        process.currentDirectoryURL = scratchDirectory.sources
-          .actuallyResolvingSymlinksInPath()
-        process.arguments = []
-
         let context = _BuilderContextImpl(
           buildDirectory: scratchDirectory.build
         )
 
-        let processWaitSemaphore = AsyncSemaphore(value: 0)
+          let executableURL: URL = productsDirectory / builderFileName
+          let command = SwiftCommand.Command(executablePath: .init(executableURL.path))
+              .setCWD(.init(scratchDirectory.sources.actuallyResolvingSymlinksInPath().path))
+              .setStdin(.pipe)
 
-        process.terminationHandler = { _ in
-          log.debug("process semaphore signaled!")
-          processWaitSemaphore.signal()
-        }
-
-        log.debug("running builder")
-        return await Result { try process.run() }.andThen { _ in
-          // Encode context
-          JSONEncoder().encode(context)
-        }.andThen { encodedContext in
-          // Write context to stdin (as a single line)
-          log.debug("writing context in builder: \(String(data: encodedContext, encoding: .utf8) ?? "nil")")
-
-          inputPipe.fileHandleForWriting.write(encodedContext)
-          inputPipe.fileHandleForWriting.write("\n")
-          try? inputPipe.fileHandleForWriting.close()
-
-          log.debug("done writing context")
-
-          return Result {}
-        }.andThen { _ in
-          // Wait for builder to finish
-          log.debug("waiting for builder to finish")
-          try? await processWaitSemaphore.wait()
-          log.debug("done waiting")
-
-          let status = Int(process.terminationStatus)
-          if status == 0 {
-            return .success()
-          } else {
-            return .failure(ProcessError.nonZeroExitStatus(status))
-          }
-        }.ifFailure { _ in
-          if process.isRunning {
-            process.terminate()
-          }
-        }.mapError(Error.builderFailed)
+          return await Result {
+              let spawned = try command.spawn()
+              let data = try JSONEncoder().encode(context).get()
+              spawned.stdin.write(contentsOf: data)
+              spawned.stdin.write("\n")
+              log.debug("waiting for builder to finish")
+              defer { print("builder finished") }
+              return try await spawned.status
+          }.andThen { exitStatus in
+              if exitStatus.terminatedSuccessfully {
+                  return .success()
+              } else {
+                  return .failure(SwiftCommandError.unsuccessfulTermination(exitStatus))
+              }
+            }.mapError(Error.builderFailed)
       }
   }
 
