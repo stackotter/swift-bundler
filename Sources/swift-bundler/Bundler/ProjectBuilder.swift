@@ -366,13 +366,10 @@ enum ProjectBuilder {
           let executableURL: URL = productsDirectory / builderFileName
           let command = SwiftCommand.Command(executablePath: .init(executableURL.path))
               .setCWD(.init(scratchDirectory.sources.actuallyResolvingSymlinksInPath().path))
-              .setStdin(.pipe)
 
           return await Result {
               let spawned = try command.spawn()
               let data = try JSONEncoder().encode(context).get()
-              spawned.stdin.write(contentsOf: data)
-              spawned.stdin.write("\n")
               log.debug("waiting for builder to finish")
               defer { print("builder finished") }
               return try await spawned.status
