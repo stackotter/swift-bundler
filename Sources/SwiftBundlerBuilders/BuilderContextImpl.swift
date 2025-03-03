@@ -1,5 +1,5 @@
 import Foundation
-import Script
+import SwiftCommand
 
 //swiftlint:disable type_name
 // TODO: Use `package` access level when we bump to Swift 5.9
@@ -16,24 +16,19 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
 
   enum Error: LocalizedError {
       case commandNotFound
-      case unsuccessfulExitStatus(Swift.Error)
+      case unsuccessfulExitStatus(ExitStatus)
   }
 
   public func run(_ command: String, _ arguments: [String]) async throws {
-      let exe = try await {
-          do {
-              print("Running command: \(command) \(arguments.joined(separator: " "))")
-              return try await executable(named: command)
-          } catch {
-              throw Error.commandNotFound
-          }
-      }()
+    guard let command = Command.findInPath(withName: command) else {
+      throw Error.commandNotFound
+    }
 
-      do {
-          try await exe(arguments: arguments)
-      } catch {
-          throw Error.unsuccessfulExitStatus(error)
-      }
+    let exitStatus = try await command.addArguments(arguments).status
+
+    guard exitStatus.terminatedSuccessfully else {
+      throw Error.unsuccessfulExitStatus(exitStatus)
+    }
   }
 }
 //swiftlint:enable type_name

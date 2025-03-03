@@ -46,15 +46,6 @@
       }
     },
     {
-      "identity" : "shwift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/GeorgeLyon/Shwift",
-      "state" : {
-        "revision" : "d7be04898d094ddce6140cc6a2e9a83fc994b66d",
-        "version" : "3.1.1"
-      }
-    },
-    {
       "identity" : "socket",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/Socket",
@@ -79,15 +70,6 @@
       "state" : {
         "branch" : "b1b5373",
         "revision" : "b1b53732a64467ea95618222913d6ff81e4e6d6a"
-      }
-    },
-    {
-      "identity" : "swift-argument-parser",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-argument-parser",
-      "state" : {
-        "revision" : "41982a3656a71c768319979febd796c6fd111d5c",
-        "version" : "1.5.0"
       }
     },
     {
@@ -196,15 +178,6 @@
       "state" : {
         "revision" : "9cb486020ebf03bfa5b5df985387a14a98744537",
         "version" : "1.6.1"
-      }
-    },
-    {
-      "identity" : "swift-nio",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-nio.git",
-      "state" : {
-        "revision" : "c51907a839e63ebf0ba2076bba73dd96436bd1b9",
-        "version" : "2.81.0"
       }
     },
     {
