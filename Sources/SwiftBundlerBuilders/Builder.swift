@@ -21,7 +21,11 @@ extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
   public static func main() async {
     do {
-      let context = _BuilderContextImpl(buildDirectory: .init(fileURLWithPath: "/repo/crossui-app/.build/bundler/projects/sentry/build"))
+      let input = try await readLineAsync(strippingNewline: true)
+
+      let context = try JSONDecoder().decode(
+        _BuilderContextImpl.self, from: Data(input.utf8)
+      )
 
       print("[builder] building with context: \(context)")
 
