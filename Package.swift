@@ -7,6 +7,7 @@ let package = Package(
   platforms: [.macOS(.v10_15)],
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
+    .library(name: "SwiftBundler", targets: ["SwiftBundler"]),
     .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
     .library(name: "SwiftBundlerBuilders", targets: ["SwiftBundlerBuilders"]),
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
@@ -37,8 +38,9 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
   ],
   targets: [
-    .executableTarget(
-      name: "swift-bundler",
+    .executableTarget(name: "swift-bundler", dependencies: ["SwiftBundler"]),
+    .target(
+      name: "SwiftBundler",
       dependencies: [
         "TOMLKit",
         "Rainbow",
@@ -155,7 +157,7 @@ let package = Package(
 
     // The target containing documentation
     .target(
-      name: "SwiftBundler",
+      name: "SwiftBundlerDocumentation",
       path: "Documentation",
       exclude: ["preview_docs.sh"]
     ),

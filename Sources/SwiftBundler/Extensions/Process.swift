@@ -7,12 +7,12 @@ import Foundation
 /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
 ///
 /// If the program is killed, all processes in this array are terminated before the program exits.
-var processes: [Process] = []
+public var processes: [Process] = []
 
 #if os(Linux)
   /// The PIDs of all AppImage processes started manually (due to the weird
   /// workaround required).
-  var appImagePIDs: [pid_t] = []
+  public var appImagePIDs: [pid_t] = []
 #endif
 
 extension Process {
