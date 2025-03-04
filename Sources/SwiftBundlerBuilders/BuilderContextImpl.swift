@@ -9,9 +9,12 @@ import SwiftCommand
 /// much perfectly backwards compatible.
 public struct _BuilderContextImpl: BuilderContext, Codable {
   public var buildDirectory: URL
+  public var sourcesDirectory: URL
 
-  public init(buildDirectory: URL) {
+  public init(buildDirectory: URL,
+              sourcesDirectory: URL) {
     self.buildDirectory = buildDirectory
+    self.sourcesDirectory = sourcesDirectory
   }
 
   enum Error: LocalizedError {

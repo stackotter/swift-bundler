@@ -360,12 +360,13 @@ enum ProjectBuilder {
         )
 
         let context = _BuilderContextImpl(
-          buildDirectory: scratchDirectory.build
+          buildDirectory: scratchDirectory.build,
+          sourcesDirectory: scratchDirectory.sources.actuallyResolvingSymlinksInPath()
         )
 
-          let executableURL: URL = productsDirectory / builderFileName
-          let command = SwiftCommand.Command(executablePath: .init(executableURL.path))
-              .setCWD(.init(scratchDirectory.sources.actuallyResolvingSymlinksInPath().path))
+          let command = SwiftCommand.Command.findInPath(withName: "swift")!
+              .addArguments("run", builderFileName)
+              .setCWD(.init(scratchDirectory.builder.path))
               .setStdin(.pipe)
 
           return await Result {

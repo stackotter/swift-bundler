@@ -8,11 +8,14 @@ public protocol Builder {
 
 private enum BuilderError: LocalizedError {
   case noInput
+  case failedToChangeCurrentDirectory(URL)
 
   var errorDescription: String? {
     switch self {
       case .noInput:
         return "No input provided to builder (expected JSON object on stdin)"
+      case let .failedToChangeCurrentDirectory(url):
+        return "Failed to change current directory to \(url.path)"
     }
   }
 }
@@ -28,6 +31,10 @@ extension Builder {
       )
 
       print("[builder] building with context: \(context)")
+
+        guard FileManager.default.changeCurrentDirectoryPath(context.sourcesDirectory.path) else {
+            throw BuilderError.failedToChangeCurrentDirectory(context.sourcesDirectory)
+        }
 
       _ = try await build(context)
     } catch {
