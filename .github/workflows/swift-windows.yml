@@ -1,0 +1,22 @@
+name: Build Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Setup
+        uses: compnerd/gha-setup-swift@v0.3.0
+        with:
+          branch: swift-6.0-release
+          tag: 6.0-RELEASE
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build
