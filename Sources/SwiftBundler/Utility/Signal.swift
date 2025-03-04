@@ -13,7 +13,7 @@
   typealias SignalAction = sigaction
 
   /// A signal that can be caught.
-  enum Signal: Int32, CaseIterable {
+  public enum Signal: Int32, CaseIterable {
     case hangUp
     case interrupt
     case quit
@@ -22,7 +22,7 @@
     case alarm
     case terminate
 
-    var rawValue: Int32 {
+    public var rawValue: Int32 {
       switch self {
         case .hangUp: return SIGHUP
         case .interrupt: return SIGINT
@@ -35,7 +35,7 @@
     }
   }
 #elseif os(Windows)
-  enum Signal: Int32, CaseIterable {
+public enum Signal: Int32, CaseIterable {
     case abort
     case interrupt
     case terminate
@@ -51,7 +51,7 @@
 #endif
 
 /// Sets a trap for the specified signal.
-func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
+public func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
   #if os(macOS)
     // Modified from: https://gist.github.com/sharplet/d640eea5b6c99605ac79
     var signalAction = SignalAction(

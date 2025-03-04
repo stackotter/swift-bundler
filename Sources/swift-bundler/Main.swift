@@ -1,4 +1,4 @@
-@testable import SwiftBundler
+import SwiftBundler
 import Foundation
 import Rainbow
 
