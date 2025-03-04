@@ -12,7 +12,7 @@ public var processes: [Process] = []
 #if os(Linux)
   /// The PIDs of all AppImage processes started manually (due to the weird
   /// workaround required).
-  var appImagePIDs: [pid_t] = []
+  public var appImagePIDs: [pid_t] = []
 #endif
 
 extension Process {
