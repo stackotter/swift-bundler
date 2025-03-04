@@ -18,5 +18,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build
-        run: swift build
+      - name: Build product swift-bundler
+        run: swift build --product swift-bundler
