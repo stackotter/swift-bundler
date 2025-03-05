@@ -44,7 +44,7 @@ struct RunCommand: ErrorHandledCommand {
 
   // MARK: Methods
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     guard !(skipBuild && hot) else {
       log.error("'--skip-build' is incompatible with '--hot' (nonsensical)")
       Foundation.exit(1)
@@ -78,13 +78,13 @@ struct RunCommand: ErrorHandledCommand {
     let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
     let scratchDirectory = arguments.scratchDirectory ?? packageDirectory / ".build"
 
-    let device = try BundleCommand.resolveDevice(
+    let device = try await BundleCommand.resolveDevice(
       platform: arguments.platform,
       deviceSpecifier: arguments.deviceSpecifier,
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
-    let (_, appConfiguration, _) = try BundleCommand.getConfiguration(
+    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       context: ConfigurationFlattener.Context(platform: device.platform),
@@ -100,7 +100,7 @@ struct RunCommand: ErrorHandledCommand {
 
     // Perform bundling, or do a dry run if instructed to skip building (so
     // that we still know where the output bundle is located).
-    let bundlerOutput = try bundleCommand.doBundling(
+    let bundlerOutput = try await bundleCommand.doBundling(
       dryRun: skipBuild,
       resolvedPlatform: device.platform,
       resolvedDevice: device
@@ -146,7 +146,7 @@ struct RunCommand: ErrorHandledCommand {
           }
 
           // TODO: Avoid loading manifest twice
-          let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+          let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
             .unwrap()
 
           let platformVersion =
@@ -165,7 +165,7 @@ struct RunCommand: ErrorHandledCommand {
               Task {
                 do {
                   var client = client
-                  let dylibFile = try SwiftPackageManager.buildExecutableAsDylib(
+                  let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
                     product: appConfiguration.product,
                     buildContext: SwiftPackageManager.BuildContext(
                       packageDirectory: packageDirectory,
@@ -203,7 +203,7 @@ struct RunCommand: ErrorHandledCommand {
       additionalEnvironmentVariables = [:]
     #endif
 
-    try Runner.run(
+    try await Runner.run(
       bundlerOutput: bundlerOutput,
       bundleIdentifier: appConfiguration.identifier,
       device: device,

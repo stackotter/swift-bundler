@@ -1,6 +1,8 @@
+import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
 import Version
+import SystemPackage
 
 enum ProjectBuilder {
   static let builderProductName = "Builder"
@@ -78,9 +80,9 @@ enum ProjectBuilder {
     appName: String,
     platform: Platform,
     dryRun: Bool
-  ) -> Result<[String: BuiltProduct], Error> {
+  ) async -> Result<[String: BuiltProduct], Error> {
     var builtProjects: Set<String> = []
-    return dependencies.tryMap {
+    return await dependencies.tryMap {
       dependency -> Result<(String, BuiltProduct), Error> in
       let projectName = dependency.project
 
@@ -126,18 +128,18 @@ enum ProjectBuilder {
         return .success(successValue)
       }
 
-      return Result.success()
+      return await Result.success()
         .andThen(if: requiresBuilding) { _ in
           // Set up required directories and build whole project
           log.info("Building project '\(projectName)'")
-          return Result.success()
+          return await Result.success()
             .andThenDoSideEffect(if: productsDirectoryExists) { _ in
               FileManager.default.removeItem(at: projectScratchDirectory.products)
                 .mapError(Error.other)
             }.andThen { _ in
               projectScratchDirectory.createRequiredDirectories()
             }.andThen { _ in
-              ProjectBuilder.buildProject(
+              await ProjectBuilder.buildProject(
                 projectName,
                 configuration: project,
                 packageDirectory: packageDirectory,
@@ -202,9 +204,9 @@ enum ProjectBuilder {
     _ source: ProjectConfiguration.Source.Flat,
     at destination: URL,
     packageDirectory: URL
-  ) -> Result<(), Error> {
-    func clone(_ repository: URL, to destination: URL) -> Result<(), Error> {
-      Process.create(
+  ) async -> Result<(), Error> {
+    func clone(_ repository: URL, to destination: URL) async -> Result<(), Error> {
+      await Process.create(
         "git",
         arguments: [
           "clone",
@@ -222,7 +224,7 @@ enum ProjectBuilder {
 
     switch source {
       case .git(let url, let requirement):
-        return Process.create(
+        return await Process.create(
           "git",
           arguments: [
             "remote",
@@ -237,11 +239,11 @@ enum ProjectBuilder {
           }
           return .success()
         }.tryRecover { _ in
-          Result.success().andThen(if: destinationExists) { _ in
+          await Result.success().andThen(if: destinationExists) { _ in
             FileManager.default.removeItem(at: destination)
               .mapError(Error.other)
           }.andThen { _ in
-            clone(url, to: destination)
+            await clone(url, to: destination)
           }
         }.andThen { _ in
           let revision: String
@@ -250,7 +252,7 @@ enum ProjectBuilder {
               revision = value
           }
 
-          return Process.create(
+          return await Process.create(
             "git",
             arguments: ["checkout", revision],
             directory: destination
@@ -282,16 +284,16 @@ enum ProjectBuilder {
     configuration: ProjectConfiguration.Flat,
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure
-  ) -> Result<Void, Error> {
+  ) async -> Result<Void, Error> {
     // Just sitting here to raise alarms when more types are added
     switch configuration.builder.type {
       case .wholeProject:
         break
     }
 
-    return Result.success()
+    return await Result.success()
       .andThen { _ in
-        checkoutSource(
+        await checkoutSource(
           configuration.source,
           at: scratchDirectory.sources,
           packageDirectory: packageDirectory
@@ -312,7 +314,7 @@ enum ProjectBuilder {
       }
       .andThen { _ in
         // Create/update the builder's Package.swift
-        SwiftPackageManager.getToolsVersion(packageDirectory)
+        await SwiftPackageManager.getToolsVersion(packageDirectory)
           .mapError(Error.other)
           .map { toolsVersion in
             generateBuilderPackageManifest(
@@ -341,11 +343,11 @@ enum ProjectBuilder {
           isGUIExecutable: false
         )
 
-        return SwiftPackageManager.build(
+        return await SwiftPackageManager.build(
           product: builderProductName,
           buildContext: buildContext
         ).andThen { _ in
-          SwiftPackageManager.getProductsDirectory(buildContext)
+          await SwiftPackageManager.getProductsDirectory(buildContext)
         }.mapError { error in
           Error.failedToBuildBuilder(name: configuration.builder.name, error)
         }
@@ -355,43 +357,40 @@ enum ProjectBuilder {
           forBaseName: builderProductName
         )
 
-        let inputPipe = Pipe()
-        let process = Process()
-
-        process.executableURL = productsDirectory / builderFileName
-        process.standardInput = inputPipe
-        process.currentDirectoryURL = scratchDirectory.sources
-          .actuallyResolvingSymlinksInPath()
-        process.arguments = []
-
         let context = _BuilderContextImpl(
           buildDirectory: scratchDirectory.build
         )
 
-        return Result { try process.run() }.andThen { _ in
-          // Encode context
-          JSONEncoder().encode(context)
-        }.andThen { encodedContext in
-          // Write context to stdin (as a single line)
-          Result {
-            inputPipe.fileHandleForWriting.write(encodedContext)
-            inputPipe.fileHandleForWriting.write("\n")
-          }
-        }.andThen { _ in
-          // Wait for builder to finish
-          process.waitUntilExit()
+          let inputPipe = Pipe()
+          let process = Process()
 
-          let status = Int(process.terminationStatus)
-          if status == 0 {
-            return .success()
-          } else {
-            return .failure(ProcessError.nonZeroExitStatus(status))
+          process.executableURL = productsDirectory / builderFileName
+          process.standardInput = inputPipe
+          process.currentDirectoryURL = scratchDirectory.sources
+            .actuallyResolvingSymlinksInPath()
+          process.arguments = []
+
+          let processWaitSemaphore = AsyncSemaphore(value: 0)
+
+          process.terminationHandler = { _ in
+            processWaitSemaphore.signal()
           }
-        }.ifFailure { _ in
-          if process.isRunning {
-            process.terminate()
-          }
-        }.mapError(Error.builderFailed)
+
+          return await Result {
+              _ = try process.run()
+              let data = try JSONEncoder().encode(context).get()
+              inputPipe.fileHandleForWriting.write(data)
+              inputPipe.fileHandleForWriting.write("\n")
+              try? inputPipe.fileHandleForWriting.close()
+              try await processWaitSemaphore.wait()
+              return Int(process.terminationStatus)
+          }.andThen { exitStatus in
+              if exitStatus == 0 {
+                  return .success()
+              } else {
+                  return .failure(ProcessError.nonZeroExitStatus(exitStatus))
+              }
+            }.mapError(Error.builderFailed)
       }
   }
 

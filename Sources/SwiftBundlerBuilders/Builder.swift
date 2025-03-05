@@ -3,7 +3,7 @@ import Foundation
 /// A project builder.
 public protocol Builder {
   /// Builds the project defined by the given context.
-  static func build(_ context: some BuilderContext) throws -> BuilderResult
+  static func build(_ context: some BuilderContext) async throws -> BuilderResult
 }
 
 private enum BuilderError: LocalizedError {
@@ -19,20 +19,45 @@ private enum BuilderError: LocalizedError {
 
 extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
-  public static func main() {
+  public static func main() async {
     do {
-      guard let input = readLine(strippingNewline: true) else {
-        throw BuilderError.noInput
-      }
+      let input = try await readLineAsync()
 
       let context = try JSONDecoder().decode(
         _BuilderContextImpl.self, from: Data(input.utf8)
       )
 
-      _ = try build(context)
+      _ = try await build(context)
     } catch {
       print(error)
       Foundation.exit(1)
     }
   }
+}
+
+func readLineAsync(strippingNewline: Bool = true) async throws -> String {
+    let readBytesStream = AsyncStream.makeStream(of: Data.self)
+
+    FileHandle.standardInput.readabilityHandler = { handle in
+        readBytesStream.continuation.yield(handle.availableData)
+    }
+
+    defer { FileHandle.standardInput.readabilityHandler = nil }
+
+    var accumulatedData = Data()
+    for await data in readBytesStream.stream {
+        accumulatedData.append(data)
+        if let stringData = String(data: accumulatedData, encoding: .utf8),
+           stringData.contains(where: { $0.isNewline }),
+           let firstLine = stringData.components(separatedBy: .newlines).first {
+            readBytesStream.continuation.finish()
+            if strippingNewline {
+                return firstLine
+            } else {
+                return firstLine + "\n"
+            }
+        }
+    }
+
+    throw BuilderError.noInput
 }

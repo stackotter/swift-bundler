@@ -32,7 +32,7 @@ enum Templater {
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
     addVSCodeOverlay: Bool
-  ) -> Result<Template?, TemplaterError> {
+  ) async -> Result<Template?, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
@@ -42,7 +42,7 @@ enum Templater {
     guard let template = template else {
       log.info("Creating package")
 
-      return SwiftPackageManager.createPackage(
+      return await SwiftPackageManager.createPackage(
         in: outputDirectory,
         name: packageName
       ).mapError { error -> TemplaterError in
@@ -66,9 +66,9 @@ enum Templater {
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
-    return getDefaultTemplatesDirectory(downloadIfNecessary: true)
+    return await getDefaultTemplatesDirectory(downloadIfNecessary: true)
       .andThen { templatesDirectory in
-        createPackage(
+        await createPackage(
           in: outputDirectory,
           from: template,
           in: templatesDirectory,
@@ -104,7 +104,7 @@ enum Templater {
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
     addVSCodeOverlay: Bool
-  ) -> Result<Template, TemplaterError> {
+  ) async -> Result<Template, TemplaterError> {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       return .failure(.packageDirectoryAlreadyExists(outputDirectory))
     }
@@ -134,7 +134,7 @@ enum Templater {
 
     if !forceCreation {
       // Verify that this machine's Swift version is supported
-      if case let .failure(error) = verifyTemplateIsSupported(template, manifest) {
+      if case let .failure(error) = await verifyTemplateIsSupported(template, manifest) {
         return .failure(error)
       }
     }
@@ -184,7 +184,7 @@ enum Templater {
     }
 
     // Apply the template
-    return applyTemplate(
+    return await applyTemplate(
       templateDirectory,
       to: outputDirectory,
       packageName: packageName,
@@ -230,9 +230,9 @@ enum Templater {
   static func verifyTemplateIsSupported(
     _ name: String,
     _ manifest: TemplateManifest
-  ) -> Result<Void, TemplaterError> {
+  ) async -> Result<Void, TemplaterError> {
     // Verify that the installed Swift version is supported
-    switch SwiftPackageManager.getSwiftVersion() {
+    switch await SwiftPackageManager.getSwiftVersion() {
       case .success(let version):
         if version < manifest.minimumSwiftVersion {
           return .failure(
@@ -254,7 +254,7 @@ enum Templater {
   ///   repository is downloaded if the templates directory doesn't exist.
   /// - Returns: The default templates directory, or a failure if the templates
   ///   directory doesn't exist and couldn't be downloaded.
-  static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) -> Result<URL, TemplaterError>
+  static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) async -> Result<URL, TemplaterError>
   {
     // Get the templates directory
     let templatesDirectory: URL
@@ -267,7 +267,7 @@ enum Templater {
 
     // Download the templates if they don't exist
     if !FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
-      let result = downloadDefaultTemplates(into: templatesDirectory)
+      let result = await downloadDefaultTemplates(into: templatesDirectory)
       if case let .failure(error) = result {
         return .failure(error)
       }
@@ -278,21 +278,21 @@ enum Templater {
 
   /// Updates the default templates to the latest version from GitHub.
   /// - Returns: A failure if updating fails.
-  static func updateTemplates() -> Result<Void, TemplaterError> {
-    return getDefaultTemplatesDirectory(downloadIfNecessary: false)
+  static func updateTemplates() async -> Result<Void, TemplaterError> {
+    return await getDefaultTemplatesDirectory(downloadIfNecessary: false)
       .andThen { templatesDirectory in
         guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
-          return downloadDefaultTemplates(into: templatesDirectory)
+          return await downloadDefaultTemplates(into: templatesDirectory)
         }
 
-        return Process.create(
+        return await Process.create(
           "git",
           arguments: [
             "fetch"
           ],
           directory: templatesDirectory
         ).runAndWait().andThen { _ in
-          Process.create(
+          await Process.create(
             "git",
             arguments: [
               "checkout", "v\(SwiftBundler.version.major)",
@@ -300,7 +300,7 @@ enum Templater {
             directory: templatesDirectory
           ).runAndWait()
         }.andThen { _ in
-          Process.create(
+          await Process.create(
             "git",
             arguments: ["pull"],
             directory: templatesDirectory
@@ -311,8 +311,8 @@ enum Templater {
 
   /// Gets the list of available templates from the default templates directory.
   /// - Returns: The available templates, or an error if template enumeration fails.
-  static func enumerateTemplates() -> Result<[Template], TemplaterError> {
-    getDefaultTemplatesDirectory(downloadIfNecessary: true)
+  static func enumerateTemplates() async -> Result<[Template], TemplaterError> {
+    await getDefaultTemplatesDirectory(downloadIfNecessary: true)
       .andThen(enumerateTemplates(in:))
   }
 
@@ -363,7 +363,7 @@ enum Templater {
   /// Downloads the default template repository.
   /// - Parameter directory: The directory to clone the template repository in.
   /// - Returns: A failure if cloning the repository fails.
-  static func downloadDefaultTemplates(into directory: URL) -> Result<Void, TemplaterError> {
+  static func downloadDefaultTemplates(into directory: URL) async -> Result<Void, TemplaterError> {
     log.info("Downloading default templates (\(defaultTemplateRepository))")
 
     // Remove the directory if it already exists
@@ -379,7 +379,7 @@ enum Templater {
       ]
     )
 
-    return process.runAndWait()
+    return await process.runAndWait()
       .mapError { error in
         .failedToCloneTemplateRepository(error)
       }

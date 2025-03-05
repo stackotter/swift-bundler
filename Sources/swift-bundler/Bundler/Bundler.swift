@@ -33,7 +33,7 @@ protocol Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, Error>
+  ) async -> Result<BundlerOutputStructure, Error>
 
   /// Returns a description of the files that would be produced if
   /// ``Bundler/bundle(_:_:)`` were to get called with the provided context.

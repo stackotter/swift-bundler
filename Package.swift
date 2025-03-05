@@ -30,11 +30,13 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-asn1", from: "1.1.0"),
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
+    .package(url: "https://github.com/adam-fowler/async-collections.git", .upToNextMajor(from: "0.1.0")),
+    .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.3"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
     .package(url: "https://github.com/apple/swift-system", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+    .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
   ],
   targets: [
     .executableTarget(
@@ -55,6 +57,9 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
+        .product(name: "AsyncCollections", package: "async-collections"),
+        .product(name: "ProcessSpawnSync", package: "AsyncProcess", condition: .when(platforms: [.linux])),
+        .product(name: "SystemPackage",package: "swift-system"),
 
         // Xcodeproj related dependencies
         .product(
@@ -117,7 +122,9 @@ let package = Package(
 
     .target(
       name: "SwiftBundlerBuilders",
-      dependencies: []
+      dependencies: [
+        .product(name: "ProcessSpawnSync", package: "AsyncProcess", condition: .when(platforms: [.linux])),
+      ]
     ),
 
     .target(

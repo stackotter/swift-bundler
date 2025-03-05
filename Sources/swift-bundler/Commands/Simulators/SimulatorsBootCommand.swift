@@ -13,10 +13,10 @@ struct SimulatorsBootCommand: Command {
     help: "The id or name of the simulator to start.")
   var idOrName: String
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     log.info("Booting '\(idOrName)'")
-    try SimulatorManager.bootSimulator(id: idOrName).unwrap()
+    try await SimulatorManager.bootSimulator(id: idOrName).unwrap()
     log.info("Opening 'Simulator.app'")
-    try SimulatorManager.openSimulatorApp().unwrap()
+    try await SimulatorManager.openSimulatorApp().unwrap()
   }
 }

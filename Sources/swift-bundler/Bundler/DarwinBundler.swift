@@ -70,7 +70,7 @@ enum DarwinBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, DarwinBundlerError> {
+  ) async -> Result<BundlerOutputStructure, DarwinBundlerError> {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let appBundle = outputStructure.bundle
     log.info("Bundling '\(appBundle.lastPathComponent)'")
@@ -81,16 +81,16 @@ enum DarwinBundler: Bundler {
       appName: context.appName
     )
 
-    let createAppIconIfPresent: () -> Result<Void, DarwinBundlerError> = {
+    let createAppIconIfPresent: () async -> Result<Void, DarwinBundlerError> = {
       if let path = context.appConfiguration.icon {
         let icon = context.packageDirectory / path
-        return Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
+        return await Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
       }
       return .success()
     }
 
-    let copyResourcesBundles: () -> Result<Void, DarwinBundlerError> = {
-      ResourceBundler.copyResources(
+    let copyResourcesBundles: () async -> Result<Void, DarwinBundlerError> = {
+      await ResourceBundler.copyResources(
         from: context.productsDirectory,
         to: bundleStructure.resourcesDirectory,
         fixBundles: !additionalContext.isXcodeBuild && !additionalContext.universal,
@@ -103,8 +103,8 @@ enum DarwinBundler: Bundler {
       }
     }
 
-    let copyDynamicLibraries: () -> Result<Void, DarwinBundlerError> = {
-      DynamicLibraryBundler.copyDynamicLibraries(
+    let copyDynamicLibraries: () async -> Result<Void, DarwinBundlerError> = {
+      await DynamicLibraryBundler.copyDynamicLibraries(
         dependedOnBy: bundleStructure.mainExecutable,
         to: bundleStructure.librariesDirectory,
         productsDirectory: context.productsDirectory,
@@ -116,8 +116,8 @@ enum DarwinBundler: Bundler {
       }
     }
 
-    let embedProfile: () -> Result<Void, DarwinBundlerError> = {
-      return Result.success().andThen { _ -> Result<URL?, DarwinBundlerError> in
+    let embedProfile: () async -> Result<Void, DarwinBundlerError> = {
+      return await Result.success().andThen { _ -> Result<URL?, DarwinBundlerError> in
         // If the user provided a provisioning profile, use it
         if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
           return .success(profile)
@@ -140,7 +140,7 @@ enum DarwinBundler: Bundler {
           return .failure(error)
         }
 
-        return ProvisioningProfileManager.locateOrGenerateSuitableProvisioningProfile(
+        return await ProvisioningProfileManager.locateOrGenerateSuitableProvisioningProfile(
           bundleIdentifier: context.appConfiguration.identifier,
           deviceId: device.id,
           deviceOS: device.platform.os,
@@ -158,10 +158,10 @@ enum DarwinBundler: Bundler {
     }
 
     let willSign = context.darwinCodeSigningContext != nil || context.platform != .macOS
-    let sign: () -> Result<Void, DarwinBundlerError> = {
+    let sign: () async -> Result<Void, DarwinBundlerError> = {
       // If credentials are supplied for codesigning, use them
       if let codeSigningContext = context.darwinCodeSigningContext {
-        return CodeSigner.signAppBundle(
+          return await CodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity.id,
           bundleIdentifier: context.appConfiguration.identifier,
@@ -174,7 +174,7 @@ enum DarwinBundler: Bundler {
         if context.platform != .macOS {
           // Codesign using an adhoc signature if the target platform requires
           // codesigning
-          return CodeSigner.signAppBundle(
+          return await CodeSigner.signAppBundle(
             bundle: appBundle,
             identityId: "-",
             bundleIdentifier: context.appConfiguration.identifier,
@@ -262,7 +262,7 @@ enum DarwinBundler: Bundler {
       sign
     )
 
-    return bundleApp()
+    return await bundleApp()
       .replacingSuccessValue(with: outputStructure)
   }
 
@@ -338,7 +338,7 @@ enum DarwinBundler: Bundler {
   private static func compileAppIcon(
     at inputIconFile: URL,
     to outputIconFile: URL
-  ) -> Result<Void, DarwinBundlerError> {
+  ) async -> Result<Void, DarwinBundlerError> {
     // Copy `AppIcon.icns` if present
     if inputIconFile.pathExtension == "icns" {
       log.info("Copying '\(inputIconFile.lastPathComponent)'")
@@ -354,7 +354,7 @@ enum DarwinBundler: Bundler {
       log.info(
         "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'"
       )
-      return IconSetCreator.createIcns(from: inputIconFile, outputFile: outputIconFile)
+      return await IconSetCreator.createIcns(from: inputIconFile, outputFile: outputIconFile)
         .mapError { error in
           .failedToCreateIcon(error)
         }

@@ -86,9 +86,9 @@ enum ProvisioningProfileManager {
     deviceId: String,
     deviceOS: NonMacAppleOS,
     identity: CodeSigner.Identity
-  ) -> Result<URL, Error> {
+  ) async -> Result<URL, Error> {
     #if SUPPORT_XCODEPROJ
-      locateSuitableProvisioningProfile(
+      await locateSuitableProvisioningProfile(
         bundleIdentifier: bundleIdentifier,
         deviceId: deviceId,
         deviceOS: deviceOS,
@@ -98,12 +98,12 @@ enum ProvisioningProfileManager {
           return .success(provisioningProfile)
         }
 
-        return CodeSigner.getTeamIdentifier(
+        return await CodeSigner.getTeamIdentifier(
           for: identity
         ).mapError { error in
           Error.failedToGetTeamIdentifier(error)
         }.andThen { teamIdentifier in
-          generateProvisioningProfile(
+          await generateProvisioningProfile(
             bundleIdentifier: bundleIdentifier,
             teamId: teamIdentifier,
             deviceId: deviceId,
@@ -123,12 +123,12 @@ enum ProvisioningProfileManager {
     deviceId: String,
     deviceOS: NonMacAppleOS,
     identity: CodeSigner.Identity
-  ) -> Result<URL?, Error> {
+  ) async -> Result<URL?, Error> {
     #if SUPPORT_XCODEPROJ
-      return CodeSigner.loadCertificates(for: identity)
+      return await CodeSigner.loadCertificates(for: identity)
         .mapError(Error.failedToLoadCertificates)
         .andThen { certificates in
-          loadProvisioningProfiles().map { profiles in
+          await loadProvisioningProfiles().map { profiles in
             profiles.filter { (_, profile) in
               profile.provisionedDevices.contains(deviceId)
                 && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
@@ -149,9 +149,9 @@ enum ProvisioningProfileManager {
 
   static func loadProvisioningProfile(
     _ provisioningProfile: URL
-  ) -> Result<ProvisioningProfile, Error> {
+  ) async -> Result<ProvisioningProfile, Error> {
     #if SUPPORT_XCODEPROJ
-      return Process.create(
+      return await Process.create(
         opensslToolPath,
         arguments: [
           "smime", "-verify",
@@ -184,9 +184,9 @@ enum ProvisioningProfileManager {
 
   #if SUPPORT_XCODEPROJ
     private static func loadProvisioningProfiles()
-      -> Result<[(URL, ProvisioningProfile)], Error>
+      async -> Result<[(URL, ProvisioningProfile)], Error>
     {
-      return locateProvisioningProfilesDirectory()
+      return await locateProvisioningProfilesDirectory()
         .andThen { provisioningProfilesDirectory in
           FileManager.default.contentsOfDirectory(
             at: provisioningProfilesDirectory
@@ -198,10 +198,10 @@ enum ProvisioningProfileManager {
           }
         }
         .andThen { provisioningProfiles in
-          provisioningProfiles.filter { file in
+          await provisioningProfiles.filter { file in
             file.pathExtension == "mobileprovision"
           }.tryMap { profileFile in
-            loadProvisioningProfile(profileFile).map { loadedProfile in
+            await loadProvisioningProfile(profileFile).map { loadedProfile in
               (profileFile, loadedProfile)
             }
           }
@@ -228,21 +228,21 @@ enum ProvisioningProfileManager {
       teamId: String,
       deviceId: String,
       deviceOS: NonMacAppleOS
-    ) -> Result<URL, Error> {
+    ) async -> Result<URL, Error> {
       log.info("Generating provisioning profile")
 
       let projectDirectory =
         FileManager.default.temporaryDirectory
         / "DummyProject-\(UUID().uuidString)"
 
-      return generateDummyXcodeProject(
+      return await generateDummyXcodeProject(
         projectDirectory: projectDirectory,
         bundleIdentifier: bundleIdentifier,
         teamId: teamId,
         deviceId: deviceId,
         deviceOS: deviceOS
       ).andThen { (xcodeprojFile, scheme) in
-        Process.create(
+        await Process.create(
           "xcodebuild",
           arguments: [
             "-project", xcodeprojFile.path,

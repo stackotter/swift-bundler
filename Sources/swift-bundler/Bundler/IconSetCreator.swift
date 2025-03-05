@@ -10,7 +10,7 @@ enum IconSetCreator {
   static func createIcns(
     from icon: URL,
     outputFile: URL
-  ) -> Result<Void, IconSetCreatorError> {
+  ) async -> Result<Void, IconSetCreatorError> {
     guard icon.pathExtension.lowercased() == "png" else {
       return .failure(.notPNG(icon))
     }
@@ -19,23 +19,23 @@ enum IconSetCreator {
     let iconSet = temporaryDirectory.appendingPathComponent("AppIcon.iconset")
     let sizes = [16, 32, 128, 256, 512]
 
-    return FileManager.default.createDirectory(at: iconSet)
+    return await FileManager.default.createDirectory(at: iconSet)
       .mapError { error in
         .failedToCreateIconSetDirectory(iconSet, error)
       }
       .andThen { _ in
-        sizes.tryForEach { size in
+        await sizes.tryForEach { size in
           let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
           let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
 
-          return createScaledIcon(icon, dimension: size, output: regularScale)
+          return await createScaledIcon(icon, dimension: size, output: regularScale)
             .andThen { _ in
-              createScaledIcon(icon, dimension: size * 2, output: doubleScale)
+              await createScaledIcon(icon, dimension: size * 2, output: doubleScale)
             }
         }
       }
       .andThen { _ in
-        Process.create(
+        await Process.create(
           "/usr/bin/iconutil",
           arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
         ).runAndWait().mapError { error in
@@ -60,7 +60,7 @@ enum IconSetCreator {
     _ icon: URL,
     dimension: Int,
     output: URL
-  ) -> Result<Void, IconSetCreatorError> {
+  ) async -> Result<Void, IconSetCreatorError> {
     let process = Process.create(
       "/usr/bin/sips",
       arguments: [
@@ -70,7 +70,7 @@ enum IconSetCreator {
       ],
       pipe: Pipe())
 
-    return process.runAndWait()
+    return await process.runAndWait()
       .mapError { error in
         .failedToScaleIcon(newDimension: dimension, error)
       }

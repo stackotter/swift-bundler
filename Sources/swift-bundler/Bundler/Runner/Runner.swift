@@ -20,7 +20,7 @@ enum Runner {
     device: Device,
     arguments: [String] = [],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     // TODO: Test `arguments` on an actual iOS when I get the chance
     log.info("Running '\(bundlerOutput.bundle.lastPathComponent)'")
 
@@ -32,26 +32,26 @@ enum Runner {
 
         switch platform {
           case .macOS:
-            return runMacOSAppOnHost(
+            return await runMacOSAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
             )
           case .linux:
-            return runLinuxAppOnHost(
+            return await runLinuxAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
             )
           case .windows:
-            return runWindowsAppOnHost(
+            return await runWindowsAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
             )
         }
       case .connected(let connectedDevice):
-        return runApp(
+        return await runApp(
           on: connectedDevice,
           bundlerOutput: bundlerOutput,
           bundleIdentifier: bundleIdentifier,
@@ -98,7 +98,7 @@ enum Runner {
     bundlerOutput: RunnableBundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     let executable = bundlerOutput.executable
 
     let process = Process.create(
@@ -129,12 +129,10 @@ enum Runner {
     #endif
 
     do {
-      try process.run()
+        try await process.runAndWait().get()
     } catch {
       return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
     }
-
-    process.waitUntilExit()
 
     let exitStatus = Int(process.terminationStatus)
     if exitStatus != 0 {
@@ -155,10 +153,10 @@ enum Runner {
     bundlerOutput: RunnableBundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     // runAppImage is a workaround required to run certain app images, but it
     // works for regular executable too so we just use it in all cases.
-    Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
+    await Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
       .mapError { error in
         .failedToRunExecutable(error)
       }
@@ -175,8 +173,8 @@ enum Runner {
     bundlerOutput: RunnableBundlerOutputStructure,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
-    Process.create(
+  ) async -> Result<Void, RunnerError> {
+    await Process.create(
       bundlerOutput.executable.path,
       arguments: arguments,
       environment: environmentVariables
@@ -199,9 +197,9 @@ enum Runner {
     bundleIdentifier: String,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     if connectedDevice.platform.isSimulator {
-      return runAppOnSimulator(
+      return await runAppOnSimulator(
         simulatorId: connectedDevice.id,
         bundlerOutput: bundlerOutput,
         bundleIdentifier: bundleIdentifier,
@@ -209,7 +207,7 @@ enum Runner {
         environmentVariables: environmentVariables
       )
     } else {
-      return runAppOnPhysicalDevice(
+      return await runAppOnPhysicalDevice(
         deviceId: connectedDevice.id,
         bundlerOutput: bundlerOutput,
         bundleIdentifier: bundleIdentifier,
@@ -225,7 +223,7 @@ enum Runner {
     bundleIdentifier: String,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     let environmentArguments: [String]
     if !environmentVariables.isEmpty {
       // TODO: correctly escape keys and values
@@ -237,7 +235,7 @@ enum Runner {
       environmentArguments = []
     }
 
-    return Process.create("xcode-select", arguments: ["--print-path"])
+    return await Process.create("xcode-select", arguments: ["--print-path"])
       .getOutput()
       .mapError(RunnerError.failedToGetXcodeDeveloperDirectory)
       .map { output in
@@ -255,10 +253,10 @@ enum Runner {
           // Fall back to ios-deploy.
           // `ios-deploy` is explicitly resolved so that a detailed error
           // message can be emitted for this easy misconfiguration issue.
-          return Process.locate("ios-deploy")
+          return await Process.locate("ios-deploy")
             .mapError(RunnerError.failedToLocateIOSDeploy)
             .andThen { iosDeployExecutable in
-              Process.create(
+              await Process.create(
                 iosDeployExecutable,
                 arguments: [
                   "--noninteractive",
@@ -274,7 +272,7 @@ enum Runner {
         }
 
         // Install and run with devicectl
-        return Process.create(
+        return await Process.create(
           devicectlExecutable.path,
           arguments: [
             "device", "install", "app",
@@ -283,7 +281,7 @@ enum Runner {
           ],
           runSilentlyWhenNotVerbose: false
         ).runAndWait().andThen { _ in
-          Process.create(
+          await Process.create(
             devicectlExecutable.path,
             arguments: [
               "device", "process", "launch",
@@ -311,17 +309,17 @@ enum Runner {
     bundleIdentifier: String,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, RunnerError> {
+  ) async -> Result<Void, RunnerError> {
     log.info("Preparing simulator")
-    return SimulatorManager.bootSimulator(id: simulatorId).andThen { _ in
+    return await SimulatorManager.bootSimulator(id: simulatorId).andThen { _ in
       log.info("Installing app")
-      return SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
+      return await SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
     }.andThen { (_: Void) -> Result<Void, SimulatorManagerError> in
       log.info("Opening Simulator")
-      return SimulatorManager.openSimulatorApp()
+      return await SimulatorManager.openSimulatorApp()
     }.andThen { (_: Void) -> Result<Void, SimulatorManagerError> in
       log.info("Launching \(bundleIdentifier)")
-      return SimulatorManager.launchApp(
+      return await SimulatorManager.launchApp(
         bundleIdentifier,
         simulatorId: simulatorId,
         connectConsole: true,

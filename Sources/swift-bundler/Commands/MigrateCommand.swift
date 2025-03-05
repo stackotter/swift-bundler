@@ -15,8 +15,8 @@ struct MigrateCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
-  func wrappedRun() throws {
-    try PackageConfiguration.load(
+  func wrappedRun() async throws {
+    try await PackageConfiguration.load(
       fromDirectory: packageDirectory ?? URL(fileURLWithPath: "."),
       migrateConfiguration: true
     ).unwrap()

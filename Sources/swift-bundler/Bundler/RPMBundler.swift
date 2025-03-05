@@ -24,7 +24,7 @@ enum RPMBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, RPMBundlerError> {
+  ) async -> Result<BundlerOutputStructure, RPMBundlerError> {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let bundleName = outputStructure.bundle.lastPathComponent
 
@@ -41,7 +41,7 @@ enum RPMBundler: Bundler {
     let sourceDirectory = context.outputDirectory / "\(escapedAppName)-\(appVersion)"
 
     let installationRoot = URL(fileURLWithPath: "/opt/\(context.appName)")
-    return GenericLinuxBundler.bundle(
+    return await GenericLinuxBundler.bundle(
       context,
       GenericLinuxBundler.Context(
         cosmeticBundleName: bundleName,
@@ -67,7 +67,7 @@ enum RPMBundler: Bundler {
       // Generate an archive of the source directory. Again, it's not actually
       // the source code of the app, but it is according to RPM terminology.
       log.info("Archiving bundle")
-      return ArchiveTool.createTarGz(
+      return await ArchiveTool.createTarGz(
         of: sourceDirectory,
         at: rpmBuildDirectory.appSourceArchive
       ).mapError(RPMBundlerError.failedToArchiveSources)
@@ -98,7 +98,7 @@ enum RPMBundler: Bundler {
         "--define", "_topdir \(rpmBuildDirectory.root.path)",
         "-v", "-bb", rpmBuildDirectory.appSpec.path,
       ]
-      return Process.create(command, arguments: arguments)
+      return await Process.create(command, arguments: arguments)
         .runAndWait()
         .mapError { error in
           .failedToRunRPMBuildTool(command, error)
