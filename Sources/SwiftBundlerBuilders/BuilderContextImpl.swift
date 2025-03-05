@@ -13,8 +13,7 @@ import Foundation
 public struct _BuilderContextImpl: BuilderContext, Codable {
   public var buildDirectory: URL
 
-  public init(buildDirectory: URL,
-              sourcesDirectory: URL) {
+  public init(buildDirectory: URL) {
     self.buildDirectory = buildDirectory
   }
 

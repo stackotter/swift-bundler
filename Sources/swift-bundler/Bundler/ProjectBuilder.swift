@@ -359,8 +359,7 @@ enum ProjectBuilder {
         )
 
         let context = _BuilderContextImpl(
-          buildDirectory: scratchDirectory.build,
-          sourcesDirectory: scratchDirectory.sources.actuallyResolvingSymlinksInPath()
+          buildDirectory: scratchDirectory.build
         )
 
           let inputPipe = Pipe()
