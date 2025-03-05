@@ -2,7 +2,6 @@ import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
 import Version
-import SwiftCommand
 import SystemPackage
 
 enum ProjectBuilder {
@@ -364,24 +363,40 @@ enum ProjectBuilder {
           sourcesDirectory: scratchDirectory.sources.actuallyResolvingSymlinksInPath()
         )
 
-          let command = SwiftCommand.Command.findInPath(withName: "swift")!
-              .addArguments("run", builderFileName)
-              .setCWD(.init(scratchDirectory.builder.path))
-              .setStdin(.pipe)
+          let inputPipe = Pipe()
+          let process = Process()
+
+          process.executableURL = productsDirectory / builderFileName
+          process.standardInput = inputPipe
+          process.currentDirectoryURL = scratchDirectory.sources
+            .actuallyResolvingSymlinksInPath()
+          process.arguments = []
+
+          let processWaitSemaphore = AsyncSemaphore(value: 0)
+
+          process.terminationHandler = { _ in
+            log.debug("process semaphore signaled!")
+            processWaitSemaphore.signal()
+          }
 
           return await Result {
-              let spawned = try command.spawn()
+              log.debug("running builder")
+              _ = try process.run()
               let data = try JSONEncoder().encode(context).get()
-              spawned.stdin.write(contentsOf: data)
-              spawned.stdin.write("\n")
+
+              inputPipe.fileHandleForWriting.write(data)
+              inputPipe.fileHandleForWriting.write("\n")
+              try? inputPipe.fileHandleForWriting.close()
+
               log.debug("waiting for builder to finish")
-              defer { print("builder finished") }
-              return try await spawned.status
+              try await processWaitSemaphore.wait()
+              log.debug("builder finished")
+              return Int(process.terminationStatus)
           }.andThen { exitStatus in
-              if exitStatus.terminatedSuccessfully {
+              if exitStatus == 0 {
                   return .success()
               } else {
-                  return .failure(SwiftCommandError.unsuccessfulTermination(exitStatus))
+                  return .failure(ProcessError.nonZeroExitStatus(exitStatus))
               }
             }.mapError(Error.builderFailed)
       }
@@ -442,8 +457,4 @@ enum ProjectBuilder {
       )
       """
   }
-}
-
-enum SwiftCommandError: Error {
-    case unsuccessfulTermination(ExitStatus)
 }

@@ -6,8 +6,6 @@ public protocol BuilderContext {
   /// getting built so can be used for various other temporary files too.
   var buildDirectory: URL { get }
 
-  var sourcesDirectory: URL { get }
-
   /// Runs the given command (either a path or a tool name) with the given
   /// arguments.
   func run(_ command: String, _ arguments: [String]) async throws

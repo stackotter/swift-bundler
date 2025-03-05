@@ -34,7 +34,7 @@ extension Process {
     class func runAndWait(_ url: URL, arguments: [String]) async throws -> Process {
         try await withCheckedThrowingContinuation { c in
             do {
-                try Process.run(url, arguments: arguments) {
+                _ = try Process.run(url, arguments: arguments) {
                     c.resume(returning: $0)
                 }
             } catch {

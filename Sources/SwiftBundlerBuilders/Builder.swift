@@ -8,14 +8,11 @@ public protocol Builder {
 
 private enum BuilderError: LocalizedError {
   case noInput
-  case failedToChangeCurrentDirectory(URL)
 
   var errorDescription: String? {
     switch self {
       case .noInput:
         return "No input provided to builder (expected JSON object on stdin)"
-      case let .failedToChangeCurrentDirectory(url):
-        return "Failed to change current directory to \(url.path)"
     }
   }
 }
@@ -24,14 +21,13 @@ extension Builder {
   /// Default builder entrypoint. Parses builder context from stdin.
   public static func main() async {
     do {
-        let context = _BuilderContextImpl(buildDirectory: .init(fileURLWithPath: "/repo/crossui-app/.build/bundler/projects/sentry/build", isDirectory: true),
-                                          sourcesDirectory: .init(fileURLWithPath: "/repo/crossui-app/.build/bundler/projects/sentry/sources", isDirectory: true))
+      let input = try await readLineAsync()
+
+      let context = try JSONDecoder().decode(
+        _BuilderContextImpl.self, from: Data(input.utf8)
+      )
 
       print("[builder] building with context: \(context)")
-
-        guard FileManager.default.changeCurrentDirectoryPath(context.sourcesDirectory.path) else {
-            throw BuilderError.failedToChangeCurrentDirectory(context.sourcesDirectory)
-        }
 
       _ = try await build(context)
     } catch {
@@ -41,7 +37,7 @@ extension Builder {
   }
 }
 
-func readLineAsync(strippingNewline: Bool) async throws -> String {
+func readLineAsync(strippingNewline: Bool = true) async throws -> String {
     let readBytesStream = AsyncStream.makeStream(of: Data.self)
 
     FileHandle.standardInput.readabilityHandler = { handle in

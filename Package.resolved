@@ -19,6 +19,15 @@
       }
     },
     {
+      "identity" : "asyncprocess",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gregcotten/AsyncProcess",
+      "state" : {
+        "branch" : "main",
+        "revision" : "ec8ee0ff57e3f120e7dd457f4008777c3c2bad01"
+      }
+    },
+    {
       "identity" : "jsonutilities",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/yonaskolb/JSONUtilities.git",
@@ -181,6 +190,15 @@
       }
     },
     {
+      "identity" : "swift-nio",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-nio.git",
+      "state" : {
+        "revision" : "c51907a839e63ebf0ba2076bba73dd96436bd1b9",
+        "version" : "2.81.0"
+      }
+    },
+    {
       "identity" : "swift-overture",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-overture",
@@ -223,15 +241,6 @@
       "state" : {
         "revision" : "2e949055d9797c1a6bddcda0e58dada16cc8e970",
         "version" : "6.0.3"
-      }
-    },
-    {
-      "identity" : "swiftcommand",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Zollerboy1/SwiftCommand.git",
-      "state" : {
-        "revision" : "4a0ea7695a17c4e4053e15814110b5086c3c2ceb",
-        "version" : "1.4.1"
       }
     },
     {

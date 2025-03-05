@@ -1,5 +1,8 @@
 import Foundation
-import SwiftCommand
+#if os(Linux)
+  import ProcessSpawnSync
+  typealias Process = PSProcess
+#endif
 
 //swiftlint:disable type_name
 // TODO: Use `package` access level when we bump to Swift 5.9
@@ -9,29 +12,50 @@ import SwiftCommand
 /// much perfectly backwards compatible.
 public struct _BuilderContextImpl: BuilderContext, Codable {
   public var buildDirectory: URL
-  public var sourcesDirectory: URL
 
   public init(buildDirectory: URL,
               sourcesDirectory: URL) {
     self.buildDirectory = buildDirectory
-    self.sourcesDirectory = sourcesDirectory
   }
 
   enum Error: LocalizedError {
       case commandNotFound
-      case unsuccessfulExitStatus(ExitStatus)
+      case nonZeroExitStatus(Int)
   }
 
   public func run(_ command: String, _ arguments: [String]) async throws {
-    guard let command = Command.findInPath(withName: command) else {
-      throw Error.commandNotFound
-    }
+      let process = Process()
+      #if os(Windows)
+        process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
+        process.arguments = ["/c", command] + arguments
+      #else
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [command] + arguments
+      #endif
 
-    let exitStatus = try await command.addArguments(arguments).status
+      try await process.runAndWait()
 
-    guard exitStatus.terminatedSuccessfully else {
-      throw Error.unsuccessfulExitStatus(exitStatus)
-    }
+      let exitStatus = Int(process.terminationStatus)
+      guard exitStatus == 0 else {
+          throw Error.nonZeroExitStatus(exitStatus)
+      }
   }
 }
 //swiftlint:enable type_name
+
+extension Process {
+    func runAndWait() async throws {
+        print("[builder] Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            terminationHandler = { process in
+                continuation.resume()
+            }
+
+            do {
+                try run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+}
