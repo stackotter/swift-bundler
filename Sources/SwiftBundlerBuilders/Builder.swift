@@ -27,8 +27,6 @@ extension Builder {
         _BuilderContextImpl.self, from: Data(input.utf8)
       )
 
-      print("[builder] building with context: \(context)")
-
       _ = try await build(context)
     } catch {
       print(error)

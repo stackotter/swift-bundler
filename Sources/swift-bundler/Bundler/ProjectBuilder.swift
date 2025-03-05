@@ -353,7 +353,6 @@ enum ProjectBuilder {
         }
       }
       .andThen { productsDirectory in
-        log.debug("got products directory: \(productsDirectory.path)")
         let builderFileName = HostPlatform.hostPlatform.executableFileName(
           forBaseName: builderProductName
         )
@@ -374,22 +373,16 @@ enum ProjectBuilder {
           let processWaitSemaphore = AsyncSemaphore(value: 0)
 
           process.terminationHandler = { _ in
-            log.debug("process semaphore signaled!")
             processWaitSemaphore.signal()
           }
 
           return await Result {
-              log.debug("running builder")
               _ = try process.run()
               let data = try JSONEncoder().encode(context).get()
-
               inputPipe.fileHandleForWriting.write(data)
               inputPipe.fileHandleForWriting.write("\n")
               try? inputPipe.fileHandleForWriting.close()
-
-              log.debug("waiting for builder to finish")
               try await processWaitSemaphore.wait()
-              log.debug("builder finished")
               return Int(process.terminationStatus)
           }.andThen { exitStatus in
               if exitStatus == 0 {
