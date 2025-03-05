@@ -61,7 +61,6 @@ let package = Package(
         .product(name: "AsyncCollections", package: "async-collections"),
         .product(
           name: "ProcessSpawnSync", package: "AsyncProcess", condition: .when(platforms: [.linux])),
-        .product(name: "SystemPackage", package: "swift-system"),
 
         // Xcodeproj related dependencies
         .product(
