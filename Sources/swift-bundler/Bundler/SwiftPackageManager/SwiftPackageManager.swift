@@ -440,7 +440,7 @@ enum SwiftPackageManager {
   ) async -> Result<PackageManifest, SwiftPackageManagerError> {
     let process = Process.create(
       "swift",
-      arguments: ["package", "describe", "--type", "json"]
+      arguments: ["package", "--package-path", "\(packageDirectory.path)", "describe", "--type", "json"]
     )
 
     return await process.getOutput().mapError { error in
