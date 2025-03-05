@@ -251,7 +251,9 @@ enum CodeSigner {
     }
   }
 
-  static func loadCertificates(for identity: Identity) async -> Result<[Certificate], CodeSignerError> {
+  static func loadCertificates(
+    for identity: Identity
+  ) async -> Result<[Certificate], CodeSignerError> {
     await Process.create(
       securityToolPath,
       arguments: [
@@ -281,7 +283,9 @@ enum CodeSigner {
     }
   }
 
-  static func getLatestCertificate(for identity: Identity) async -> Result<Certificate, CodeSignerError> {
+  static func getLatestCertificate(
+    for identity: Identity
+  ) async -> Result<Certificate, CodeSignerError> {
     let now = Date()
     return await loadCertificates(for: identity).andThen { certificates in
       guard

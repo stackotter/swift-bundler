@@ -254,8 +254,9 @@ enum Templater {
   ///   repository is downloaded if the templates directory doesn't exist.
   /// - Returns: The default templates directory, or a failure if the templates
   ///   directory doesn't exist and couldn't be downloaded.
-  static func getDefaultTemplatesDirectory(downloadIfNecessary: Bool) async -> Result<URL, TemplaterError>
-  {
+  static func getDefaultTemplatesDirectory(
+    downloadIfNecessary: Bool
+  ) async -> Result<URL, TemplaterError> {
     // Get the templates directory
     let templatesDirectory: URL
     switch System.getApplicationSupportDirectory() {

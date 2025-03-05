@@ -349,10 +349,12 @@ enum GenericLinuxBundler: Bundler {
         let relativeDestination = destination.path(
           relativeTo: appExecutable.deletingLastPathComponent()
         )
-        return await PatchElfTool.setRunpath(of: appExecutable, to: "$ORIGIN/\(relativeDestination)")
-          .mapError { error in
-            .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
-          }
+        return await PatchElfTool.setRunpath(
+          of: appExecutable, to: "$ORIGIN/\(relativeDestination)"
+        )
+        .mapError { error in
+          .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
+        }
       }
   }
 

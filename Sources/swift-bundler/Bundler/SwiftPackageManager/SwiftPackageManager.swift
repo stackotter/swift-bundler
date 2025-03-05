@@ -334,7 +334,9 @@ enum SwiftPackageManager {
   /// Gets the path to the latest SDK for a given platform.
   /// - Parameter platform: The platform to get the SDK path for.
   /// - Returns: The SDK's path, or a failure if an error occurs.
-  static func getLatestSDKPath(for platform: Platform) async -> Result<String, SwiftPackageManagerError> {
+  static func getLatestSDKPath(
+    for platform: Platform
+  ) async -> Result<String, SwiftPackageManagerError> {
     return await Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -440,7 +442,9 @@ enum SwiftPackageManager {
   ) async -> Result<PackageManifest, SwiftPackageManagerError> {
     let process = Process.create(
       "swift",
-      arguments: ["package", "--package-path", "\(packageDirectory.path)", "describe", "--type", "json"]
+      arguments: [
+        "package", "--package-path", "\(packageDirectory.path)", "describe", "--type", "json",
+      ]
     )
 
     return await process.getOutput().mapError { error in

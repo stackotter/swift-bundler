@@ -58,19 +58,19 @@ extension Process {
     let dataStream = AsyncStream.makeStream(of: Data.self)
 
     let handleDataTask = Task<Data, Never> {
-        var output = Data()
+      var output = Data()
 
-        for await data in dataStream.stream {
-            output.append(contentsOf: data)
+      for await data in dataStream.stream {
+        output.append(contentsOf: data)
+      }
+
+      if #available(macOS 10.15.4, *) {
+        if let data = try? pipe.fileHandleForReading.readToEnd() {
+          output.append(contentsOf: data)
         }
+      }
 
-        if #available(macOS 10.15.4, *) {
-          if let data = try? pipe.fileHandleForReading.readToEnd() {
-            output.append(contentsOf: data)
-          }
-        }
-
-        return output
+      return output
     }
 
     pipe.fileHandleForReading.readabilityHandler = {
@@ -83,7 +83,7 @@ extension Process {
         pipe.fileHandleForReading.readabilityHandler = nil
 
         dataStream.continuation.finish()
-          
+
         return await handleDataTask.value
       }
       .mapError { error in
@@ -110,20 +110,23 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() async -> Result<Void, ProcessError> {
-    log.debug("Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)")
+    log.debug(
+      "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
+    )
 
     return await Result {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            terminationHandler = { process in
-                continuation.resume()
-            }
-
-            do {
-                try run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+      try await withCheckedThrowingContinuation {
+        (continuation: CheckedContinuation<Void, Error>) in
+        terminationHandler = { process in
+          continuation.resume()
         }
+
+        do {
+          try run()
+        } catch {
+          continuation.resume(throwing: error)
+        }
+      }
     }.mapError(ProcessError.failedToRunProcess)
       .andThen { _ in
         let exitStatus = Int(terminationStatus)

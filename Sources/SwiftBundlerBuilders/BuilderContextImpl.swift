@@ -1,4 +1,5 @@
 import Foundation
+
 #if os(Linux)
   import ProcessSpawnSync
   typealias Process = PSProcess
@@ -18,44 +19,46 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
   }
 
   enum Error: LocalizedError {
-      case commandNotFound
-      case nonZeroExitStatus(Int)
+    case commandNotFound
+    case nonZeroExitStatus(Int)
   }
 
   public func run(_ command: String, _ arguments: [String]) async throws {
-      let process = Process()
-      #if os(Windows)
-        process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
-        process.arguments = ["/c", command] + arguments
-      #else
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [command] + arguments
-      #endif
+    let process = Process()
+    #if os(Windows)
+      process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
+      process.arguments = ["/c", command] + arguments
+    #else
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+      process.arguments = [command] + arguments
+    #endif
 
-      try await process.runAndWait()
+    try await process.runAndWait()
 
-      let exitStatus = Int(process.terminationStatus)
-      guard exitStatus == 0 else {
-          throw Error.nonZeroExitStatus(exitStatus)
-      }
+    let exitStatus = Int(process.terminationStatus)
+    guard exitStatus == 0 else {
+      throw Error.nonZeroExitStatus(exitStatus)
+    }
   }
 }
 //swiftlint:enable type_name
 
 extension Process {
-    func runAndWait() async throws {
-        print("[builder-debug] Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)")
+  func runAndWait() async throws {
+    print(
+      "[builder-debug] Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
+    )
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            terminationHandler = { process in
-                continuation.resume()
-            }
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      terminationHandler = { process in
+        continuation.resume()
+      }
 
-            do {
-                try run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+      do {
+        try run()
+      } catch {
+        continuation.resume(throwing: error)
+      }
     }
+  }
 }

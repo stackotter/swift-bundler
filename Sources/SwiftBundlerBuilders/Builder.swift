@@ -36,28 +36,29 @@ extension Builder {
 }
 
 func readLineAsync(strippingNewline: Bool = true) async throws -> String {
-    let readBytesStream = AsyncStream.makeStream(of: Data.self)
+  let readBytesStream = AsyncStream.makeStream(of: Data.self)
 
-    FileHandle.standardInput.readabilityHandler = { handle in
-        readBytesStream.continuation.yield(handle.availableData)
+  FileHandle.standardInput.readabilityHandler = { handle in
+    readBytesStream.continuation.yield(handle.availableData)
+  }
+
+  defer { FileHandle.standardInput.readabilityHandler = nil }
+
+  var accumulatedData = Data()
+  for await data in readBytesStream.stream {
+    accumulatedData.append(data)
+    if let stringData = String(data: accumulatedData, encoding: .utf8),
+      stringData.contains(where: { $0.isNewline }),
+      let firstLine = stringData.components(separatedBy: .newlines).first
+    {
+      readBytesStream.continuation.finish()
+      if strippingNewline {
+        return firstLine
+      } else {
+        return firstLine + "\n"
+      }
     }
+  }
 
-    defer { FileHandle.standardInput.readabilityHandler = nil }
-
-    var accumulatedData = Data()
-    for await data in readBytesStream.stream {
-        accumulatedData.append(data)
-        if let stringData = String(data: accumulatedData, encoding: .utf8),
-           stringData.contains(where: { $0.isNewline }),
-           let firstLine = stringData.components(separatedBy: .newlines).first {
-            readBytesStream.continuation.finish()
-            if strippingNewline {
-                return firstLine
-            } else {
-                return firstLine + "\n"
-            }
-        }
-    }
-
-    throw BuilderError.noInput
+  throw BuilderError.noInput
 }
