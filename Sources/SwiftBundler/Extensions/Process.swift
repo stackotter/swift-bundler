@@ -3,7 +3,7 @@ import Foundation
 #if os(Linux)
   import Glibc
   import ProcessSpawnSync
-  typealias Process = PSProcess
+  public typealias Process = PSProcess
 #endif
 
 /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
