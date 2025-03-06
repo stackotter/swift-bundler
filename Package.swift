@@ -31,7 +31,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
     .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
-    .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.4"),
+    .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),

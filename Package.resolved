@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gregcotten/AsyncProcess",
       "state" : {
-        "revision" : "5e6e7191bfb66c87c6bbb64674fd032956e4644f",
-        "version" : "0.0.4"
+        "revision" : "3a506bb36e4aa54eb3f1b13f15e636c68ee3eb19",
+        "version" : "0.0.5"
       }
     },
     {
