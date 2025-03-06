@@ -1,6 +1,7 @@
 import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
+import SystemPackage
 import Version
 
 enum ProjectBuilder {

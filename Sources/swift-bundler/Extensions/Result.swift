@@ -337,15 +337,7 @@ func set<T, U>(_ property: WritableKeyPath<T, U>, _ value: U) -> (T) -> T {
 }
 
 extension Result {
-  public init(catching body: () async throws(Failure) -> Success) async {
-    do {
-      self = .success(try await body())
-    } catch {
-      self = .failure(error)
-    }
-  }
-
-  public func map<NewSuccess: ~Copyable>(
+  func map<NewSuccess>(
     _ transform: (Success) async -> NewSuccess
   ) async -> Result<NewSuccess, Failure> {
     switch self {
@@ -356,7 +348,7 @@ extension Result {
     }
   }
 
-  public func flatMap<NewSuccess: ~Copyable>(
+  func flatMap<NewSuccess>(
     _ transform: (Success) async -> Result<NewSuccess, Failure>
   ) async -> Result<NewSuccess, Failure> {
     switch self {
@@ -366,17 +358,25 @@ extension Result {
         return .failure(failure)
     }
   }
-}
 
-extension Result where Success: ~Copyable {
-  public consuming func mapError<NewFailure>(
+  func mapErrorAsync<NewFailure>(
     _ transform: (Failure) async -> NewFailure
   ) async -> Result<Success, NewFailure> {
-    switch consume self {
+    switch self {
       case let .success(success):
-        return .success(consume success)
+        return .success(success)
       case let .failure(failure):
-        return .failure(await transform(failure))
+        return await .failure(transform(failure))
+    }
+  }
+}
+
+extension Result where Failure == Swift.Error {
+  init(catching body: () async throws -> Success) async {
+    do {
+      self = .success(try await body())
+    } catch {
+      self = .failure(error)
     }
   }
 }

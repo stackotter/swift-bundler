@@ -86,7 +86,7 @@ extension Process {
 
         return await handleDataTask.value
       }
-      .mapError { error in
+      .mapErrorAsync { error in
         switch error {
           case .nonZeroExitStatus(let status):
             return .nonZeroExitStatusWithOutput(await handleDataTask.value, status)
