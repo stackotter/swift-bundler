@@ -130,7 +130,7 @@ enum ProvisioningProfileManager {
         .andThen { certificates in
           await loadProvisioningProfiles().map { profiles in
             profiles.filter { (_, profile) in
-              profile.provisionedDevices.contains(deviceId)
+              profile.provisionedDevices?.contains(deviceId) != false
                 && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
                 && profile.platforms.contains(deviceOS.provisioningProfileName)
                 && profile.suitable(forBundleIdentifier: bundleIdentifier)
