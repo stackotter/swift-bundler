@@ -59,9 +59,9 @@ let package = Package(
         .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
         .product(
-            name: "ProcessSpawnSync",
-            package: "AsyncProcess",
-            condition: .when(platforms: [.linux])
+          name: "ProcessSpawnSync",
+          package: "AsyncProcess",
+          condition: .when(platforms: [.linux])
         ),
 
         // Xcodeproj related dependencies

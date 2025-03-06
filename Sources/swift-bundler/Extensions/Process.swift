@@ -135,11 +135,11 @@ extension Process {
   }
 
   func runAndLog() throws {
-      log.debug(
-        "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
-      )
+    log.debug(
+      "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
+    )
 
-      try run()
+    try run()
   }
 
   /// Adds environment variables to the process's environment.
