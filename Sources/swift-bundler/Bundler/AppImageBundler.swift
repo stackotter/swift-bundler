@@ -33,13 +33,13 @@ enum AppImageBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, AppImageBundlerError> {
+  ) async -> Result<BundlerOutputStructure, AppImageBundlerError> {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let appDir = context.outputDirectory
       .appendingPathComponent("\(context.appName).AppDir")
     let bundleName = outputStructure.bundle.lastPathComponent
 
-    return GenericLinuxBundler.bundle(
+    return await GenericLinuxBundler.bundle(
       context,
       GenericLinuxBundler.Context(cosmeticBundleName: bundleName)
     )
@@ -69,7 +69,7 @@ enum AppImageBundler: Bundler {
     }
     .andThenDoSideEffect { structure in
       log.info("Converting '\(context.appName).AppDir' to '\(bundleName)'")
-      return AppImageTool.bundle(appDir: appDir, to: outputStructure.bundle)
+      return await AppImageTool.bundle(appDir: appDir, to: outputStructure.bundle)
         .mapError { .failedToBundleAppDir($0) }
     }
     .replacingSuccessValue(with: outputStructure)

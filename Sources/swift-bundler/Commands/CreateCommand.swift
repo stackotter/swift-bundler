@@ -98,7 +98,7 @@ struct CreateCommand: Command {
     }
   }
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
@@ -112,10 +112,10 @@ struct CreateCommand: Command {
     ).unwrap()
 
     var template: Template?
-    let elapsed = try Stopwatch.time {
+    let elapsed = try await Stopwatch.time {
       // Create package from template
       if let templateRepository = templateRepository, let templateName = templateName {
-        template = try Templater.createPackage(
+        template = try await Templater.createPackage(
           in: packageDirectory,
           from: templateName,
           in: templateRepository,
@@ -126,7 +126,7 @@ struct CreateCommand: Command {
           addVSCodeOverlay: addVSCodeOverlay
         ).unwrap()
       } else {
-        template = try Templater.createPackage(
+        template = try await Templater.createPackage(
           in: packageDirectory,
           from: templateName,
           packageName: appName,

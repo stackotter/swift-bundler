@@ -8,8 +8,8 @@ struct ListIdentitiesCommand: Command {
     abstract: "List available codesigning identities."
   )
 
-  func wrappedRun() throws {
-    let identities = try CodeSigner.enumerateIdentities().unwrap()
+  func wrappedRun() async throws {
+    let identities = try await CodeSigner.enumerateIdentities().unwrap()
 
     Output {
       Section("Available identities") {

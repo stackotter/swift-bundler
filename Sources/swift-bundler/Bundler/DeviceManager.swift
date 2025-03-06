@@ -83,24 +83,24 @@ enum DeviceManager {
   }
 
   /// Only works on macOS.
-  static func listDestinations() -> Result<[Device], Error> {
+  static func listDestinations() async -> Result<[Device], Error> {
     let dummyProject =
       FileManager.default.temporaryDirectory
       / "dev.stackotter.swift-bundler/SwiftBundlerDummyPackage"
     let dummyProjectName = "Dummy"
 
-    return Result.success().andThen(if: !dummyProject.exists()) { _ in
-      FileManager.default.createDirectory(at: dummyProject)
+    return await Result.success().andThen(if: !dummyProject.exists()) { _ in
+      await FileManager.default.createDirectory(at: dummyProject)
         .mapError(Error.failedToCreateDummyProject)
         .andThen { _ in
-          SwiftPackageManager.createPackage(
+          await SwiftPackageManager.createPackage(
             in: dummyProject,
             name: dummyProjectName
           )
           .mapError(Error.failedToCreateDummyProject)
         }
     }.andThen { _ in
-      Process.create(
+      await Process.create(
         "xcodebuild",
         arguments: [
           "-showdestinations", "-scheme", dummyProjectName,
@@ -290,7 +290,7 @@ enum DeviceManager {
   static func resolve(
     specifier: String,
     platform: Platform?
-  ) -> Result<Device, Error> {
+  ) async -> Result<Device, Error> {
     guard specifier != "host" else {
       if platform == nil || platform == HostPlatform.hostPlatform.platform {
         return .success(.host(HostPlatform.hostPlatform))
@@ -303,7 +303,7 @@ enum DeviceManager {
       return .failure(.deviceNotFound(specifier: specifier, platform: platform))
     }
 
-    return listDestinations().map { devices in
+    return await listDestinations().map { devices in
       devices.sorted { first, second in
         // Physical devices first (since --simulator can be used to
         // disambiguate simulators) and put shorter names first (otherwise

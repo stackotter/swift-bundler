@@ -198,15 +198,15 @@ enum GenericLinuxBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, GenericLinuxBundlerError> {
-    bundle(context, additionalContext)
+  ) async -> Result<BundlerOutputStructure, GenericLinuxBundlerError> {
+    await bundle(context, additionalContext)
       .map(\.asOutputStructure)
   }
 
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundleStructure, GenericLinuxBundlerError> {
+  ) async -> Result<BundleStructure, GenericLinuxBundlerError> {
     let root = intendedOutput(in: context, additionalContext).bundle
     let appBundleName = root.lastPathComponent
 
@@ -221,7 +221,7 @@ enum GenericLinuxBundler: Bundler {
       withIdentifier: context.appConfiguration.identifier
     )
 
-    return structure.createDirectories()
+    return await structure.createDirectories()
       .andThen { _ in
         copyExecutable(at: executableArtifact, to: structure.mainExecutable)
       }
@@ -277,7 +277,7 @@ enum GenericLinuxBundler: Bundler {
         copyAppIconIfPresent(context, structure)
       }
       .andThen { _ in
-        copyDynamicLibraryDependencies(
+        await copyDynamicLibraryDependencies(
           of: structure.mainExecutable,
           to: structure.lib,
           productsDirectory: context.productsDirectory
@@ -310,10 +310,10 @@ enum GenericLinuxBundler: Bundler {
     of appExecutable: URL,
     to destination: URL,
     productsDirectory: URL
-  ) -> Result<Void, GenericLinuxBundlerError> {
+  ) async -> Result<Void, GenericLinuxBundlerError> {
     log.info("Copying dynamic libraries (and Swift runtime)")
     let allowedLibrariesDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
-    return Process.create(
+    return await Process.create(
       "ldd",
       arguments: [appExecutable.path],
       environment: [
@@ -325,7 +325,7 @@ enum GenericLinuxBundler: Bundler {
         .failedToEnumerateDynamicDependencies(error)
       }
       .andThen { (output: String) -> Result<Void, GenericLinuxBundlerError> in
-        output.split(separator: "\n")
+        await output.split(separator: "\n")
           .compactMap { line in
             // Parse each line and simply ignore any we can't parse.
             try? lddLineParser.parse(line)
@@ -341,7 +341,7 @@ enum GenericLinuxBundler: Bundler {
               )
           }
           .tryForEach { library in
-            return copyDynamicLibrary(library, toDirectory: destination)
+            return await copyDynamicLibrary(library, toDirectory: destination)
           }
       }
       .andThen { (_: Void) -> Result<Void, GenericLinuxBundlerError> in
@@ -349,10 +349,12 @@ enum GenericLinuxBundler: Bundler {
         let relativeDestination = destination.path(
           relativeTo: appExecutable.deletingLastPathComponent()
         )
-        return PatchElfTool.setRunpath(of: appExecutable, to: "$ORIGIN/\(relativeDestination)")
-          .mapError { error in
-            .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
-          }
+        return await PatchElfTool.setRunpath(
+          of: appExecutable, to: "$ORIGIN/\(relativeDestination)"
+        )
+        .mapError { error in
+          .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
+        }
       }
   }
 
@@ -362,7 +364,7 @@ enum GenericLinuxBundler: Bundler {
   private static func copyDynamicLibrary(
     _ source: URL,
     toDirectory destinationDirectory: URL
-  ) -> Result<Void, GenericLinuxBundlerError> {
+  ) async -> Result<Void, GenericLinuxBundlerError> {
     let destination = destinationDirectory.appendingPathComponent(
       source.lastPathComponent
     )
@@ -372,7 +374,7 @@ enum GenericLinuxBundler: Bundler {
     let resolvedSourceURL = source.actuallyResolvingSymlinksInPath()
 
     // Copy the library to the provided destination directory.
-    return Result.success()
+    return await Result.success()
       .andThen { _ in
         FileManager.default.copyItem(
           at: resolvedSourceURL,
@@ -383,7 +385,7 @@ enum GenericLinuxBundler: Bundler {
       .andThen { _ in
         // Update the library's runpath so that it only looks for its dependencies in
         // the current directory (before falling back to the system wide default runpath).
-        PatchElfTool.setRunpath(of: destination, to: "$ORIGIN")
+        await PatchElfTool.setRunpath(of: destination, to: "$ORIGIN")
           .mapError { error in
             .failedToCopyDynamicLibrary(
               source: resolvedSourceURL,

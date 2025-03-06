@@ -59,6 +59,16 @@ extension Result {
     flatMap(transform)
   }
 
+  /// Just a better name for ``Result/flatMap``. When skim reading complicated
+  /// code it's not always clear whether it's an array `flatMap` or a result
+  /// `flatMap`. In my opinion, it's best if you can tell what you're working
+  /// with straight away.
+  func andThen<NewSuccess>(
+    _ transform: (Success) async -> Result<NewSuccess, Failure>
+  ) async -> Result<NewSuccess, Failure> {
+    await flatMap(transform)
+  }
+
   /// Perform a fallible transformation on success, but only if the given
   /// condition is met. This streamlines applicable code enough that I believe
   /// it's worth having a separate helper method for.
@@ -72,6 +82,22 @@ extension Result {
       }
 
       return transform(value)
+    }
+  }
+
+  /// Perform a fallible transformation on success, but only if the given
+  /// condition is met. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen(
+    if condition: Bool,
+    _ transform: (Success) async -> Result<Success, Failure>
+  ) async -> Result<Success, Failure> {
+    await flatMap { value in
+      guard condition else {
+        return .success(value)
+      }
+
+      return await transform(value)
     }
   }
 
@@ -107,6 +133,22 @@ extension Result {
     }
   }
 
+  /// Perform a fallible transformation on success, but only if the given
+  /// property isn't `nil`. This streamlines applicable code enough that I believe
+  /// it's worth having a separate helper method for.
+  func andThen<Value>(
+    ifLet property: KeyPath<Success, Value?>,
+    _ transform: (Success, Value) async -> Result<Success, Failure>
+  ) async -> Result<Success, Failure> {
+    await flatMap { successValue in
+      guard let value = successValue[keyPath: property] else {
+        return .success(successValue)
+      }
+
+      return await transform(successValue, value)
+    }
+  }
+
   /// Specifically just performs a side effect without affecting the underlying
   /// success value of the result (unless of course the action fails).
   func andThenDoSideEffect(
@@ -114,6 +156,18 @@ extension Result {
   ) -> Result<Success, Failure> {
     andThen { value in
       action(value).map { _ in
+        value
+      }
+    }
+  }
+
+  /// Specifically just performs a side effect without affecting the underlying
+  /// success value of the result (unless of course the action fails).
+  func andThenDoSideEffect(
+    _ action: (Success) async -> Result<Void, Failure>
+  ) async -> Result<Success, Failure> {
+    await andThen { value in
+      await action(value).map { _ in
         value
       }
     }
@@ -166,6 +220,19 @@ extension Result {
     }
   }
 
+  /// Attempts to recover from a failure with a function mapping the failure
+  /// to a new result (with the same success value).
+  func tryRecover<NewFailure>(
+    _ recover: (Failure) async -> Result<Success, NewFailure>
+  ) async -> Result<Success, NewFailure> {
+    switch self {
+      case .success(let value):
+        return .success(value)
+      case .failure(let error):
+        return await recover(error)
+    }
+  }
+
   /// Performs an action if the result is a failure, without affecting the
   /// result's value.
   func ifFailure(do action: (Failure) -> Void) -> Result<Success, Failure> {
@@ -192,6 +259,24 @@ extension Result where Failure: Equatable {
           return .failure(error)
         }
         return recover(error)
+    }
+  }
+
+  /// Attempts to recover from a failure with a function mapping the failure
+  /// to a new result (with the same success value).
+  /// - Parameter badFailures: Failures that recovery shouldn't be attempted for.
+  func tryRecover(
+    unless badFailures: [Failure],
+    _ recover: (Failure) async -> Result<Success, Failure>
+  ) async -> Result<Success, Failure> {
+    switch self {
+      case .success(let value):
+        return .success(value)
+      case .failure(let error):
+        guard !badFailures.contains(error) else {
+          return .failure(error)
+        }
+        return await recover(error)
     }
   }
 
@@ -222,6 +307,23 @@ func flatten<Failure: Error>(
   }
 }
 
+/// Returns a closure that runs the given operations one by one and stops on failure.
+/// - Parameter operations: The operations to chain together.
+/// - Returns: If an error occurs, a failure is returned.
+func flatten<Failure: Error>(
+  _ operations: (() async -> Result<Void, Failure>)...
+) -> (() async -> Result<Void, Failure>) {
+  return {
+    for operation in operations {
+      let result = await operation()
+      if case .failure = result {
+        return result
+      }
+    }
+    return .success()
+  }
+}
+
 func with<T, U>(_ value: T, _ transform: (T) -> U) -> U {
   transform(value)
 }
@@ -231,5 +333,50 @@ func set<T, U>(_ property: WritableKeyPath<T, U>, _ value: U) -> (T) -> T {
     var container = container
     container[keyPath: property] = value
     return container
+  }
+}
+
+extension Result {
+  func map<NewSuccess>(
+    _ transform: (Success) async -> NewSuccess
+  ) async -> Result<NewSuccess, Failure> {
+    switch self {
+      case let .success(success):
+        return await .success(transform(success))
+      case let .failure(failure):
+        return .failure(failure)
+    }
+  }
+
+  func flatMap<NewSuccess>(
+    _ transform: (Success) async -> Result<NewSuccess, Failure>
+  ) async -> Result<NewSuccess, Failure> {
+    switch self {
+      case let .success(success):
+        return await transform(success)
+      case let .failure(failure):
+        return .failure(failure)
+    }
+  }
+
+  func mapErrorAsync<NewFailure>(
+    _ transform: (Failure) async -> NewFailure
+  ) async -> Result<Success, NewFailure> {
+    switch self {
+      case let .success(success):
+        return .success(success)
+      case let .failure(failure):
+        return await .failure(transform(failure))
+    }
+  }
+}
+
+extension Result where Failure == Swift.Error {
+  init(catching body: () async throws -> Success) async {
+    do {
+      self = .success(try await body())
+    } catch {
+      self = .failure(error)
+    }
   }
 }
