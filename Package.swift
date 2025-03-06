@@ -30,8 +30,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-asn1", from: "1.1.0"),
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
-    .package(
-      url: "https://github.com/adam-fowler/async-collections.git", .upToNextMajor(from: "0.1.0")),
+    .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
     .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.3"),
 
     // File watcher dependencies
@@ -60,7 +59,10 @@ let package = Package(
         .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
         .product(
-          name: "ProcessSpawnSync", package: "AsyncProcess", condition: .when(platforms: [.linux])),
+            name: "ProcessSpawnSync",
+            package: "AsyncProcess",
+            condition: .when(platforms: [.linux])
+        ),
 
         // Xcodeproj related dependencies
         .product(
@@ -125,7 +127,10 @@ let package = Package(
       name: "SwiftBundlerBuilders",
       dependencies: [
         .product(
-          name: "ProcessSpawnSync", package: "AsyncProcess", condition: .when(platforms: [.linux]))
+          name: "ProcessSpawnSync",
+          package: "AsyncProcess",
+          condition: .when(platforms: [.linux])
+        )
       ]
     ),
 

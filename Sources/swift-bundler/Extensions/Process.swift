@@ -113,7 +113,7 @@ extension Process {
     await Result {
       try await withCheckedThrowingContinuation {
         (continuation: CheckedContinuation<Void, Error>) in
-        terminationHandler = { process in
+        terminationHandler = { _ in
           continuation.resume()
         }
 

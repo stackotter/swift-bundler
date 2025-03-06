@@ -45,12 +45,8 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
 
 extension Process {
   func runAndWait() async throws {
-    print(
-      "[builder-debug] Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
-    )
-
     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-      terminationHandler = { process in
+      terminationHandler = { _ in
         continuation.resume()
       }
 
