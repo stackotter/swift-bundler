@@ -35,7 +35,7 @@
     }
   }
 #elseif os(Windows)
-public enum Signal: Int32, CaseIterable {
+  public enum Signal: Int32, CaseIterable {
     case abort
     case interrupt
     case terminate
