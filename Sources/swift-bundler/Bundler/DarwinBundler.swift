@@ -161,7 +161,7 @@ enum DarwinBundler: Bundler {
     let sign: () async -> Result<Void, DarwinBundlerError> = {
       // If credentials are supplied for codesigning, use them
       if let codeSigningContext = context.darwinCodeSigningContext {
-          return await CodeSigner.signAppBundle(
+        return await CodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity.id,
           bundleIdentifier: context.appConfiguration.identifier,

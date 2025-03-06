@@ -99,43 +99,44 @@ struct AppConfigurationV2: Codable {
 }
 
 extension Sequence where Element: Sendable {
-    public func asyncMap<T>(_ transform: @Sendable (Element) async throws -> T) async rethrows -> [T] {
-        let initialCapacity = underestimatedCount
-        var result = ContiguousArray<T>()
-        result.reserveCapacity(initialCapacity)
+  public func asyncMap<T>(_ transform: @Sendable (Element) async throws -> T) async rethrows -> [T]
+  {
+    let initialCapacity = underestimatedCount
+    var result = ContiguousArray<T>()
+    result.reserveCapacity(initialCapacity)
 
-        var iterator = self.makeIterator()
+    var iterator = self.makeIterator()
 
-        // Add elements up to the initial capacity without checking for regrowth.
-        for _ in 0..<initialCapacity {
-            result.append(try await transform(iterator.next()!))
-        }
-        // Add remaining elements, if any.
-        while let element = iterator.next() {
-            result.append(try await transform(element))
-        }
-        return Array(result)
+    // Add elements up to the initial capacity without checking for regrowth.
+    for _ in 0..<initialCapacity {
+      result.append(try await transform(iterator.next()!))
     }
+    // Add remaining elements, if any.
+    while let element = iterator.next() {
+      result.append(try await transform(element))
+    }
+    return Array(result)
+  }
 }
 
 extension Optional {
-    func asyncMap<T>(_ transform: (Wrapped) async throws -> T) async rethrows -> T? {
-        switch self {
-        case .none:
-            return nil
-        case .some(let value):
-            return try await transform(value)
-        }
+  func asyncMap<T>(_ transform: (Wrapped) async throws -> T) async rethrows -> T? {
+    switch self {
+      case .none:
+        return nil
+      case .some(let value):
+        return try await transform(value)
     }
+  }
 }
 
 extension Dictionary {
-    func asyncMapValues<T>(_ transform: (Value) async throws -> T) async rethrows -> [Key : T] {
-        var result: [Key : T] = .init(minimumCapacity: count)
-        for (key, value) in self {
-            result[key] = try await transform(value)
-        }
-
-        return result
+  func asyncMapValues<T>(_ transform: (Value) async throws -> T) async rethrows -> [Key: T] {
+    var result: [Key: T] = .init(minimumCapacity: count)
+    for (key, value) in self {
+      result[key] = try await transform(value)
     }
+
+    return result
+  }
 }

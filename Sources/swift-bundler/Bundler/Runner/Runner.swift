@@ -129,7 +129,7 @@ enum Runner {
     #endif
 
     do {
-        try await process.runAndWait().get()
+      try await process.runAndWait().get()
     } catch {
       return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
     }

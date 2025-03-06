@@ -565,7 +565,8 @@ struct BundleCommand: ErrorHandledCommand {
         if let argumentsProductsDirectory = arguments.productsDirectory {
           productsDirectory = argumentsProductsDirectory
         } else {
-          productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+          productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
+            .unwrap()
         }
       } else {
         let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")

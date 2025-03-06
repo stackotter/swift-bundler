@@ -34,23 +34,23 @@ extension Array {
     return .success(result)
   }
 
-    /// A `Result`-based version of ``Array/map(_:)``. Guaranteed to
-    /// short-circuit as soon as a failure occurs. Elements are processed in the
-    /// order that they appear.
-    func tryMap<Failure: Error, NewElement>(
-      _ transform: (Element) async -> Result<NewElement, Failure>
-    ) async -> Result<[NewElement], Failure> {
-      var result: [NewElement] = []
-      for element in self {
-        switch await transform(element) {
-          case .success(let newElement):
-            result.append(newElement)
-          case .failure(let error):
-            return .failure(error)
-        }
+  /// A `Result`-based version of ``Array/map(_:)``. Guaranteed to
+  /// short-circuit as soon as a failure occurs. Elements are processed in the
+  /// order that they appear.
+  func tryMap<Failure: Error, NewElement>(
+    _ transform: (Element) async -> Result<NewElement, Failure>
+  ) async -> Result<[NewElement], Failure> {
+    var result: [NewElement] = []
+    for element in self {
+      switch await transform(element) {
+        case .success(let newElement):
+          result.append(newElement)
+        case .failure(let error):
+          return .failure(error)
       }
-      return .success(result)
     }
+    return .success(result)
+  }
 
   /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
   /// short-circuit as soon as a failure occurs. Elements are processed in the
@@ -69,22 +69,22 @@ extension Array {
     return .success()
   }
 
-    /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
-    /// short-circuit as soon as a failure occurs. Elements are processed in the
-    /// order that they appear.
-    func tryForEach<Failure: Error>(
-      _ body: (Element) async -> Result<Void, Failure>
-    ) async -> Result<Void, Failure> {
-      for element in self {
-        switch await body(element) {
-          case .success:
-            continue
-          case .failure(let error):
-            return .failure(error)
-        }
+  /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
+  /// short-circuit as soon as a failure occurs. Elements are processed in the
+  /// order that they appear.
+  func tryForEach<Failure: Error>(
+    _ body: (Element) async -> Result<Void, Failure>
+  ) async -> Result<Void, Failure> {
+    for element in self {
+      switch await body(element) {
+        case .success:
+          continue
+        case .failure(let error):
+          return .failure(error)
       }
-      return .success()
     }
+    return .success()
+  }
 }
 
 struct Verb {

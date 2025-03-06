@@ -329,13 +329,13 @@ enum VariableEvaluator {
         }
       }
       .andThen(ifLet: \AppConfiguration.metadata) { configuration, metadata in
-          await evaluateVariables(in: metadata, with: context).map { metadata in
+        await evaluateVariables(in: metadata, with: context).map { metadata in
           with(configuration, set(\.metadata, metadata))
         }
       }
       .andThen(ifLet: \AppConfiguration.overlays) { configuration, overlays in
-          await overlays.tryMap { overlay in
-            await evaluateVariables(in: overlay, with: context)
+        await overlays.tryMap { overlay in
+          await evaluateVariables(in: overlay, with: context)
         }.map { overlays in
           with(configuration, set(\.overlays, overlays))
         }

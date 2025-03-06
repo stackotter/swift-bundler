@@ -1,8 +1,8 @@
 import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
-import Version
 import SystemPackage
+import Version
 
 enum ProjectBuilder {
   static let builderProductName = "Builder"
@@ -361,36 +361,36 @@ enum ProjectBuilder {
           buildDirectory: scratchDirectory.build
         )
 
-          let inputPipe = Pipe()
-          let process = Process()
+        let inputPipe = Pipe()
+        let process = Process()
 
-          process.executableURL = productsDirectory / builderFileName
-          process.standardInput = inputPipe
-          process.currentDirectoryURL = scratchDirectory.sources
-            .actuallyResolvingSymlinksInPath()
-          process.arguments = []
+        process.executableURL = productsDirectory / builderFileName
+        process.standardInput = inputPipe
+        process.currentDirectoryURL = scratchDirectory.sources
+          .actuallyResolvingSymlinksInPath()
+        process.arguments = []
 
-          let processWaitSemaphore = AsyncSemaphore(value: 0)
+        let processWaitSemaphore = AsyncSemaphore(value: 0)
 
-          process.terminationHandler = { _ in
-            processWaitSemaphore.signal()
+        process.terminationHandler = { _ in
+          processWaitSemaphore.signal()
+        }
+
+        return await Result {
+          _ = try process.run()
+          let data = try JSONEncoder().encode(context).get()
+          inputPipe.fileHandleForWriting.write(data)
+          inputPipe.fileHandleForWriting.write("\n")
+          try? inputPipe.fileHandleForWriting.close()
+          try await processWaitSemaphore.wait()
+          return Int(process.terminationStatus)
+        }.andThen { exitStatus in
+          if exitStatus == 0 {
+            return .success()
+          } else {
+            return .failure(ProcessError.nonZeroExitStatus(exitStatus))
           }
-
-          return await Result {
-              _ = try process.run()
-              let data = try JSONEncoder().encode(context).get()
-              inputPipe.fileHandleForWriting.write(data)
-              inputPipe.fileHandleForWriting.write("\n")
-              try? inputPipe.fileHandleForWriting.close()
-              try await processWaitSemaphore.wait()
-              return Int(process.terminationStatus)
-          }.andThen { exitStatus in
-              if exitStatus == 0 {
-                  return .success()
-              } else {
-                  return .failure(ProcessError.nonZeroExitStatus(exitStatus))
-              }
-            }.mapError(Error.builderFailed)
+        }.mapError(Error.builderFailed)
       }
   }
 
