@@ -1,5 +1,10 @@
 import Foundation
 
+#if os(Linux)
+  import ProcessSpawnSync
+  typealias Process = PSProcess
+#endif
+
 //swiftlint:disable type_name
 // TODO: Use `package` access level when we bump to Swift 5.9
 /// Implementation detail, may have breaking changes from time to time.
@@ -14,10 +19,11 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
   }
 
   enum Error: LocalizedError {
+    case commandNotFound
     case nonZeroExitStatus(Int)
   }
 
-  public func run(_ command: String, _ arguments: [String]) throws {
+  public func run(_ command: String, _ arguments: [String]) async throws {
     let process = Process()
     #if os(Windows)
       process.executableURL = URL(fileURLWithPath: "C:\\Windows\\System32\\cmd.exe")
@@ -27,8 +33,7 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
       process.arguments = [command] + arguments
     #endif
 
-    try process.run()
-    process.waitUntilExit()
+    try await process.runAndWait()
 
     let exitStatus = Int(process.terminationStatus)
     guard exitStatus == 0 else {
@@ -37,3 +42,19 @@ public struct _BuilderContextImpl: BuilderContext, Codable {
   }
 }
 //swiftlint:enable type_name
+
+extension Process {
+  func runAndWait() async throws {
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      terminationHandler = { _ in
+        continuation.resume()
+      }
+
+      do {
+        try run()
+      } catch {
+        continuation.resume(throwing: error)
+      }
+    }
+  }
+}

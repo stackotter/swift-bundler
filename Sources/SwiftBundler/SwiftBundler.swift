@@ -3,7 +3,7 @@ import StackOtterArgParser
 import Version
 
 /// The root command of Swift Bundler.
-public struct SwiftBundler: ParsableCommand {    
+public struct SwiftBundler: AsyncParsableCommand {
   public static let version = Version(3, 0, 0)
 
   public static let configuration = CommandConfiguration(
@@ -27,7 +27,7 @@ public struct SwiftBundler: ParsableCommand {
 
   /// Swift Bundler's git URL. Used when generating Swift packages that depend
   /// on the Swift Bundler runtime or builder API.
-  public static let gitURL = URL(string: "https://github.com/stackotter/swift-bundler")!
+  public static let gitURL = URL(string: "https://github.com/gregcotten/swift-bundler")!
 
   @Flag(
     name: .shortAndLong,

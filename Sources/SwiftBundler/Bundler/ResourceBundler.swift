@@ -16,10 +16,10 @@ enum ResourceBundler {
     for platform: Platform,
     platformVersion: String,
     keepSource: Bool = true
-  ) -> Result<Void, ResourceBundlerError> {
+  ) async -> Result<Void, ResourceBundlerError> {
     // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
-    return Process.create(
+    return await Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "actool", assetCatalog.path,
@@ -54,7 +54,7 @@ enum ResourceBundler {
     platformVersion: String,
     packageName: String,
     productName: String
-  ) -> Result<Void, ResourceBundlerError> {
+  ) async -> Result<Void, ResourceBundlerError> {
     let contents: [URL]
     do {
       contents = try FileManager.default.contentsOfDirectory(
@@ -81,7 +81,7 @@ enum ResourceBundler {
         )
       } else {
         let bundleName = file.deletingPathExtension().lastPathComponent
-        result = fixAndCopyResourceBundle(
+        result = await fixAndCopyResourceBundle(
           file,
           to: destinationDirectory,
           platform: platform,
@@ -140,7 +140,7 @@ enum ResourceBundler {
     platform: Platform,
     platformVersion: String,
     isMainBundle: Bool
-  ) -> Result<Void, ResourceBundlerError> {
+  ) async -> Result<Void, ResourceBundlerError> {
     log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
 
     let destinationBundle: URL
@@ -170,7 +170,7 @@ enum ResourceBundler {
       withType: .directory
     )
 
-    return Result.success()
+    return await Result.success()
       .andThen(if: !isMainBundle) { _ in
         // All resource bundles other than the main one get put in separate
         // resource bundles (whereas the main resources just get put in the root
@@ -189,7 +189,7 @@ enum ResourceBundler {
       }
       .andThen(if: assetCatalogExists) { _ in
         // Compile asset catalog if present
-        Self.compileAssetCatalog(
+        await Self.compileAssetCatalog(
           assetCatalog,
           to: destinationBundleResources,
           for: platform,
@@ -199,7 +199,7 @@ enum ResourceBundler {
       }
       .andThen { _ in
         // Copile metal shaders
-        MetalCompiler.compileMetalShaders(
+        await MetalCompiler.compileMetalShaders(
           in: destinationBundleResources,
           for: platform,
           platformVersion: platformVersion,
@@ -210,7 +210,7 @@ enum ResourceBundler {
       }
       .andThen { _ in
         // Compile storyboards
-        StoryboardCompiler.compileStoryboards(
+        await StoryboardCompiler.compileStoryboards(
           in: destinationBundleResources,
           to: destinationBundleResources.appendingPathComponent("Base.lproj"),
           keepSources: false

@@ -12,7 +12,7 @@ enum StoryboardCompiler {
     in directory: URL,
     to outputDirectory: URL,
     keepSources: Bool = true
-  ) -> Result<Void, StoryboardCompilerError> {
+  ) async -> Result<Void, StoryboardCompilerError> {
     let contents: [URL]
     do {
       contents = try FileManager.default.contentsOfDirectory(
@@ -36,7 +36,7 @@ enum StoryboardCompiler {
       withType: .directory
     )
 
-    return FileManager.default.contentsOfDirectory(
+    return await FileManager.default.contentsOfDirectory(
       at: directory,
       onError: StoryboardCompilerError.failedToEnumerateStoryboards
     ).map { files in
@@ -49,9 +49,9 @@ enum StoryboardCompiler {
         onError: StoryboardCompilerError.failedToCreateOutputDirectory
       )
     }.andThen { storyboards in
-      storyboards.tryForEach { storyboard in
+      await storyboards.tryForEach { storyboard in
         // Compile the storyboard and delete the original file if !keepSources
-        compileStoryboard(storyboard, to: outputDirectory)
+        await compileStoryboard(storyboard, to: outputDirectory)
           .andThen(if: !keepSources) { _ in
             FileManager.default.removeItem(
               at: storyboard,
@@ -70,7 +70,7 @@ enum StoryboardCompiler {
   static func compileStoryboard(
     _ storyboard: URL,
     to directory: URL
-  ) -> Result<Void, StoryboardCompilerError> {
+  ) async -> Result<Void, StoryboardCompilerError> {
     let outputFile =
       directory
       .appendingPathComponent(storyboard.deletingPathExtension().lastPathComponent)
@@ -84,7 +84,7 @@ enum StoryboardCompiler {
       ]
     )
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       return .failedToRunIBTool(storyboard: storyboard, error)
     }
   }

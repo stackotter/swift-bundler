@@ -23,10 +23,10 @@ struct GenerateXcodeSupportCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var configurationFileOverride: URL?
 
-  func wrappedRun() throws {
-    let elapsed = try Stopwatch.time {
+  func wrappedRun() async throws {
+    let elapsed = try await Stopwatch.time {
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let configuration = try PackageConfiguration.load(
+      let configuration = try await PackageConfiguration.load(
         fromDirectory: packageDirectory,
         customFile: configurationFileOverride
       ).unwrap()

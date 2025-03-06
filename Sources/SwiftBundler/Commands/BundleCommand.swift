@@ -176,7 +176,7 @@ struct BundleCommand: ErrorHandledCommand {
     provisioningProfile: URL?,
     entitlements: URL?,
     platform: Platform
-  ) throws -> BundlerContext.DarwinCodeSigningContext? {
+  ) async throws -> BundlerContext.DarwinCodeSigningContext? {
     guard let platform = platform.asApplePlatform else {
       let invalidArguments = [
         ("--codesign", codesignArgument == true),
@@ -236,10 +236,10 @@ struct BundleCommand: ErrorHandledCommand {
     do {
       let identity: CodeSigner.Identity
       if let identityShortName = identityArgument {
-        identity = try CodeSigner.resolveIdentity(shortName: identityShortName)
+        identity = try await CodeSigner.resolveIdentity(shortName: identityShortName)
           .unwrap()
       } else {
-        let identities = try CodeSigner.enumerateIdentities().unwrap()
+        let identities = try await CodeSigner.enumerateIdentities().unwrap()
 
         guard let firstIdentity = identities.first else {
           throw CLIError.failedToResolveCodesigningConfiguration(
@@ -281,12 +281,12 @@ struct BundleCommand: ErrorHandledCommand {
     platform: Platform?,
     deviceSpecifier: String?,
     simulatorSpecifier: String?
-  ) throws -> (Platform, Device?) {
+  ) async throws -> (Platform, Device?) {
     if let platform = platform, deviceSpecifier == nil, simulatorSpecifier == nil {
       return (platform, nil)
     }
 
-    let device = try resolveDevice(
+    let device = try await resolveDevice(
       platform: platform,
       deviceSpecifier: deviceSpecifier,
       simulatorSpecifier: simulatorSpecifier
@@ -298,7 +298,7 @@ struct BundleCommand: ErrorHandledCommand {
     platform: Platform?,
     deviceSpecifier: String?,
     simulatorSpecifier: String?
-  ) throws -> Device {
+  ) async throws -> Device {
     // '--device' and '--simulator' are mutually exclusive
     guard deviceSpecifier == nil || simulatorSpecifier == nil else {
       throw CLIError.failedToResolveTargetDevice(
@@ -309,7 +309,7 @@ struct BundleCommand: ErrorHandledCommand {
     if let deviceSpecifier {
       // This will also find simulators (--device can be used to specify any
       // destination).
-      return try DeviceManager.resolve(
+      return try await DeviceManager.resolve(
         specifier: deviceSpecifier,
         platform: platform
       ).unwrap()
@@ -320,7 +320,7 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
 
-      let matchedSimulators = try SimulatorManager.listAvailableSimulators(
+      let matchedSimulators = try await SimulatorManager.listAvailableSimulators(
         searchTerm: simulatorSpecifier
       ).unwrap().sorted { first, second in
         // Put booted simulators first for convenience and put shorter names
@@ -366,7 +366,7 @@ struct BundleCommand: ErrorHandledCommand {
         case .none, hostPlatform.platform:
           return Device.host(hostPlatform)
         case .some(let platform) where platform.isSimulator:
-          let matchedSimulators = try SimulatorManager.listAvailableSimulators().unwrap()
+          let matchedSimulators = try await SimulatorManager.listAvailableSimulators().unwrap()
             .filter { simulator in
               simulator.isBooted
                 && simulator.isAvailable
@@ -442,13 +442,13 @@ struct BundleCommand: ErrorHandledCommand {
     return architectures
   }
 
-  func wrappedRun() throws {
-    let (platform, device) = try Self.resolvePlatform(
+  func wrappedRun() async throws {
+    let (platform, device) = try await Self.resolvePlatform(
       platform: arguments.platform,
       deviceSpecifier: arguments.deviceSpecifier,
       simulatorSpecifier: arguments.simulatorSpecifier
     )
-    _ = try doBundling(resolvedPlatform: platform, resolvedDevice: device)
+    _ = try await doBundling(resolvedPlatform: platform, resolvedDevice: device)
   }
 
   /// - Parameters
@@ -467,8 +467,8 @@ struct BundleCommand: ErrorHandledCommand {
     dryRun: Bool = false,
     resolvedPlatform: Platform,
     resolvedDevice: Device? = nil
-  ) throws -> BundlerOutputStructure {
-    let resolvedCodesigningContext = try Self.resolveCodesigningContext(
+  ) async throws -> BundlerOutputStructure {
+    let resolvedCodesigningContext = try await Self.resolveCodesigningContext(
       codesignArgument: arguments.codesign,
       identityArgument: arguments.identity,
       provisioningProfile: arguments.provisioningProfile,
@@ -477,13 +477,13 @@ struct BundleCommand: ErrorHandledCommand {
     )
 
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try Stopwatch.time {
+    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
         arguments.scratchDirectory ?? (packageDirectory / ".build")
 
-      let (appName, appConfiguration, configuration) = try Self.getConfiguration(
+      let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
         context: ConfigurationFlattener.Context(platform: resolvedPlatform),
@@ -537,7 +537,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       // Load package manifest
       log.info("Loading package manifest")
-      let manifest = try SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
         .unwrap()
 
       let platformVersion =
@@ -562,9 +562,12 @@ struct BundleCommand: ErrorHandledCommand {
       let productsDirectory: URL
 
       if !isUsingXcodebuild {
-        productsDirectory =
-          try arguments.productsDirectory
-          ?? SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+        if let argumentsProductsDirectory = arguments.productsDirectory {
+          productsDirectory = argumentsProductsDirectory
+        } else {
+          productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
+            .unwrap()
+        }
       } else {
         let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
         // xcodebuild adds a platform suffix to the products directory for
@@ -603,7 +606,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       let dependenciesScratchDirectory = outputDirectory / "projects"
 
-      let dependencies = try ProjectBuilder.buildDependencies(
+      let dependencies = try await ProjectBuilder.buildDependencies(
         appConfiguration.dependencies,
         packageConfiguration: configuration,
         packageDirectory: packageDirectory,
@@ -649,12 +652,12 @@ struct BundleCommand: ErrorHandledCommand {
 
         log.info("Starting \(buildContext.configuration.rawValue) build")
         if isUsingXcodebuild {
-          try Xcodebuild.build(
+          try await Xcodebuild.build(
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
         } else {
-          try SwiftPackageManager.build(
+          try await SwiftPackageManager.build(
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
@@ -666,7 +669,7 @@ struct BundleCommand: ErrorHandledCommand {
         skip: [dependenciesScratchDirectory.lastPathComponent]
       ).unwrap()
 
-      return try Self.bundle(
+      return try await Self.bundle(
         with: arguments.bundler.bundler,
         context: bundlerContext,
         command: self,
@@ -722,13 +725,13 @@ struct BundleCommand: ErrorHandledCommand {
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
-  ) throws -> BundlerOutputStructure {
-    try bundler.computeContext(
+  ) async throws -> BundlerOutputStructure {
+    try await bundler.computeContext(
       context: context,
       command: command,
       manifest: manifest
     ).andThen { additionalContext in
-      bundler.bundle(context, additionalContext)
+      await bundler.bundle(context, additionalContext)
     }.unwrap()
   }
 
@@ -763,7 +766,7 @@ struct BundleCommand: ErrorHandledCommand {
     packageDirectory: URL,
     context: ConfigurationFlattener.Context,
     customFile: URL? = nil
-  ) throws -> (
+  ) async throws -> (
     appName: String,
     appConfiguration: AppConfiguration.Flat,
     configuration: PackageConfiguration.Flat
@@ -772,7 +775,7 @@ struct BundleCommand: ErrorHandledCommand {
       return configuration
     }
 
-    let configuration = try PackageConfiguration.load(
+    let configuration = try await PackageConfiguration.load(
       fromDirectory: packageDirectory,
       customFile: customFile
     ).unwrap()

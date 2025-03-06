@@ -59,7 +59,8 @@ extension ProvisioningProfile: Decodable {
     self.init(
       teamIdentifierArray: try container.decode([String].self, forKey: .teamIdentifierArray),
       expirationDate: try container.decode(Date.self, forKey: .expirationDate),
-      provisionedDevices: try container.decodeIfPresent([String].self, forKey: .provisionedDevices) ?? [],
+      provisionedDevices: try container.decodeIfPresent([String].self, forKey: .provisionedDevices)
+        ?? [],
       platforms: try container.decode([String].self, forKey: .platforms),
       appId: try container.decode(String.self, forKey: .appId),
       entitlements: try container.decode(Entitlements.self, forKey: .entitlements),

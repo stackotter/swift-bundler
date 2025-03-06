@@ -33,8 +33,8 @@ enum VariableEvaluator {
   static func evaluateVariables(
     in string: String,
     with context: Context
-  ) -> Result<String, VariableEvaluatorError> {
-    return evaluateVariables(in: string, with: .`default`(context))
+  ) async -> Result<String, VariableEvaluatorError> {
+    return await evaluateVariables(in: string, with: .`default`(context))
   }
 
   /// Evaluates the variables present in a string.
@@ -49,7 +49,7 @@ enum VariableEvaluator {
     with evaluator: Evaluator,
     openingDelimiter: String = "$(",
     closingDelimiter: String = ")"
-  ) -> Result<String, VariableEvaluatorError> {
+  ) async -> Result<String, VariableEvaluatorError> {
     var input = string[...]
     var output = ""
 
@@ -91,7 +91,7 @@ enum VariableEvaluator {
       }
 
       // Evaluate variable value and append to output
-      switch evaluateVariable(variable, with: evaluator) {
+      switch await evaluateVariable(variable, with: evaluator) {
         case .success(let value):
           output += value
         case .failure(let error):
@@ -110,14 +110,14 @@ enum VariableEvaluator {
   static func evaluateVariable(
     _ variable: String,
     with evaluator: Evaluator
-  ) -> Result<String, VariableEvaluatorError> {
+  ) async -> Result<String, VariableEvaluatorError> {
     switch evaluator {
       case .custom(let evaluator):
         return evaluator(variable).mapError { error in
           return .customEvaluatorFailedToEvaluateVariable(variable, error)
         }
       case .`default`(let context):
-        return evaluateVariable(variable, with: context)
+        return await evaluateVariable(variable, with: context)
     }
   }
 
@@ -129,7 +129,7 @@ enum VariableEvaluator {
   static func evaluateVariable(  // swiftlint:disable:this cyclomatic_complexity
     _ variable: String,
     with context: Context
-  ) -> Result<String, VariableEvaluatorError> {
+  ) async -> Result<String, VariableEvaluatorError> {
     // TODO: Make text macros more generic
     let rfc1034Characters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     let productRFC1034Identifier = String(
@@ -146,7 +146,7 @@ enum VariableEvaluator {
         }
 
         // TODO: Consider using git library
-        let result = Process.create(
+        let result = await Process.create(
           "git",
           arguments: ["rev-parse", "HEAD"],
           directory: packageDirectory
@@ -163,7 +163,7 @@ enum VariableEvaluator {
         }
 
         // TODO: Consider using a git library
-        let result = Process.create(
+        let result = await Process.create(
           "git",
           arguments: ["rev-list", "--count", "HEAD"],
           directory: packageDirectory
@@ -212,15 +212,15 @@ enum VariableEvaluator {
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in value: Tree,
     with context: Context
-  ) -> Result<Tree, VariableEvaluatorError> {
+  ) async -> Result<Tree, VariableEvaluatorError> {
     if let stringValue = value.stringValue {
-      return evaluateVariables(in: stringValue, with: context)
+      return await evaluateVariables(in: stringValue, with: context)
         .map(Tree.string(_:))
     } else if let arrayValue = value.arrayValue {
-      return evaluateVariables(in: arrayValue, with: context)
+      return await evaluateVariables(in: arrayValue, with: context)
         .map(Tree.array(_:))
     } else if let dictionaryValue = value.dictionaryValue {
-      return evaluateVariables(in: dictionaryValue, with: context)
+      return await evaluateVariables(in: dictionaryValue, with: context)
         .map(Tree.dictionary(_:))
     } else {
       return .success(value)
@@ -236,10 +236,10 @@ enum VariableEvaluator {
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in array: [Tree],
     with context: Context
-  ) -> Result<[Tree], VariableEvaluatorError> {
+  ) async -> Result<[Tree], VariableEvaluatorError> {
     var evaluatedArray: [Tree] = []
     for value in array {
-      switch evaluateVariables(in: value, with: context) {
+      switch await evaluateVariables(in: value, with: context) {
         case .success(let evaluatedValue):
           evaluatedArray.append(evaluatedValue)
         case .failure(let error):
@@ -258,10 +258,10 @@ enum VariableEvaluator {
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in dictionary: [String: Tree],
     with context: Context
-  ) -> Result<[String: Tree], VariableEvaluatorError> {
+  ) async -> Result<[String: Tree], VariableEvaluatorError> {
     var evaluatedDictionary: [String: Tree] = [:]
     for (key, value) in dictionary {
-      switch evaluateVariables(in: value, with: context) {
+      switch await evaluateVariables(in: value, with: context) {
         case .success(let evaluatedValue):
           evaluatedDictionary[key] = evaluatedValue
         case .failure(let error):
@@ -284,15 +284,15 @@ enum VariableEvaluator {
   static func evaluateVariables(
     in overlay: AppConfiguration.Overlay,
     with context: Context
-  ) -> Result<AppConfiguration.Overlay, VariableEvaluatorError> {
-    return Result.success(overlay)
+  ) async -> Result<AppConfiguration.Overlay, VariableEvaluatorError> {
+    return await Result.success(overlay)
       .andThen(ifLet: \AppConfiguration.Overlay.plist) { overlay, plist in
-        evaluateVariables(in: plist, with: context).map { plist in
+        await evaluateVariables(in: plist, with: context).map { plist in
           with(overlay, set(\.plist, plist))
         }
       }
       .andThen(ifLet: \AppConfiguration.Overlay.metadata) { overlay, metadata in
-        evaluateVariables(in: metadata, with: context).map { metadata in
+        await evaluateVariables(in: metadata, with: context).map { metadata in
           with(overlay, set(\.metadata, metadata))
         }
       }
@@ -312,7 +312,7 @@ enum VariableEvaluator {
     in configuration: AppConfiguration,
     named appName: String,
     packageDirectory: URL
-  ) -> Result<AppConfiguration, VariableEvaluatorError> {
+  ) async -> Result<AppConfiguration, VariableEvaluatorError> {
     let context = Context(
       appName: appName,
       productName: configuration.product,
@@ -322,20 +322,20 @@ enum VariableEvaluator {
       identifier: configuration.identifier
     )
 
-    return Result.success(configuration)
+    return await Result.success(configuration)
       .andThen(ifLet: \AppConfiguration.plist) { configuration, plist in
-        evaluateVariables(in: plist, with: context).map { plist in
+        await evaluateVariables(in: plist, with: context).map { plist in
           with(configuration, set(\.plist, plist))
         }
       }
       .andThen(ifLet: \AppConfiguration.metadata) { configuration, metadata in
-        evaluateVariables(in: metadata, with: context).map { metadata in
+        await evaluateVariables(in: metadata, with: context).map { metadata in
           with(configuration, set(\.metadata, metadata))
         }
       }
       .andThen(ifLet: \AppConfiguration.overlays) { configuration, overlays in
-        overlays.tryMap { overlay in
-          evaluateVariables(in: overlay, with: context)
+        await overlays.tryMap { overlay in
+          await evaluateVariables(in: overlay, with: context)
         }.map { overlays in
           with(configuration, set(\.overlays, overlays))
         }
@@ -352,11 +352,11 @@ enum VariableEvaluator {
   static func evaluateVariables(
     in configuration: PackageConfiguration,
     packageDirectory: URL
-  ) -> Result<PackageConfiguration, VariableEvaluatorError> {
+  ) async -> Result<PackageConfiguration, VariableEvaluatorError> {
     var evaluatedConfiguration = configuration
 
     for (name, app) in configuration.apps {
-      let result = evaluateVariables(
+      let result = await evaluateVariables(
         in: app,
         named: name,
         packageDirectory: packageDirectory

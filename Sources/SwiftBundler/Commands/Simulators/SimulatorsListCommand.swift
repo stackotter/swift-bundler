@@ -13,8 +13,8 @@ struct SimulatorsListCommand: Command {
     help: "A search term to filter simulators with.")
   var filter: String?
 
-  func wrappedRun() throws {
-    let simulators = try SimulatorManager.listAvailableSimulators(searchTerm: filter).unwrap()
+  func wrappedRun() async throws {
+    let simulators = try await SimulatorManager.listAvailableSimulators(searchTerm: filter).unwrap()
 
     Output {
       Section("Simulators") {

@@ -2,12 +2,12 @@ import Foundation
 import StackOtterArgParser
 
 /// An extension to the `ParsableCommand` API with custom error handling.
-protocol Command: ParsableCommand {
+protocol Command: AsyncParsableCommand {
   /// Implement this instead of `validate()` to get custom Swift Bundler error handling.
   func wrappedValidate() throws
 
   /// Implement this instead of `run()` to get custom Swift Bundler error handling.
-  func wrappedRun() throws
+  func wrappedRun() async throws
 }
 
 extension Command {
@@ -15,9 +15,9 @@ extension Command {
 }
 
 extension Command {
-  func run() {
+  func run() async {
     do {
-      try wrappedRun()
+      try await wrappedRun()
     } catch {
       log.error("\(error.localizedDescription)")
       log.debug("Error details: \(error)")

@@ -10,6 +10,24 @@
       }
     },
     {
+      "identity" : "async-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/adam-fowler/async-collections.git",
+      "state" : {
+        "revision" : "726af96095a19df6b8053ddbaed0a727aa70ccb2",
+        "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "asyncprocess",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gregcotten/AsyncProcess",
+      "state" : {
+        "revision" : "3a506bb36e4aa54eb3f1b13f15e636c68ee3eb19",
+        "version" : "0.0.5"
+      }
+    },
+    {
       "identity" : "jsonutilities",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/yonaskolb/JSONUtilities.git",
@@ -77,8 +95,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-async-algorithms.git",
       "state" : {
-        "revision" : "9cfed92b026c524674ed869a4ff2dcfdeedf8a2a",
-        "version" : "0.1.0"
+        "revision" : "4c3ea81f81f0a25d0470188459c6d4bf20cf2f97",
+        "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "swift-atomics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-atomics.git",
+      "state" : {
+        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
+        "version" : "1.2.0"
       }
     },
     {
@@ -160,6 +187,15 @@
       "state" : {
         "revision" : "9cb486020ebf03bfa5b5df985387a14a98744537",
         "version" : "1.6.1"
+      }
+    },
+    {
+      "identity" : "swift-nio",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-nio.git",
+      "state" : {
+        "revision" : "c51907a839e63ebf0ba2076bba73dd96436bd1b9",
+        "version" : "2.81.0"
       }
     },
     {

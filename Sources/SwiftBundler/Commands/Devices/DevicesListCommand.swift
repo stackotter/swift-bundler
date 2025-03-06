@@ -8,8 +8,8 @@ struct DevicesListCommand: Command {
     abstract: "List available iOS, tvOS and visionOS devices."
   )
 
-  func wrappedRun() throws {
-    let devices = try DeviceManager.listDestinations().unwrap()
+  func wrappedRun() async throws {
+    let devices = try await DeviceManager.listDestinations().unwrap()
       .filter { device in
         !device.platform.isSimulator
       }
