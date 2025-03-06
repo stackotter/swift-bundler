@@ -131,7 +131,7 @@ enum Xcodebuild {
       xcbeautifyProcess.standardInput = pipe
 
       do {
-        try xcbeautifyProcess.run()
+        try xcbeautifyProcess.runAndLog()
       } catch {
         log.warning("xcbeautify error: \(error)")
       }

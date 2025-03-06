@@ -110,11 +110,7 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
   func runAndWait() async -> Result<Void, ProcessError> {
-    log.debug(
-      "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
-    )
-
-    return await Result {
+    await Result {
       try await withCheckedThrowingContinuation {
         (continuation: CheckedContinuation<Void, Error>) in
         terminationHandler = { process in
@@ -122,7 +118,7 @@ extension Process {
         }
 
         do {
-          try run()
+          try runAndLog()
         } catch {
           continuation.resume(throwing: error)
         }
@@ -136,6 +132,14 @@ extension Process {
 
         return .success()
       }
+  }
+
+  func runAndLog() throws {
+      log.debug(
+        "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
+      )
+
+      try run()
   }
 
   /// Adds environment variables to the process's environment.

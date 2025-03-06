@@ -377,7 +377,7 @@ enum ProjectBuilder {
         }
 
         return await Result {
-          _ = try process.run()
+          _ = try process.runAndLog()
           let data = try JSONEncoder().encode(context).get()
           inputPipe.fileHandleForWriting.write(data)
           inputPipe.fileHandleForWriting.write("\n")
