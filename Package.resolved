@@ -39,10 +39,10 @@
     {
       "identity" : "socket",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/Socket",
+      "location" : "https://github.com/PureSwift/Socket",
       "state" : {
-        "revision" : "9945adfb7b2b089b1f9963db31544f604d260293",
-        "version" : "0.3.3"
+        "revision" : "253aef83213691b705dfeec8e20bfd7a72219fec",
+        "version" : "0.4.0"
       }
     },
     {
