@@ -5,18 +5,34 @@ on:
   pull_request:
   workflow_dispatch:
 
+defaults:
+  run: # Use powershell because bash is not supported: https://github.com/compnerd/gha-setup-swift/issues/18#issuecomment-1705524890
+    shell: pwsh
+
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    runs-on: windows-2019 # Windows SDK lower than 10.0.26100 is needed until https://github.com/swiftlang/swift/pull/79751 released!
     steps:
+      
+      - name: Setup VS Dev Environment
+        uses: seanmiddleditch/gha-setup-vsdevenv@v5
+
       - name: Setup
-        uses: compnerd/gha-setup-swift@v0.3.0
+        uses: compnerd/gha-setup-swift@v0.2.3
         with:
-          branch: swift-6.0-release
-          tag: 6.0-RELEASE
+          branch: swift-5.10.0-release
+          tag: 5.10.0-RELEASE
 
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Swift version
+        run: swift --version
+
       - name: Build
-        run: swift build
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          swift build --product swift-bundler
