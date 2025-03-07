@@ -56,11 +56,11 @@ enum MSIBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Void
-  ) -> Result<BundlerOutputStructure, Error> {
+  ) async -> Result<BundlerOutputStructure, Error> {
     let outputStructure = intendedOutput(in: context, additionalContext)
 
     let wxsFile = context.outputDirectory / "project.wxs"
-    return GenericWindowsBundler.bundle(
+    return await GenericWindowsBundler.bundle(
       context,
       GenericWindowsBundler.Context()
     )
@@ -87,7 +87,7 @@ enum MSIBundler: Bundler {
         ],
         runSilentlyWhenNotVerbose: false
       )
-      return process.runAndWait().mapError { error in
+      return await process.runAndWait().mapError { error in
         .failedToRunWiX(command: process.commandStringForLogging, error)
       }
     }

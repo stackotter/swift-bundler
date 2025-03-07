@@ -6,7 +6,9 @@ struct ProvisioningProfile {
   /// The array of team identifiers.
   let teamIdentifierArray: [String]
   let expirationDate: Date
-  let provisionedDevices: [String]
+  /// `nil` means the profile is a wildcard profile presumably applying to any
+  /// devices associated with the developer's account.
+  let provisionedDevices: [String]?
   let platforms: [String]
   let appId: String
   let entitlements: Entitlements
@@ -59,7 +61,7 @@ extension ProvisioningProfile: Decodable {
     self.init(
       teamIdentifierArray: try container.decode([String].self, forKey: .teamIdentifierArray),
       expirationDate: try container.decode(Date.self, forKey: .expirationDate),
-      provisionedDevices: try container.decodeIfPresent([String].self, forKey: .provisionedDevices) ?? [],
+      provisionedDevices: try container.decodeIfPresent([String].self, forKey: .provisionedDevices),
       platforms: try container.decode([String].self, forKey: .platforms),
       appId: try container.decode(String.self, forKey: .appId),
       entitlements: try container.decode(Entitlements.self, forKey: .entitlements),

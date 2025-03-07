@@ -8,9 +8,9 @@ struct TemplatesUpdateCommand: Command {
     abstract: "Update the default templates to the latest version."
   )
 
-  func wrappedRun() throws {
-    let elapsed = try Stopwatch.time {
-      try Templater.updateTemplates().unwrap()
+  func wrappedRun() async throws {
+    let elapsed = try await Stopwatch.time {
+      try await Templater.updateTemplates().unwrap()
     }
 
     log.info("Done in \(elapsed.secondsString).")

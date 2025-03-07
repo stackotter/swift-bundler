@@ -124,15 +124,15 @@ enum GenericWindowsBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundlerOutputStructure, Error> {
-    bundle(context, additionalContext)
+  ) async -> Result<BundlerOutputStructure, Error> {
+    await bundle(context, additionalContext)
       .map(\.asOutputStructure)
   }
 
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) -> Result<BundleStructure, Error> {
+  ) async -> Result<BundleStructure, Error> {
     let root = intendedOutput(in: context, additionalContext).bundle
     let appBundleName = root.lastPathComponent
 
@@ -147,7 +147,7 @@ enum GenericWindowsBundler: Bundler {
       withIdentifier: context.appConfiguration.identifier
     )
 
-    return structure.createDirectories()
+    return await structure.createDirectories()
       .andThen { _ in
         copyExecutable(at: executableArtifact, to: structure.mainExecutable)
       }
@@ -180,7 +180,7 @@ enum GenericWindowsBundler: Bundler {
       }
       .andThen { _ in
         log.info("Copying dynamic libraries (and Swift runtime)")
-        return copyDynamicLibraryDependencies(
+        return await copyDynamicLibraryDependencies(
           of: structure.mainExecutable,
           to: structure.modules,
           productsDirectory: context.productsDirectory
@@ -210,9 +210,9 @@ enum GenericWindowsBundler: Bundler {
     of module: URL,
     to destination: URL,
     productsDirectory: URL
-  ) -> Result<Void, Error> {
+  ) async -> Result<Void, Error> {
     let productsDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
-    return Process.create(
+    return await Process.create(
       "dumpbin",
       arguments: ["/DEPENDENTS", module.path],
       runSilentlyWhenNotVerbose: false
@@ -286,7 +286,7 @@ enum GenericWindowsBundler: Bundler {
       // ensure that the DLLs get their dependencies copied across as well
       // (in case the main executable doesn't directly depend on said
       // dependencies).
-      dlls.tryForEach { dll in
+      await dlls.tryForEach { dll in
         let destinationFile = destination / dll.lastPathComponent
 
         // We've already copied this dll across so we don't need to copy it or
@@ -301,7 +301,7 @@ enum GenericWindowsBundler: Bundler {
 
         log.debug("Copying '\(dll.path)'")
         let pdbFile = resolvedSourceFile.replacingPathExtension(with: "pdb")
-        return FileManager.default.copyItem(
+        return await FileManager.default.copyItem(
           at: resolvedSourceFile,
           to: destinationFile,
           onError: Error.failedToCopyDLL
@@ -318,7 +318,7 @@ enum GenericWindowsBundler: Bundler {
         }.andThen { _ in
           // Recurse to ensure that we copy indirect dependencies of the main
           // executable as well as the direct ones that `dumpbin` lists.
-          copyDynamicLibraryDependencies(
+          await copyDynamicLibraryDependencies(
             of: resolvedSourceFile,
             to: destination,
             productsDirectory: productsDirectory

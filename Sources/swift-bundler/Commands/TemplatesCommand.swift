@@ -2,7 +2,7 @@ import Foundation
 import StackOtterArgParser
 
 /// The subcommand for managing and listing available package templates.
-struct TemplatesCommand: ParsableCommand {
+struct TemplatesCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "templates",
     abstract: "Manage and list available package templates.",

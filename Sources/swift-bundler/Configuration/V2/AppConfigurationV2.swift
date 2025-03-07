@@ -34,15 +34,15 @@ struct AppConfigurationV2: Codable {
   }
 
   /// Migrates this configuration to the latest version.
-  func migrate() -> AppConfiguration {
+  func migrate() async -> AppConfiguration {
     var plist: [String: PlistValue]? = extraPlistEntries?.mapValues { value -> PlistValue in
       return .string(value)
     }
 
     // Update variable delimiters from '{' and '}' to '$(' and ')' (they were changed to match Xcode)
-    plist = plist.map { plist in
-      return plist.mapValues { value in
-        return Self.updateVariableDelimiters(value)
+    plist = await plist.asyncMap { plist in
+      return await plist.asyncMapValues { value in
+        return await Self.updateVariableDelimiters(value)
       }
     }
 
@@ -59,10 +59,10 @@ struct AppConfigurationV2: Codable {
   /// Updates the variable delimiters present in any strings contained within a plist value.
   /// - Parameter value: The value to update.
   /// - Returns: The value with delimiters updated (if any were present).
-  static func updateVariableDelimiters(_ value: PlistValue) -> PlistValue {
+  static func updateVariableDelimiters(_ value: PlistValue) async -> PlistValue {
     switch value {
       case .string(let string):
-        let result = VariableEvaluator.evaluateVariables(
+        let result = await VariableEvaluator.evaluateVariables(
           in: string,
           with: .custom { variable in
             return .success("$(\(variable))")
@@ -82,18 +82,61 @@ struct AppConfigurationV2: Codable {
         }
       case .array(let array):
         return .array(
-          array.map { value in
-            return updateVariableDelimiters(value)
+          await array.asyncMap { value in
+            return await updateVariableDelimiters(value)
           }
         )
       case .dictionary(let dictionary):
-        return .dictionary(
-          dictionary.mapValues { value in
-            return updateVariableDelimiters(value)
+        return await .dictionary(
+          dictionary.asyncMapValues { value in
+            return await updateVariableDelimiters(value)
           }
         )
       default:
         return value
     }
+  }
+}
+
+extension Sequence where Element: Sendable {
+  public func asyncMap<T>(_ transform: @Sendable (Element) async throws -> T) async rethrows -> [T]
+  {
+    let initialCapacity = underestimatedCount
+    var result = ContiguousArray<T>()
+    result.reserveCapacity(initialCapacity)
+
+    var iterator = self.makeIterator()
+
+    // Add elements up to the initial capacity without checking for regrowth.
+    for _ in 0..<initialCapacity {
+      result.append(try await transform(iterator.next()!))
+    }
+    // Add remaining elements, if any.
+    while let element = iterator.next() {
+      result.append(try await transform(element))
+    }
+    return Array(result)
+  }
+}
+
+extension Optional {
+  func asyncMap<T>(_ transform: (Wrapped) async throws -> T) async rethrows -> T? {
+    switch self {
+      case .none:
+        return nil
+      case .some(let value):
+        return try await transform(value)
+    }
+  }
+}
+
+extension Dictionary {
+  func asyncMapValues<T>(_ transform: (Value) async throws -> T) async rethrows -> [Key: T] {
+    var result: [Key: T] = .init(minimumCapacity: count)
+    for (key, value) in self {
+      result[key] = try await transform(value)
+    }
+
+    return result
   }
 }

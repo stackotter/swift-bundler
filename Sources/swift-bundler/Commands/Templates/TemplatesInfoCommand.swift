@@ -21,12 +21,12 @@ struct TemplatesInfoCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     let templates: [Template]
     if let templateRepository = templateRepository {
       templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()
     } else {
-      templates = try Templater.enumerateTemplates().unwrap()
+      templates = try await Templater.enumerateTemplates().unwrap()
     }
 
     guard let template = templates.first(where: { $0.name == self.template }) else {

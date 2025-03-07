@@ -25,7 +25,7 @@ struct ConvertCommand: Command {
     help: "Disables the experimental feature warning")
   var dontWarn = false
 
-  func wrappedRun() throws {
+  func wrappedRun() async throws {
     // - [x] Convert executable targets
     // - [x] Convert library dependency targets
     // - [x] Preserve project structure
@@ -50,10 +50,10 @@ struct ConvertCommand: Command {
 
       switch xcodeFile.pathExtension {
         case "xcodeproj":
-          try XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory)
+          try await XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory)
             .unwrap()
         case "xcworkspace":
-          try XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
+          try await XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
             .unwrap()
         default:
           log.error(

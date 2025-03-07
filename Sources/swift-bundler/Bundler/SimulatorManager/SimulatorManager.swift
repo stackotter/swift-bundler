@@ -9,8 +9,8 @@ enum SimulatorManager {
   ///   provided), or a failure if an error occurs.
   static func listAvailableSimulators(
     searchTerm: String? = nil
-  ) -> Result<[Simulator], SimulatorManagerError> {
-    return Process.create(
+  ) async -> Result<[Simulator], SimulatorManagerError> {
+    return await Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "simctl", "list", "devices",
@@ -49,8 +49,8 @@ enum SimulatorManager {
   /// Boots a simulator. If it's already running, nothing is done.
   /// - Parameter id: The name or id of the simulator to start.
   /// - Returns: A failure if an error occurs.
-  static func bootSimulator(id: String) -> Result<Void, SimulatorManagerError> {
-    return Process.create(
+  static func bootSimulator(id: String) async -> Result<Void, SimulatorManagerError> {
+    return await Process.create(
       "/usr/bin/xcrun",
       arguments: ["simctl", "boot", id]
     )
@@ -86,7 +86,7 @@ enum SimulatorManager {
     connectConsole: Bool,
     arguments: [String],
     environmentVariables: [String: String]
-  ) -> Result<Void, SimulatorManagerError> {
+  ) async -> Result<Void, SimulatorManagerError> {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -104,7 +104,7 @@ enum SimulatorManager {
 
     process.addEnvironmentVariables(prefixedVariables)
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       return .failedToRunSimCTL(error)
     }
   }
@@ -117,8 +117,8 @@ enum SimulatorManager {
   static func installApp(
     _ bundle: URL,
     simulatorId: String
-  ) -> Result<Void, SimulatorManagerError> {
-    return Process.create(
+  ) async -> Result<Void, SimulatorManagerError> {
+    return await Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "simctl", "install", simulatorId, bundle.path,
@@ -130,8 +130,8 @@ enum SimulatorManager {
 
   /// Opens the latest booted simulator in the simulator app.
   /// - Returns: A failure if an error occurs.
-  static func openSimulatorApp() -> Result<Void, SimulatorManagerError> {
-    return Process.create(
+  static func openSimulatorApp() async -> Result<Void, SimulatorManagerError> {
+    return await Process.create(
       "/usr/bin/open",
       arguments: [
         "-a", "Simulator",

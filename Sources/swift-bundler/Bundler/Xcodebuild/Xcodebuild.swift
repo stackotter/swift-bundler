@@ -14,7 +14,7 @@ enum Xcodebuild {
   static func build(
     product: String,
     buildContext: SwiftPackageManager.BuildContext
-  ) -> Result<Void, XcodebuildError> {
+  ) async -> Result<Void, XcodebuildError> {
     guard let applePlatform = buildContext.platform.asApplePlatform else {
       return .failure(.unsupportedPlatform(buildContext.platform))
     }
@@ -67,7 +67,7 @@ enum Xcodebuild {
     let useXCBeautify = ProcessInfo.processInfo.bundlerEnvironment.useXCBeautify
     let xcbeautifyProcess: Process?
     if useXCBeautify {
-      let xcbeautifyCommand = Process.locate("xcbeautify")
+      let xcbeautifyCommand = await Process.locate("xcbeautify")
       switch xcbeautifyCommand {
         case .success(let command):
           xcbeautifyProcess = Process.create(
@@ -131,13 +131,13 @@ enum Xcodebuild {
       xcbeautifyProcess.standardInput = pipe
 
       do {
-        try xcbeautifyProcess.run()
+        try xcbeautifyProcess.runAndLog()
       } catch {
         log.warning("xcbeautify error: \(error)")
       }
     }
 
-    return process.runAndWait().mapError { error in
+    return await process.runAndWait().mapError { error in
       return .failedToRunXcodebuild(
         command: "Failed to run xcodebuild.",
         error
