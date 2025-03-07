@@ -41,7 +41,7 @@ public struct SwiftBundler: AsyncParsableCommand {
     }
   }
 
-  public init() {
-    self.verbose = false
-  }
+    public init() {
+        self._verbose = Flag(wrappedValue: false)
+    }
 }
