@@ -3,21 +3,38 @@ import Foundation
 #if os(Linux)
   import Glibc
   import ProcessSpawnSync
-  public typealias Process = PSProcess
-#endif
-
-/// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
-///
-/// If the program is killed, all processes in this array are terminated before the program exits.
-public var processes: [Process] = []
-
-#if os(Linux)
-  /// The PIDs of all AppImage processes started manually (due to the weird
-  /// workaround required).
-  public var appImagePIDs: [pid_t] = []
+  typealias Process = PSProcess
 #endif
 
 extension Process {
+  /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
+  ///
+  /// If the program is killed, all processes in this array are terminated before the program exits.
+  static var processes: [Process] = []
+
+  #if os(Linux)
+    /// The PIDs of all AppImage processes started manually (due to the weird
+    /// workaround required).
+    static var appImagePIDs: [pid_t] = []
+  #endif
+
+  /// Kill all running processes on exit
+  public static func killAllRunningProcessesOnExit() {
+    for signal in Signal.allCases {
+      trap(signal) {
+        for process in Process.processes {
+          process.terminate()
+        }
+        #if os(Linux)
+          for pid in Process.appImagePIDs {
+            kill(pid, SIGKILL)
+          }
+        #endif
+        Foundation.exit(1)
+      }
+    }
+  }
+
   /// A string created by concatenating all of the program's arguments together. Suitable for error messages,
   /// but not necessarily 100% correct.
   private var argumentsString: String {

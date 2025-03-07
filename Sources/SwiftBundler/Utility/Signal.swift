@@ -51,7 +51,7 @@
 #endif
 
 /// Sets a trap for the specified signal.
-public func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
+func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
   #if os(macOS)
     // Modified from: https://gist.github.com/sharplet/d640eea5b6c99605ac79
     var signalAction = SignalAction(
