@@ -3,7 +3,7 @@ import Foundation
 #if os(Linux)
   import Glibc
   import ProcessSpawnSync
-  typealias Process = PSProcess
+  public typealias Process = PSProcess
 #endif
 
 extension Process {
