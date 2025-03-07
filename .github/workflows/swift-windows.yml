@@ -20,8 +20,8 @@ jobs:
       - name: Setup
         uses: compnerd/gha-setup-swift@v0.2.3
         with:
-          branch: swift-5.10.0-release
-          tag: 5.10.0-RELEASE
+          branch: swift-5.10-release
+          tag: 5.10-RELEASE
 
       - name: Checkout
         uses: actions/checkout@v4
