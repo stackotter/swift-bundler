@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// An extension to the `AsyncParsableCommand` API with custom error handling.
 protocol ErrorHandledCommand: AsyncParsableCommand {

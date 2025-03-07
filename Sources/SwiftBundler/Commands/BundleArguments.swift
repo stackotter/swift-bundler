@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 struct BundleArguments: ParsableArguments {
   /// The name of the app to build.

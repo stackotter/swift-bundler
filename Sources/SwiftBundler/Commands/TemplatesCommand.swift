@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// The subcommand for managing and listing available package templates.
 struct TemplatesCommand: AsyncParsableCommand {

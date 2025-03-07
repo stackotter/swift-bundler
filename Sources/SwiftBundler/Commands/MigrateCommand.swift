@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// The command for listing codesigning identities.
 struct MigrateCommand: Command {

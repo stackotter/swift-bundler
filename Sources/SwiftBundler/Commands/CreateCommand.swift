@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 import Version
 
 /// The subcommand for creating new app packages from templates.

@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// The subcommand for generating Xcode related support files (i.e. Xcode schemes).
 struct GenerateXcodeSupportCommand: Command {

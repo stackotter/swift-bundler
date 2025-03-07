@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// A device that can be used to run apps.
 enum Device: Equatable, CustomStringConvertible {

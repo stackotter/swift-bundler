@@ -13,7 +13,7 @@ let package = Package(
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/stackotter/swift-arg-parser", revision: "b1b5373"),
+    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", .upToNextMinor(from: "0.13.0")),
     .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
@@ -53,7 +53,7 @@ let package = Package(
         .product(name: "Crypto", package: "swift-crypto"),
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),
-        .product(name: "StackOtterArgParser", package: "swift-arg-parser"),
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),

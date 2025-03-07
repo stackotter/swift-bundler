@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 import Version
 
 /// The root command of Swift Bundler.
@@ -41,7 +41,7 @@ public struct SwiftBundler: AsyncParsableCommand {
     }
   }
 
-    public init() {
-        self._verbose = Flag(wrappedValue: false)
-    }
+  public init() {
+    self._verbose = Flag(wrappedValue: false)
+  }
 }

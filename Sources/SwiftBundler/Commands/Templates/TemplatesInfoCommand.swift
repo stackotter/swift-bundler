@@ -1,6 +1,6 @@
+import ArgumentParser
 import Foundation
 import Rainbow
-import StackOtterArgParser
 
 /// The subcommand for getting info about a template.
 struct TemplatesInfoCommand: Command {

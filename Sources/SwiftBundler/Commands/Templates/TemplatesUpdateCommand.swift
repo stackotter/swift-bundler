@@ -1,5 +1,5 @@
+import ArgumentParser
 import Foundation
-import StackOtterArgParser
 
 /// The subcommand for updating the default templates repository.
 struct TemplatesUpdateCommand: Command {
