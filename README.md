@@ -4,7 +4,10 @@
 
 <p align="center">
   <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dswift-versions"></a>
-  <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a>
+  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-macos.yml" alt="Build macOS"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-macos.yml/badge.svg"></a>
+  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-linux.yml" alt="Build Linux"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-linux.yml/badge.svg"></a>
+  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-windows.yml" alt="Build Linux"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-windows.yml/badge.svg"></a>
+  <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a> 
 </p>
 
 <p align="center">
