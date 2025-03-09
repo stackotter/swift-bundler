@@ -40,7 +40,7 @@
     case interrupt
     case terminate
 
-    var rawValue: Int32 {
+    public var rawValue: Int32 {
       switch self {
         case .abort: return SIGABRT
         case .interrupt: return SIGINT
