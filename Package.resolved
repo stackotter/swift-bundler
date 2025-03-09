@@ -73,12 +73,12 @@
       }
     },
     {
-      "identity" : "swift-arg-parser",
+      "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/swift-arg-parser",
+      "location" : "https://github.com/apple/swift-argument-parser.git",
       "state" : {
-        "branch" : "b1b5373",
-        "revision" : "b1b53732a64467ea95618222913d6ff81e4e6d6a"
+        "revision" : "41982a3656a71c768319979febd796c6fd111d5c",
+        "version" : "1.5.0"
       }
     },
     {
