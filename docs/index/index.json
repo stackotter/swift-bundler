@@ -1,6 +1,6 @@
 {
   "includedArchiveIdentifiers" : [
-    "SwiftBundler"
+    "swift-bundler"
   ],
   "interfaceLanguages" : {
     "swift" : [
@@ -11,17 +11,17 @@
             "type" : "groupMarker"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/installation",
+            "path" : "\/documentation\/swift-bundler\/installation",
             "title" : "Installation",
             "type" : "article"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/creating-an-app",
+            "path" : "\/documentation\/swift-bundler\/creating-an-app",
             "title" : "Creating an app",
             "type" : "article"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/configuration",
+            "path" : "\/documentation\/swift-bundler\/configuration",
             "title" : "Configuration",
             "type" : "article"
           },
@@ -30,7 +30,7 @@
             "type" : "groupMarker"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/package-templates",
+            "path" : "\/documentation\/swift-bundler\/package-templates",
             "title" : "Package templates",
             "type" : "article"
           },
@@ -39,12 +39,12 @@
             "type" : "groupMarker"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/custom-templates",
+            "path" : "\/documentation\/swift-bundler\/custom-templates",
             "title" : "Custom templates",
             "type" : "article"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/metal-shaders",
+            "path" : "\/documentation\/swift-bundler\/metal-shaders",
             "title" : "Metal shaders",
             "type" : "article"
           },
@@ -53,18 +53,18 @@
             "type" : "groupMarker"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/stand-alone-apps",
+            "path" : "\/documentation\/swift-bundler\/stand-alone-apps",
             "title" : "Stand alone apps",
             "type" : "article"
           },
           {
-            "path" : "\/documentation\/swiftbundler\/troubleshooting",
+            "path" : "\/documentation\/swift-bundler\/troubleshooting",
             "title" : "Troubleshooting",
             "type" : "article"
           }
         ],
-        "path" : "\/documentation\/swiftbundler",
-        "title" : "SwiftBundler",
+        "path" : "\/documentation\/swift-bundler",
+        "title" : "swift-bundler",
         "type" : "module"
       }
     ]

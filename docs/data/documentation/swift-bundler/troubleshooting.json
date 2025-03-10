@@ -8,19 +8,19 @@
   "hierarchy" : {
     "paths" : [
       [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler"
       ]
     ]
   },
   "identifier" : {
     "interfaceLanguage" : "swift",
-    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting"
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
   },
   "kind" : "article",
   "metadata" : {
     "modules" : [
       {
-        "name" : "SwiftBundler"
+        "name" : "swift-bundler"
       }
     ],
     "role" : "article",
@@ -668,7 +668,7 @@
   "variants" : [
     {
       "paths" : [
-        "\/documentation\/swiftbundler\/troubleshooting"
+        "\/documentation\/swift-bundler\/troubleshooting"
       ],
       "traits" : [
         {
@@ -679,19 +679,19 @@
   ]
 , 
 "references": {
-"doc://SwiftBundler/documentation/SwiftBundler": {
+"doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [
     {
       "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
   "kind" : "symbol",
   "role" : "collection",
-  "title" : "SwiftBundler",
+  "title" : "swift-bundler",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler"
+  "url" : "\/documentation\/swift-bundler"
 },
 "https://developer.apple.com/forums/thread/123198": {
   "identifier" : "https:\/\/developer.apple.com\/forums\/thread\/123198",

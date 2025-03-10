@@ -14,20 +14,20 @@
   },
   "identifier" : {
     "interfaceLanguage" : "swift",
-    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler"
   },
   "kind" : "symbol",
   "metadata" : {
-    "externalID" : "SwiftBundler",
+    "externalID" : "swift-bundler",
     "modules" : [
       {
-        "name" : "SwiftBundler"
+        "name" : "swift-bundler"
       }
     ],
     "role" : "collection",
-    "roleHeading" : "Framework",
+    "roleHeading" : "Command-line Tool",
     "symbolKind" : "module",
-    "title" : "SwiftBundler"
+    "title" : "swift-bundler"
   },
   "primaryContentSections" : [
     {
@@ -63,24 +63,24 @@
     {
       "anchor" : "Getting-started",
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/creating-an-app",
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/configuration"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration"
       ],
       "title" : "Getting started"
     },
     {
       "anchor" : "Concepts",
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
       "title" : "Concepts"
     },
     {
       "anchor" : "Advanced-usage",
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates",
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders"
       ],
       "title" : "Advanced usage"
     },
@@ -88,8 +88,8 @@
       "anchor" : "Articles",
       "generated" : true,
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps",
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
       ],
       "title" : "Articles"
     }
@@ -97,7 +97,7 @@
   "variants" : [
     {
       "paths" : [
-        "\/documentation\/swiftbundler"
+        "\/documentation\/swift-bundler"
       ],
       "traits" : [
         {
@@ -108,131 +108,131 @@
   ]
 , 
 "references": {
-"doc://SwiftBundler/documentation/SwiftBundler": {
-  "abstract" : [
-    {
-      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
-      "type" : "text"
-    }
-  ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
-  "kind" : "symbol",
-  "role" : "collection",
-  "title" : "SwiftBundler",
-  "type" : "topic",
-  "url" : "\/documentation\/swiftbundler"
-},
-"doc://SwiftBundler/documentation/SwiftBundler/configuration": {
+"doc://swift-bundler/documentation/swift-bundler/configuration": {
   "abstract" : [
     {
       "text" : "Configuring your app.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/configuration",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
   "kind" : "article",
   "role" : "article",
   "title" : "Configuration",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/configuration"
+  "url" : "\/documentation\/swift-bundler\/configuration"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/creating-an-app": {
+"doc://swift-bundler/documentation/swift-bundler/creating-an-app": {
   "abstract" : [
     {
       "text" : "Creating a hello world app.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/creating-an-app",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
   "kind" : "article",
   "role" : "article",
   "title" : "Creating an app",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/creating-an-app"
+  "url" : "\/documentation\/swift-bundler\/creating-an-app"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/custom-templates": {
+"doc://swift-bundler/documentation/swift-bundler/custom-templates": {
   "abstract" : [
     {
       "text" : "Custom templates are a great way to tailor Swift Bundler to your workflow.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
   "kind" : "article",
   "role" : "article",
   "title" : "Custom templates",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/custom-templates"
+  "url" : "\/documentation\/swift-bundler\/custom-templates"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/installation": {
+"doc://swift-bundler/documentation/swift-bundler/installation": {
   "abstract" : [
     {
       "text" : "Installing Swift Bundler on your system.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
   "kind" : "article",
   "role" : "article",
   "title" : "Installation",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/installation"
+  "url" : "\/documentation\/swift-bundler\/installation"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/metal-shaders": {
+"doc://swift-bundler/documentation/swift-bundler/metal-shaders": {
   "abstract" : [
     {
       "text" : "Using Metal shaders with Swift Bundler.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/metal-shaders",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders",
   "kind" : "article",
   "role" : "article",
   "title" : "Metal shaders",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/metal-shaders"
+  "url" : "\/documentation\/swift-bundler\/metal-shaders"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/package-templates": {
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
   "abstract" : [
     {
       "text" : "Easily create common types of apps from templates.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
   "kind" : "article",
   "role" : "article",
   "title" : "Package templates",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/package-templates"
+  "url" : "\/documentation\/swift-bundler\/package-templates"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/stand-alone-apps": {
+"doc://swift-bundler/documentation/swift-bundler/stand-alone-apps": {
   "abstract" : [
     {
       "text" : "What is a stand-alone app, and how you can make one.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/stand-alone-apps",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
   "kind" : "article",
   "role" : "article",
   "title" : "Stand alone apps",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/stand-alone-apps"
+  "url" : "\/documentation\/swift-bundler\/stand-alone-apps"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/troubleshooting": {
+"doc://swift-bundler/documentation/swift-bundler/troubleshooting": {
   "abstract" : [
     {
       "text" : "Troubleshooting common issues.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/troubleshooting",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting",
   "kind" : "article",
   "role" : "article",
   "title" : "Troubleshooting",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/troubleshooting"
+  "url" : "\/documentation\/swift-bundler\/troubleshooting"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
 }
 }
 }

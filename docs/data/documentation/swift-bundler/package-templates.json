@@ -8,19 +8,19 @@
   "hierarchy" : {
     "paths" : [
       [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler"
       ]
     ]
   },
   "identifier" : {
     "interfaceLanguage" : "swift",
-    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates"
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
   },
   "kind" : "article",
   "metadata" : {
     "modules" : [
       {
-        "name" : "SwiftBundler"
+        "name" : "swift-bundler"
       }
     ],
     "role" : "article",
@@ -138,7 +138,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates",
+              "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
               "isActive" : true,
               "type" : "reference"
             },
@@ -186,7 +186,7 @@
   "variants" : [
     {
       "paths" : [
-        "\/documentation\/swiftbundler\/package-templates"
+        "\/documentation\/swift-bundler\/package-templates"
       ],
       "traits" : [
         {
@@ -197,33 +197,33 @@
   ]
 , 
 "references": {
-"doc://SwiftBundler/documentation/SwiftBundler": {
-  "abstract" : [
-    {
-      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
-      "type" : "text"
-    }
-  ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
-  "kind" : "symbol",
-  "role" : "collection",
-  "title" : "SwiftBundler",
-  "type" : "topic",
-  "url" : "\/documentation\/swiftbundler"
-},
-"doc://SwiftBundler/documentation/SwiftBundler/custom-templates": {
+"doc://swift-bundler/documentation/swift-bundler/custom-templates": {
   "abstract" : [
     {
       "text" : "Custom templates are a great way to tailor Swift Bundler to your workflow.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/custom-templates",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
   "kind" : "article",
   "role" : "article",
   "title" : "Custom templates",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/custom-templates"
+  "url" : "\/documentation\/swift-bundler\/custom-templates"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
 },
 "https://github.com/stackotter/swift-bundler-templates": {
   "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",

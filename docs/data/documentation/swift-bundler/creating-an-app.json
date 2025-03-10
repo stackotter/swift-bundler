@@ -8,19 +8,19 @@
   "hierarchy" : {
     "paths" : [
       [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler"
       ]
     ]
   },
   "identifier" : {
     "interfaceLanguage" : "swift",
-    "url" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/creating-an-app"
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app"
   },
   "kind" : "article",
   "metadata" : {
     "modules" : [
       {
-        "name" : "SwiftBundler"
+        "name" : "swift-bundler"
       }
     ],
     "role" : "article",
@@ -61,7 +61,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates",
+              "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
               "isActive" : true,
               "type" : "reference"
             },
@@ -370,8 +370,8 @@
       "anchor" : "Getting-started",
       "generated" : true,
       "identifiers" : [
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
-        "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/configuration"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration"
       ],
       "title" : "Getting started"
     }
@@ -379,7 +379,7 @@
   "variants" : [
     {
       "paths" : [
-        "\/documentation\/swiftbundler\/creating-an-app"
+        "\/documentation\/swift-bundler\/creating-an-app"
       ],
       "traits" : [
         {
@@ -390,61 +390,61 @@
   ]
 , 
 "references": {
-"doc://SwiftBundler/documentation/SwiftBundler": {
-  "abstract" : [
-    {
-      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
-      "type" : "text"
-    }
-  ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler",
-  "kind" : "symbol",
-  "role" : "collection",
-  "title" : "SwiftBundler",
-  "type" : "topic",
-  "url" : "\/documentation\/swiftbundler"
-},
-"doc://SwiftBundler/documentation/SwiftBundler/configuration": {
+"doc://swift-bundler/documentation/swift-bundler/configuration": {
   "abstract" : [
     {
       "text" : "Configuring your app.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/configuration",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
   "kind" : "article",
   "role" : "article",
   "title" : "Configuration",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/configuration"
+  "url" : "\/documentation\/swift-bundler\/configuration"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/installation": {
+"doc://swift-bundler/documentation/swift-bundler/installation": {
   "abstract" : [
     {
       "text" : "Installing Swift Bundler on your system.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/installation",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
   "kind" : "article",
   "role" : "article",
   "title" : "Installation",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/installation"
+  "url" : "\/documentation\/swift-bundler\/installation"
 },
-"doc://SwiftBundler/documentation/SwiftBundler/package-templates": {
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
   "abstract" : [
     {
       "text" : "Easily create common types of apps from templates.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/SwiftBundler\/documentation\/SwiftBundler\/package-templates",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
   "kind" : "article",
   "role" : "article",
   "title" : "Package templates",
   "type" : "topic",
-  "url" : "\/documentation\/swiftbundler\/package-templates"
+  "url" : "\/documentation\/swift-bundler\/package-templates"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
 }
 }
 }
