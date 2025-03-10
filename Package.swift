@@ -169,13 +169,6 @@ let package = Package(
       dependencies: ["swift-bundler"]
     ),
 
-    // The target containing documentation
-    .target(
-      name: "SwiftBundlerDocumentation",
-      path: "Documentation",
-      exclude: ["preview_docs.sh"]
-    ),
-
     .plugin(
       name: "SwiftBundlerCommandPlugin",
       capability: .command(

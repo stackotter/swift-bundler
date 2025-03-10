@@ -1,4 +1,4 @@
-# ``SwiftBundler``
+# ``swift_bundler``
 
 Create macOS apps with Swift packages instead of Xcode projects.
 
