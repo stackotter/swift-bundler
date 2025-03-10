@@ -33,7 +33,7 @@ jobs:
           swift package \
             --allow-writing-to-directory gh-pages/docs \
             generate-documentation \
-            --target SwiftBundler \
+            --target swift-bundler \
             --disable-indexing \
             --transform-for-static-hosting \
             --output-path gh-pages/docs
