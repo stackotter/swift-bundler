@@ -8,7 +8,7 @@ public struct SwiftBundler: AsyncParsableCommand {
 
   public static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
-    abstract: "A tool for creating macOS apps from Swift packages.",
+    abstract: "A tool for creating apps from Swift packages.",
     version: "v" + version.description,
     shouldDisplay: true,
     subcommands: [
