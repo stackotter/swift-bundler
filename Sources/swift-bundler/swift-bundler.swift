@@ -1,9 +1,13 @@
-import Foundation
-import Rainbow
 import SwiftBundler
+import class Foundation.Process
 
 #if os(Linux)
   import Glibc
+#elseif os(Windows)
+  import WinSDK
+#elseif os(macOS)
+  import Rainbow
+  import class Foundation.ProcessInfo
 #endif
 
 @main
