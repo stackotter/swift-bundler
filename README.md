@@ -20,7 +20,7 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 
 ## Documentation 📚
 
-The documentation is hosted on [the Swift Bundler website](https://swiftbundler.dev/documentation/swiftbundler).
+The documentation is hosted on [the Swift Bundler website](https://swiftbundler.dev/documentation/swift-bundler).
 
 ## Installation 📦
 
@@ -32,7 +32,7 @@ mint install stackotter/swift-bundler
 
 If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
 
-For more installation methods, see [the documentation](https://swiftbundler.dev/documentation/swiftbundler/installation).
+For more installation methods, see [the documentation](https://swiftbundler.dev/documentation/swift-bundler/installation).
 
 ## Getting started 🚦
 
@@ -66,7 +66,7 @@ open Package.swift
 
 ### Learning more
 
-To learn more about Swift Bundler refer to the [documentation](https://swiftbundler.dev/documentation/swiftbundler).
+To learn more about Swift Bundler refer to the [documentation](https://swiftbundler.dev/documentation/swift-bundler).
 
 ## Contributing 🛠
 
