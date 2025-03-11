@@ -117,8 +117,6 @@ enum DynamicLibraryBundler {
       // code signer can easily locate all dylibs to sign.
       if outputLibrary.pathExtension == "" {
         outputLibrary = outputLibrary.appendingPathExtension("dylib")
-      } else {
-        print(outputLibrary.path)
       }
 
       let libraryAlreadyCopied = FileManager.default.fileExists(atPath: outputLibrary.path)
