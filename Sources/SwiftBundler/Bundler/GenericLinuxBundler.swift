@@ -262,6 +262,7 @@ enum GenericLinuxBundler: Bundler {
         return createDesktopFile(
           at: structure.desktopFile,
           appName: context.appName,
+          iconName: structure.icon1024x1024.deletingPathExtension().lastPathComponent,
           appConfiguration: context.appConfiguration,
           installedExecutableLocation: executableLocation
         )
@@ -469,6 +470,8 @@ enum GenericLinuxBundler: Bundler {
   /// - Parameters:
   ///   - desktopFile: The desktop file to create.
   ///   - appName: The app's name.
+  ///   - iconName: The name of the icon (the icon's file name without the
+  ///     extension).
   ///   - appConfiguration: The app's configuration.
   ///   - installedExecutableLocation: The location the the executable will end
   ///     up at on disk once installed.
@@ -476,6 +479,7 @@ enum GenericLinuxBundler: Bundler {
   private static func createDesktopFile(
     at desktopFile: URL,
     appName: String,
+    iconName: String,
     appConfiguration: AppConfiguration.Flat,
     installedExecutableLocation: URL
   ) -> Result<Void, GenericLinuxBundlerError> {
@@ -489,7 +493,7 @@ enum GenericLinuxBundler: Bundler {
       ("Name", appName),
       ("Comment", ""),
       ("Exec", "\(escapedExecPath) %U"),
-      ("Icon", appName),
+      ("Icon", iconName),
       ("Terminal", "false"),
       ("Categories", ""),
     ]
