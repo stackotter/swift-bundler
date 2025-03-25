@@ -157,18 +157,20 @@ enum GenericWindowsBundler: Bundler {
         context.builtDependencies.filter { (_, dependency) in
           dependency.product.type == .executable
         }.tryForEach { (name, dependency) in
-          let source = dependency.location
-          let destination = structure.modules / dependency.location.lastPathComponent
-          return FileManager.default.copyItem(
-            at: source,
-            to: destination
-          ).mapError { error in
-            Error.failedToCopyExecutableDependency(
-              name: name,
-              source: source,
-              destination: destination,
-              error
-            )
+          dependency.artifacts.tryForEach { artifact in
+            let source = artifact.location
+            let destination = structure.modules / source.lastPathComponent
+            return FileManager.default.copyItem(
+              at: source,
+              to: destination
+            ).mapError { error in
+              Error.failedToCopyExecutableDependency(
+                name: name,
+                source: source,
+                destination: destination,
+                error
+              )
+            }
           }
         }
       }

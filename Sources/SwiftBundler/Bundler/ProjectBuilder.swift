@@ -3,6 +3,8 @@ import Foundation
 import SwiftBundlerBuilders
 import Version
 
+// TODO: Major clean-up required. Pyramids of doom need some attention.
+
 enum ProjectBuilder {
   static let builderProductName = "Builder"
 
@@ -18,6 +20,7 @@ enum ProjectBuilder {
     case failedToBuildProject(name: String, Error)
     case failedToCopyProduct(source: URL, destination: URL, any Swift.Error)
     case invalidLocalSource(URL)
+    case missingProductArtifact(URL, product: String)
     case other(any Swift.Error)
 
     /// An internal error used in control flow.
@@ -54,6 +57,11 @@ enum ProjectBuilder {
             Project source directory \
             '\(source.path(relativeTo: .currentDirectory))' doesn't exist
             """
+        case .missingProductArtifact(let location, let product):
+          return """
+            Missing artifact at '\(location.path(relativeTo: .currentDirectory))' \
+            required by product '\(product)'
+            """
         case .other(let error):
           return error.localizedDescription
         case .mismatchedGitURL(let actualURL, let expectedURL):
@@ -67,6 +75,10 @@ enum ProjectBuilder {
 
   struct BuiltProduct {
     var product: ProjectConfiguration.Product.Flat
+    var artifacts: [Artifact]
+  }
+
+  struct Artifact {
     var location: URL
   }
 
@@ -111,24 +123,24 @@ enum ProjectBuilder {
       let requiresBuilding = !builtProjects.contains(dependency.project)
       builtProjects.insert(dependency.project)
 
-      let productPath = product.path(whenNamed: dependency.product, platform: platform)
-      let builtProduct = projectScratchDirectory.build / productPath
-      let productDestination = projectScratchDirectory.products / builtProduct.lastPathComponent
-
-      let successValue = (
-        dependency.identifier,
-        BuiltProduct(
-          product: product,
-          location: productDestination
-        )
+      let productPath = product.artifactPath(whenNamed: dependency.product, platform: platform)
+      let auxiliaryArtifactPaths = product.auxiliaryArtifactPaths(
+        whenNamed: dependency.product,
+        platform: platform
       )
 
-      guard !dryRun else {
-        return .success(successValue)
+      let artifactPaths = [productPath] + auxiliaryArtifactPaths
+      let artifactDescriptors = artifactPaths.map { path in
+        let builtProduct = projectScratchDirectory.build / path
+        return (
+          builtProduct: builtProduct,
+          productDestination: projectScratchDirectory.products / builtProduct.lastPathComponent,
+          isRequired: path == productPath  // Slightly jank but should work
+        )
       }
 
       return await Result.success()
-        .andThen(if: requiresBuilding) { _ in
+        .andThen(if: requiresBuilding && !dryRun) { _ in
           // Set up required directories and build whole project
           log.info("Building project '\(projectName)'")
           return await Result.success()
@@ -147,14 +159,44 @@ enum ProjectBuilder {
                 Error.failedToBuildProject(name: projectName, error)
               }
             }
-        }.andThenDoSideEffect { buildDirectory -> Result<Void, Error> in
-          log.info("Copying product '\(dependency.identifier)'")
-          return FileManager.default.copyItem(
-            at: builtProduct,
-            to: productDestination,
-            onError: Error.failedToCopyProduct
-          )
-        }.replacingSuccessValue(with: successValue)
+        }.andThen { buildDirectory -> Result<(String, BuiltProduct), Error> in
+          if !dryRun {
+            log.info("Copying product '\(dependency.identifier)'")
+          }
+
+          return artifactDescriptors.tryMap { artifact -> Result<Artifact?, Error> in
+            // Ensure that the artifact either exists or is not required.
+            guard artifact.builtProduct.exists() || !artifact.isRequired else {
+              let error = Error.missingProductArtifact(
+                artifact.builtProduct,
+                product: dependency.product
+              )
+              return .failure(error)
+            }
+
+            // Copy the artifact if present and not a dry run, then report it if
+            // it exists.
+            return Result.success()
+              .andThen(if: !dryRun && artifact.builtProduct.exists()) { _ in
+                FileManager.default.copyItem(
+                  at: artifact.builtProduct,
+                  to: artifact.productDestination,
+                  onError: Error.failedToCopyProduct
+                )
+              }.map { _ in
+                if artifact.builtProduct.exists() {
+                  Artifact(location: artifact.productDestination)
+                } else {
+                  nil
+                }
+              }
+          }
+          .map { artifacts in
+            let artifacts = artifacts.compactMap { $0 }
+            let builtProduct = BuiltProduct(product: product, artifacts: artifacts)
+            return (dependency.product, builtProduct)
+          }
+        }
     }.map { pairs in
       Dictionary(pairs) { first, _ in first }
     }

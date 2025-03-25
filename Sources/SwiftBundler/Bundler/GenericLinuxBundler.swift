@@ -231,18 +231,20 @@ enum GenericLinuxBundler: Bundler {
         context.builtDependencies.filter { (_, dependency) in
           dependency.product.type == .executable
         }.tryForEach { (name, dependency) in
-          let source = dependency.location
-          let destination = structure.bin / dependency.location.lastPathComponent
-          return FileManager.default.copyItem(
-            at: source,
-            to: destination
-          ).mapError { error in
-            GenericLinuxBundlerError.failedToCopyExecutableDependency(
-              name: name,
-              source: source,
-              destination: destination,
-              error
-            )
+          dependency.artifacts.tryForEach { artifact in
+            let source = artifact.location
+            let destination = structure.bin / source.lastPathComponent
+            return FileManager.default.copyItem(
+              at: source,
+              to: destination
+            ).mapError { error in
+              GenericLinuxBundlerError.failedToCopyExecutableDependency(
+                name: name,
+                source: source,
+                destination: destination,
+                error
+              )
+            }
           }
         }
       }

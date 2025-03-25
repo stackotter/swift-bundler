@@ -205,20 +205,22 @@ enum DarwinBundler: Bundler {
         context.builtDependencies.filter { (_, dependency) in
           dependency.product.type == .executable
         }.tryForEach { (name, dependency) in
-          let source = dependency.location
-          let destination =
-            bundleStructure.mainExecutable.deletingLastPathComponent()
-            / dependency.location.lastPathComponent
-          return FileManager.default.copyItem(
-            at: source,
-            to: destination
-          ).mapError { error in
-            DarwinBundlerError.failedToCopyExecutableDependency(
-              name: name,
-              source: source,
-              destination: destination,
-              error
-            )
+          dependency.artifacts.tryForEach { artifact in
+            let source = artifact.location
+            let destination =
+              bundleStructure.mainExecutable.deletingLastPathComponent()
+              / source.lastPathComponent
+            return FileManager.default.copyItem(
+              at: source,
+              to: destination
+            ).mapError { error in
+              DarwinBundlerError.failedToCopyExecutableDependency(
+                name: name,
+                source: source,
+                destination: destination,
+                error
+              )
+            }
           }
         }
       },

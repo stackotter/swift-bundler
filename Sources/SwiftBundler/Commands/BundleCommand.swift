@@ -639,15 +639,17 @@ struct BundleCommand: ErrorHandledCommand {
             continue
           }
 
-          let destination = productsDirectory / dependency.location.lastPathComponent
-          if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-          }
+          for artifact in dependency.artifacts {
+            let destination = productsDirectory / artifact.location.lastPathComponent
+            if FileManager.default.fileExists(atPath: destination.path) {
+              try FileManager.default.removeItem(at: destination)
+            }
 
-          try FileManager.default.copyItem(
-            at: dependency.location,
-            to: destination
-          )
+            try FileManager.default.copyItem(
+              at: artifact.location,
+              to: destination
+            )
+          }
         }
 
         log.info("Starting \(buildContext.configuration.rawValue) build")

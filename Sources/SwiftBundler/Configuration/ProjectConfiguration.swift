@@ -313,7 +313,7 @@ extension ProjectConfiguration.Source? {
 }
 
 extension ProjectConfiguration.Product.Flat {
-  func path(whenNamed name: String, platform: Platform) -> String {
+  private func baseArtifactPath(whenNamed name: String, platform: Platform) -> String {
     let baseName: String
     switch type {
       case .dynamicLibrary, .staticLibrary:
@@ -329,6 +329,16 @@ extension ProjectConfiguration.Product.Flat {
         baseName = name
     }
 
+    if let outputDirectory = outputDirectory {
+      return "\(outputDirectory)/\(baseName)"
+    } else {
+      return baseName
+    }
+  }
+
+  func artifactPath(whenNamed name: String, platform: Platform) -> String {
+    // We include the `.` in the extension so that we can use "" to signify
+    // no extension without any special case logic.
     let fileExtension: String
     switch type {
       case .dynamicLibrary:
@@ -343,16 +353,31 @@ extension ProjectConfiguration.Product.Flat {
             fileExtension = ".dylib"
         }
       case .staticLibrary:
+        // TODO: Support static libraries on Windows
         fileExtension = ".a"
       case .executable:
         fileExtension = ""
     }
 
-    let fileName = "\(baseName)\(fileExtension)"
-    if let outputDirectory = outputDirectory {
-      return "\(outputDirectory)/\(fileName)"
-    } else {
-      return fileName
+    let basePath = baseArtifactPath(whenNamed: name, platform: platform)
+    return "\(basePath)\(fileExtension)"
+  }
+
+  func auxiliaryArtifactPaths(whenNamed name: String, platform: Platform) -> [String] {
+    let fileExtensions: [String]
+    switch platform {
+      case .windows:
+        if type == .dynamicLibrary {
+          fileExtensions = ["lib", "pdb"]
+        } else {
+          return []
+        }
+      case .linux, .macOS, .iOS, .iOSSimulator,
+        .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+        return []
     }
+
+    let basePath = baseArtifactPath(whenNamed: name, platform: platform)
+    return fileExtensions.map { "\(basePath).\($0)" }
   }
 }
