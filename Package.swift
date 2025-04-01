@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
   name: "swift-bundler",
-  platforms: [.macOS(.v10_15)],
+  platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .macCatalyst(.v13)],
   products: [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
     .library(name: "SwiftBundler", targets: ["SwiftBundler"]),
