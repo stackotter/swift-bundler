@@ -133,8 +133,6 @@ enum SwiftPackageManager {
     buildContext: BuildContext
   ) async -> Result<URL, SwiftPackageManagerError> {
     #if os(macOS)
-      // TODO: Package up 'build options' into a struct so that it can be passed around
-      //   more easily
       let productsDirectory: URL
       switch await SwiftPackageManager.getProductsDirectory(buildContext) {
         case let .success(value):
@@ -164,9 +162,21 @@ enum SwiftPackageManager {
           return .failure(.failedToDecodeBuildPlan(error))
         }
 
-        let commandName = "C.\(product)-\(buildContext.configuration).exe"
+        let targetInfo: SwiftTargetInfo
+        switch await getTargetInfo() {
+          case .success(let value):
+            targetInfo = value
+          case .failure(let error):
+            return .failure(error)
+        }
+
+        // Swift versions before 6.0 or so named commands differently in the build plan.
+        // We check for the newer format (with triple) then the older format (no triple).
+        let triple = targetInfo.target.triple
+        let commandName = "C.\(product)-\(triple)-\(buildContext.configuration).exe"
+        let oldCommandName = "C.\(product)-\(buildContext.configuration).exe"
         guard
-          let linkCommand = buildPlan.commands[commandName],
+          let linkCommand = buildPlan.commands[commandName] ?? buildPlan.commands[oldCommandName],
           linkCommand.tool == "shell",
           let commandExecutable = linkCommand.arguments?.first,
           let arguments = linkCommand.arguments?.dropFirst()

@@ -114,7 +114,7 @@ struct RunCommand: ErrorHandledCommand {
     let additionalEnvironmentVariables: [String: String]
     #if SUPPORT_HOT_RELOADING
       if hot {
-        var port: UInt16 = 7000
+        var port: UInt16 = 7331
 
         /// Attempt to create the socket and retry with a new port if the address is
         /// already in use.

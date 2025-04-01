@@ -7,6 +7,8 @@ import Foundation
 struct SwiftTargetInfo: Codable {
   /// Info about a target platform.
   struct Target: Codable {
+    /// The platform's versioned triple.
+    var triple: String
     /// The platform's unversioned triple.
     var unversionedTriple: String
   }
