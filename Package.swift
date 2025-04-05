@@ -166,7 +166,7 @@ let package = Package(
 
     .testTarget(
       name: "SwiftBundlerTests",
-      dependencies: ["swift-bundler"]
+      dependencies: ["SwiftBundler"]
     ),
 
     .plugin(
