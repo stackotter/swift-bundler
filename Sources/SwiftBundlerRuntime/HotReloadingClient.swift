@@ -1,6 +1,6 @@
+import FlyingSocks
 import Foundation
 import HotReloadingProtocol
-import Socket
 
 public enum HotReloadingClientError: LocalizedError {
   case missingAddress
@@ -17,7 +17,7 @@ public enum HotReloadingClientError: LocalizedError {
 }
 
 public struct HotReloadingClient {
-  var server: Socket
+  var server: AsyncSocket
 
   /// Connects to the server specified by the `SWIFT_BUNDLER_SERVER` environment variable.
   /// Only supports the address formats supported by ``Self/parseAddress(_:)``.
@@ -26,36 +26,26 @@ public struct HotReloadingClient {
       throw HotReloadingClientError.missingAddress
     }
 
-    let serverAddress = try Self.parseAddress(addressString)
-    try await self.init(serverAddress: serverAddress)
+    let (address, port) = try Self.parseAddress(addressString)
+    try await self.init(address: address, port: port)
   }
 
   /// Connects to a hot reloading server.
-  public init(serverAddress: IPv4SocketAddress) async throws {
-    server = try await Socket(IPv4Protocol.tcp)
-
-    // TODO: Contribute to Socket to clean it up, this catch shouldn't be necessary
-    do {
-      try await server.connect(to: serverAddress)
-    } catch Errno.socketIsConnected {}
+  public init(address: String, port: UInt16) async throws {
+    server = try await AsyncSocket.connected(to: .inet(ip4: address, port: port))
   }
 
   #if canImport(Darwin)
     public mutating func handlePackets(handleDylib: (Dylib) -> Void) async throws {
       while true {
-        let packet: Packet
-        do {
-          packet = try await Packet.read(from: &server)
-        } catch Errno.timedOut {
-          continue
-        }
+        let packet = try await Packet.read(from: &server)
 
         switch packet {
           case .ping:
-            print("client: Received ping")
+            print("Hot reloading client: Received ping")
             try await Packet.pong.write(to: &server)
           case let .reloadDylib(path):
-            print("client: Received new dylib")
+            print("Hot reloading client: Received new dylib")
             // Copy dylib to new partially randomized path to avoid `dlopen` just giving
             // us back the same pointer again.
             let newPath =
@@ -70,14 +60,16 @@ public struct HotReloadingClient {
             handleDylib(dylib)
             try FileManager.default.removeItem(at: newPath)
           case .pong:
-            print("client: Received pong")
+            print("Hot reloading client: Received pong")
         }
       }
     }
   #endif
 
   /// Parses an IPv4 address of the form `x.x.x.x:yyyyy`.
-  public static func parseAddress(_ addressString: String) throws -> IPv4SocketAddress {
+  public static func parseAddress(
+    _ addressString: String
+  ) throws -> (address: String, port: UInt16) {
     let parts = addressString.split(separator: ":")
 
     guard parts.count == 2 else {
@@ -100,8 +92,8 @@ public struct HotReloadingClient {
       )
     }
 
-    return IPv4SocketAddress(
-      address: IPv4Address(bytes[0], bytes[1], bytes[2], bytes[3]),
+    return (
+      address: bytes.map(\.description).joined(separator: "."),
       port: port
     )
   }
