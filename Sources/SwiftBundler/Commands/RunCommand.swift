@@ -4,7 +4,7 @@ import Foundation
 #if SUPPORT_HOT_RELOADING
   import FileSystemWatcher
   import HotReloadingProtocol
-  import Socket
+  import FlyingSocks
 #endif
 
 /// The subcommand for running an app from a package.
@@ -111,92 +111,52 @@ struct RunCommand: ErrorHandledCommand {
         try Runner.loadEnvironmentVariables(from: file).unwrap()
       } ?? [:]
 
+    // TODO: Avoid loading manifest twice
+    let manifest = try await SwiftPackageManager.loadPackageManifest(
+      from: packageDirectory
+    ).unwrap()
+
+    let platformVersion =
+      device.platform.asApplePlatform.map { platform in
+        manifest.platformVersion(for: platform.os)
+      } ?? nil
+    let architectures = bundleCommand.getArchitectures(
+      platform: device.platform
+    )
+
     let additionalEnvironmentVariables: [String: String]
     #if SUPPORT_HOT_RELOADING
       if hot {
-        var port: UInt16 = 7331
+        let buildContext = SwiftPackageManager.BuildContext(
+          genericContext: GenericBuildContext(
+            projectDirectory: packageDirectory,
+            scratchDirectory: scratchDirectory,
+            configuration: arguments.buildConfiguration,
+            architectures: architectures,
+            platform: device.platform,
+            platformVersion: platformVersion,
+            additionalArguments: arguments.additionalSwiftPMArguments
+          ),
+          hotReloadingEnabled: true,
+          isGUIExecutable: true
+        )
 
-        /// Attempt to create the socket and retry with a new port if the address is
-        /// already in use.
-        func createSocket() async throws -> Socket {
-          do {
-            return try await Socket.init(
-              IPv4Protocol.tcp,
-              bind: IPv4SocketAddress(address: .any, port: port)
-            )
-          } catch Errno.addressInUse {
-            port += 1
-            return try await createSocket()
-          }
-        }
-
+        // Start server and file system watcher (integrated into server)
+        let server = try await HotReloadingServer.create().unwrap()
         Task {
-          let socket = try await createSocket()
-          try await socket.listen()
-
-          var client = try await socket.accept()
-          log.info("Received connection from runtime")
-
-          // Just a sanity check
-          try await Packet.ping.write(to: &client)
-          let response = try await Packet.read(from: &client)
-          guard case Packet.pong = response else {
-            log.error("Expected pong, got \(response)")
-            return
+          do {
+            try await server.start(
+              product: appConfiguration.product,
+              buildContext: buildContext
+            ).unwrap()
+          } catch {
+            log.error("Failed to start hot reloading server: \(error.localizedDescription)")
           }
-
-          // TODO: Avoid loading manifest twice
-          let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
-            .unwrap()
-
-          let platformVersion =
-            device.platform.asApplePlatform.map { platform in
-              manifest.platformVersion(for: platform.os)
-            } ?? nil
-          let architectures = bundleCommand.getArchitectures(
-            platform: device.platform
-          )
-
-          try await FileSystemWatcher.watch(
-            paths: [packageDirectory.appendingPathComponent("Sources").path],
-            with: {
-              log.info("Building 'lib\(appConfiguration.product).dylib'")
-              let client = client
-              Task {
-                do {
-                  var client = client
-                  let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
-                    product: appConfiguration.product,
-                    buildContext: SwiftPackageManager.BuildContext(
-                      genericContext: GenericBuildContext(
-                        projectDirectory: packageDirectory,
-                        scratchDirectory: scratchDirectory,
-                        configuration: arguments.buildConfiguration,
-                        architectures: architectures,
-                        platform: device.platform,
-                        platformVersion: platformVersion,
-                        additionalArguments: arguments.additionalSwiftPMArguments
-                      ),
-                      hotReloadingEnabled: true,
-                      isGUIExecutable: true
-                    )
-                  ).unwrap()
-                  log.info("Successfully built dylib")
-
-                  try await Packet.reloadDylib(path: dylibFile).write(to: &client)
-                } catch {
-                  log.error("Hot reloading: \(error.localizedDescription)")
-                }
-              }
-            },
-            errorHandler: { error in
-              log.error("Hot reloading: \(error.localizedDescription)")
-            })
         }
 
         additionalEnvironmentVariables = [
           "SWIFT_BUNDLER_HOT_RELOADING": "1",
-          "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(port)",
+          "SWIFT_BUNDLER_SERVER": "127.0.0.1:\(server.port)",
         ]
       } else {
         additionalEnvironmentVariables = [:]
