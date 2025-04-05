@@ -1,6 +1,6 @@
+import FlyingSocks
 import Foundation
 import HotReloadingProtocol
-import Socket
 
 public enum HotReloadingClientError: LocalizedError {
   case missingAddress
