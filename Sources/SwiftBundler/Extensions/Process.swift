@@ -94,19 +94,25 @@ extension Process {
       dataStream.continuation.yield($0.availableData)
     }
 
+    // Closes the output pipe and waits for the data stream to finish
+    // processing.
+    let finalize: () async -> Data = {
+      try? pipe.fileHandleForWriting.close()
+      pipe.fileHandleForReading.readabilityHandler = nil
+
+      dataStream.continuation.finish()
+
+      return await handleDataTask.value
+    }
+
     return await runAndWait()
       .map { _ in
-        try? pipe.fileHandleForWriting.close()
-        pipe.fileHandleForReading.readabilityHandler = nil
-
-        dataStream.continuation.finish()
-
-        return await handleDataTask.value
+        await finalize()
       }
       .mapErrorAsync { error in
         switch error {
           case .nonZeroExitStatus(let status):
-            return .nonZeroExitStatusWithOutput(await handleDataTask.value, status)
+            return .nonZeroExitStatusWithOutput(await finalize(), status)
           default:
             return error
         }
