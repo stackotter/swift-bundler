@@ -79,10 +79,12 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - product: The product to build.
   ///   - buildContext: The context to build in.
+  ///   - additionalEnvironmentVariables to add to SwiftPM CLI invocations.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
-    buildContext: BuildContext
+    buildContext: BuildContext,
+    additionalEnvironmentVariables: [String: String] = [:]
   ) async -> Result<Void, SwiftPackageManagerError> {
     return await createBuildArguments(
       product: product,
@@ -91,6 +93,7 @@ enum SwiftPackageManager {
       let process = Process.create(
         "swift",
         arguments: arguments,
+        environment: additionalEnvironmentVariables,
         directory: buildContext.genericContext.projectDirectory,
         runSilentlyWhenNotVerbose: false
       )
