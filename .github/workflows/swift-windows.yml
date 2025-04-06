@@ -10,8 +10,8 @@ defaults:
     shell: pwsh
 
 jobs:
-  runs-on: windows
   build:
+    runs-on: windows
     timeout-minutes: 30
     steps:
       
