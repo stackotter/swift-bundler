@@ -8,6 +8,7 @@ extension ConfigurationFlattener {
       properties: [String]
     )
     case projectBuilderNotASwiftFile(String)
+    case reservedProjectName(String)
     case other(LocalizedError)
 
     var errorDescription: String? {
@@ -24,8 +25,10 @@ extension ConfigurationFlattener {
             """
         case .projectBuilderNotASwiftFile(let builder):
           return """
-            Library builders must be swift files, and '\(builder)' isn't one.
+            Library builders must be swift files, and '\(builder)' isn't one
             """
+        case .reservedProjectName(let name):
+          return "The project name '\(name)' is reserved"
         case .other(let error):
           return error.localizedDescription
       }

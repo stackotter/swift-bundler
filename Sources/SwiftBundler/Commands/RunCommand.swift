@@ -168,13 +168,15 @@ struct RunCommand: ErrorHandledCommand {
                   let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
                     product: appConfiguration.product,
                     buildContext: SwiftPackageManager.BuildContext(
-                      packageDirectory: packageDirectory,
-                      scratchDirectory: scratchDirectory,
-                      configuration: arguments.buildConfiguration,
-                      architectures: architectures,
-                      platform: device.platform,
-                      platformVersion: platformVersion,
-                      additionalArguments: arguments.additionalSwiftPMArguments,
+                      genericContext: GenericBuildContext(
+                        projectDirectory: packageDirectory,
+                        scratchDirectory: scratchDirectory,
+                        configuration: arguments.buildConfiguration,
+                        architectures: architectures,
+                        platform: device.platform,
+                        platformVersion: platformVersion,
+                        additionalArguments: arguments.additionalSwiftPMArguments
+                      ),
                       hotReloadingEnabled: true,
                       isGUIExecutable: true
                     )

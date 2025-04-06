@@ -97,7 +97,7 @@ struct AppConfiguration: Codable {
           Rest<Substring>()
         }.map { product in
           Dependency(
-            project: ProjectConfiguration.defaultProjectName,
+            project: ProjectConfiguration.rootProjectName,
             product: String(product)
           )
         }

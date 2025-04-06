@@ -15,12 +15,12 @@ enum Xcodebuild {
     product: String,
     buildContext: SwiftPackageManager.BuildContext
   ) async -> Result<Void, XcodebuildError> {
-    guard let applePlatform = buildContext.platform.asApplePlatform else {
-      return .failure(.unsupportedPlatform(buildContext.platform))
+    guard let applePlatform = buildContext.genericContext.platform.asApplePlatform else {
+      return .failure(.unsupportedPlatform(buildContext.genericContext.platform))
     }
 
     let scheme =
-      buildContext.packageDirectory
+      buildContext.genericContext.projectDirectory
       / ".swiftpm/xcode/xcshareddata/xcschemes/\(product).xcscheme"
 
     let cleanup: (() -> Void)?
@@ -76,7 +76,7 @@ enum Xcodebuild {
               "--disable-logging",
               "--preserve-unbeautified",
             ],
-            directory: buildContext.packageDirectory,
+            directory: buildContext.genericContext.projectDirectory,
             runSilentlyWhenNotVerbose: false
           )
         case .failure(_):
@@ -86,12 +86,12 @@ enum Xcodebuild {
       xcbeautifyProcess = nil
     }
 
-    let archString = buildContext.architectures
+    let archString = buildContext.genericContext.architectures
       .map(\.rawValue)
       .joined(separator: "_")
 
     let destinationArguments: [String]
-    if buildContext.platform == .macOS {
+    if buildContext.genericContext.platform == .macOS {
       destinationArguments = [
         "-destination",
         "platform=macOS,arch=\(archString)",
@@ -107,15 +107,15 @@ enum Xcodebuild {
       "xcodebuild",
       arguments: [
         "-scheme", product,
-        "-configuration", buildContext.configuration.rawValue.capitalized,
+        "-configuration", buildContext.genericContext.configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
         "-skipMacroValidation",
         "-derivedDataPath",
-        buildContext.packageDirectory.appendingPathComponent(
-          ".build/\(archString)-apple-\(buildContext.platform.sdkName)"
+        buildContext.genericContext.projectDirectory.appendingPathComponent(
+          ".build/\(archString)-apple-\(buildContext.genericContext.platform.sdkName)"
         ).path,
-      ] + destinationArguments + buildContext.additionalArguments,
-      directory: buildContext.packageDirectory,
+      ] + destinationArguments + buildContext.genericContext.additionalArguments,
+      directory: buildContext.genericContext.projectDirectory,
       runSilentlyWhenNotVerbose: false
     )
 

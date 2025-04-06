@@ -19,6 +19,12 @@ enum ProjectBuilder {
     case missingProduct(project: String, product: String, appName: String)
     case failedToBuildProject(name: String, Error)
     case failedToCopyProduct(source: URL, destination: URL, any Swift.Error)
+    case failedToBuildRootProjectProduct(name: String, any Swift.Error)
+    case noSuchProduct(project: String, product: String)
+    case unsupportedRootProjectProductType(
+      PackageManifest.ProductType,
+      product: String
+    )
     case invalidLocalSource(URL)
     case missingProductArtifact(URL, product: String)
     case other(any Swift.Error)
@@ -51,6 +57,19 @@ enum ProjectBuilder {
           return """
             Failed to copy product '\(source.lastPathComponent)': \
             \(error.localizedDescription)
+            """
+        case .failedToBuildRootProjectProduct(let name, let error):
+          let absoluteName = "\(ProjectConfiguration.rootProjectName).\(name)"
+          return "Failed to build '\(absoluteName)': \(error.localizedDescription)"
+        case .noSuchProduct(let project, let product):
+          return "No such product \(project).\(product)"
+        case .unsupportedRootProjectProductType(_, let product):
+          // TODO: Ideally this error message should include the name of the app
+          //   that has the dependency.
+          return """
+            Could not find executable product with name '\(product)' \
+            (the ability to depend on library products from SwiftPM \
+            packages isn't implemented yet)
             """
         case .invalidLocalSource(let source):
           return """
@@ -85,17 +104,19 @@ enum ProjectBuilder {
   static func buildDependencies(
     _ dependencies: [AppConfiguration.Dependency],
     packageConfiguration: PackageConfiguration.Flat,
-    packageDirectory: URL,
-    scratchDirectory: URL,
-    appProductsDirectory: URL,
+    context: GenericBuildContext,
     appName: String,
-    platform: Platform,
     dryRun: Bool
   ) async -> Result<[String: BuiltProduct], Error> {
     var builtProjects: Set<String> = []
     return await dependencies.tryMap {
       dependency -> Result<(String, BuiltProduct), Error> in
       let projectName = dependency.project
+
+      if projectName == ProjectConfiguration.rootProjectName {
+        log.info("Building product '\(dependency.product)'")
+        return await buildRootProjectProduct(dependency.product, context: context)
+      }
 
       guard let project = packageConfiguration.projects[projectName] else {
         return .failure(Error.missingProject(name: projectName, appName: appName))
@@ -112,7 +133,7 @@ enum ProjectBuilder {
       }
 
       let projectScratchDirectory = ScratchDirectoryStructure(
-        scratchDirectory: scratchDirectory / projectName
+        scratchDirectory: context.scratchDirectory / projectName
       )
 
       let productsDirectoryExists = FileManager.default.itemExists(
@@ -123,10 +144,13 @@ enum ProjectBuilder {
       let requiresBuilding = !builtProjects.contains(dependency.project)
       builtProjects.insert(dependency.project)
 
-      let productPath = product.artifactPath(whenNamed: dependency.product, platform: platform)
+      let productPath = product.artifactPath(
+        whenNamed: dependency.product,
+        platform: context.platform
+      )
       let auxiliaryArtifactPaths = product.auxiliaryArtifactPaths(
         whenNamed: dependency.product,
-        platform: platform
+        platform: context.platform
       )
 
       let artifactPaths = [productPath] + auxiliaryArtifactPaths
@@ -153,7 +177,7 @@ enum ProjectBuilder {
               await ProjectBuilder.buildProject(
                 projectName,
                 configuration: project,
-                packageDirectory: packageDirectory,
+                packageDirectory: context.projectDirectory,
                 scratchDirectory: projectScratchDirectory
               ).mapError { error in
                 Error.failedToBuildProject(name: projectName, error)
@@ -200,6 +224,60 @@ enum ProjectBuilder {
     }.map { pairs in
       Dictionary(pairs) { first, _ in first }
     }
+  }
+
+  static func buildRootProjectProduct(
+    _ product: String,
+    context: GenericBuildContext
+  ) async -> Result<(String, BuiltProduct), Error> {
+    let buildContext = SwiftPackageManager.BuildContext(
+      genericContext: context,
+      hotReloadingEnabled: false,
+      isGUIExecutable: false
+    )
+    let wrapSPMError = { error in
+      Error.failedToBuildRootProjectProduct(name: product, error)
+    }
+    return await SwiftPackageManager.loadPackageManifest(from: context.projectDirectory)
+      .mapError(wrapSPMError)
+      .andThenDoSideEffect { manifest in
+        guard
+          let manifestProduct = manifest.products.first(where: { $0.name == product })
+        else {
+          let project = ProjectConfiguration.rootProjectName
+          return .failure(.noSuchProduct(project: project, product: product))
+        }
+
+        guard manifestProduct.type == .executable else {
+          let error = Error.unsupportedRootProjectProductType(
+            manifestProduct.type,
+            product: product
+          )
+          return .failure(error)
+        }
+
+        return .success()
+      }
+      .andThen { _ in
+        await SwiftPackageManager.build(product: product, buildContext: buildContext)
+          .mapError(wrapSPMError)
+      }
+      .andThen { _ in
+        await SwiftPackageManager.getProductsDirectory(buildContext)
+          .mapError(wrapSPMError)
+      }
+      .map { productsDirectory in
+        let productConfiguration = ProjectConfiguration.Product.Flat(type: .executable)
+        let artifactPath = productConfiguration.artifactPath(
+          whenNamed: product,
+          platform: context.platform
+        )
+        let artifacts = [
+          ProjectBuilder.Artifact(location: productsDirectory / artifactPath)
+        ]
+        let builtProduct = BuiltProduct(product: productConfiguration, artifacts: artifacts)
+        return (product, builtProduct)
+      }
   }
 
   struct ScratchDirectoryStructure {
@@ -375,12 +453,14 @@ enum ProjectBuilder {
       .andThen { _ in
         // Build the builder
         let buildContext = SwiftPackageManager.BuildContext(
-          packageDirectory: scratchDirectory.builder,
-          scratchDirectory: scratchDirectory.builder / ".build",
-          configuration: .debug,
-          architectures: [.current],
-          platform: .host,
-          additionalArguments: [],
+          genericContext: GenericBuildContext(
+            projectDirectory: scratchDirectory.builder,
+            scratchDirectory: scratchDirectory.builder / ".build",
+            configuration: .debug,
+            architectures: [.current],
+            platform: .host,
+            additionalArguments: []
+          ),
           isGUIExecutable: false
         )
 

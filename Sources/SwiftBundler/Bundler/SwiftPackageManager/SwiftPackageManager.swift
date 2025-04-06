@@ -9,20 +9,8 @@ import Yams
 enum SwiftPackageManager {
   /// The context for a build.
   struct BuildContext {
-    /// The root directory of the package containing the product.
-    var packageDirectory: URL
-    /// The SwiftPM scratch directory in use.
-    var scratchDirectory: URL
-    /// The build configuration to use.
-    var configuration: BuildConfiguration
-    /// The set of architectures to build for.
-    var architectures: [BuildArchitecture]
-    /// The platform to build for.
-    var platform: Platform
-    /// The platform version to build for.
-    var platformVersion: String?
-    /// Additional arguments to be passed to SwiftPM.
-    var additionalArguments: [String]
+    /// Generic build context properties shared between most build systems.
+    var genericContext: GenericBuildContext
     /// Controls whether the hot reloading environment variables are added to
     /// the build command or not.
     var hotReloadingEnabled: Bool = false
@@ -103,7 +91,7 @@ enum SwiftPackageManager {
       let process = Process.create(
         "swift",
         arguments: arguments,
-        directory: buildContext.packageDirectory,
+        directory: buildContext.genericContext.projectDirectory,
         runSilentlyWhenNotVerbose: false
       )
 
@@ -146,8 +134,8 @@ enum SwiftPackageManager {
         product: product,
         buildContext: buildContext
       ).andThen { _ in
-        let buildPlanFile = buildContext.scratchDirectory
-          .appendingPathComponent("\(buildContext.configuration).yaml")
+        let buildPlanFile = buildContext.genericContext.scratchDirectory
+          .appendingPathComponent("\(buildContext.genericContext.configuration).yaml")
         let buildPlanString: String
         do {
           buildPlanString = try String(contentsOf: buildPlanFile)
@@ -173,8 +161,9 @@ enum SwiftPackageManager {
         // Swift versions before 6.0 or so named commands differently in the build plan.
         // We check for the newer format (with triple) then the older format (no triple).
         let triple = targetInfo.target.triple
-        let commandName = "C.\(product)-\(triple)-\(buildContext.configuration).exe"
-        let oldCommandName = "C.\(product)-\(buildContext.configuration).exe"
+        let configuration = buildContext.genericContext.configuration
+        let commandName = "C.\(product)-\(triple)-\(configuration).exe"
+        let oldCommandName = "C.\(product)-\(configuration).exe"
         guard
           let linkCommand = buildPlan.commands[commandName] ?? buildPlan.commands[oldCommandName],
           linkCommand.tool == "shell",
@@ -210,7 +199,7 @@ enum SwiftPackageManager {
         let process = Process.create(
           commandExecutable,
           arguments: modifiedArguments,
-          directory: buildContext.packageDirectory,
+          directory: buildContext.genericContext.projectDirectory,
           runSilentlyWhenNotVerbose: false
         )
 
@@ -248,12 +237,12 @@ enum SwiftPackageManager {
     buildContext: BuildContext
   ) async -> Result<[String], SwiftPackageManagerError> {
     let platformArguments: [String]
-    switch buildContext.platform {
+    switch buildContext.genericContext.platform {
       case .windows:
         let debugArguments: [String]
         let guiArguments: [String]
 
-        if buildContext.configuration == .debug {
+        if buildContext.genericContext.configuration == .debug {
           debugArguments = [
             "-Xswiftc", "-g",
             "-Xswiftc", "-debug-info-format=codeview",
@@ -276,20 +265,20 @@ enum SwiftPackageManager {
         .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms
         let sdkPath: String
-        switch await getLatestSDKPath(for: buildContext.platform) {
+        switch await getLatestSDKPath(for: buildContext.genericContext.platform) {
           case .success(let path):
             sdkPath = path
           case .failure(let error):
             return .failure(error)
         }
 
-        guard let platformVersion = buildContext.platformVersion else {
-          return .failure(.missingDarwinPlatformVersion(buildContext.platform))
+        guard let platformVersion = buildContext.genericContext.platformVersion else {
+          return .failure(.missingDarwinPlatformVersion(buildContext.genericContext.platform))
         }
         let hostArchitecture = BuildArchitecture.current
 
         let targetTriple: LLVMTargetTriple
-        switch buildContext.platform {
+        switch buildContext.genericContext.platform {
           case .iOS:
             targetTriple = .apple(.arm64, .iOS(platformVersion))
           case .visionOS:
@@ -321,22 +310,24 @@ enum SwiftPackageManager {
         platformArguments = []
     }
 
-    let architectureArguments = buildContext.architectures.flatMap { architecture in
-      ["--arch", architecture.argument(for: buildContext.platform)]
+    let architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
+      ["--arch", architecture.argument(for: buildContext.genericContext.platform)]
     }
 
     let productArguments = product.map { ["--product", $0] } ?? []
-    let scratchDirectoryArguments = ["--scratch-path", buildContext.scratchDirectory.path]
+    let scratchDirectoryArguments = [
+      "--scratch-path", buildContext.genericContext.scratchDirectory.path,
+    ]
     let arguments =
       [
         "build",
-        "-c", buildContext.configuration.rawValue,
+        "-c", buildContext.genericContext.configuration.rawValue,
       ]
       + productArguments
       + architectureArguments
       + platformArguments
       + scratchDirectoryArguments
-      + buildContext.additionalArguments
+      + buildContext.genericContext.additionalArguments
 
     return .success(arguments)
   }
@@ -433,7 +424,7 @@ enum SwiftPackageManager {
       let process = Process.create(
         "swift",
         arguments: arguments + ["--show-bin-path"],
-        directory: buildContext.packageDirectory
+        directory: buildContext.genericContext.projectDirectory
       )
 
       return await process.getOutput().map { output in

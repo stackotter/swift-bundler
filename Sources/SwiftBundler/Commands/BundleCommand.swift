@@ -545,15 +545,17 @@ struct BundleCommand: ErrorHandledCommand {
           manifest.platformVersion(for: platform.os)
         } ?? nil
       let buildContext = SwiftPackageManager.BuildContext(
-        packageDirectory: packageDirectory,
-        scratchDirectory: scratchDirectory,
-        configuration: arguments.buildConfiguration,
-        architectures: architectures,
-        platform: resolvedPlatform,
-        platformVersion: platformVersion,
-        additionalArguments: isUsingXcodebuild
-          ? arguments.additionalXcodeBuildArguments
-          : arguments.additionalSwiftPMArguments,
+        genericContext: GenericBuildContext(
+          projectDirectory: packageDirectory,
+          scratchDirectory: scratchDirectory,
+          configuration: arguments.buildConfiguration,
+          architectures: architectures,
+          platform: resolvedPlatform,
+          platformVersion: platformVersion,
+          additionalArguments: isUsingXcodebuild
+            ? arguments.additionalXcodeBuildArguments
+            : arguments.additionalSwiftPMArguments
+        ),
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true
       )
@@ -609,11 +611,8 @@ struct BundleCommand: ErrorHandledCommand {
       let dependencies = try await ProjectBuilder.buildDependencies(
         appConfiguration.dependencies,
         packageConfiguration: configuration,
-        packageDirectory: packageDirectory,
-        scratchDirectory: dependenciesScratchDirectory,
-        appProductsDirectory: productsDirectory,
+        context: buildContext.genericContext,
         appName: appName,
-        platform: buildContext.platform,
         dryRun: skipBuild
       ).unwrap()
       bundlerContext.builtDependencies = dependencies
@@ -626,7 +625,7 @@ struct BundleCommand: ErrorHandledCommand {
           )
         }
 
-        // Copy built library products
+        // Copy built depdencies
         if !dependencies.isEmpty {
           log.info("Copying dependencies")
         }
@@ -652,7 +651,7 @@ struct BundleCommand: ErrorHandledCommand {
           }
         }
 
-        log.info("Starting \(buildContext.configuration.rawValue) build")
+        log.info("Starting \(buildContext.genericContext.configuration.rawValue) build")
         if isUsingXcodebuild {
           try await Xcodebuild.build(
             product: appConfiguration.product,

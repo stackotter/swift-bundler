@@ -23,7 +23,7 @@ extension ErrorHandledCommand {
       log.debug("Error details: \(error)")
       if log.logLevel > .debug {
         print("")
-        log.info("Use -v to get more error details")
+        log.info("Use --verbose to get more error details")
       }
       Foundation.exit(1)
     }

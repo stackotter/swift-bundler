@@ -139,6 +139,12 @@ enum ConfigurationFlattener {
     named name: String,
     with context: Context
   ) -> Result<ProjectConfiguration.Flat, Error> {
+    guard name != ProjectConfiguration.rootProjectName else {
+      return .failure(
+        Error.reservedProjectName(name)
+      )
+    }
+
     guard configuration.builder.name.hasSuffix(".swift") else {
       return .failure(
         Error.projectBuilderNotASwiftFile(
