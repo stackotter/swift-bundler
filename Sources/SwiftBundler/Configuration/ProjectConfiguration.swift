@@ -356,7 +356,14 @@ extension ProjectConfiguration.Product.Flat {
         // TODO: Support static libraries on Windows
         fileExtension = ".a"
       case .executable:
-        fileExtension = ""
+        switch platform {
+          case .windows:
+            fileExtension = "exe"
+          case .linux, .macOS, .iOS, .iOSSimulator,
+            .tvOS, .tvOSSimulator,
+            .visionOS, .visionOSSimulator:
+            fileExtension = ""
+        }
     }
 
     let basePath = baseArtifactPath(whenNamed: name, platform: platform)

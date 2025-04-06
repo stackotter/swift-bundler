@@ -34,7 +34,7 @@ extension GenericWindowsBundler {
           let error
         ):
           return """
-            Failed to copy dependency '\(name)' of executable to output bundle: \
+            Failed to copy dependency '\(name)' to output bundle: \
             \(error.localizedDescription)
             """
         case .failedToInsertMetadata(let error):
