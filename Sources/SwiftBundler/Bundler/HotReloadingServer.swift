@@ -43,29 +43,29 @@ struct HotReloadingServer {
 
   static func create(portHint: UInt16 = 7331) async -> Result<Self, Error> {
     var port = portHint
-    let socket: AsyncSocket
 
     // Attempt to create socket and if the address is already in use, retry with
     // higher and higher ports until socket creation fails for another reason or
     // a free address is found.
-    outer: while true {
+    while true {
       switch await Self.createSocket(port: port) {
-        case .success(let value):
-          socket = value
-          break outer
+        case .success(let socket):
+          return .success(Self(port: port, socket: socket))
         case .failure(.addrInUse):
           port += 1
         case .failure(let error):
           return .failure(error)
       }
     }
-
-    return .success(Self(port: port, socket: socket))
   }
 
   static func createSocket(port: UInt16) async -> Result<AsyncSocket, Error> {
     do {
-      let address: SocketAddress = try .inet(ip4: "127.0.0.1", port: port)
+      // FlyingSocks relies on type inference tricks to hide away sockaddr_in,
+      // but using them here breaks our Linux CI, so just spell it out and hope
+      // FlyingSocks doesn't break this if/when they introduce more Swifty
+      // SocketAddress wrappers (which would be very welcome regardless).
+      let address = try sockaddr_in.inet(ip4: "127.0.0.1", port: port)
       let socket = try Socket(domain: Int32(type(of: address).family))
       try socket.bind(to: address)
       try socket.listen()

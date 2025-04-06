@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: swift:5.10.0
+      image: swift:6.0.0
     
     steps:
       - name: Swift version

@@ -198,7 +198,7 @@ struct PackageConfiguration: Codable {
         TOMLDecoder().decode(PackageConfigurationV2.self, from: contents)
           .mapError(PackageConfigurationError.failedToDeserializeV2Configuration)
       }
-      .map { oldConfiguration in
+      .mapAsync { oldConfiguration in
         // Migrate the configuration
         await oldConfiguration.migrate()
       }

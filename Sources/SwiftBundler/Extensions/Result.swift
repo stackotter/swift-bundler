@@ -337,7 +337,7 @@ func set<T, U>(_ property: WritableKeyPath<T, U>, _ value: U) -> (T) -> T {
 }
 
 extension Result {
-  func map<NewSuccess>(
+  func mapAsync<NewSuccess>(
     _ transform: (Success) async -> NewSuccess
   ) async -> Result<NewSuccess, Failure> {
     switch self {
