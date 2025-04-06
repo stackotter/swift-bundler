@@ -358,7 +358,7 @@ extension ProjectConfiguration.Product.Flat {
       case .executable:
         switch platform {
           case .windows:
-            fileExtension = "exe"
+            fileExtension = ".exe"
           case .linux, .macOS, .iOS, .iOSSimulator,
             .tvOS, .tvOSSimulator,
             .visionOS, .visionOSSimulator:
