@@ -24,7 +24,7 @@ let package = Package(
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
-    .package(url: "https://github.com/stackotter/Socket", from: "0.3.3"),
+    .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
     .package(url: "https://github.com/kylef/PathKit", from: "1.0.1"),
     .package(url: "https://github.com/apple/swift-certificates", from: "1.7.0"),
@@ -90,8 +90,8 @@ let package = Package(
 
         // Hot reloading related dependencies
         .product(
-          name: "Socket",
-          package: "Socket",
+          name: "FlyingSocks",
+          package: "FlyingFox",
           condition: .when(platforms: [.macOS, .linux])
         ),
         .target(
@@ -120,7 +120,7 @@ let package = Package(
     .target(
       name: "SwiftBundlerRuntime",
       dependencies: [
-        "Socket",
+        .product(name: "FlyingSocks", package: "FlyingFox"),
         "HotReloadingProtocol",
       ]
     ),
@@ -139,7 +139,7 @@ let package = Package(
     .target(
       name: "HotReloadingProtocol",
       dependencies: [
-        "Socket"
+        .product(name: "FlyingSocks", package: "FlyingFox")
       ]
     ),
 
@@ -166,7 +166,7 @@ let package = Package(
 
     .testTarget(
       name: "SwiftBundlerTests",
-      dependencies: ["swift-bundler"]
+      dependencies: ["SwiftBundler"]
     ),
 
     .plugin(

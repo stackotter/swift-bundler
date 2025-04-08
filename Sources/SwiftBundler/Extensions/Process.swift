@@ -106,7 +106,7 @@ extension Process {
     }
 
     return await runAndWait()
-      .map { _ in
+      .mapAsync { _ in
         await finalize()
       }
       .mapErrorAsync { error in

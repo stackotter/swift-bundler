@@ -1,14 +1,11 @@
+import FlyingSocks
 import Foundation
-import Socket
 
-extension Socket: ReadableStream {
+extension AsyncSocket: ReadableStream {
   public func read(exactly count: Int) async throws -> Data {
-    try await read(count)
+    let bytes = try await read(atMost: count)
+    return Data(bytes)
   }
 }
 
-extension Socket: WritableStream {
-  public func write(_ data: Data) async throws {
-    try await sendMessage(data)
-  }
-}
+extension AsyncSocket: WritableStream {}

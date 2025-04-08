@@ -184,13 +184,13 @@ enum Templater {
     }
 
     // Apply the template
-    return await applyTemplate(
+    return applyTemplate(
       templateDirectory,
       to: outputDirectory,
       packageName: packageName,
       identifier: configuration.identifier,
       indentationStyle: indentationStyle
-    ).mapError { error in
+    ).mapError { error -> TemplaterError in
       // Cleanup output directory
       attemptCleanup(outputDirectory)
       return error
@@ -200,7 +200,7 @@ enum Templater {
         packageName: packageName,
         configuration: configuration
       )
-    }.map { _ in
+    }.map { _ -> Template in
       Template(name: template, manifest: manifest)
     }
   }

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import swift_bundler
+@testable import SwiftBundler
 
 final class SwiftBundlerTests: XCTestCase {
   func testCommandLineParsing() throws {
