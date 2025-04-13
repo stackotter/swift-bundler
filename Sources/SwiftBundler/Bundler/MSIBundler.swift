@@ -245,11 +245,15 @@ enum MSIBundler: Bundler {
     id: String? = nil
   ) -> Result<WXSFile.Directory, Error> {
     let root = root ?? directory
+    let excludedPaths = excludedItems.map(\.path)
     return FileManager.default.contentsOfDirectory(at: directory)
       .mapError(Error.failedToEnumerateBundle)
       .map { items in
-        items.filter { item in
-          !excludedItems.contains(item)
+        return items.filter { item in
+          // For some reason URL comparison seems to be a little broken on Windows.
+          // URLs with identical paths get evaluated as distinct URLs, so we have to
+          // convert to paths before comparison.
+          return !excludedPaths.contains(item.path)
         }
       }
       .andThen { items in
