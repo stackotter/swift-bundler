@@ -193,7 +193,7 @@ enum RPMBundler: Bundler {
       License:        MIT
       Source0:        \(sourceArchiveName)
 
-      Requires:       \(requirements.joined(separator: ", "))
+      \(requirements.map { "Requires:       \($0)" }.joined(separator: "\n"))
 
       %global debug_package %{nil}
 
