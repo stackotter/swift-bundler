@@ -24,7 +24,16 @@
         "repositoryURL": "https://github.com/apple/swift-docc-plugin",
         "state": {
           "branch": null,
-          "revision": "3303b164430d9a7055ba484c8ead67a52f7b74f6",
+          "revision": "85e4bb4e1cd62cec64a4b8e769dcefdf0c5b9d64",
+          "version": "1.4.3"
+        }
+      },
+      {
+        "package": "SymbolKit",
+        "repositoryURL": "https://github.com/swiftlang/swift-docc-symbolkit",
+        "state": {
+          "branch": null,
+          "revision": "b45d1f2ed151d057b54504d653e0da5552844e34",
           "version": "1.0.0"
         }
       },
@@ -51,8 +60,8 @@
         "repositoryURL": "https://github.com/LebJe/TOMLKit",
         "state": {
           "branch": null,
-          "revision": "d0d44fda394acdd43ded1face20f80a0c5195e04",
-          "version": "0.5.2"
+          "revision": "ec6198d37d495efc6acd4dffbd262cdca7ff9b3f",
+          "version": "0.6.0"
         }
       },
       {
