@@ -105,11 +105,14 @@ struct PropertySet<Overlay: ConfigurationOverlay> {
 
 enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
   case platform(String)
+  case bundler(String)
 
   var description: String {
     switch self {
       case .platform(let identifier):
         return "platform(\(identifier))"
+      case .bundler(let identifier):
+        return "bundler(\(identifier))"
     }
   }
 
@@ -117,18 +120,34 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
     let container = try decoder.singleValueContainer()
     let value = try container.decode(String.self)
 
-    let parser = Parse {
-      "platform("
-      OneOf {
-        for platform in Platform.allCases {
-          platform.rawValue.map {
-            platform
+    let parser = OneOf {
+      Parse {
+        "platform("
+        OneOf {
+          for platform in Platform.allCases {
+            platform.rawValue.map {
+              platform
+            }
           }
         }
+        ")"
+      }.map { platform in
+        OverlayCondition.platform(platform.rawValue)
       }
-      ")"
-    }.map { platform in
-      OverlayCondition.platform(platform.rawValue)
+
+      Parse {
+        "bundler("
+        OneOf {
+          for bundler in BundlerChoice.allCases {
+            bundler.rawValue.map {
+              bundler
+            }
+          }
+        }
+        ")"
+      }.map { bundler in
+        OverlayCondition.bundler(bundler.rawValue)
+      }
     }
 
     self = try parser.parse(value)
@@ -140,7 +159,9 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
     let value: String
     switch self {
       case .platform(let identifier):
-        value = "platform\(identifier)"
+        value = "platform(\(identifier))"
+      case .bundler(let identifier):
+        value = "bundler(\(identifier))"
     }
 
     try container.encode(value)

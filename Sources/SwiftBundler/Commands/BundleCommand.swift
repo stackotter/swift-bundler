@@ -486,7 +486,10 @@ struct BundleCommand: ErrorHandledCommand {
       let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
-        context: ConfigurationFlattener.Context(platform: resolvedPlatform),
+        context: ConfigurationFlattener.Context(
+          platform: resolvedPlatform,
+          bundler: arguments.bundler
+        ),
         customFile: arguments.configurationFileOverride
       )
 

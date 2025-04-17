@@ -34,9 +34,13 @@ struct AppConfiguration: Codable {
   /// Conditionally applied configuration overlays.
   var overlays: [Overlay]?
 
-  /// Only available in overlays with `platform(Linux)` or stronger. Sets whether
+  /// Only available in overlays with `platform(linux)` or stronger. Sets whether
   /// Swift Bundler generates a D-Bus service file for the application or not.
   var dbusActivatable = false
+
+  /// Only available in overlays with `bundler(linuxRPM)` or stronger. Sets the list of
+  /// package dependencies
+  var rpmRequirements: [String] = []
 
   private enum CodingKeys: String, CodingKey {
     case identifier
@@ -64,6 +68,7 @@ struct AppConfiguration: Codable {
     var metadata: [String: MetadataValue]
     var dependencies: [Dependency]
     var dbusActivatable: Bool
+    var rpmRequirements: [String]
   }
 
   struct Dependency: Codable, Hashable {
@@ -117,7 +122,9 @@ struct AppConfiguration: Codable {
 
     static let exclusiveProperties: [OverlayCondition: PropertySet<Self>] = [
       .platform("linux"): PropertySet()
-        .add(.dbusActivatable, \.dbusActivatable)
+        .add(.dbusActivatable, \.dbusActivatable),
+      .bundler("linuxRPM"): PropertySet()
+        .add(.rpmRequirements, \.rpmRequirements)
     ]
 
     var condition: OverlayCondition
@@ -131,6 +138,7 @@ struct AppConfiguration: Codable {
     var metadata: [String: MetadataValue]?
     var dependencies: [Dependency]?
     var dbusActivatable: Bool?
+    var rpmRequirements: [String]?
 
     enum CodingKeys: String, CodingKey {
       case condition
@@ -144,6 +152,7 @@ struct AppConfiguration: Codable {
       case metadata
       case dependencies
       case dbusActivatable = "dbus_activatable"
+      case rpmRequirements = "requirements"
     }
 
     func merge(into base: inout Base) {
@@ -157,6 +166,7 @@ struct AppConfiguration: Codable {
       Self.merge(&base.metadata, metadata)
       Self.merge(&base.dependencies, dependencies)
       Self.merge(&base.dbusActivatable, dbusActivatable)
+      Self.merge(&base.rpmRequirements, rpmRequirements)
     }
   }
 

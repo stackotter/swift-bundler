@@ -9,6 +9,7 @@ extension ConfigurationFlattener {
     )
     case projectBuilderNotASwiftFile(String)
     case reservedProjectName(String)
+    case invalidRPMRequirement(String)
     case other(LocalizedError)
 
     var errorDescription: String? {
@@ -29,6 +30,8 @@ extension ConfigurationFlattener {
             """
         case .reservedProjectName(let name):
           return "The project name '\(name)' is reserved"
+        case .invalidRPMRequirement(let name):
+          return "Invalid RPM requirement contains restricted characters: \(name)"
         case .other(let error):
           return error.localizedDescription
       }

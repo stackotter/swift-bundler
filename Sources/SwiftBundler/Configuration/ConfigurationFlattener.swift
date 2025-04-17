@@ -5,6 +5,7 @@ import Foundation
 enum ConfigurationFlattener {
   struct Context {
     var platform: Platform
+    var bundler: BundlerChoice
     var codingPath = CodingPath()
 
     func appendingCodingKey(_ key: any CodingKey) -> Self {
@@ -108,8 +109,15 @@ enum ConfigurationFlattener {
       configuration.overlays ?? [],
       into: configuration,
       with: context
-    ).map { configuration in
-      AppConfiguration.Flat(
+    ).andThen { configuration in
+      let invalidRequirement = configuration.rpmRequirements.first { requirement in
+        !RPMBundler.isValidRequirement(requirement)
+      }
+      if let invalidRequirement {
+        return .failure(.invalidRPMRequirement(invalidRequirement))
+      }
+
+      let flat = AppConfiguration.Flat(
         identifier: configuration.identifier,
         product: configuration.product,
         version: configuration.version,
@@ -119,8 +127,10 @@ enum ConfigurationFlattener {
         plist: configuration.plist ?? [:],
         metadata: configuration.metadata ?? [:],
         dependencies: configuration.dependencies ?? [],
-        dbusActivatable: configuration.dbusActivatable
+        dbusActivatable: configuration.dbusActivatable,
+        rpmRequirements: configuration.rpmRequirements
       )
+      return .success(flat)
     }
   }
 
@@ -131,6 +141,8 @@ enum ConfigurationFlattener {
     switch condition {
       case .platform(let identifier):
         identifier == context.platform.rawValue
+      case .bundler(let identifier):
+        identifier == context.bundler.rawValue
     }
   }
 

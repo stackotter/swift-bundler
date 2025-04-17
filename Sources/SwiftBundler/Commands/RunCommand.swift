@@ -87,7 +87,10 @@ struct RunCommand: ErrorHandledCommand {
     let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
-      context: ConfigurationFlattener.Context(platform: device.platform),
+      context: ConfigurationFlattener.Context(
+        platform: device.platform,
+        bundler: arguments.bundler
+      ),
       customFile: arguments.configurationFileOverride
     )
 

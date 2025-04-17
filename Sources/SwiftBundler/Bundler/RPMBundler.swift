@@ -83,7 +83,8 @@ enum RPMBundler: Bundler {
         appVersion: appVersion,
         bundleStructure: structure,
         sourceArchiveName: rpmBuildDirectory.appSourceArchive.lastPathComponent,
-        installationRoot: installationRoot
+        installationRoot: installationRoot,
+        requirements: context.appConfiguration.rpmRequirements
       )
       return specContents.write(to: rpmBuildDirectory.appSpec)
         .mapError { error in
@@ -138,7 +139,8 @@ enum RPMBundler: Bundler {
     appVersion: String,
     bundleStructure: GenericLinuxBundler.BundleStructure,
     sourceArchiveName: String,
-    installationRoot: URL
+    installationRoot: URL,
+    requirements: [String]
   ) -> String {
     let relativeDesktopFileLocation = bundleStructure.desktopFile.path(
       relativeTo: bundleStructure.root
@@ -190,6 +192,8 @@ enum RPMBundler: Bundler {
 
       License:        MIT
       Source0:        \(sourceArchiveName)
+
+      Requires:       \(requirements.joined(separator: ", "))
 
       %global debug_package %{nil}
 
@@ -289,6 +293,19 @@ enum RPMBundler: Bundler {
           onError: RPMBundlerError.failedToCreateRPMBuildDirectory
         )
       }
+    }
+  }
+
+  /// Checks a requirement name intended to be passed to an rpmspec `Requires:`
+  /// field.
+  static func isValidRequirement(_ name: String) -> Bool {
+    // TODO: Find out what the actual naming restrictions are, these are just the ones
+    //   we rely on/assume. RPM seems a bit cagey about the actual restrictions.
+    name.allSatisfy { character in
+      character.isASCII
+        && !character.isWhitespace
+        && !character.isNewline
+        && character != ","
     }
   }
 }
