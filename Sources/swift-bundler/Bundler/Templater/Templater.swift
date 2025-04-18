@@ -218,18 +218,32 @@ enum Templater {
   static func updateTemplates() -> Result<Void, TemplaterError> {
     return getDefaultTemplatesDirectory(downloadIfNecessary: false)
       .flatMap { templatesDirectory in
-        if FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
-          let process = Process.create(
-            "/usr/bin/git",
-            arguments: ["pull"],
-            directory: templatesDirectory)
-          if case let .failure(error) = process.runAndWait() {
-            return .failure(.failedToPullLatestTemplates(error))
-          }
-          return .success()
-        } else {
+        print(templatesDirectory)
+        guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
           return downloadDefaultTemplates(into: templatesDirectory)
         }
+
+        return Process.create(
+          "/usr/bin/git",
+          arguments: [
+            "fetch"
+          ],
+          directory: templatesDirectory
+        ).runAndWait().flatMap { _ in
+          Process.create(
+            "/usr/bin/git",
+            arguments: [
+              "checkout", "v\(SwiftBundler.version.major)",
+            ],
+            directory: templatesDirectory
+          ).runAndWait()
+        }.flatMap { _ in
+          Process.create(
+            "/usr/bin/git",
+            arguments: ["pull"],
+            directory: templatesDirectory
+          ).runAndWait()
+        }.mapError(TemplaterError.failedToPullLatestTemplates)
       }
   }
 
@@ -296,7 +310,8 @@ enum Templater {
     let process = Process.create(
       "/usr/bin/git",
       arguments: [
-        "clone", "\(defaultTemplateRepository)",
+        "clone", "-b", "v\(SwiftBundler.version.major)",
+        "\(defaultTemplateRepository)",
         directory.path
       ])
 
