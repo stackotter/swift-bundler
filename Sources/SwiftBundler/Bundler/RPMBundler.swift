@@ -28,7 +28,7 @@ enum RPMBundler: Bundler {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let bundleName = outputStructure.bundle.lastPathComponent
 
-    let escapedAppName = context.appName.replacingOccurrences(of: " ", with: "-")
+    let escapedAppName = context.appName.replacingOccurrences(of: " ", with: "-").lowercased()
     let appVersion = context.appConfiguration.version
     let rpmBuildDirectory = RPMBuildDirectory(
       at: context.outputDirectory / "rpmbuild",
