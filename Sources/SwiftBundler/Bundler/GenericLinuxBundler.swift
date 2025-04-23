@@ -493,7 +493,7 @@ enum GenericLinuxBundler: Bundler {
       ("Type", "Application"),
       ("Version", "1.0"),  // The version of the target desktop spec, not the app
       ("Name", appName),
-      ("Comment", ""),
+      ("Comment", appConfiguration.appDescriptionOrDefault),
       ("Exec", "\(escapedExecPath) %U"),
       ("Icon", iconName),
       ("Terminal", "false"),

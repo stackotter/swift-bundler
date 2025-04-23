@@ -81,6 +81,8 @@ enum RPMBundler: Bundler {
         escapedAppName: escapedAppName,
         appIdentifier: context.appConfiguration.identifier,
         appVersion: appVersion,
+        appDescription: context.appConfiguration.appDescriptionOrDefault,
+        appLicense: context.appConfiguration.licenseOrDefault,
         bundleStructure: structure,
         sourceArchiveName: rpmBuildDirectory.appSourceArchive.lastPathComponent,
         installationRoot: installationRoot,
@@ -137,6 +139,8 @@ enum RPMBundler: Bundler {
     escapedAppName: String,
     appIdentifier: String,
     appVersion: String,
+    appDescription: String,
+    appLicense: String,
     bundleStructure: GenericLinuxBundler.BundleStructure,
     sourceArchiveName: String,
     installationRoot: URL,
@@ -188,9 +192,9 @@ enum RPMBundler: Bundler {
       Name:           \(escapedAppName)
       Version:        \(appVersion)
       Release:        1%{?dist}
-      Summary:        An app bundled by Swift Bundler
+      Summary:        \(appDescription)
 
-      License:        MIT
+      License:        \(appLicense)
       Source0:        \(sourceArchiveName)
 
       \(requirements.map { "Requires:       \($0)" }.joined(separator: "\n"))
@@ -203,7 +207,7 @@ enum RPMBundler: Bundler {
       %global __os_install_post /usr/lib/rpm/brp-compress %{nil}
 
       %description
-      An app bundled by Swift Bundler
+      \(appDescription)
 
       %prep
       %setup

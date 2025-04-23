@@ -9,6 +9,10 @@ struct AppConfiguration: Codable {
   var product: String
   /// The app's current version.
   var version: String
+  /// A short summary describing the purpose of the app.
+  var appDescription: String?
+  /// The license type of the app.
+  var license: String?
   // swiftlint:disable:next line_length
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
@@ -46,6 +50,8 @@ struct AppConfiguration: Codable {
     case identifier
     case product
     case version
+    case appDescription = "description"
+    case license
     case category
     case icon
     case urlSchemes = "url_schemes"
@@ -61,6 +67,8 @@ struct AppConfiguration: Codable {
     var identifier: String
     var product: String
     var version: String
+    var appDescription: String?
+    var license: String?
     var category: String?
     var icon: String?
     var urlSchemes: [String]
@@ -131,6 +139,8 @@ struct AppConfiguration: Codable {
     var identifier: String?
     var product: String?
     var version: String?
+    var appDescription: String?
+    var license: String?
     var category: String?
     var icon: String?
     var urlSchemes: [String]?
@@ -145,6 +155,8 @@ struct AppConfiguration: Codable {
       case identifier
       case product
       case version
+      case appDescription = "description"
+      case license
       case category
       case icon
       case urlSchemes = "url_schemes"
@@ -159,6 +171,8 @@ struct AppConfiguration: Codable {
       Self.merge(&base.identifier, identifier)
       Self.merge(&base.product, product)
       Self.merge(&base.version, version)
+      Self.merge(&base.appDescription, appDescription)
+      Self.merge(&base.license, license)
       Self.merge(&base.category, category)
       Self.merge(&base.icon, icon)
       Self.merge(&base.urlSchemes, urlSchemes)
@@ -272,5 +286,15 @@ struct AppConfiguration: Codable {
       } ?? filteredDictionary
 
     return configuration
+  }
+}
+
+extension AppConfiguration.Flat {
+  var appDescriptionOrDefault: String {
+    appDescription ?? "None"
+  }
+
+  var licenseOrDefault: String {
+    license ?? "Unknown"
   }
 }
