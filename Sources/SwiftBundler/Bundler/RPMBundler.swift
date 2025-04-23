@@ -40,7 +40,7 @@ enum RPMBundler: Bundler {
     // cause it's all pre-compiled.
     let sourceDirectory = context.outputDirectory / "\(escapedAppName)-\(appVersion)"
 
-    let installationRoot = URL(fileURLWithPath: "/opt/\(context.appName)")
+    let installationRoot = URL(fileURLWithPath: "/opt/\(escapedAppName)")
     return await GenericLinuxBundler.bundle(
       context,
       GenericLinuxBundler.Context(
