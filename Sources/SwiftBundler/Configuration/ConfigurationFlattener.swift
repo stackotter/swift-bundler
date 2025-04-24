@@ -121,6 +121,8 @@ enum ConfigurationFlattener {
         identifier: configuration.identifier,
         product: configuration.product,
         version: configuration.version,
+        appDescription: configuration.appDescription,
+        license: configuration.license,
         category: configuration.category,
         icon: configuration.icon,
         urlSchemes: configuration.urlSchemes ?? [],
