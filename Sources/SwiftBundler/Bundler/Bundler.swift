@@ -83,9 +83,7 @@ struct BundlerContext {
   var builtDependencies: [String: ProjectBuilder.BuiltProduct]
 
   /// The app's main built executable file.
-  var executableArtifact: URL {
-    productsDirectory.appendingPathComponent(appConfiguration.product)
-  }
+  var executableArtifact: URL
 
   /// Apple-specific code signing context used by bundlers that support Apple
   /// platforms. Exists in the generic bundler context because Swift Bundler

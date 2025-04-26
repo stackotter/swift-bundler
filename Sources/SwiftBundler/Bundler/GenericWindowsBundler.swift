@@ -138,8 +138,7 @@ enum GenericWindowsBundler: Bundler {
 
     log.info("Bundling '\(appBundleName)'")
 
-    let executableArtifact = context.productsDirectory
-      .appendingPathComponent("\(context.appConfiguration.product).exe")
+    let executableArtifact = context.executableArtifact
 
     let structure = BundleStructure(
       at: root,

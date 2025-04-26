@@ -12,6 +12,30 @@ enum Platform: String, CaseIterable {
   case linux
   case windows
 
+  /// The platform's display name.
+  var displayName: String {
+    switch self {
+      case .macOS:
+        return "macOS"
+      case .iOS:
+        return "iOS"
+      case .iOSSimulator:
+        return "iOS Simulator"
+      case .visionOS:
+        return "visionOS"
+      case .visionOSSimulator:
+        return "visionOS Simulator"
+      case .tvOS:
+        return "tvOS"
+      case .tvOSSimulator:
+        return "tvOS Simulator"
+      case .linux:
+        return "Linux"
+      case .windows:
+        return "Windows"
+    }
+  }
+
   /// The platform's name.
   var name: String {
     return rawValue
@@ -82,6 +106,17 @@ enum Platform: String, CaseIterable {
       case .tvOS, .tvOSSimulator: return .tvOS
       case .linux: return .linux
       case .windows: return .windows
+    }
+  }
+
+  /// The platform's executable file extension if any.
+  var executableFileExtension: String? {
+    switch self {
+      case .windows:
+        return "exe"
+      case .macOS, .linux, .iOS, .iOSSimulator,
+        .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+        return nil
     }
   }
 

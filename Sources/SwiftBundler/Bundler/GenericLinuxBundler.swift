@@ -212,8 +212,7 @@ enum GenericLinuxBundler: Bundler {
 
     log.info("Bundling '\(additionalContext.cosmeticBundleName ?? appBundleName)'")
 
-    let executableArtifact = context.productsDirectory
-      .appendingPathComponent(context.appConfiguration.product)
+    let executableArtifact = context.executableArtifact
 
     let structure = BundleStructure(
       at: root,

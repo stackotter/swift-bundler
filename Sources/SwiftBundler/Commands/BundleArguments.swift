@@ -135,6 +135,9 @@ struct BundleArguments: ParsableArguments {
   )
   var deviceSpecifier: String?
 
+  @Flag(help: "Strip the main executable.")
+  var strip = false
+
   #if os(macOS)
     @Option(
       name: [.customLong("simulator")],

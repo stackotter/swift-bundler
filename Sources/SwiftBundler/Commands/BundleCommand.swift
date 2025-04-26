@@ -85,8 +85,14 @@ struct BundleCommand: ErrorHandledCommand {
       }
     #endif
 
-    if HostPlatform.hostPlatform == .linux && platform != .linux {
-      log.error("'--platform \(platform)' is not supported on Linux")
+    if HostPlatform.hostPlatform != .macOS && platform != HostPlatform.hostPlatform.platform {
+      let hostPlatform = HostPlatform.hostPlatform.platform.displayName
+      log.error("'--platform \(platform)' is not supported on \(hostPlatform)")
+      return false
+    }
+
+    if HostPlatform.hostPlatform == .windows && arguments.strip {
+      log.error("'--strip' is not supported on Windows")
       return false
     }
 
@@ -586,6 +592,18 @@ struct BundleCommand: ErrorHandledCommand {
             / "Build/Products/\(productsDirectoryBase)\(platformSuffix)")
       }
 
+      var originalExecutableArtifact = productsDirectory / appConfiguration.product
+      if let fileExtension = resolvedPlatform.executableFileExtension {
+        originalExecutableArtifact = originalExecutableArtifact
+          .appendingPathExtension(fileExtension)
+      }
+      let executableArtifact: URL
+      if arguments.strip {
+        executableArtifact = originalExecutableArtifact.appendingPathExtension("stripped")
+      } else {
+        executableArtifact = originalExecutableArtifact
+      }
+
       var bundlerContext = BundlerContext(
         appName: appName,
         packageName: manifest.name,
@@ -596,7 +614,8 @@ struct BundleCommand: ErrorHandledCommand {
         platform: resolvedPlatform,
         device: resolvedDevice,
         darwinCodeSigningContext: resolvedCodesigningContext,
-        builtDependencies: [:]
+        builtDependencies: [:],
+        executableArtifact: executableArtifact
       )
 
       // If this is a dry run, drop out just before we start actually do stuff.
@@ -665,6 +684,23 @@ struct BundleCommand: ErrorHandledCommand {
             product: appConfiguration.product,
             buildContext: buildContext
           ).unwrap()
+        }
+
+        var executable = productsDirectory.appendingPathComponent(appConfiguration.product)
+        if let fileExtension = resolvedPlatform.executableFileExtension {
+          executable = executable.appendingPathExtension(fileExtension)
+        }
+
+        if resolvedPlatform == .linux {
+          try await Stripper.extractLinuxDebugInfo(
+            from: originalExecutableArtifact,
+            to: originalExecutableArtifact.appendingPathExtension("debug")
+          ).unwrap()
+        }
+
+        if arguments.strip {
+          try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
+          try await Stripper.strip(executableArtifact).unwrap()
         }
       }
 
