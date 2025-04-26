@@ -131,7 +131,7 @@ enum GenericLinuxBundler: Bundler {
     init(at root: URL, forApp appName: String, withIdentifier appIdentifier: String) {
       self.root = root
       bin = root.appendingPathComponent("usr/bin")
-      mainExecutable = bin.appendingPathComponent(appName)
+      mainExecutable = bin.appendingPathComponent(appName.replacingOccurrences(of: " ", with: "-").lowercased())
       lib = root.appendingPathComponent("usr/lib")
       resources = bin
       // TODO: Resize the icon to 512x512, 1024x1024 isn't supported by xdg stuff
@@ -493,7 +493,7 @@ enum GenericLinuxBundler: Bundler {
       ("Type", "Application"),
       ("Version", "1.0"),  // The version of the target desktop spec, not the app
       ("Name", appName),
-      ("Comment", ""),
+      ("Comment", appConfiguration.appDescriptionOrDefault),
       ("Exec", "\(escapedExecPath) %U"),
       ("Icon", iconName),
       ("Terminal", "false"),
