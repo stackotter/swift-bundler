@@ -699,6 +699,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if arguments.strip {
+          try? FileManager.default.removeItem(at: executableArtifact)
           try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
           try await Stripper.strip(executableArtifact).unwrap()
         }
