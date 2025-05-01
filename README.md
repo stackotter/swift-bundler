@@ -27,7 +27,7 @@ The documentation is hosted on [the Swift Bundler website](https://swiftbundler.
 Install the latest version of Swift Bundler with [mint](https://github.com/yonaskolb/Mint):
 
 ```sh
-mint install stackotter/swift-bundler
+mint install stackotter/swift-bundler@main
 ```
 
 If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
