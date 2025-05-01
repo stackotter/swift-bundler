@@ -692,13 +692,20 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if resolvedPlatform == .linux {
+          let debugInfoFile = originalExecutableArtifact.appendingPathExtension("debug")
+          if debugInfoFile.exists() {
+            try FileManager.default.removeItem(at: debugInfoFile)
+          }
           try await Stripper.extractLinuxDebugInfo(
             from: originalExecutableArtifact,
-            to: originalExecutableArtifact.appendingPathExtension("debug")
+            to: debugInfoFile
           ).unwrap()
         }
 
         if arguments.strip {
+          if executableArtifact.exists() {
+            try FileManager.default.removeItem(at: executableArtifact)
+          }
           try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
           try await Stripper.strip(executableArtifact).unwrap()
         }
