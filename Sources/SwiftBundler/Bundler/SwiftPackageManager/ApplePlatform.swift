@@ -36,6 +36,16 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
+  /// Whether the platform is a simulator or not.
+  var isSimulator: Bool {
+    switch self {
+      case .macOS, .iOS, .visionOS, .tvOS:
+        return false
+      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+        return true
+    }
+  }
+
   /// The platform's os (e.g. ``ApplePlatform/iOS`` and ``ApplePlatform/iOSSimulator``
   /// are both ``AppleOS/iOS``).
   var os: AppleOS {

@@ -12,6 +12,37 @@ enum Platform: String, CaseIterable {
   case linux
   case windows
 
+  enum Partitioned {
+    case linux
+    case windows
+    case apple(ApplePlatform)
+  }
+
+  /// The platform represented in a structure that partitions Apple platforms
+  /// from the rest.
+  var partitioned: Partitioned {
+    switch self {
+      case .linux:
+        return .linux
+      case .windows:
+        return .windows
+      case .macOS:
+        return .apple(.macOS)
+      case .iOS:
+        return .apple(.iOS)
+      case .iOSSimulator:
+        return .apple(.iOSSimulator)
+      case .visionOS:
+        return .apple(.visionOS)
+      case .visionOSSimulator:
+        return .apple(.visionOSSimulator)
+      case .tvOS:
+        return .apple(.tvOS)
+      case .tvOSSimulator:
+        return .apple(.tvOSSimulator)
+    }
+  }
+
   /// The platform's display name.
   var displayName: String {
     switch self {

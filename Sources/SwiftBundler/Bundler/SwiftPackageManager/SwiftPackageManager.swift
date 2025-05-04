@@ -20,6 +20,8 @@ enum SwiftPackageManager {
     /// double clicked) or GUI executables (which open normally when double clicked
     /// but can't really be run from command prompt because they instantly detach).
     var isGUIExecutable: Bool
+    /// The compiled metadata. Either an object file or a static library depending on platform.
+    var compiledMetadata: MetadataInserter.CompiledMetadata?
   }
 
   /// Creates a new package using the given directory as the package's root directory.
@@ -151,7 +153,7 @@ enum SwiftPackageManager {
         }
 
         let targetInfo: SwiftTargetInfo
-        switch await getTargetInfo() {
+        switch await getHostTargetInfo() {
           case .success(let value):
             targetInfo = value
           case .failure(let error):
@@ -318,16 +320,20 @@ enum SwiftPackageManager {
     let scratchDirectoryArguments = [
       "--scratch-path", buildContext.genericContext.scratchDirectory.path,
     ]
-    let arguments =
-      [
-        "build",
-        "-c", buildContext.genericContext.configuration.rawValue,
-      ]
-      + productArguments
-      + architectureArguments
-      + platformArguments
-      + scratchDirectoryArguments
-      + buildContext.genericContext.additionalArguments
+    var arguments = [
+      "build",
+      "-c", buildContext.genericContext.configuration.rawValue,
+    ]
+    arguments += productArguments
+    arguments += architectureArguments
+    arguments += platformArguments
+    arguments += scratchDirectoryArguments
+    arguments += buildContext.genericContext.additionalArguments
+    if let compiledMetadata = buildContext.compiledMetadata {
+      arguments += MetadataInserter.additionalSwiftPackageManagerArguments(
+        toInsert: compiledMetadata
+      )
+    }
 
     return .success(arguments)
   }
@@ -461,7 +467,7 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getTargetInfo() async -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
+  static func getHostTargetInfo() async -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
     // TODO: This could be a nice easy one to unit test
     let process = Process.create(
       "swift",

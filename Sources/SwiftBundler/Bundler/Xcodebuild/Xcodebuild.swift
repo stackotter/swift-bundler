@@ -103,6 +103,15 @@ enum Xcodebuild {
       ]
     }
 
+    let metadataArguments: [String]
+    if let compiledMetadata = buildContext.compiledMetadata {
+      metadataArguments = MetadataInserter.additionalXcodebuildArguments(
+        toInsert: compiledMetadata
+      )
+    } else {
+      metadataArguments = []
+    }
+
     process = Process.create(
       "xcodebuild",
       arguments: [
@@ -114,7 +123,10 @@ enum Xcodebuild {
         buildContext.genericContext.projectDirectory.appendingPathComponent(
           ".build/\(archString)-apple-\(buildContext.genericContext.platform.sdkName)"
         ).path,
-      ] + destinationArguments + buildContext.genericContext.additionalArguments,
+      ]
+      + destinationArguments
+      + buildContext.genericContext.additionalArguments
+      + metadataArguments,
       directory: buildContext.genericContext.projectDirectory,
       runSilentlyWhenNotVerbose: false
     )

@@ -122,8 +122,10 @@ let package = Package(
       dependencies: [
         .product(name: "FlyingSocks", package: "FlyingFox"),
         "HotReloadingProtocol",
+        "SwiftBundlerRuntimeC",
       ]
     ),
+    .target(name: "SwiftBundlerRuntimeC"),
 
     .target(
       name: "SwiftBundlerBuilders",

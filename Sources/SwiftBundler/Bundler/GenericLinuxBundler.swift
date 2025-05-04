@@ -285,15 +285,6 @@ enum GenericLinuxBundler: Bundler {
           productsDirectory: context.productsDirectory
         )
       }
-      .andThen { _ in
-        // Insert metadata after copying dynamic library dependencies cause
-        // trailing data can probably cause some ELF editing tools to explode
-        let metadata = MetadataInserter.metadata(for: context.appConfiguration)
-        return MetadataInserter.insert(
-          metadata,
-          into: structure.mainExecutable
-        ).mapError(GenericLinuxBundlerError.failedToInsertMetadata)
-      }
       .replacingSuccessValue(with: structure)
   }
 

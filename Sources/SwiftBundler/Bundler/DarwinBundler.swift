@@ -157,7 +157,6 @@ enum DarwinBundler: Bundler {
       }
     }
 
-    let willSign = context.darwinCodeSigningContext != nil || context.platform != .macOS
     let sign: () async -> Result<Void, DarwinBundlerError> = {
       // If credentials are supplied for codesigning, use them
       if let codeSigningContext = context.darwinCodeSigningContext {
@@ -237,29 +236,6 @@ enum DarwinBundler: Bundler {
       createAppIconIfPresent,
       copyResourcesBundles,
       copyDynamicLibraries,
-      {
-        // Insert metadata after copying dynamic library dependencies cause
-        // trailing data can cause `install_name_tool` to fail. It requires
-        // __LINKEDIT to be the last segment and it requires all data in
-        // __LINKEDIT to be accounted for. I spent a few hours implementing
-        // a basic Mach-O editor just to figure out that my approach didn't
-        // work...
-
-        // Metadata insertion breaks codesigning (and vice versa), so for now
-        // we just don't insert metadata when codesigning. We'll need to
-        // introduce a non-binary-insertion metadata approach for Apple
-        // platforms. Likely just putting a JSON file next to the main
-        // executable or something along those lines.
-        guard !willSign else {
-          return .success()
-        }
-
-        let metadata = MetadataInserter.metadata(for: context.appConfiguration)
-        return MetadataInserter.insert(
-          metadata,
-          into: bundleStructure.mainExecutable
-        ).mapError(DarwinBundlerError.failedToInsertMetadata)
-      },
       embedProfile,
       sign
     )

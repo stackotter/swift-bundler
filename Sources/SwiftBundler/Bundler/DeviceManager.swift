@@ -89,7 +89,10 @@ enum DeviceManager {
       / "dev.stackotter.swift-bundler/SwiftBundlerDummyPackage"
     let dummyProjectName = "Dummy"
 
-    return await Result.success().andThen(if: !dummyProject.exists()) { _ in
+    return await Result.success().andThen(if: dummyProject.exists()) {
+      FileManager.default.removeItem(at: dummyProject)
+        .mapError(Error.failedToCreateDummyProject)
+    }.andThen { _ in
       await FileManager.default.createDirectory(at: dummyProject)
         .mapError(Error.failedToCreateDummyProject)
         .andThen { _ in

@@ -553,6 +553,21 @@ struct BundleCommand: ErrorHandledCommand {
         resolvedPlatform.asApplePlatform.map { platform in
           manifest.platformVersion(for: platform.os)
         } ?? nil
+
+      let metadataDirectory = outputDirectory / "metadata"
+      if !metadataDirectory.exists() {
+        try FileManager.default.createDirectory(
+          at: metadataDirectory,
+          withIntermediateDirectories: true
+        )
+      }
+      let compiledMetadata = try await MetadataInserter.compileMetadata(
+        in: metadataDirectory,
+        for: MetadataInserter.metadata(for: appConfiguration),
+        architectures: architectures,
+        platform: resolvedPlatform
+      ).unwrap()
+
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
           projectDirectory: packageDirectory,
@@ -566,7 +581,8 @@ struct BundleCommand: ErrorHandledCommand {
             : arguments.additionalSwiftPMArguments
         ),
         hotReloadingEnabled: hotReloadingEnabled,
-        isGUIExecutable: true
+        isGUIExecutable: true,
+        compiledMetadata: compiledMetadata
       )
 
       // Get build output directory
@@ -713,7 +729,10 @@ struct BundleCommand: ErrorHandledCommand {
 
       try Self.removeExistingOutputs(
         outputDirectory: outputDirectory,
-        skip: [dependenciesScratchDirectory.lastPathComponent]
+        skip: [
+          dependenciesScratchDirectory.lastPathComponent,
+          metadataDirectory.lastPathComponent
+        ]
       ).unwrap()
 
       return try await Self.bundle(

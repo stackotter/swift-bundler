@@ -9,10 +9,6 @@ import Foundation
 /// gets extended, it will be extended in such a way that current metadata
 /// remains valid, and future metadata is backwards compatible.
 enum MetadataInserter {
-  /// If an executable ends with this string, it probably contains Swift
-  /// Bundler metadata.
-  static let magicBytes: [UInt8] = Array("SBUNMETA".utf8)
-
   /// Metadata appended to the end of executable files built with Swift
   /// Bundler.
   struct Metadata: Codable {
@@ -24,6 +20,11 @@ enum MetadataInserter {
     var additionalMetadata: [String: MetadataValue]
   }
 
+  enum CompiledMetadata {
+    case objectFile(URL)
+    case staticLibrary(URL, name: String)
+  }
+
   /// Generates an app's metadata from its configuration.
   static func metadata(for configuration: AppConfiguration.Flat) -> Metadata {
     Metadata(
@@ -33,67 +34,163 @@ enum MetadataInserter {
     )
   }
 
-  /// Inserts metadata at the end of the given executable file.
-  static func insert(
-    _ metadata: Metadata,
-    into executableFile: URL
-  ) -> Result<(), MetadataInserterError> {
-    Data.read(from: executableFile)
+  /// Generates a state library containing the given metadata. The file name of
+  /// the library is platform dependent and is set to ensure that `-lmetadata`
+  /// is sufficient to link against the metadata library.
+  /// - Returns: The path to the produced object file.
+  static func compileMetadata(
+    in directory: URL,
+    for metadata: Metadata,
+    architectures: [BuildArchitecture],
+    platform: Platform
+  ) async -> Result<CompiledMetadata, MetadataInserterError> {
+    let codeFile = directory / "metadata.swift"
+    return await JSONEncoder().encode(metadata)
       .mapError { error in
-        .failedToReadExecutableFile(executableFile, error)
+        .failedToEncodeMetadata(error)
       }
-      .andThen { data in
-        JSONEncoder().encode(metadata)
-          .mapError { error in
-            .failedToEncodeMetadata(error)
+      .map { data in
+        // We insert our JSON encoded metadata as the first entry in an array of
+        // byte arrays, because we want to support binary attachments in future
+        // (for embedding arbitrary resource files in executables).
+        let array = Array(data)
+        let code = """
+          let metadata: [[UInt8]] = [[\(array.map(\.description).joined(separator: ", "))]]
+
+          @_cdecl("_getSwiftBundlerMetadata")
+          func getSwiftBundlerMetadata() -> UnsafeRawPointer? {
+              return withUnsafePointer(to: metadata) { pointer in
+                  UnsafeRawPointer(pointer)
+              }
           }
-          .map { encodedMetadata in
-            var data = data
-
-            // A tag representing the type of the next metadata entry. For now
-            // it's just '0' meaning 'end'. This is purely to allow for the
-            // format to be extended in the future (e.g. to include resources).
-            // We could of course just keep adding more entries to the JSON,
-            // but certain types of data just don't work well with JSON (e.g.
-            // large amounts of binary data).
-            //
-            // For forwards compatibility, do NOT require this value to be one
-            // you support. Simply stop parsing if you don't understand it.
-            writeBigEndianUInt64(0, to: &data)
-
-            // The default JSON metadata entry. For now this is the only type
-            // of metadata entry. It would be suffixed with a tag type, however
-            // this is guaranteed to always be the first entry (for backwards
-            // compatibility), and I want to bake that into the format.
-            data.append(contentsOf: encodedMetadata)
-            // The data's length in bytes.
-            writeBigEndianUInt64(UInt64(encodedMetadata.count), to: &data)
-
-            // Magic bytes so that apps (and external tools) can know if they
-            // contain any Swift Bundler metadata. Since it's technically
-            // possible for false positives to occur, apps and tools should
-            // always fail safely if the metadata is malformed.
-            data.append(contentsOf: magicBytes)
-
-            return data
+          """
+        return code
+      }
+      .andThen { (code: String) in
+        code.write(to: codeFile)
+          .mapError { error in
+            .failedToWriteMetadataCodeFile(error)
           }
       }
-      .andThen { (modifiedData: Data) in
-        modifiedData.write(to: executableFile)
-          .mapError { error in
-            .failedToWriteExecutableFile(executableFile, error)
+      .andThen { _ in
+        if architectures.count > 1 || platform.isApplePlatform {
+          return await architectures.tryMap { architecture in
+            let objectFile = directory / "metadata-\(architecture).o"
+            return await compileMetadataCodeFile(
+              codeFile,
+              to: objectFile,
+              platform: platform,
+              architecture: architecture
+            ).replacingSuccessValue(with: (objectFile, architecture))
+          }.andThen { objectFiles in
+            await objectFiles.tryMap { objectFile, architecture in
+              let staticLibraryFile = directory / "metadata-\(architecture).a"
+              return await Process.create(
+                "ar",
+                arguments: ["r", staticLibraryFile.path, objectFile.path]
+              ).runAndWait().mapError(MetadataInserterError.failedToCreateStaticLibrary)
+              .replacingSuccessValue(with: staticLibraryFile)
+            }
+          }.andThen { staticLibraries in
+            let name = "metadata"
+            let universalStaticLibrary = directory / "lib\(name).a"
+            return await Process.create(
+              "lipo",
+              arguments: [
+                "-o", universalStaticLibrary.path, "-create"
+              ] + staticLibraries.map(\.path)
+            ).runAndWait().mapError(MetadataInserterError.failedToCreateUniversalStaticLibrary)
+            .replacingSuccessValue(with: .staticLibrary(universalStaticLibrary, name: name))
           }
+        } else {
+          let objectFile = directory / "metadata.o"
+          return await compileMetadataCodeFile(
+            codeFile,
+            to: objectFile,
+            platform: platform,
+            architecture: architectures[0]
+          ).replacingSuccessValue(with: .objectFile(objectFile))
+        }
       }
   }
 
-  /// Writes a single UInt64 value to the end of a data buffer (in big endian
-  /// order).
-  private static func writeBigEndianUInt64(_ value: UInt64, to data: inout Data) {
-    let count = MemoryLayout<UInt64>.size
-    withUnsafePointer(to: value.bigEndian) { pointer in
-      pointer.withMemoryRebound(to: UInt8.self, capacity: count) { pointer in
-        data.append(pointer, count: count)
+  static func compileMetadataCodeFile(
+    _ codeFile: URL,
+    to objectFile: URL,
+    platform: Platform,
+    architecture: BuildArchitecture
+  ) async -> Result<(), MetadataInserterError> {
+    var platformArguments: [String] = []
+    if let platform = platform.asApplePlatform {
+      let target = LLVMTargetTriple.apple(
+        architecture,
+        platform,
+        platform.os.minimumSwiftSupportedVersion
+      )
+      platformArguments += ["-target", target.description]
+
+      switch await SwiftPackageManager.getLatestSDKPath(for: platform.platform) {
+        case .success(let sdkPath):
+          platformArguments += ["-sdk", sdkPath]
+        case .failure(let error):
+          return .failure(.failedToGetSDKPath(error))
       }
+    }
+
+    return await Process.create(
+      "swiftc",
+      arguments: [
+        "-parse-as-library", "-c",
+        "-o", objectFile.path, codeFile.path,
+      ] + platformArguments,
+      runSilentlyWhenNotVerbose: false
+    ).runAndWait().mapError(MetadataInserterError.failedToCompileMetadataCodeFile)
+  }
+
+  /// Additional SwiftPM arguments to use when inserting metadata into a build.
+  /// Includes flags to enable conditionally compiled parts of the Swift Bundler
+  /// runtime.
+  static func additionalSwiftPackageManagerArguments(
+    toInsert compiledMetadata: CompiledMetadata
+  ) -> [String] {
+    switch compiledMetadata {
+      case .objectFile(let objectFile):
+        return [
+          "-Xlinker", objectFile.path,
+          "-Xswiftc", "-DSWIFT_BUNDLER_METADATA",
+          "-Xcc", "-DSWIFT_BUNDLER_METADATA",
+        ]
+      case .staticLibrary(let staticLibrary, let name):
+        return [
+          "-Xlinker", "-l\(name)",
+          "-Xlinker", "-L\(staticLibrary.deletingLastPathComponent().path)",
+          "-Xswiftc", "-DSWIFT_BUNDLER_METADATA",
+          "-Xcc", "-DSWIFT_BUNDLER_METADATA",
+        ]
+    }
+  }
+
+  /// Additional xcodebuild arguments to use when inserting metadata into a build.
+  /// Includes flags to enable conditionally compiled parts of the Swift Bundler
+  /// runtime.
+  static func additionalXcodebuildArguments(
+    toInsert compiledMetadata: CompiledMetadata
+  ) -> [String] {
+    switch compiledMetadata {
+      case .objectFile(let objectFile):
+        return [
+          "OTHER_LDFLAGS=\(objectFile.path)",
+          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA",
+          "OTHER_CFLAGS=-DSWIFT_BUNDLER_METADATA",
+        ]
+      case .staticLibrary(let staticLibrary, let name):
+        let directory = staticLibrary.deletingLastPathComponent().path
+          .replacingOccurrences(of: " ", with: "\\ ")
+        return [
+          "OTHER_LDFLAGS=-l\(name) -L\(directory)",
+          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA",
+          "GCC_PREPROCESSOR_DEFINITIONS=SWIFT_BUNDLER_METADATA=1",
+        ]
     }
   }
 }

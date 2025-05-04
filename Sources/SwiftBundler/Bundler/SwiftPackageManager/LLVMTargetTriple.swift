@@ -24,10 +24,10 @@ struct LLVMTargetTriple: CustomStringConvertible {
 
   struct System: CustomStringConvertible {
     var name: String
-    var version: String
+    var version: String?
 
     var description: String {
-      "\(name)\(version)"
+      "\(name)\(version ?? "")"
     }
 
     static func iOS(_ version: String) -> Self {
@@ -58,6 +58,22 @@ struct LLVMTargetTriple: CustomStringConvertible {
       vendor: .apple,
       system: system,
       environment: environment
+    )
+  }
+
+  static func apple(
+    _ architecture: BuildArchitecture,
+    _ platform: ApplePlatform,
+    _ platformVersion: String?
+  ) -> Self {
+    Self(
+      architecture: architecture,
+      vendor: .apple,
+      system: System(
+        name: platform.os.tripleName,
+        version: platformVersion
+      ),
+      environment: platform.isSimulator ? .simulator : nil
     )
   }
 }
