@@ -457,6 +457,7 @@ struct BundleCommand: ErrorHandledCommand {
     _ = try await doBundling(resolvedPlatform: platform, resolvedDevice: device)
   }
 
+  // swiftlint:disable cyclomatic_complexity
   /// - Parameters
   ///   - dryRun: During a dry run, all of the validation steps are
   ///     performed without performing any side effects. This allows the
@@ -755,6 +756,7 @@ struct BundleCommand: ErrorHandledCommand {
 
     return bundlerOutputStructure
   }
+  // swiftlint:enable cyclomatic_complexity
 
   /// Removes the given output directory if it exists.
   static func removeExistingOutputs(
