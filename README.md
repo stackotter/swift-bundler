@@ -76,5 +76,6 @@ Contributions of all kinds are very welcome! Just make sure to check out [the co
 
 If you have made an app with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
 
-- [Delta Client](https://github.com/stackotter/delta-client): A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift
-- [ModularMTL](https://github.com/JezewskiG/ModularMTL): A modular multiplication visualisation made with Swift Bundler, SwiftUI and Metal
+- [Delta Client](https://github.com/stackotter/delta-client): A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift (macOS only)
+- [ModularMTL](https://github.com/JezewskiG/ModularMTL): A modular multiplication visualisation made with Swift Bundler, SwiftUI and Metal (macOS only)
+- [Friend](https://github.com/JoshuaBrest/Friend): A technical demo that showcases how system-based assistants can be integrated with LLMs to provide greater flexibility and functionality (macOS only)
