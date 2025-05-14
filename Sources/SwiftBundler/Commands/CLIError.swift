@@ -12,6 +12,7 @@ enum CLIError: LocalizedError {
   case invalidXcodeprojDetected
   case failedToResolveTargetDevice(reason: String)
   case failedToResolveCodesigningConfiguration(reason: String)
+  case failedToCopyOutBundle(any Error)
 
   var errorDescription: String? {
     switch self {
@@ -65,6 +66,8 @@ enum CLIError: LocalizedError {
         return "Failed to resolve target device: \(reason)"
       case .failedToResolveCodesigningConfiguration(let reason):
         return "Failed to resolve codesigning configuration: \(reason)"
+      case .failedToCopyOutBundle(let reason):
+        return "Failed to copy out bundle: \(reason.localizedDescription)"
     }
   }
 }

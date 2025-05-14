@@ -540,10 +540,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
 
-      let outputDirectory = Self.getOutputDirectory(
-        arguments.outputDirectory,
-        scratchDirectory: scratchDirectory
-      )
+      let outputDirectory = scratchDirectory.appendingPathComponent("bundler")
 
       // Load package manifest
       log.info("Loading package manifest")
@@ -745,11 +742,31 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     if !dryRun {
+      let bundle: URL
+      if let copyOutDirectory = arguments.copyOutDirectory {
+        bundle = copyOutDirectory.appendingPathComponent(
+          bundlerOutputStructure.bundle.lastPathComponent
+        )
+        do {
+          if bundle.exists() {
+            try FileManager.default.removeItem(at: bundle)
+          }
+          try FileManager.default.copyItem(
+            at: bundlerOutputStructure.bundle,
+            to: bundle
+          )
+        } catch {
+          throw CLIError.failedToCopyOutBundle(error)
+        }
+      } else {
+        bundle = bundlerOutputStructure.bundle
+      }
+
       // Output the time elapsed along with the location of the produced app bundle.
       log.info(
         """
         Done in \(elapsed.secondsString). App bundle located at \
-        '\(bundlerOutputStructure.bundle.relativePath)'
+        '\(bundle.relativePath)'
         """
       )
     }
@@ -859,18 +876,5 @@ struct BundleCommand: ErrorHandledCommand {
 
     Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
     return (appName, appConfiguration, flatConfiguration)
-  }
-
-  /// Unwraps an optional output directory and returns the default output
-  /// directory if it's `nil`.
-  /// - Parameters:
-  ///   - outputDirectory: The output directory. Returned as-is if not `nil`.
-  ///   - scratchDirectory: The configured scratch directory.
-  /// - Returns: The output directory to use.
-  static func getOutputDirectory(
-    _ outputDirectory: URL?,
-    scratchDirectory: URL
-  ) -> URL {
-    return outputDirectory ?? scratchDirectory.appendingPathComponent("bundler")
   }
 }

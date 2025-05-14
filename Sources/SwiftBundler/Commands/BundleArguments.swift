@@ -35,12 +35,15 @@ struct BundleArguments: ParsableArguments {
     transform: URL.init(fileURLWithPath:))
   var configurationFileOverride: URL?
 
-  /// The directory to output the bundled .app to.
+  /// The directory to copy the built app bundle to on success.
   @Option(
-    name: .shortAndLong,
-    help: "The directory to output the bundled .app to.",
+    name: [.customShort("o"), .customLong("output-directory")],
+    help: ArgumentHelp(
+      "The directory to copy the built app bundle to on success.",
+      visibility: .hidden
+    ),
     transform: URL.init(fileURLWithPath:))
-  var outputDirectory: URL?
+  var copyOutDirectory: URL?
 
   /// The directory containing the built products. Can only be set when
   /// `--skip-build` is supplied.

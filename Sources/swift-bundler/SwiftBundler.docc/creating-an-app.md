@@ -45,9 +45,12 @@ On Linux you'll want to supply either `--bundler linuxAppImage` or
 targeted at development and not distribution.
 
 ```sh
-# Build the app and output it to the current directory.
-swift bundler bundle -o . -c release -u
+# Build the app. The result will be in `.build/bundler`
+swift bundler bundle -c release
 ```
+
+Add `--universal` when targeting macOS if you desire a universal build (i.e. a
+build that runs on both arm64 and x86_64).
 
 ## Running the app from Xcode
 
