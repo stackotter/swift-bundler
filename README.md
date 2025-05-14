@@ -72,6 +72,12 @@ To learn more about Swift Bundler refer to the [documentation](https://swiftbund
 
 Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
 
+## Bug response policy 🐞
+
+*Critical bugs will be addressed within 48 hours or less*. Critical bugs are classified as any bugs that risk loss of user/developer data or represent critical security vulnerabilities (around 8 or above on the CVSS scale as a rule of thumb, although Swift Bundler maintainers retain discretion).
+
+Non-critical bugs will be addressed in order of priority with no strict turnaround commitments. As a general rule of thumb, we'll address security vulnerabilities, then bugs reported by sponsors, then any other bugs as time permits.
+
 ## Apps made with Swift Bundler 👨‍💻
 
 If you have made an app with Swift Bundler, I'd love to hear about it! Just open an issue or submit a PR to add it to the list.
