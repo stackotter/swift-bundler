@@ -309,7 +309,9 @@ enum SwiftPackageManager {
           ].flatMap { ["-Xcc", $0] }
       case .macOS, .linux:
         // Handle macOS and all non-Apple platforms
-        platformArguments = []
+        platformArguments = buildContext.genericContext.configuration == .debug
+          ? ["-Xswiftc", "-g"]
+          : []
     }
 
     let architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
