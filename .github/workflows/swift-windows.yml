@@ -37,3 +37,6 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
 
           swift build --product swift-bundler
+
+      - name: Test
+        run: swift test
