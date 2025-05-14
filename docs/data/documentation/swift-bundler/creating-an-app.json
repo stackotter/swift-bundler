@@ -255,11 +255,36 @@
         },
         {
           "code" : [
-            "# Build the app and output it to the current directory.",
-            "swift bundler bundle -o . -c release -u"
+            "# Build the app. The result will be in `.build\/bundler`",
+            "swift bundler bundle -c release"
           ],
           "syntax" : "sh",
           "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Add ",
+              "type" : "text"
+            },
+            {
+              "code" : "--universal",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " when targeting macOS if you desire a universal build (i.e. a",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "build that runs on both arm64 and x86_64).",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
         },
         {
           "anchor" : "Running-the-app-from-Xcode",
