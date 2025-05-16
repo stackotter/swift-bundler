@@ -179,17 +179,17 @@ enum MetadataInserter {
     switch compiledMetadata {
       case .objectFile(let objectFile):
         return [
-          "OTHER_LDFLAGS=\(objectFile.path)",
-          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA",
-          "OTHER_CFLAGS=-DSWIFT_BUNDLER_METADATA",
+          "OTHER_LDFLAGS=\(objectFile.path) ${OTHER_LDFLAGS}",
+          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA ${OTHER_SWIFT_FLAGS}",
+          "OTHER_CFLAGS=-DSWIFT_BUNDLER_METADATA ${OTHER_CFLAGS}",
         ]
       case .staticLibrary(let staticLibrary, let name):
         let directory = staticLibrary.deletingLastPathComponent().path
           .replacingOccurrences(of: " ", with: "\\ ")
         return [
-          "OTHER_LDFLAGS=-l\(name) -L\(directory)",
-          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA",
-          "GCC_PREPROCESSOR_DEFINITIONS=SWIFT_BUNDLER_METADATA=1",
+          "OTHER_LDFLAGS=-l\(name) -L\(directory) ${OTHER_LDFLAGS}",
+          "OTHER_SWIFT_FLAGS=-DSWIFT_BUNDLER_METADATA ${OTHER_SWIFT_FLAGS}",
+          "GCC_PREPROCESSOR_DEFINITIONS=SWIFT_BUNDLER_METADATA=1 ${GCC_PREPROCESSOR_DEFINITIONS}",
         ]
     }
   }
