@@ -29,6 +29,9 @@ jobs:
       - name: Swift version
         run: swift --version
 
+      - name: Debug cmd
+        run: where cmd
+
       - name: Build
         run: |
           Set-StrictMode -Version Latest
