@@ -39,7 +39,7 @@
         {
           "inlineContent" : [
             {
-              "text" : "If you’re on macOS or Linux, install the latest release of Swift Bundler using",
+              "text" : "If you’re on macOS or Linux, install the latest version of Swift Bundler using",
               "type" : "text"
             },
             {
@@ -59,58 +59,26 @@
           "type" : "paragraph"
         },
         {
-          "code" : [
-            "mint install stackotter\/swift-bundler"
-          ],
-          "syntax" : "sh",
-          "type" : "codeListing"
-        },
-        {
-          "content" : [
+          "inlineContent" : [
             {
-              "inlineContent" : [
-                {
-                  "text" : "If you have previously installed Swift Bundler via the installation script you must delete the ",
-                  "type" : "text"
-                },
-                {
-                  "code" : "\/opt\/swift-bundler",
-                  "type" : "codeVoice"
-                },
-                {
-                  "text" : " directory (requires sudo).",
-                  "type" : "text"
-                }
-              ],
-              "type" : "paragraph"
+              "text" : "If you have previously installed Swift Bundler via the installation script you must delete the ",
+              "type" : "text"
+            },
+            {
+              "code" : "\/opt\/swift-bundler",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " directory (requires sudo).",
+              "type" : "text"
             }
           ],
-          "name" : "Note",
-          "style" : "note",
-          "type" : "aside"
-        },
-        {
-          "anchor" : "Latest-commit",
-          "level" : 3,
-          "text" : "Latest commit",
-          "type" : "heading"
+          "type" : "paragraph"
         },
         {
           "inlineContent" : [
             {
-              "identifier" : "https:\/\/github.com\/yonaskolb\/Mint",
-              "isActive" : true,
-              "overridingTitle" : "Mint",
-              "overridingTitleInlineContent" : [
-                {
-                  "text" : "Mint",
-                  "type" : "text"
-                }
-              ],
-              "type" : "reference"
-            },
-            {
-              "text" : " can also be used to install directly",
+              "text" : "Swift Bundler hasn’t had an official release in a while due to some outstanding",
               "type" : "text"
             },
             {
@@ -118,15 +86,7 @@
               "type" : "text"
             },
             {
-              "text" : "from the ",
-              "type" : "text"
-            },
-            {
-              "code" : "main",
-              "type" : "codeVoice"
-            },
-            {
-              "text" : " development branch if you’re willing to sacrifice stability in",
+              "text" : "breaking changes to be made before 3.0, so we recommend installing directly from",
               "type" : "text"
             },
             {
@@ -134,7 +94,7 @@
               "type" : "text"
             },
             {
-              "text" : "exchange for the latest and greatest features.",
+              "text" : "the main branch.",
               "type" : "text"
             }
           ],
@@ -146,6 +106,31 @@
           ],
           "syntax" : "sh",
           "type" : "codeListing"
+        },
+        {
+          "content" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Continue to ",
+                  "type" : "text"
+                },
+                {
+                  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation#Runtime-dependencies",
+                  "isActive" : true,
+                  "type" : "reference"
+                },
+                {
+                  "text" : " to install required runtime dependencies.",
+                  "type" : "text"
+                }
+              ],
+              "type" : "paragraph"
+            }
+          ],
+          "name" : "Note",
+          "style" : "note",
+          "type" : "aside"
         },
         {
           "anchor" : "Manual-installation-all-platforms",
@@ -193,6 +178,31 @@
           "type" : "codeListing"
         },
         {
+          "content" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Continue to ",
+                  "type" : "text"
+                },
+                {
+                  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation#Runtime-dependencies",
+                  "isActive" : true,
+                  "type" : "reference"
+                },
+                {
+                  "text" : " to install required runtime dependencies.",
+                  "type" : "text"
+                }
+              ],
+              "type" : "paragraph"
+            }
+          ],
+          "name" : "Note",
+          "style" : "note",
+          "type" : "aside"
+        },
+        {
           "anchor" : "Pre-built-macOS",
           "level" : 2,
           "text" : "Pre-built (macOS)",
@@ -235,6 +245,292 @@
           ],
           "syntax" : "sh",
           "type" : "codeListing"
+        },
+        {
+          "anchor" : "Runtime-dependencies",
+          "level" : 2,
+          "text" : "Runtime dependencies",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Install the following runtime dependencies to ensure full functionality.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "macOS",
+          "level" : 3,
+          "text" : "macOS",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Swift Bundler has no runtime dependencies on macOS outside of the Xcode toolchain.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Linux",
+          "level" : 3,
+          "text" : "Linux",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "On Linux you’ll need to install ",
+              "type" : "text"
+            },
+            {
+              "code" : "patchelf",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ". There also two bundler-specific dependencies; ",
+              "type" : "text"
+            },
+            {
+              "code" : "rpmbuild",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " for the ",
+              "type" : "text"
+            },
+            {
+              "code" : "linuxRPM",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " bundler, and ",
+              "type" : "text"
+            },
+            {
+              "code" : "appimagetool",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " for the ",
+              "type" : "text"
+            },
+            {
+              "code" : "linuxAppImage",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " bundler.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "patchelf-required",
+          "level" : 4,
+          "text" : "patchelf (required)",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "identifier" : "https:\/\/github.com\/NixOS\/patchelf",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : " is used to relocate dynamic libraries during bundling. Modern Linux distributions generally have patchelf in their official repository. If yours doesn’t, the ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/github.com\/NixOS\/patchelf",
+              "isActive" : true,
+              "overridingTitle" : "patchelf GitHub repository",
+              "overridingTitleInlineContent" : [
+                {
+                  "text" : "patchelf GitHub repository",
+                  "type" : "text"
+                }
+              ],
+              "type" : "reference"
+            },
+            {
+              "text" : " has binary downloads attached to every release.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "# Ubuntu, Debian",
+            "sudo apt install patchelf",
+            "",
+            "# Fedora",
+            "sudo dnf install patchelf"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "rpmbuild-required-for-RPM-bundling",
+          "level" : 4,
+          "text" : "rpmbuild (required for RPM bundling)",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "rpmbuild is used by Swift Bundler’s RPM bundler to produce RPM packages. You don’t need to use an RPM-based distribution to produce RPM packages.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "# Ubuntu, Debian",
+            "sudo apt install rpm",
+            "",
+            "# Fedora",
+            "sudo dnf install rpmdevtools"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "appimagetool-required-for-AppImage-bundling",
+          "level" : 4,
+          "text" : "appimagetool (required for AppImage bundling)",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "identifier" : "https:\/\/appimage.github.io\/appimagetool\/",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : " is used by Swift Bundler’s AppImage bundler to produce AppImages. It’s shipped as an AppImage, not a system package, so installation is a little more manual.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Download the latest build from the ",
+                      "type" : "text"
+                    },
+                    {
+                      "identifier" : "https:\/\/github.com\/AppImage\/appimagetool\/releases",
+                      "isActive" : true,
+                      "type" : "reference"
+                    },
+                    {
+                      "text" : ". Make sure to get the one for your architecture.",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Run ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "chmod +x .\/appimagetool-ARCH.AppImage",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " to make the downloaded file executable.",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Run ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "sudo mv .\/appimagetool-ARCH.AppImage \/usr\/local\/bin\/appimagetool",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " to install it system-wide.",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "orderedList"
+        },
+        {
+          "anchor" : "Windows",
+          "level" : 3,
+          "text" : "Windows",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Swift Bundler has no runtime dependencies on Windows outside of the Visual Studio toolchain.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "content" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Make sure to always run Swift Bundler from Native Tools Command Prompt for VS 2022 so that Swift Bundler can locate required tools such as ",
+                  "type" : "text"
+                },
+                {
+                  "code" : "dumpbin",
+                  "type" : "codeVoice"
+                },
+                {
+                  "text" : ".",
+                  "type" : "text"
+                }
+              ],
+              "type" : "paragraph"
+            }
+          ],
+          "name" : "Warning",
+          "style" : "warning",
+          "type" : "aside"
         }
       ],
       "kind" : "content"
@@ -301,10 +597,20 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/creating-an-app"
 },
+"doc://swift-bundler/documentation/swift-bundler/installation#Runtime-dependencies": {
+  "abstract" : [
+
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation#Runtime-dependencies",
+  "kind" : "section",
+  "title" : "Runtime dependencies",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/installation#Runtime-dependencies"
+},
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [
     {
-      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
       "type" : "text"
     }
   ],
@@ -314,6 +620,42 @@
   "title" : "swift-bundler",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler"
+},
+"https://appimage.github.io/appimagetool/": {
+  "identifier" : "https:\/\/appimage.github.io\/appimagetool\/",
+  "title" : "appimagetool",
+  "titleInlineContent" : [
+    {
+      "text" : "appimagetool",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/appimage.github.io\/appimagetool\/"
+},
+"https://github.com/AppImage/appimagetool/releases": {
+  "identifier" : "https:\/\/github.com\/AppImage\/appimagetool\/releases",
+  "title" : "releases page",
+  "titleInlineContent" : [
+    {
+      "text" : "releases page",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/github.com\/AppImage\/appimagetool\/releases"
+},
+"https://github.com/NixOS/patchelf": {
+  "identifier" : "https:\/\/github.com\/NixOS\/patchelf",
+  "title" : "patchelf",
+  "titleInlineContent" : [
+    {
+      "text" : "patchelf",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/github.com\/NixOS\/patchelf"
 },
 "https://github.com/yonaskolb/Mint": {
   "identifier" : "https:\/\/github.com\/yonaskolb\/Mint",

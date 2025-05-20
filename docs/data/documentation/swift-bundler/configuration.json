@@ -1255,7 +1255,7 @@
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [
     {
-      "text" : "Create macOS apps with Swift packages instead of Xcode projects.",
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
       "type" : "text"
     }
   ],

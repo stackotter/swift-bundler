@@ -8,6 +8,7 @@
       "fg": "#70374d",
       "fg-lighter": "#c06e7b",
       "blue": "#1472c4",
+      "warning": "#dd3333",
       "fill-light-blue-secondary": "var(--color-bg-even-darker)",
       "fill-blue": "var(--color-blue)",
       "fill-secondary": "var(--color-bg)",
@@ -38,6 +39,8 @@
       "navigator-item-hover": "var(--color-bg-darker)",
       "aside-note-background": "var(--color-bg-darker)",
       "aside-note-border": "var(--color-bg-even-darker)",
+      "aside-warning-background": "var(--color-bg-darker)",
+      "aside-warning-border": "var(--color-warning)",
       "code-background": "var(--color-bg-darker)",
       "grid": "var(--color-bg-even-darker)",
       
