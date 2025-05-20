@@ -21,5 +21,8 @@ jobs:
       - name: Build
         run: swift build
 
+      - name: Install runtime dependencies
+        run: sudo apt install -y patchelf
+
       - name: Test
         run: swift test

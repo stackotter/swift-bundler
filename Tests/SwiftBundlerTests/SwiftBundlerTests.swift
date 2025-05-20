@@ -31,7 +31,7 @@ import Foundation
     try FileManager.default.removeItem(at: directory)
   }
 
-  var creationArguments = ["create", "HelloWorld", "-d", directory.path]
+  var creationArguments = ["--verbose", "create", "HelloWorld", "-d", directory.path]
 
   #if os(macOS)
     // Without this, the build will fail due to a missing minimum deployment version.
@@ -42,8 +42,8 @@ import Foundation
   await SwiftBundler.main(creationArguments)
 
   // Ensure fresh project builds
-  await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
+  await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 
   // Ensure idempotence
-  await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
+  await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 }
