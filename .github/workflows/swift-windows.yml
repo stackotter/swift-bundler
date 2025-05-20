@@ -30,7 +30,7 @@ jobs:
         run: swift --version
 
       - name: Debug cmd
-        run: where cmd
+        run: where.exe cmd.exe
 
       - name: Build
         run: |
