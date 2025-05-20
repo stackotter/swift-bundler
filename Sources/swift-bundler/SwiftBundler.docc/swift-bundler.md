@@ -1,10 +1,17 @@
 # ``swift_bundler``
 
-Create macOS apps with Swift packages instead of Xcode projects.
+Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.
 
 ## Overview
 
-A Swift Package Manager wrapper that allows the creation of macOS apps with Swift packages instead of Xcode projects. The end goal is to be able to create apps for Windows, Linux and macOS with a single Swift codebase.
+Swift Bundler builds on top of the Swift Package Manager to enable truly cross-platform development in Swift. It provides a consistent experience across platforms while allowing you to configure platform-specific details when needed.
+
+Apps built with Swift Bundler work everywhere by default, within the limits of your chosen UI framework of course. We recommend using [SwiftCrossUI](https://github.com/stackotter/swift-cross-ui) because:
+
+- It provides a native user experience across all platforms supported by Swift Bundler
+- It's the most mature cross-platform UI framework for Swift (out of those with at least as many supported platforms)
+
+That said, Swift Bundler doesn't lock you into any particular framework; everything is open and extensible.
 
 ## Topics
 
