@@ -12,7 +12,7 @@ jobs:
       - name: Setup Xcode version
         uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
-          xcode-version: '15.4' # contains Swift 5.10.0
+          xcode-version: '16.3' # contains Swift 6.1
 
       - name: Swift version
         run: swift --version
