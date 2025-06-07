@@ -644,10 +644,12 @@ struct BundleCommand: ErrorHandledCommand {
 
       let dependenciesScratchDirectory = outputDirectory / "projects"
 
+      var dependencyContext = buildContext.genericContext
+      dependencyContext.scratchDirectory = dependenciesScratchDirectory
       let dependencies = try await ProjectBuilder.buildDependencies(
         appConfiguration.dependencies,
         packageConfiguration: configuration,
-        context: buildContext.genericContext,
+        context: dependencyContext,
         appName: appName,
         dryRun: skipBuild
       ).unwrap()
