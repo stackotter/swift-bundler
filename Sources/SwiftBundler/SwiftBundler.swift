@@ -14,6 +14,7 @@ public struct SwiftBundler: AsyncParsableCommand {
     subcommands: [
       BundleCommand.self,
       RunCommand.self,
+      CleanCommand.self,
       CreateCommand.self,
       ConvertCommand.self,
       MigrateCommand.self,

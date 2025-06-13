@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 
-/// The command for listing codesigning identities.
+/// The command for migrating project config files to the latest format.
 struct MigrateCommand: Command {
   static var configuration = CommandConfiguration(
     commandName: "migrate",

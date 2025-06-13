@@ -540,7 +540,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
 
-      let outputDirectory = scratchDirectory.appendingPathComponent("bundler")
+      let outputDirectory = Self.outputDirectory(for: scratchDirectory)
 
       // Load package manifest
       log.info("Loading package manifest")
@@ -878,5 +878,9 @@ struct BundleCommand: ErrorHandledCommand {
 
     Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
     return (appName, appConfiguration, flatConfiguration)
+  }
+
+  static func outputDirectory(for scratchDirectory: URL) -> URL {
+    scratchDirectory / "bundler"
   }
 }
