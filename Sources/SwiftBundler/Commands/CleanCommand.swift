@@ -24,8 +24,19 @@ struct CleanCommand: Command {
 
   func wrappedRun() async throws {
     let packageDirectory = packageDirectory ?? URL.currentDirectory
+
+    // Ensure that we're in a Swift package directory.
+    let configurationFile = PackageConfiguration.standardConfigurationFileLocation(
+      for: packageDirectory
+    )
+    guard configurationFile.exists() else {
+      throw CLIError.missingConfigurationFile(configurationFile)
+    }
+
+    // Running 'swift package clean' also clears out '.build/bundler' on our
+    // behalf, so we don't need to do anything more.
     let scratchDirectory = scratchDirectory ?? (packageDirectory / ".build")
-    try Process.create(
+    try await Process.create(
       "swift",
       arguments: [
         "package",
@@ -33,12 +44,7 @@ struct CleanCommand: Command {
         scratchDirectory.path,
         "clean"
       ]
-    )
-
-    let outputDirectory = BundleCommand.outputDirectory(for: scratchDirectory)
-    if outputDirectory.exists() {
-      try FileManager.default.removeItem(at: outputDirectory)
-    }
+    ).runAndWait().unwrap()
   }
 }
 

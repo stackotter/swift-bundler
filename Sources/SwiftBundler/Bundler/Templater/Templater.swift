@@ -211,7 +211,9 @@ enum Templater {
     configuration: AppConfiguration
   ) -> Result<Void, TemplaterError> {
     // Create package configuration file
-    let file = packageDirectory.appendingPathComponent("Bundler.toml")
+    let file = PackageConfiguration.standardConfigurationFileLocation(
+      for: packageDirectory
+    )
     let configuration = PackageConfiguration(apps: [
       packageName: configuration
     ])

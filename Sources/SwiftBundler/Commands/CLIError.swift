@@ -13,6 +13,7 @@ enum CLIError: LocalizedError {
   case failedToResolveTargetDevice(reason: String)
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle(any Error)
+  case missingConfigurationFile(URL)
 
   var errorDescription: String? {
     switch self {
@@ -50,8 +51,7 @@ enum CLIError: LocalizedError {
           '\(outputDirectory.relativePath): \(error.localizedDescription)'
           """
       case .invalidXcodeprojDetected:
-        return
-          """
+        return """
           The --xcodebuild flag, which is the default flag when building any embedded Darwin
           platforms such as iOS, visionOS, tvOS, and watchOS will not function correctly while
           an xcodeproj or xcworkspace is in the same directory as your Package.swift. Please
@@ -68,6 +68,11 @@ enum CLIError: LocalizedError {
         return "Failed to resolve codesigning configuration: \(reason)"
       case .failedToCopyOutBundle(let reason):
         return "Failed to copy out bundle: \(reason.localizedDescription)"
+      case .missingConfigurationFile(let file):
+        return """
+          Could not find \(file.lastPathComponent) at standard location. Are you \
+          sure that you're in the root of a Swift Bundler project?
+          """
     }
   }
 }

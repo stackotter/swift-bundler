@@ -6,6 +6,9 @@ struct PackageConfiguration: Codable {
   /// The current configuration format version.
   static let currentFormatVersion = 2
 
+  /// The file name for Swift Bundler configuration files.
+  static let configurationFileName = "Bundler.toml"
+
   /// The configuration format version.
   var formatVersion: Int
   /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
@@ -77,7 +80,8 @@ struct PackageConfiguration: Codable {
     customFile: URL? = nil,
     migrateConfiguration: Bool = false
   ) async -> Result<PackageConfiguration, PackageConfigurationError> {
-    let configurationFile = customFile ?? packageDirectory.appendingPathComponent("Bundler.toml")
+    let configurationFile = customFile
+      ?? standardConfigurationFileLocation(for: packageDirectory)
 
     // Migrate old configuration if no new configuration exists
     let shouldAttemptJSONMigration = customFile == nil
@@ -297,9 +301,14 @@ struct PackageConfiguration: Codable {
         )
       ]
     )
-    let file = directory.appendingPathComponent("Bundler.toml")
+    let file = standardConfigurationFileLocation(for: directory)
 
     return writeConfiguration(configuration, to: file)
+  }
+
+  /// Gets the standard configuration file location for a given directory.
+  static func standardConfigurationFileLocation(for directory: URL) -> URL {
+    directory.appendingPathComponent(configurationFileName)
   }
 
   // MARK: Instance methods
