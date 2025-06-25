@@ -1,18 +1,54 @@
 // swift-tools-version:5.7
 
+import Foundation
 import PackageDescription
+
+let environment = ProcessInfo.processInfo.environment
+let slim = environment["SWIFT_BUNDLER_SLIM"] == "1"
+let requireBuilderAPI = environment["SWIFT_BUNDLER_REQUIRE_BUILDER_API"] == "1"
 
 let package = Package(
   name: "swift-bundler",
   platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .macCatalyst(.v13)],
-  products: [
+  products: [],
+  dependencies: [],
+  targets: []
+)
+
+// Builder API
+if !slim || requireBuilderAPI {
+  package.products += [
+    .library(name: "SwiftBundlerBuilders", targets: ["SwiftBundlerBuilders"])
+  ]
+
+  package.dependencies += [
+    .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5")
+  ]
+
+  package.targets += [
+    .target(
+      name: "SwiftBundlerBuilders",
+      dependencies: [
+        .product(
+          name: "ProcessSpawnSync",
+          package: "AsyncProcess",
+          condition: .when(platforms: [.linux])
+        )
+      ]
+    )
+  ]
+}
+
+// Rest of products/targets/dependencies
+if !slim {
+  package.products += [
     .executable(name: "swift-bundler", targets: ["swift-bundler"]),
     .library(name: "SwiftBundler", targets: ["SwiftBundler"]),
     .library(name: "SwiftBundlerRuntime", targets: ["SwiftBundlerRuntime"]),
-    .library(name: "SwiftBundlerBuilders", targets: ["SwiftBundlerBuilders"]),
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
-  ],
-  dependencies: [
+  ]
+
+  package.dependencies += [
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     .package(url: "https://github.com/pointfreeco/swift-parsing", .upToNextMinor(from: "0.13.0")),
@@ -32,14 +68,14 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-crypto", from: "3.10.0"),
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
     .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
-    .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
     .package(url: "https://github.com/apple/swift-system", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
-  ],
-  targets: [
+  ]
+
+  package.targets += [
     .executableTarget(name: "swift-bundler", dependencies: ["SwiftBundler"]),
     .target(
       name: "SwiftBundler",
@@ -128,17 +164,6 @@ let package = Package(
     .target(name: "SwiftBundlerRuntimeC"),
 
     .target(
-      name: "SwiftBundlerBuilders",
-      dependencies: [
-        .product(
-          name: "ProcessSpawnSync",
-          package: "AsyncProcess",
-          condition: .when(platforms: [.linux])
-        )
-      ]
-    ),
-
-    .target(
       name: "HotReloadingProtocol",
       dependencies: [
         .product(name: "FlyingSocks", package: "FlyingFox")
@@ -188,4 +213,4 @@ let package = Package(
       ]
     ),
   ]
-)
+}

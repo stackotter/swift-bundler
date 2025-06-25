@@ -464,9 +464,21 @@ enum ProjectBuilder {
           isGUIExecutable: false
         )
 
+        // Let Swift Bundler know that we only need the builder API. This
+        // greatly reduces the length of the dependency resolution phase for
+        // clean builds (which is the bottleneck for single-file builders),
+        // and greatly improves incremental build performance on Windows where
+        // package trees with lots of files seem to result in pretty terrible
+        // incremental build performance.
+        let environment = [
+          "SWIFT_BUNDLER_SLIM": "1",
+          "SWIFT_BUNDLER_REQUIRE_BUILDER_API": "1",
+        ]
+
         return await SwiftPackageManager.build(
           product: builderProductName,
-          buildContext: buildContext
+          buildContext: buildContext,
+          additionalEnvironmentVariables: environment
         ).andThen { _ in
           await SwiftPackageManager.getProductsDirectory(buildContext)
         }.mapError { error in

@@ -643,6 +643,8 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       let dependenciesScratchDirectory = outputDirectory / "projects"
+      var dependencyContext = buildContext.genericContext
+      dependencyContext.scratchDirectory = dependenciesScratchDirectory
 
       var dependencyContext = buildContext.genericContext
       dependencyContext.scratchDirectory = dependenciesScratchDirectory
