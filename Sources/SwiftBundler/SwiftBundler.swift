@@ -40,6 +40,11 @@ public struct SwiftBundler: AsyncParsableCommand {
     if verbose {
       log.logLevel = .debug
     }
+
+    // Work around to allow SwiftBundler to be called twice in a single process.
+    // Ideally this static cache variable wouldn't be needed, but I can't solve
+    // that right now.
+    BundleCommand.bundlerConfiguration = nil
   }
 
   public init() {

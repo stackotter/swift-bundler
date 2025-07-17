@@ -168,7 +168,10 @@ let package = Package(
 
     .testTarget(
       name: "SwiftBundlerTests",
-      dependencies: ["SwiftBundler"]
+      dependencies: ["SwiftBundler"],
+      resources: [
+        .copy("Fixtures")
+      ]
     ),
 
     .plugin(
