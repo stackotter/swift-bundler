@@ -104,9 +104,10 @@ enum DarwinBundler: Bundler {
     }
 
     let copyDynamicLibraries: () async -> Result<Void, DarwinBundlerError> = {
-      await DynamicLibraryBundler.copyDynamicLibraries(
+      await DynamicLibraryBundler.copyDynamicDependencies(
         dependedOnBy: bundleStructure.mainExecutable,
-        to: bundleStructure.librariesDirectory,
+        toLibraryDirectory: bundleStructure.librariesDirectory,
+        orFrameworkDirectory: bundleStructure.frameworksDirectory,
         productsDirectory: context.productsDirectory,
         isXcodeBuild: additionalContext.isXcodeBuild,
         universal: additionalContext.universal,
