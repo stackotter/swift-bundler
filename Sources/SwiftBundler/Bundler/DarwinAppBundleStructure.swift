@@ -5,6 +5,7 @@ struct DarwinAppBundleStructure {
   let contentsDirectory: URL
   let resourcesDirectory: URL
   let librariesDirectory: URL
+  let frameworksDirectory: URL
   let executableDirectory: URL
   let infoPlistFile: URL
   let pkgInfoFile: URL
@@ -28,6 +29,7 @@ struct DarwinAppBundleStructure {
     }
 
     librariesDirectory = contentsDirectory.appendingPathComponent("Libraries")
+    frameworksDirectory = contentsDirectory.appendingPathComponent("Frameworks")
 
     infoPlistFile = contentsDirectory.appendingPathComponent("Info.plist")
     pkgInfoFile = contentsDirectory.appendingPathComponent("PkgInfo")
@@ -43,7 +45,8 @@ struct DarwinAppBundleStructure {
   /// already exist.
   func createDirectories() -> Result<Void, DarwinBundlerError> {
     let directories = [
-      contentsDirectory, resourcesDirectory, librariesDirectory, executableDirectory,
+      contentsDirectory, resourcesDirectory, librariesDirectory,
+      frameworksDirectory, executableDirectory,
     ]
 
     return directories.filter { directory in

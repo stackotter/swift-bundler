@@ -8,7 +8,8 @@ enum DynamicLibraryBundler {
   /// The app's executable's rpath is updated to reflect the new relative location of each dynamic library.
   /// - Parameters:
   ///   - appExecutable: The app executable to update the rpaths of.
-  ///   - outputDirectory: The directory to copy the dynamic libraries to.
+  ///   - libraryDirectory: The directory to copy plain dynamic libraries to.
+  ///   - frameworkDirectory: The directory to copy frameworks to.
   ///   - productsDirectory: The build's products directory (used to locate dynamic libraries that
   ///     aren't installed system wide).
   ///   - isXcodeBuild: If `true` the `PackageFrameworks` subdirectory will be searched for frameworks containing dynamic libraries instead.
@@ -16,9 +17,10 @@ enum DynamicLibraryBundler {
   ///   - makeStandAlone: If `true`, all non-system dynamic libraries depended on by the executable will
   ///     be moved into the app bundle, and relevant rpaths will be updated accordingly.
   /// - Returns: If an error occurs, a failure is returned.
-  static func copyDynamicLibraries(
+  static func copyDynamicDependencies(
     dependedOnBy appExecutable: URL,
-    to outputDirectory: URL,
+    toLibraryDirectory libraryDirectory: URL,
+    orFrameworkDirectory frameworkDirectory: URL,
     productsDirectory: URL,
     isXcodeBuild: Bool,
     universal: Bool,
@@ -39,125 +41,71 @@ enum DynamicLibraryBundler {
       }
     }
 
-    return await moveLibraryDependencies(
-      of: appExecutable,
-      to: outputDirectory,
-      for: appExecutable,
+    return await copyDynamicDependencies(
+      dependedOnBy: appExecutable,
+      toLibraryDirectory: libraryDirectory,
+      orFrameworkDirectory: frameworkDirectory,
       productsDirectory: productsDirectory,
       includeSystemWideDependencies: makeStandAlone
     )
   }
 
-  static func moveLibraryDependencies(
-    of binary: URL,
-    to directory: URL,
-    for executable: URL,
+  /// Copies all dynamic libraries depended on by `binary`, an executable or
+  /// dynamic library, to the specified directory. Updates the install names
+  /// all dependencies and recursively copies the dependencies of each
+  /// dependency as well.
+  /// - Parameters:
+  ///   - binary: The executable or dynamic library to copy the dependencies of.
+  ///   - libraryDirectory: The directory to copy plain dynamic libraries to.
+  ///   - frameworkDirectory: The directory to copy frameworks to.
+  ///   - productsDirectory: The products directory produced by SwiftPM or Xcode.
+  ///     Used to construct search paths.
+  ///   - includeSystemWideDependencies: Enables an experimental mode in which
+  ///     system-wide dependencies are also copied. This can be used to distribute
+  ///     apps which rely on system dependencies such as Gtk, or on newer Swift
+  ///     runtime features, but it's still quite flakey.
+  static func copyDynamicDependencies(
+    dependedOnBy binary: URL,
+    toLibraryDirectory libraryDirectory: URL,
+    orFrameworkDirectory frameworkDirectory: URL,
     productsDirectory: URL,
     includeSystemWideDependencies: Bool
   ) async -> Result<Void, DynamicLibraryBundlerError> {
-    let otoolOutput: String
-    let process = Process.create("/usr/bin/otool", arguments: ["-L", binary.path])
-    switch await process.getOutput() {
+    let dynamicDependencies: [String]
+    switch await enumerateDynamicDependencies(of: binary) {
       case .success(let output):
-        otoolOutput = output
+        dynamicDependencies = output
       case .failure(let error):
-        return .failure(.failedToEnumerateSystemWideDynamicDependencies(error))
+        return .failure(error)
     }
 
     let uninterestingPrefixes = ["/usr/lib/", "/System/Library/"]
-    let dependencies: [(installName: String, location: URL)] =
-      otoolOutput.split(separator: "\n")
-      .dropFirst()
-      .map { line in
-        // TODO: Handle entries with spaces
-        String(line.dropFirst().split(separator: " ")[0])
-      }
+    let filteredDependencies = dynamicDependencies
       .filter { path in
         !uninterestingPrefixes.contains { prefix in
           path.starts(with: prefix)
         }
       }
-      .compactMap { path in
-        let rpathPrefix = "@rpath/"
-        let location: URL
-        if path == "@rpath/libswift_Concurrency.dylib" {
+      .filter { installName in
+        return (
+          installName.starts(with: rpathPrefix)
           // Due to concurrency back deployment, the concurrency runtime install name
-          // is relative to the rpath, so we need a special case for it.
-          return nil
-        } else if path.starts(with: rpathPrefix) {
-          // TODO: Expand this logic to load search path from binary if possible (so that this
-          //   doesn't break when an upstream tool changes something in the future).
-          // Search basic rpath for library
-          let searchPath = [
-            productsDirectory,
-            productsDirectory / "PackageFrameworks",
-          ]
-          let options = searchPath.map {
-            $0 / String(path.dropFirst(rpathPrefix.count))
-          }
-          guard let libraryLocation = options.first(where: { $0.exists() }) else {
-            log.warning("Failed to locate library with install name '\(path)'")
-            return nil
-          }
-          location = libraryLocation
-        } else if includeSystemWideDependencies {
-          location = URL(fileURLWithPath: path)
-        } else {
-          return nil
-        }
-        return (installName: path, location: location)
+          // is relative to the rpath, so we need a special case to exclude it.
+          && installName != "@rpath/libswift_Concurrency.dylib"
+        ) || includeSystemWideDependencies
       }
 
-    for (originalInstallName, location) in dependencies {
-      let resolvedDependency = location.resolvingSymlinksInPath()
-
-      // Copy and rename the library
-      var outputLibrary = directory / resolvedDependency.lastPathComponent
-      // Add `.dylib` path extension when copying (if not already present) so that the
-      // code signer can easily locate all dylibs to sign.
-      if outputLibrary.pathExtension == "" {
-        outputLibrary = outputLibrary.appendingPathExtension("dylib")
-      }
-
-      let libraryAlreadyCopied = FileManager.default.fileExists(atPath: outputLibrary.path)
-      if !libraryAlreadyCopied {
-        do {
-          try FileManager.default.copyItem(
-            at: resolvedDependency,
-            to: outputLibrary
-          )
-        } catch {
-          return .failure(
-            .failedToCopyDynamicLibrary(
-              source: resolvedDependency, destination: outputLibrary, error
-            )
-          )
-        }
-      }
-
-      let newRelativePath = outputLibrary.path(
-        relativeTo: executable.deletingLastPathComponent()
+    for installName in filteredDependencies {
+      let result = await copyDynamicDependency(
+        dependedOnBy: binary,
+        toLibraryDirectory: libraryDirectory,
+        orFrameworkDirectory: frameworkDirectory,
+        installName: installName,
+        productsDirectory: productsDirectory,
+        includeSystemWideDependencies: includeSystemWideDependencies
       )
-
-      if case let .failure(error) = await updateLibraryInstallName(
-        in: binary,
-        original: originalInstallName,
-        new: "@rpath/\(newRelativePath)"
-      ) {
+      if case .failure(let error) = result {
         return .failure(error)
-      }
-
-      if !libraryAlreadyCopied {
-        let result = await moveLibraryDependencies(
-          of: outputLibrary,
-          to: directory,
-          for: executable,
-          productsDirectory: productsDirectory,
-          includeSystemWideDependencies: includeSystemWideDependencies
-        )
-        if case let .failure(error) = result {
-          return .failure(error)
-        }
       }
     }
 
@@ -226,61 +174,134 @@ enum DynamicLibraryBundler {
     }
   }
 
-  /// Enumerates the dynamic libraries within a build's products directory.
-  ///
-  /// If `isXcodeBuild` is true, frameworks will be searched instead for
-  /// frameworks. The dynamic library inside each framework will then be returned.
-  /// - Parameters:
-  ///   - searchDirectory: The directory to search for dynamic libraries within.
-  ///   - isXcodeBuild: If `true`, frameworks containing dynamic libraries will be searched for instead of dynamic libraries.
-  /// - Returns: Each dynamic library and its name, or a failure if an error occurs.
-  static func enumerateDynamicLibraries(
-    _ searchDirectory: URL,
-    isXcodeBuild: Bool
-  ) -> Result<[(name: String, file: URL)], DynamicLibraryBundlerError> {
-    let libraries: [(name: String, file: URL)]
-
-    // Enumerate directory contents
-    let contents: [URL]
-    do {
-      contents = try FileManager.default.contentsOfDirectory(
-        at: searchDirectory,
-        includingPropertiesForKeys: nil,
-        options: [])
-    } catch {
-      return .failure(.failedToEnumerateDynamicLibraries(directory: searchDirectory, error))
+  private static func enumerateDynamicDependencies(
+    of binary: URL
+  ) async -> Result<[String], DynamicLibraryBundlerError> {
+    let otoolOutput: String
+    let process = Process.create("/usr/bin/otool", arguments: ["-L", binary.path])
+    switch await process.getOutput() {
+      case .success(let output):
+        otoolOutput = output
+      case .failure(let error):
+        return .failure(.failedToEnumerateSystemWideDynamicDependencies(error))
     }
 
-    // Locate dylibs and parse library names from paths
-    if isXcodeBuild {
-      libraries =
-        contents
-        .filter { $0.pathExtension == "framework" }
-        .map { framework in
-          let name = framework.deletingPathExtension().lastPathComponent
-          let versionsDirectory = framework / "Versions"
-          if versionsDirectory.exists() {
-            return (
-              name: name,
-              file: versionsDirectory / "A/\(name)"
-            )
-          } else {
-            return (
-              name: name,
-              file: framework / name
-            )
-          }
-        }
+    let dependencies = otoolOutput.split(separator: "\n")
+      .dropFirst()
+      .map { (line: Substring) -> String in
+        // We find the first opening parenthesis from starting from the end of
+        // the string in case the install name contains an open parenthesis.
+        let installName = line.dropFirst()
+          .reversed()
+          .split(separator: "(", maxSplits: 1)[1]
+          .reversed()
+
+        return String(installName)
+          .trimmingCharacters(in: .whitespaces)
+      }
+
+    return .success(dependencies)
+  }
+
+  private static let rpathPrefix = "@rpath/"
+
+  private static func locateDynamicDependency(installName: String, productsDirectory: URL) -> URL? {
+    if installName.starts(with: rpathPrefix) {
+      // TODO: Expand this logic to load search path from binary if possible (so that this
+      //   doesn't break when an upstream tool changes something in the future).
+      let searchPath = [
+        productsDirectory,
+        productsDirectory / "PackageFrameworks",
+      ]
+      let relativePath = String(installName.dropFirst(rpathPrefix.count))
+      let locations = searchPath.map { $0 / relativePath }
+      return locations.first(where: { $0.exists() })
     } else {
-      libraries =
-        contents
-        .filter { $0.pathExtension == "dylib" }
-        .map { library in
-          let name = library.deletingPathExtension().lastPathComponent
-          return (name: name, file: library)
-        }
+      return URL(fileURLWithPath: installName)
+    }
+  }
+
+  private static func copyDynamicDependency(
+    dependedOnBy binary: URL,
+    toLibraryDirectory libraryDirectory: URL,
+    orFrameworkDirectory frameworkDirectory: URL,
+    installName: String,
+    productsDirectory: URL,
+    includeSystemWideDependencies: Bool
+  ) async -> Result<Void, DynamicLibraryBundlerError> {
+    guard let location = locateDynamicDependency(
+      installName: installName,
+      productsDirectory: productsDirectory
+    ) else {
+      log.warning("Failed to locate library with install name '\(installName)'")
+      return .success()
+    }
+    let dylibLocation = location.resolvingSymlinksInPath()
+
+    // Discover whether the dylib is from a framework or not
+    var framework = dylibLocation
+    var isFramework = false
+    while framework.path != "/" {
+      if framework.pathExtension == "framework" {
+        isFramework = true
+        break
+      }
+      framework = framework.deletingLastPathComponent()
     }
 
-    return .success(libraries)
+    let dependency = isFramework ? framework : dylibLocation
+
+    // Compute output location
+    let targetDirectory = isFramework ? frameworkDirectory : libraryDirectory
+    var outputDependency = targetDirectory / dependency.lastPathComponent
+    if !isFramework && outputDependency.pathExtension == "" {
+      // Add `.dylib` path extension when copying (if not already present) so that the
+      // code signer can easily locate all dylibs to sign.
+      outputDependency = outputDependency.appendingPathExtension("dylib")
+    }
+
+    // Update the install name of the dylib
+    let outputDylib = isFramework
+      ? dependency.appendingPathComponent(dylibLocation.path(relativeTo: framework))
+      : dependency
+    let newRelativePath = outputDylib.path(
+      relativeTo: binary.deletingLastPathComponent()
+    )
+    let newInstallName = "@rpath/\(newRelativePath)"
+    if case let .failure(error) = await updateLibraryInstallName(
+      in: binary,
+      original: installName,
+      new: newInstallName
+    ) {
+      return .failure(error)
+    }
+
+    // Avoid copying libraries twice
+    guard !outputDependency.exists() else {
+      return .success()
+    }
+
+    // Copy the library
+    do {
+      try FileManager.default.copyItem(
+        at: dependency,
+        to: outputDependency
+      )
+    } catch {
+      return .failure(
+        .failedToCopyDynamicLibrary(
+          source: dependency, destination: outputDependency, error
+        )
+      )
+    }
+
+    // Recursively copy the dependencies of this library's dependencies.
+    return await copyDynamicDependencies(
+      dependedOnBy: outputDylib,
+      toLibraryDirectory: libraryDirectory,
+      orFrameworkDirectory: frameworkDirectory,
+      productsDirectory: productsDirectory,
+      includeSystemWideDependencies: includeSystemWideDependencies
+    )
   }
 }
