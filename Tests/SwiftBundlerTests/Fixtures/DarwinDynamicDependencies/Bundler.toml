@@ -1,0 +1,6 @@
+format_version = 2
+
+[apps.DarwinDynamicDependencies]
+identifier = 'com.example.DarwinDynamicDependencies'
+product = 'DarwinDynamicDependencies'
+version = '0.1.0'

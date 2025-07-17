@@ -47,3 +47,33 @@ import Foundation
   // Ensure idempotence
   await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 }
+
+#if os(macOS)
+  /// This test app depends on both a plain dynamic library and a framework.
+  @Test func testDarwinDynamicDependencyCopying() async throws {
+    let app = "DarwinDynamicDependencies"
+    let fixture = Bundle.module.bundleURL.appendingPathComponent("Fixtures/\(app)")
+    await SwiftBundler.main(["--verbose", "bundle", "-d", fixture.path])
+    let outputPath = fixture / ".build/bundler/\(app).app"
+
+    let sparkle = outputPath / "Contents/Frameworks/Sparkle.framework"
+    #expect(sparkle.exists(), "didn't copy framework")
+
+    let library = outputPath / "Contents/Libraries/libLibrary.dylib"
+    #expect(library.exists(), "didn't copy dynamic library")
+
+    // Ensure that the copied dynamic dependencies are usable by the app.
+    let executable = outputPath / "Contents/MacOS/\(app)"
+    let process = Process.create(executable.path)
+    let output = try await process.getOutput().unwrap()
+    #expect(
+      output
+      ==
+      """
+      2 + 3 = 5
+      1.0.0 > 1.0.1 = false
+
+      """
+    )
+  }
+#endif
