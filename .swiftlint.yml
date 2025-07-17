@@ -1,13 +1,21 @@
 disabled_rules:
-- switch_case_alignment
-- opening_brace # Forced to disable because this misunderstands some syntax that I use
-- multiple_closures_with_trailing_closure
-- function_parameter_count
-- for_where
-- type_body_length
+  - switch_case_alignment
+  - opening_brace # Forced to disable because this misunderstands some syntax that I use
+  - multiple_closures_with_trailing_closure
+  - function_parameter_count
+  - for_where
+  - type_body_length
 
 line_length: 150
 file_length: 500
 identifier_name:
   max_length: 60
 function_body_length: 65
+
+included:
+  - Package.swift
+  - Sources/
+  - Plugins/
+  - Tests/
+excluded:
+  - Tests/SwiftBundlerTests/Fixtures/
