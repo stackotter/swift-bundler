@@ -137,8 +137,9 @@ enum MetalCompiler {
       runSilentlyWhenNotVerbose: false
     )
 
-    let result = await process.runAndWait()
-    if case let .failure(error) = result {
+    do {
+      try await process.runAndWait()
+    } catch {
       return .failure(.failedToCompileShader(shader, error))
     }
 
@@ -164,8 +165,9 @@ enum MetalCompiler {
       ] + airFiles.map(\.path)
     )
 
-    let result = await process.runAndWait()
-    if case let .failure(error) = result {
+    do {
+      try await process.runAndWait()
+    } catch {
       return .failure(.failedToCreateMetalArchive(error))
     }
 
@@ -192,7 +194,9 @@ enum MetalCompiler {
       ]
     )
 
-    let libraryCreationResult = await libraryCreationProcess.runAndWait()
+    let libraryCreationResult = await Result.catching { () async throws(Process.Error) in
+      try await libraryCreationProcess.runAndWait()
+    }
     if case let .failure(error) = libraryCreationResult {
       return .failure(.failedToCreateMetalLibrary(error))
     }

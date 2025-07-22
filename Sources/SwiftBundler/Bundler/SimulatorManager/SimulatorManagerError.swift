@@ -1,12 +1,13 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``SimulatorManager``.
-enum SimulatorManagerError: LocalizedError {
-  case failedToRunSimCTL(ProcessError)
+enum SimulatorManagerError: Throwable {
+  case failedToRunSimCTL(Process.Error)
   case failedToDecodeJSON(Error)
-  case failedToOpenSimulator(ProcessError)
+  case failedToOpenSimulator(Process.Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToRunSimCTL(let error):
         return "Failed to run simctl: \(error.localizedDescription)"

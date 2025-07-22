@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for generating Xcode related support files (i.e. Xcode schemes).
-struct GenerateXcodeSupportCommand: Command {
+struct GenerateXcodeSupportCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "generate-xcode-support",
     abstract: "Generate the files required for Xcode to work nicely with a package.",
@@ -23,18 +23,21 @@ struct GenerateXcodeSupportCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var configurationFileOverride: URL?
 
-  func wrappedRun() async throws {
-    let elapsed = try await Stopwatch.time {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let elapsed = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       let packageDirectory = packageDirectory ?? URL(fileURLWithPath: ".")
-      let configuration = try await PackageConfiguration.load(
-        fromDirectory: packageDirectory,
-        customFile: configurationFileOverride
-      ).unwrap()
 
-      try XcodeSupportGenerator.generateXcodeSupport(
-        for: configuration,
-        in: packageDirectory
-      ).unwrap()
+      try await RichError<SwiftBundlerError>.catch {
+        let configuration = try await PackageConfiguration.load(
+          fromDirectory: packageDirectory,
+          customFile: configurationFileOverride
+        ).unwrap()
+
+        try XcodeSupportGenerator.generateXcodeSupport(
+          for: configuration,
+          in: packageDirectory
+        ).unwrap()
+      }
     }
 
     log.info("Done in \(elapsed.secondsString).")

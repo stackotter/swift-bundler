@@ -19,15 +19,17 @@ enum ResourceBundler {
   ) async -> Result<Void, ResourceBundlerError> {
     // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
-    return await Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "actool", assetCatalog.path,
-        "--compile", destinationDirectory.path,
-        "--platform", platform.sdkName,
-        "--minimum-deployment-target", platformVersion,
-      ]
-    ).runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/xcrun",
+        arguments: [
+          "actool", assetCatalog.path,
+          "--compile", destinationDirectory.path,
+          "--platform", platform.sdkName,
+          "--minimum-deployment-target", platformVersion,
+        ]
+      ).runAndWait()
+    }.mapError { error in
       .failedToCompileXCAssets(error)
     }.andThen { _ in
       FileManager.default.removeItem(at: assetCatalog)

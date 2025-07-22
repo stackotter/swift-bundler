@@ -3,7 +3,7 @@ import Foundation
 import Rainbow
 
 /// The subcommand for getting info about a template.
-struct TemplatesInfoCommand: Command {
+struct TemplatesInfoCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "info",
     abstract: "Get info about a template."
@@ -21,17 +21,9 @@ struct TemplatesInfoCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
-  func wrappedRun() async throws {
-    let templates: [Template]
-    if let templateRepository = templateRepository {
-      templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()
-    } else {
-      templates = try await Templater.enumerateTemplates().unwrap()
-    }
-
-    guard let template = templates.first(where: { $0.name == self.template }) else {
-      log.error("Could not find template '\(self.template)'")
-      Foundation.exit(1)
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let template = try await RichError<SwiftBundlerError>.catch {
+      try await Templater.template(named: self.template, in: templateRepository)
     }
 
     var exampleCommand =

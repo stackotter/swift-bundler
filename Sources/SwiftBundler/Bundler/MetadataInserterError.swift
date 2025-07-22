@@ -1,15 +1,16 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``MetadataInserter``.
-enum MetadataInserterError: LocalizedError {
+enum MetadataInserterError: Throwable {
   case failedToEncodeMetadata(any Error)
   case failedToWriteMetadataCodeFile(any Error)
-  case failedToCompileMetadataCodeFile(ProcessError)
+  case failedToCompileMetadataCodeFile(Process.Error)
   case failedToGetSDKPath(SwiftPackageManagerError)
-  case failedToCreateStaticLibrary(ProcessError)
-  case failedToCreateUniversalStaticLibrary(ProcessError)
+  case failedToCreateStaticLibrary(Process.Error)
+  case failedToCreateUniversalStaticLibrary(Process.Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToEncodeMetadata(let error):
         return "Failed to encode metadata: \(error.localizedDescription)"

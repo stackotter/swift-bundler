@@ -9,11 +9,21 @@
       var latestEvent: CoreServicesFileSystemWatcher.EventID? = nil
     }
 
-    private static var streams: [CoreServicesFileSystemWatcher.EventStream] = []
+    fileprivate actor StreamHolder {
+      var streams: [CoreServicesFileSystemWatcher.EventStream] = []
+
+      func add(_ stream: CoreServicesFileSystemWatcher.EventStream) {
+        streams.append(stream)
+      }
+    }
+
+    /// Used to keep strong references to streams.
+    private static let streams = StreamHolder()
 
     static func startWatching(
-      paths: [String], with handler: @escaping (CoreServicesFileSystemWatcher.Event) -> Void,
-      errorHandler: @escaping (Swift.Error) -> Void
+      paths: [String],
+      with handler: @escaping @Sendable (CoreServicesFileSystemWatcher.Event) -> Void,
+      errorHandler: @escaping @Sendable (Swift.Error) -> Void
     ) throws {
       try DispatchQueue.runOnMainThread {
         let stream = try EventStream(
@@ -28,13 +38,16 @@
         stream.setDispatchQueue(DispatchQueue.main)
         try stream.start()
 
-        streams.append(stream)
+        Task {
+          await streams.add(stream)
+        }
       }
     }
 
     static func startWatchingForDebouncedModifications(
-      paths: [String], with handler: @escaping () -> Void,
-      errorHandler: @escaping (Swift.Error) -> Void
+      paths: [String],
+      with handler: @escaping @Sendable () -> Void,
+      errorHandler: @escaping @Sendable (Swift.Error) -> Void
     ) throws {
       let debouncer = Debouncer()
 
@@ -60,7 +73,9 @@
               handler()
             }
           }
-        }, errorHandler: errorHandler)
+        },
+        errorHandler: errorHandler
+      )
     }
   }
 
@@ -145,34 +160,34 @@
         self.rawValue = FSEventStreamEventFlags(truncatingIfNeeded: rawValue)
       }
 
-      static var none = EventFlags(rawValue: kFSEventStreamEventFlagNone)
-      static var mustScanSubDirs = EventFlags(
+      static let none = EventFlags(rawValue: kFSEventStreamEventFlagNone)
+      static let mustScanSubDirs = EventFlags(
         rawValue: kFSEventStreamEventFlagMustScanSubDirs)
-      static var userDropped = EventFlags(rawValue: kFSEventStreamEventFlagUserDropped)
-      static var kernelDropped = EventFlags(rawValue: kFSEventStreamEventFlagKernelDropped)
-      static var idsWrapped = EventFlags(rawValue: kFSEventStreamEventFlagEventIdsWrapped)
-      static var historyDone = EventFlags(rawValue: kFSEventStreamEventFlagHistoryDone)
-      static var rootChanged = EventFlags(rawValue: kFSEventStreamEventFlagRootChanged)
-      static var mount = EventFlags(rawValue: kFSEventStreamEventFlagMount)
-      static var unmount = EventFlags(rawValue: kFSEventStreamEventFlagUnmount)
-      static var itemCloned = EventFlags(rawValue: kFSEventStreamEventFlagItemCloned)
-      static var itemCreated = EventFlags(rawValue: kFSEventStreamEventFlagItemCreated)
-      static var itemRemoved = EventFlags(rawValue: kFSEventStreamEventFlagItemRemoved)
-      static var itemInodeMetaMod = EventFlags(
+      static let userDropped = EventFlags(rawValue: kFSEventStreamEventFlagUserDropped)
+      static let kernelDropped = EventFlags(rawValue: kFSEventStreamEventFlagKernelDropped)
+      static let idsWrapped = EventFlags(rawValue: kFSEventStreamEventFlagEventIdsWrapped)
+      static let historyDone = EventFlags(rawValue: kFSEventStreamEventFlagHistoryDone)
+      static let rootChanged = EventFlags(rawValue: kFSEventStreamEventFlagRootChanged)
+      static let mount = EventFlags(rawValue: kFSEventStreamEventFlagMount)
+      static let unmount = EventFlags(rawValue: kFSEventStreamEventFlagUnmount)
+      static let itemCloned = EventFlags(rawValue: kFSEventStreamEventFlagItemCloned)
+      static let itemCreated = EventFlags(rawValue: kFSEventStreamEventFlagItemCreated)
+      static let itemRemoved = EventFlags(rawValue: kFSEventStreamEventFlagItemRemoved)
+      static let itemInodeMetaMod = EventFlags(
         rawValue: kFSEventStreamEventFlagItemInodeMetaMod)
-      static var itemRenamed = EventFlags(rawValue: kFSEventStreamEventFlagItemRenamed)
-      static var itemModified = EventFlags(rawValue: kFSEventStreamEventFlagItemModified)
-      static var itemFinderInfoMod = EventFlags(
+      static let itemRenamed = EventFlags(rawValue: kFSEventStreamEventFlagItemRenamed)
+      static let itemModified = EventFlags(rawValue: kFSEventStreamEventFlagItemModified)
+      static let itemFinderInfoMod = EventFlags(
         rawValue: kFSEventStreamEventFlagItemFinderInfoMod)
-      static var itemChangeOwner = EventFlags(
+      static let itemChangeOwner = EventFlags(
         rawValue: kFSEventStreamEventFlagItemChangeOwner)
-      static var itemXattrMod = EventFlags(rawValue: kFSEventStreamEventFlagItemXattrMod)
-      static var itemIsFile = EventFlags(rawValue: kFSEventStreamEventFlagItemIsFile)
-      static var itemIsDir = EventFlags(rawValue: kFSEventStreamEventFlagItemIsDir)
-      static var itemIsSymlink = EventFlags(rawValue: kFSEventStreamEventFlagItemIsSymlink)
-      static var ownEvent = EventFlags(rawValue: kFSEventStreamEventFlagOwnEvent)
-      static var itemIsHardlink = EventFlags(rawValue: kFSEventStreamEventFlagItemIsHardlink)
-      static var itemIsLastHardlink = EventFlags(
+      static let itemXattrMod = EventFlags(rawValue: kFSEventStreamEventFlagItemXattrMod)
+      static let itemIsFile = EventFlags(rawValue: kFSEventStreamEventFlagItemIsFile)
+      static let itemIsDir = EventFlags(rawValue: kFSEventStreamEventFlagItemIsDir)
+      static let itemIsSymlink = EventFlags(rawValue: kFSEventStreamEventFlagItemIsSymlink)
+      static let ownEvent = EventFlags(rawValue: kFSEventStreamEventFlagOwnEvent)
+      static let itemIsHardlink = EventFlags(rawValue: kFSEventStreamEventFlagItemIsHardlink)
+      static let itemIsLastHardlink = EventFlags(
         rawValue: kFSEventStreamEventFlagItemIsLastHardlink)
 
       var hashValue: Int {
@@ -212,7 +227,9 @@
       case unmatchedEventParameterCounts
     }
 
-    final class EventStream {
+    /// This isn't actually sendable, but we only send it to store a persistent
+    /// strong reference to it, so this is safe for now.
+    fileprivate final class EventStream: @unchecked Sendable {
       // This must be a non-nil value if an instance of this class has been created successfully.
       var rawref: FSEventStreamRef!
       private let handler: (CoreServicesFileSystemWatcher.Event) -> Void

@@ -1,8 +1,9 @@
 import Foundation
 import TOMLKit
+import ErrorKit
 
 /// An error related to package configuration.
-enum PackageConfigurationError: LocalizedError, Equatable {
+enum PackageConfigurationError: Throwable, Equatable {
   case noSuchApp(String)
   case multipleAppsAndNoneSpecified
   case failedToEvaluateVariables(VariableEvaluatorError)
@@ -40,7 +41,7 @@ enum PackageConfigurationError: LocalizedError, Equatable {
     }
   }
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .noSuchApp(let name):
         return "There is no app called '\(name)'."

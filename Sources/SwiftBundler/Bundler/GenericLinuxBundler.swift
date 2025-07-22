@@ -306,49 +306,49 @@ enum GenericLinuxBundler: Bundler {
   ) async -> Result<Void, GenericLinuxBundlerError> {
     log.info("Copying dynamic libraries (and Swift runtime)")
     let allowedLibrariesDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
-    return await Process.create(
-      "ldd",
-      arguments: [appExecutable.path],
-      environment: [
-        "LD_LIBRARY_PATH": allowedLibrariesDirectory.path
-      ],
-      runSilentlyWhenNotVerbose: false
-    ).getOutput()
-      .mapError { error in
-        .failedToEnumerateDynamicDependencies(error)
-      }
-      .andThen { (output: String) -> Result<Void, GenericLinuxBundlerError> in
-        await output.split(separator: "\n")
-          .compactMap { line in
-            // Parse each line and simply ignore any we can't parse.
-            try? lddLineParser.parse(line)
-          }
-          .map(URL.init(fileURLWithPath:))
-          .filter { library in
-            // Ensure that the library is on our allow list or was a product of
-            // the built.
-            let libraryName = String(library.lastPathComponent.split(separator: ".")[0])
-            return dynamicLibraryBundlingAllowList.contains(libraryName)
-              || library.actuallyResolvingSymlinksInPath().path.starts(
-                with: allowedLibrariesDirectory.path
-              )
-          }
-          .tryForEach { library in
-            return await copyDynamicLibrary(library, toDirectory: destination)
-          }
-      }
-      .andThen { (_: Void) -> Result<Void, GenericLinuxBundlerError> in
-        // Update the main executable's runpath
-        let relativeDestination = destination.path(
-          relativeTo: appExecutable.deletingLastPathComponent()
-        )
-        return await PatchElfTool.setRunpath(
-          of: appExecutable, to: "$ORIGIN/\(relativeDestination)"
-        )
-        .mapError { error in
-          .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
+
+    return await Result {
+      return try await Process.create(
+        "ldd",
+        arguments: [appExecutable.path],
+        environment: [
+          "LD_LIBRARY_PATH": allowedLibrariesDirectory.path
+        ],
+        runSilentlyWhenNotVerbose: false
+      ).getOutput()
+    }.mapError { error in
+      .failedToEnumerateDynamicDependencies(error)
+    }.andThen { (output: String) -> Result<Void, GenericLinuxBundlerError> in
+      await output.split(separator: "\n")
+        .compactMap { line in
+          // Parse each line and simply ignore any we can't parse.
+          try? lddLineParser.parse(line)
         }
+        .map(URL.init(fileURLWithPath:))
+        .filter { library in
+          // Ensure that the library is on our allow list or was a product of
+          // the built.
+          let libraryName = String(library.lastPathComponent.split(separator: ".")[0])
+          return dynamicLibraryBundlingAllowList.contains(libraryName)
+            || library.actuallyResolvingSymlinksInPath().path.starts(
+              with: allowedLibrariesDirectory.path
+            )
+        }
+        .tryForEach { library in
+          return await copyDynamicLibrary(library, toDirectory: destination)
+        }
+    }.andThen { (_: Void) -> Result<Void, GenericLinuxBundlerError> in
+      // Update the main executable's runpath
+      let relativeDestination = destination.path(
+        relativeTo: appExecutable.deletingLastPathComponent()
+      )
+      return await PatchElfTool.setRunpath(
+        of: appExecutable, to: "$ORIGIN/\(relativeDestination)"
+      )
+      .mapError { error in
+        .failedToUpdateMainExecutableRunpath(executable: appExecutable, error)
       }
+    }
   }
 
   /// Copies a dynamic library to the specified destination directory. Resolves

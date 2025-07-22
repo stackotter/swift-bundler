@@ -227,6 +227,30 @@ enum Templater {
     }
   }
 
+  /// Gets the template with the given name in the given template repository. If
+  /// no template repository is specified, the default template repository is
+  /// used. If the default template repository hasn't been downloaded, it gets
+  /// downloaded.
+  static func template(
+    named name: String,
+    in templateRepository: URL?
+  ) async throws(RichError<TemplaterError>) -> Template {
+    let templates = try await RichError<TemplaterError>.catch {
+      let templateRepository = if let templateRepository {
+        templateRepository
+      } else {
+        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true).unwrap()
+      }
+      return try Templater.enumerateTemplates(in: templateRepository).unwrap()
+    }
+
+    guard let template = templates.first(where: { $0.name == name }) else {
+      throw RichError(.noSuchTemplate(name))
+    }
+
+    return template
+  }
+
   /// Verifies that the given template supports this machine's Swift version.
   /// - Returns: An error if this machine's Swift version is not supported by the template.
   static func verifyTemplateIsSupported(
@@ -288,35 +312,35 @@ enum Templater {
           return await downloadDefaultTemplates(into: templatesDirectory)
         }
 
-        return await Process.create(
-          "git",
-          arguments: [
-            "fetch"
-          ],
-          directory: templatesDirectory
-        ).runAndWait().andThen { _ in
-          await Process.create(
+        do {
+          try await Process.create(
+            "git",
+            arguments: [
+              "fetch"
+            ],
+            directory: templatesDirectory
+          ).runAndWait()
+
+          try await Process.create(
             "git",
             arguments: [
               "checkout", "v\(SwiftBundler.version.major)",
             ],
             directory: templatesDirectory
           ).runAndWait()
-        }.andThen { _ in
-          await Process.create(
+
+          try await Process.create(
             "git",
             arguments: ["pull"],
             directory: templatesDirectory
           ).runAndWait()
-        }.mapError(TemplaterError.failedToPullLatestTemplates)
-      }
-  }
+        } catch {
+          // TODO: Why was this error type not inferred?
+          return .failure(.failedToPullLatestTemplates(error as! Process.Error))
+        }
 
-  /// Gets the list of available templates from the default templates directory.
-  /// - Returns: The available templates, or an error if template enumeration fails.
-  static func enumerateTemplates() async -> Result<[Template], TemplaterError> {
-    await getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      .andThen(enumerateTemplates(in:))
+        return .success()
+      }
   }
 
   /// Gets the list of available templates from a templates directory.
@@ -382,10 +406,11 @@ enum Templater {
       ]
     )
 
-    return await process.runAndWait()
-      .mapError { error in
-        .failedToCloneTemplateRepository(error)
-      }
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.runAndWait()
+    }.mapError { error in
+      .failedToCloneTemplateRepository(error)
+    }
   }
 
   /// Applies a template to a directory (processes and copies the template's files).

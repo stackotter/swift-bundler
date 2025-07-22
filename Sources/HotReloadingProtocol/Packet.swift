@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Packet {
+public enum Packet: Sendable {
   static let pingId: UInt64 = 0
   static let pongId: UInt64 = 1
   static let reloadDylibId: UInt64 = 2

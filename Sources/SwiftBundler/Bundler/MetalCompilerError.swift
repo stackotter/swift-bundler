@@ -1,15 +1,16 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``MetalCompiler``.
-enum MetalCompilerError: LocalizedError {
+enum MetalCompilerError: Throwable {
   case failedToCreateTemporaryCompilationDirectory(URL, Error)
-  case failedToCompileShader(URL, ProcessError)
-  case failedToCreateMetalArchive(ProcessError)
-  case failedToCreateMetalLibrary(ProcessError)
+  case failedToCompileShader(URL, Process.Error)
+  case failedToCreateMetalArchive(Process.Error)
+  case failedToCreateMetalLibrary(Process.Error)
   case failedToDeleteShaderSource(URL, Error)
   case failedToEnumerateShaders(directory: URL)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToCreateTemporaryCompilationDirectory(let directory, _):
         return

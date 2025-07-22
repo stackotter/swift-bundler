@@ -10,13 +10,15 @@ enum SimulatorManager {
   static func listAvailableSimulators(
     searchTerm: String? = nil
   ) async -> Result<[Simulator], SimulatorManagerError> {
-    return await Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "simctl", "list", "devices",
-        searchTerm, "available", "--json",
-      ].compactMap { $0 }
-    ).getOutputData().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/xcrun",
+        arguments: [
+          "simctl", "list", "devices",
+          searchTerm, "available", "--json",
+        ].compactMap { $0 }
+      ).getOutputData()
+    }.mapError { error in
       .failedToRunSimCTL(error)
     }.andThen { data in
       JSONDecoder().decode(SimulatorList.self, from: data)
@@ -50,16 +52,17 @@ enum SimulatorManager {
   /// - Parameter id: The name or id of the simulator to start.
   /// - Returns: A failure if an error occurs.
   static func bootSimulator(id: String) async -> Result<Void, SimulatorManagerError> {
-    return await Process.create(
-      "/usr/bin/xcrun",
-      arguments: ["simctl", "boot", id]
-    )
-    .getOutputData()
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/xcrun",
+        arguments: ["simctl", "boot", id]
+      ).getOutputData()
+    }
     .eraseSuccessValue()
     .tryRecover { error in
       // If the device is already booted, count it as a success
       guard
-        case let ProcessError.nonZeroExitStatusWithOutput(data, _) = error,
+        case let .nonZeroExitStatusWithOutput(data, _) = error.message,
         let output = String(data: data, encoding: .utf8),
         output.hasSuffix("Unable to boot device in current state: Booted\n")
       else {
@@ -104,7 +107,9 @@ enum SimulatorManager {
 
     process.addEnvironmentVariables(prefixedVariables)
 
-    return await process.runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.runAndWait()
+    }.mapError { error in
       return .failedToRunSimCTL(error)
     }
   }
@@ -118,12 +123,14 @@ enum SimulatorManager {
     _ bundle: URL,
     simulatorId: String
   ) async -> Result<Void, SimulatorManagerError> {
-    return await Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "simctl", "install", simulatorId, bundle.path,
-      ]
-    ).runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/xcrun",
+        arguments: [
+          "simctl", "install", simulatorId, bundle.path,
+        ]
+      ).runAndWait()
+    }.mapError { error in
       return .failedToRunSimCTL(error)
     }
   }
@@ -131,12 +138,14 @@ enum SimulatorManager {
   /// Opens the latest booted simulator in the simulator app.
   /// - Returns: A failure if an error occurs.
   static func openSimulatorApp() async -> Result<Void, SimulatorManagerError> {
-    return await Process.create(
-      "/usr/bin/open",
-      arguments: [
-        "-a", "Simulator",
-      ]
-    ).runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/open",
+        arguments: [
+          "-a", "Simulator",
+        ]
+      ).runAndWait()
+    }.mapError { error in
       return .failedToOpenSimulator(error)
     }
   }

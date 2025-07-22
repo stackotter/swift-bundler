@@ -1,6 +1,6 @@
 #if SUPPORT_XCODEPROJ
   import Foundation
-  import XcodeProj
+  @preconcurrency import XcodeProj
 
   extension XcodeprojConverter {
     /// A file in an Xcode project.

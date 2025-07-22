@@ -1,10 +1,11 @@
 import Foundation
+import ErrorKit
 
 /// An error related to the configuration of a specific app.
-enum AppConfigurationError: LocalizedError {
+enum AppConfigurationError: Throwable {
   case failedToLoadInfoPlistEntries(file: URL, error: PlistError)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToLoadInfoPlistEntries(let file, let error):
         return

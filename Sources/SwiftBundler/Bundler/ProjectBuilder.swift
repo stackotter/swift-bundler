@@ -2,14 +2,15 @@ import AsyncCollections
 import Foundation
 import SwiftBundlerBuilders
 import Version
+import ErrorKit
 
 // TODO: Major clean-up required. Pyramids of doom need some attention.
 
 enum ProjectBuilder {
   static let builderProductName = "Builder"
 
-  indirect enum Error: LocalizedError {
-    case failedToCloneRepo(URL, ProcessError)
+  indirect enum Error: Throwable {
+    case failedToCloneRepo(URL, Process.Error)
     case failedToWriteBuilderManifest(any Swift.Error)
     case failedToCreateBuilderSourceDirectory(URL, any Swift.Error)
     case failedToSymlinkBuilderSourceFile(any Swift.Error)
@@ -32,7 +33,7 @@ enum ProjectBuilder {
     /// An internal error used in control flow.
     case mismatchedGitURL(_ actual: String, expected: URL)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .failedToCloneRepo(let gitURL, let error):
           return """
@@ -325,16 +326,18 @@ enum ProjectBuilder {
     packageDirectory: URL
   ) async -> Result<(), Error> {
     func clone(_ repository: URL, to destination: URL) async -> Result<(), Error> {
-      await Process.create(
-        "git",
-        arguments: [
-          "clone",
-          "--recursive",
-          repository.absoluteString,
-          destination.path,
-        ],
-        runSilentlyWhenNotVerbose: false
-      ).runAndWait().mapError { error in
+      await Result.catching { () async throws(Process.Error) in
+        try await Process.create(
+          "git",
+          arguments: [
+            "clone",
+            "--recursive",
+            repository.absoluteString,
+            destination.path,
+          ],
+          runSilentlyWhenNotVerbose: false
+        ).runAndWait()
+      }.mapError { error in
         Error.failedToCloneRepo(repository, error)
       }
     }
@@ -343,15 +346,17 @@ enum ProjectBuilder {
 
     switch source {
       case .git(let url, let requirement):
-        return await Process.create(
-          "git",
-          arguments: [
-            "remote",
-            "get-url",
-            "origin",
-          ],
-          directory: destination
-        ).getOutput().mapError(Error.other).andThen { output in
+        return await Result.catching { () async throws(Process.Error) in
+          try await Process.create(
+            "git",
+            arguments: [
+              "remote",
+              "get-url",
+              "origin",
+            ],
+            directory: destination
+          ).getOutput()
+        }.mapError(Error.other).andThen { output in
           let currentURL = output.trimmingCharacters(in: .whitespacesAndNewlines)
           guard currentURL == url.absoluteString else {
             return .failure(.mismatchedGitURL(currentURL, expected: url))
@@ -371,11 +376,13 @@ enum ProjectBuilder {
               revision = value
           }
 
-          return await Process.create(
-            "git",
-            arguments: ["checkout", revision],
-            directory: destination
-          ).runAndWait().mapError(Error.other)
+          return await Result.catching { () async throws(Process.Error) in
+            try await Process.create(
+              "git",
+              arguments: ["checkout", revision],
+              directory: destination
+            ).runAndWait()
+          }.mapError(Error.other)
         }
       case .local(let path):
         return Result.success().andThen(if: destinationExists) { _ in
@@ -509,7 +516,7 @@ enum ProjectBuilder {
           if exitStatus == 0 {
             return .success()
           } else {
-            return .failure(ProcessError.nonZeroExitStatus(exitStatus))
+            return .failure(Process.Error(.nonZeroExitStatus(exitStatus)))
           }
         }.mapError(Error.builderFailed)
       }

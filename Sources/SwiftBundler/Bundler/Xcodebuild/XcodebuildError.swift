@@ -1,15 +1,16 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``Xcodebuild``.
-enum XcodebuildError: LocalizedError {
-  case failedToRunXcodebuild(command: String, ProcessError)
+enum XcodebuildError: Throwable {
+  case failedToRunXcodebuild(command: String, Process.Error)
   case unsupportedPlatform(_ platform: Platform)
   case failedToMoveInterferingScheme(URL, destination: URL, Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToRunXcodebuild(let command, let processError):
-        return "Failed to run '\(command)': \(processError.localizedDescription)"
+        return "Failed to run '\(command)': \(processError)"
       case .unsupportedPlatform(let platform):
         return """
           The xcodebuild backend doesn't support '\(platform.name)'. Only \

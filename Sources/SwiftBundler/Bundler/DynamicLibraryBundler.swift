@@ -3,6 +3,8 @@ import Overture
 
 /// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {
+  typealias Error = RichError<DynamicLibraryBundlerError>
+
   /// Copies the dynamic libraries within a build's products directory to an output directory.
   ///
   /// The app's executable's rpath is updated to reflect the new relative location of each dynamic library.
@@ -25,7 +27,7 @@ enum DynamicLibraryBundler {
     isXcodeBuild: Bool,
     universal: Bool,
     makeStandAlone: Bool
-  ) async -> Result<Void, DynamicLibraryBundlerError> {
+  ) async throws(Error) {
     log.info("Copying dynamic libraries")
 
     // Update the app's rpath
@@ -36,12 +38,19 @@ enum DynamicLibraryBundler {
         "/usr/bin/install_name_tool",
         arguments: ["-rpath", original, new, appExecutable.path]
       )
-      if case let .failure(error) = await process.runAndWait() {
-        return .failure(.failedToUpdateAppRPath(original: original, new: new, error))
+
+      do {
+        try await process.runAndWait()
+      } catch {
+        throw DynamicLibraryBundlerError.failedToUpdateAppRPath(
+          binary: appExecutable,
+          original: original,
+          new: new
+        ).becauseOf(error)
       }
     }
 
-    return await copyDynamicDependencies(
+    return try await copyDynamicDependencies(
       dependedOnBy: appExecutable,
       toLibraryDirectory: libraryDirectory,
       orFrameworkDirectory: frameworkDirectory,
@@ -70,14 +79,8 @@ enum DynamicLibraryBundler {
     orFrameworkDirectory frameworkDirectory: URL,
     productsDirectory: URL,
     includeSystemWideDependencies: Bool
-  ) async -> Result<Void, DynamicLibraryBundlerError> {
-    let dynamicDependencies: [String]
-    switch await enumerateDynamicDependencies(of: binary) {
-      case .success(let output):
-        dynamicDependencies = output
-      case .failure(let error):
-        return .failure(error)
-    }
+  ) async throws(Error) {
+    let dynamicDependencies = try await enumerateDynamicDependencies(of: binary)
 
     let uninterestingPrefixes = ["/usr/lib/", "/System/Library/"]
     let filteredDependencies = dynamicDependencies
@@ -96,7 +99,7 @@ enum DynamicLibraryBundler {
       }
 
     for installName in filteredDependencies {
-      let result = await copyDynamicDependency(
+      try await copyDynamicDependency(
         dependedOnBy: binary,
         toLibraryDirectory: libraryDirectory,
         orFrameworkDirectory: frameworkDirectory,
@@ -104,12 +107,7 @@ enum DynamicLibraryBundler {
         productsDirectory: productsDirectory,
         includeSystemWideDependencies: includeSystemWideDependencies
       )
-      if case .failure(let error) = result {
-        return .failure(error)
-      }
     }
-
-    return .success()
   }
 
   /// Updates the install name of a library that has changed locations relative
@@ -128,7 +126,7 @@ enum DynamicLibraryBundler {
     originalLibraryLocation: URL,
     newLibraryLocation: URL,
     librarySearchDirectory: URL
-  ) async -> Result<Void, DynamicLibraryBundlerError> {
+  ) async throws(Error) {
     let originalRelativePath = originalLibraryLocation.path(
       relativeTo: librarySearchDirectory
     )
@@ -136,7 +134,7 @@ enum DynamicLibraryBundler {
       relativeTo: executable.deletingLastPathComponent()
     )
 
-    return await updateLibraryInstallName(
+    try await updateLibraryInstallName(
       in: executable,
       original: "@rpath/\(originalRelativePath)",
       new: "@rpath/\(newRelativePath)"
@@ -145,45 +143,47 @@ enum DynamicLibraryBundler {
 
   /// Updates the install name of a library that has been moved.
   /// - Parameters:
-  ///   - executable: The executable to update the install name in.
+  ///   - binary: The binary to update the install name in.
   ///   - originalInstallName: The library's original install name.
   ///   - newInstallName: The library's new install name.
   /// - Returns: If an error occurs, a failure is returned.
   static func updateLibraryInstallName(
-    in executable: URL,
+    in binary: URL,
     original originalInstallName: String,
     new newInstallName: String
-  ) async -> Result<Void, DynamicLibraryBundlerError> {
+  ) async throws(Error) {
     let process = Process.create(
       "/usr/bin/install_name_tool",
       arguments: [
         "-change",
         originalInstallName,
         newInstallName,
-        executable.path,
+        binary.path,
       ]
     )
 
-    return await process.runAndWait().mapError { error in
-      .failedToUpdateLibraryInstallName(
-        library: nil,
+    do {
+      try await process.runAndWait()
+    } catch {
+      throw DynamicLibraryBundlerError.failedToUpdateLibraryInstallName(
+        binary: binary,
         original: originalInstallName,
-        new: newInstallName,
-        error
-      )
+        new: newInstallName
+      ).becauseOf(error)
     }
   }
 
   private static func enumerateDynamicDependencies(
     of binary: URL
-  ) async -> Result<[String], DynamicLibraryBundlerError> {
+  ) async throws(Error) -> [String] {
     let otoolOutput: String
     let process = Process.create("/usr/bin/otool", arguments: ["-L", binary.path])
-    switch await process.getOutput() {
-      case .success(let output):
-        otoolOutput = output
-      case .failure(let error):
-        return .failure(.failedToEnumerateSystemWideDynamicDependencies(error))
+    do {
+      otoolOutput = try await process.getOutput()
+    } catch {
+      throw DynamicLibraryBundlerError.failedToEnumerateDynamicDependencies(
+        binary: binary
+      ).becauseOf(error)
     }
 
     let dependencies = otoolOutput.split(separator: "\n")
@@ -200,12 +200,15 @@ enum DynamicLibraryBundler {
           .trimmingCharacters(in: .whitespaces)
       }
 
-    return .success(dependencies)
+    return dependencies
   }
 
   private static let rpathPrefix = "@rpath/"
 
-  private static func locateDynamicDependency(installName: String, productsDirectory: URL) -> URL? {
+  private static func locateDynamicDependency(
+    installName: String,
+    productsDirectory: URL
+  ) throws(Error) -> URL {
     if installName.starts(with: rpathPrefix) {
       // TODO: Expand this logic to load search path from binary if possible (so that this
       //   doesn't break when an upstream tool changes something in the future).
@@ -215,7 +218,12 @@ enum DynamicLibraryBundler {
       ]
       let relativePath = String(installName.dropFirst(rpathPrefix.count))
       let locations = searchPath.map { $0 / relativePath }
-      return locations.first(where: { $0.exists() })
+
+      guard let location = locations.first(where: { $0.exists() }) else {
+        throw RichError(.failedToLocateDynamicDependency(installName: installName))
+      }
+
+      return location
     } else {
       return URL(fileURLWithPath: installName)
     }
@@ -228,14 +236,11 @@ enum DynamicLibraryBundler {
     installName: String,
     productsDirectory: URL,
     includeSystemWideDependencies: Bool
-  ) async -> Result<Void, DynamicLibraryBundlerError> {
-    guard let location = locateDynamicDependency(
+  ) async throws(Error) {
+    let location = try locateDynamicDependency(
       installName: installName,
       productsDirectory: productsDirectory
-    ) else {
-      log.warning("Failed to locate library with install name '\(installName)'")
-      return .success()
-    }
+    )
     let dylibLocation = location.resolvingSymlinksInPath()
 
     // Discover whether the dylib is from a framework or not
@@ -268,35 +273,27 @@ enum DynamicLibraryBundler {
       relativeTo: binary.deletingLastPathComponent()
     )
     let newInstallName = "@rpath/\(newRelativePath)"
-    if case let .failure(error) = await updateLibraryInstallName(
+    try await updateLibraryInstallName(
       in: binary,
       original: installName,
       new: newInstallName
-    ) {
-      return .failure(error)
-    }
+    )
 
     // Avoid copying libraries twice
     guard !outputDependency.exists() else {
-      return .success()
+      return
     }
 
     // Copy the library
-    do {
+    try Error.catch {
       try FileManager.default.copyItem(
         at: dependency,
         to: outputDependency
       )
-    } catch {
-      return .failure(
-        .failedToCopyDynamicLibrary(
-          source: dependency, destination: outputDependency, error
-        )
-      )
     }
 
     // Recursively copy the dependencies of this library's dependencies.
-    return await copyDynamicDependencies(
+    try await copyDynamicDependencies(
       dependedOnBy: outputDylib,
       toLibraryDirectory: libraryDirectory,
       orFrameworkDirectory: frameworkDirectory,

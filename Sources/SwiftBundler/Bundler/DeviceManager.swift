@@ -1,9 +1,10 @@
 import Foundation
+import ErrorKit
 
 enum DeviceManager {
-  enum Error: LocalizedError {
+  enum Error: Throwable {
     case deviceNotFound(specifier: String, platform: Platform?)
-    case failedToListXcodeDestinations(ProcessError)
+    case failedToListXcodeDestinations(Process.Error)
     case failedToCreateDummyProject(Swift.Error)
     case failedToParseXcodeDestinationList(
       _ xcodeDestinationList: String,
@@ -14,7 +15,7 @@ enum DeviceManager {
       reason: String
     )
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .deviceNotFound(let specifier, .none):
           return Output {
@@ -103,13 +104,15 @@ enum DeviceManager {
           .mapError(Error.failedToCreateDummyProject)
         }
     }.andThen { _ in
-      await Process.create(
-        "xcodebuild",
-        arguments: [
-          "-showdestinations", "-scheme", dummyProjectName,
-        ],
-        directory: dummyProject
-      ).getOutput().mapError(Error.failedToListXcodeDestinations)
+      await Result.catching { () async throws(Process.Error) in
+        try await Process.create(
+          "xcodebuild",
+          arguments: [
+            "-showdestinations", "-scheme", dummyProjectName,
+          ],
+          directory: dummyProject
+        ).getOutput()
+      }.mapError(Error.failedToListXcodeDestinations)
     }.andThen { output in
       let lines = output.split(
         separator: "\n",

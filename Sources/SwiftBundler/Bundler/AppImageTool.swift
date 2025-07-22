@@ -5,12 +5,13 @@ import Foundation
 enum AppImageTool {
   static func bundle(appDir: URL, to appImage: URL) async -> Result<Void, AppImageToolError> {
     let arguments = [appDir.path, appImage.path]
-    return await Process.runAppImage("appimagetool", arguments: arguments)
-      .mapError { error in
-        .failedToRunAppImageTool(
-          command: "appimagetool \(arguments.joined(separator: " "))",
-          error
-        )
-      }
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.runAppImage("appimagetool", arguments: arguments)
+    }.mapError { error in
+      .failedToRunAppImageTool(
+        command: "appimagetool \(arguments.joined(separator: " "))",
+        error
+      )
+    }
   }
 }

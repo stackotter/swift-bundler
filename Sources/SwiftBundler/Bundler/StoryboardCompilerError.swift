@@ -1,13 +1,14 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``StoryboardCompiler``.
-enum StoryboardCompilerError: LocalizedError {
+enum StoryboardCompilerError: Throwable {
   case failedToEnumerateStoryboards(URL, Error)
   case failedToCreateOutputDirectory(URL, Error)
-  case failedToRunIBTool(storyboard: URL, ProcessError)
+  case failedToRunIBTool(storyboard: URL, Process.Error)
   case failedToDeleteStoryboard(URL, Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToEnumerateStoryboards(let directory, _):
         return "Failed to enumerate storyboards in '\(directory.relativePath)'"

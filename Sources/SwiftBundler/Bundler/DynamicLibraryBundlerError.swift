@@ -1,37 +1,37 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``DynamicLibraryBundler``.
-enum DynamicLibraryBundlerError: LocalizedError {
-  case failedToEnumerateDynamicLibraries(directory: URL, Error)
-  case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
-  case failedToUpdateLibraryInstallName(
-    library: String?,
-    original: String,
-    new: String, ProcessError
-  )
-  case failedToUpdateAppRPath(original: String, new: String, ProcessError)
-  case failedToEnumerateSystemWideDynamicDependencies(ProcessError)
-  case failedToSignMovedLibrary(CodeSignerError)
+enum DynamicLibraryBundlerError: Throwable {
+  case failedToEnumerateDynamicLibraries(directory: URL)
+  case failedToUpdateLibraryInstallName(binary: URL, original: String, new: String)
+  case failedToUpdateAppRPath(binary: URL, original: String, new: String)
+  case failedToEnumerateDynamicDependencies(binary: URL)
+  case failedToSignMovedLibrary
+  case failedToLocateDynamicDependency(installName: String)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
-      case .failedToEnumerateDynamicLibraries(let directory, _):
+      case .failedToEnumerateDynamicLibraries(let directory):
         return "Failed to enumerate dynamic libraries in '\(directory.relativePath)'"
-      case .failedToCopyDynamicLibrary(let source, let destination, _):
-        return
-          "Failed to copy dynamic library from '\(source.relativePath)' to '\(destination.relativePath)'"
-      case .failedToUpdateLibraryInstallName(let library, let original, let new, let processError):
-        let extraInfo = library.map { "of '\($0)'" } ?? ""
-        return
-          "Failed to update dynamic library install name\(extraInfo) from '\(original)' to '\(new)': \(processError.localizedDescription)"
-      case .failedToUpdateAppRPath(let original, let new, let processError):
-        return
-          "Failed to update the app's rpath from '\(original)' to '\(new)': \(processError.localizedDescription)"
-      case .failedToEnumerateSystemWideDynamicDependencies(let processError):
-        return
-          "Failed to enumerate system wide dynamic libraries depended on by the built executable: \(processError.localizedDescription)"
+      case .failedToUpdateLibraryInstallName(let binary, let original, let new):
+        let binaryPath = binary.path(relativeTo: .currentDirectory)
+        return """
+          Failed to update dynamic library install name from \
+          '\(original)' to '\(new)' in '\(binaryPath)'
+          """
+      case .failedToUpdateAppRPath(let binary, let original, let new):
+        let binaryPath = binary.path(relativeTo: .currentDirectory)
+        return "Failed to update the '\(binaryPath)' rpath from '\(original)' to '\(new)'"
+      case .failedToEnumerateDynamicDependencies(let binary):
+        let binaryPath = binary.path(relativeTo: .currentDirectory)
+        return """
+          Failed to enumerate dynamic dependencies of '\(binaryPath)'
+          """
       case .failedToSignMovedLibrary:
         return "Failed to sign relocated dynamic library using the ad-hoc signing method"
+      case .failedToLocateDynamicDependency(let installName):
+        return "Failed to locate dynamic dependency with install name '\(installName)'"
     }
   }
 }

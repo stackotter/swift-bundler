@@ -1,4 +1,5 @@
 import Foundation
+import ErrorKit
 
 enum MachOEditor {
   enum MachOFile {
@@ -114,14 +115,14 @@ enum MachOEditor {
     case replace(_ offset: MachOFile.Offset, _ bytes: [UInt8])
   }
 
-  indirect enum Error: LocalizedError {
+  indirect enum Error: Throwable {
     case failedToReadFile(URL, Swift.Error)
     case fileCorrupted(_ reason: String)
     case failedToParseFile(URL, Error)
     case unknownMagicBytes(UInt32)
     case outOfBoundsEdit(Edit, bufferSize: Int)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .failedToReadFile(let file, let error):
           return """

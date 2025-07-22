@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``StringCatalogCompiler``.
-enum StringCatalogCompilerError: LocalizedError {
+enum StringCatalogCompilerError: Throwable {
   case failedToCreateFormatStringRegex(Error)
   case failedToEnumerateStringsCatalogs(URL)
   case failedToDeleteStringsCatalog(URL, Error)
@@ -14,7 +15,7 @@ enum StringCatalogCompilerError: LocalizedError {
   case failedToWriteStringsDictFile(URL, Error)
   case invalidNonMatchingFormatString(URL, String)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToCreateFormatStringRegex(let error):
         return "Failed to create format string regex with error '\(error)'"

@@ -1,8 +1,9 @@
 import Foundation
+import ErrorKit
 
 protocol Bundler {
   associatedtype Context
-  associatedtype Error: LocalizedError
+  associatedtype Error: Throwable
 
   /// Indicates whether the output of the bundler will be runnable or not. For
   /// example, the output of ``RPMBundler`` is not runnable but the output of

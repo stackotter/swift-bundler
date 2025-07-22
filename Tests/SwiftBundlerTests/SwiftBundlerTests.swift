@@ -65,7 +65,7 @@ import Foundation
     // Ensure that the copied dynamic dependencies are usable by the app.
     let executable = outputPath / "Contents/MacOS/\(app)"
     let process = Process.create(executable.path)
-    let output = try await process.getOutput().unwrap()
+    let output = try await process.getOutput()
     #expect(
       output
       ==

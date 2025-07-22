@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``DarwinBundler``.
-enum DarwinBundlerError: LocalizedError {
+enum DarwinBundlerError: Throwable {
   case failedToBuild(product: String, SwiftPackageManagerError)
   case failedToRemoveExistingAppBundle(bundle: URL, Error)
   case failedToCreateAppBundleDirectoryStructure(Error)
@@ -17,8 +18,8 @@ enum DarwinBundlerError: LocalizedError {
   case failedToCreateIcon(IconSetCreatorError)
   case failedToCopyICNS(source: URL, destination: URL, Error)
   case failedToCopyResourceBundles(ResourceBundlerError)
-  case failedToCopyDynamicLibraries(DynamicLibraryBundlerError)
-  case failedToRunExecutable(ProcessError)
+  case failedToCopyDynamicLibraries(DynamicLibraryBundler.Error)
+  case failedToRunExecutable(Process.Error)
   case invalidAppIconFile(URL)
   case failedToCodesign(CodeSignerError)
   case failedToLoadManifest(SwiftPackageManagerError)
@@ -31,7 +32,7 @@ enum DarwinBundlerError: LocalizedError {
   case failedToGenerateProvisioningProfile(ProvisioningProfileManager.Error?)
   case missingCodeSigningContextForProvisioning(NonMacAppleOS)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToBuild(let product, let swiftPackageManagerError):
         return "Failed to build '\(product)': \(swiftPackageManagerError.localizedDescription)'"

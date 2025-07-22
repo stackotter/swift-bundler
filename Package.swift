@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:6.0
 
 import PackageDescription
 
@@ -33,6 +33,7 @@ let package = Package(
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
     .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
     .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5"),
+    .package(url: "https://github.com/stackotter/ErrorKit", from: "1.2.2"),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
@@ -50,6 +51,7 @@ let package = Package(
         "Yams",
         "SwiftBundlerBuilders",
         "XMLCoder",
+        "ErrorKit",
         .product(name: "Crypto", package: "swift-crypto"),
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),
@@ -106,6 +108,8 @@ let package = Package(
       swiftSettings: [
         .define("SUPPORT_HOT_RELOADING", .when(platforms: [.macOS, .linux])),
         .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS])),
+        .swiftLanguageMode(.v5),
+        .enableUpcomingFeature("FullTypedThrows"),
       ]
     ),
 

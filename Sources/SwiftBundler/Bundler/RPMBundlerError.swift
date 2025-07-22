@@ -1,18 +1,19 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``RPMBundler``.
-enum RPMBundlerError: LocalizedError {
+enum RPMBundlerError: Throwable {
   case failedToRunGenericBundler(GenericLinuxBundlerError)
   case failedToCreateRPMBuildDirectory(directory: URL, any Error)
   case failedToArchiveSources(ArchiveToolError)
   case failedToWriteSpecFile(URL, any Error)
-  case failedToRunRPMBuildTool(_ command: String, ProcessError)
+  case failedToRunRPMBuildTool(_ command: String, Process.Error)
   case failedToCopyGenericBundle(source: URL, destination: URL, any Error)
   case failedToEnumerateRPMs(_ directory: URL)
   case failedToFindProducedRPM(_ directory: URL)
   case failedToCopyRPMToOutputDirectory(source: URL, destination: URL, any Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToRunGenericBundler(let error):
         return error.localizedDescription

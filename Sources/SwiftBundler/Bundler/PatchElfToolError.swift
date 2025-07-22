@@ -1,11 +1,12 @@
 import Foundation
+import ErrorKit
 
 /// An error thrown by ``PatchElfTool``.
-enum PatchElfToolError: LocalizedError {
-  case patchelfNotFound(ProcessError)
-  case failedToSetRunpath(elfFile: URL, ProcessError)
+enum PatchElfToolError: Throwable {
+  case patchelfNotFound(Process.Error)
+  case failedToSetRunpath(elfFile: URL, Process.Error)
 
-  var errorDescription: String {
+  var userFriendlyMessage: String {
     switch self {
       case .patchelfNotFound:
         return """

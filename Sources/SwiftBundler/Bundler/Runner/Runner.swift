@@ -129,14 +129,14 @@ enum Runner {
     #endif
 
     do {
-      try await process.runAndWait().get()
+      try await process.runAndWait()
     } catch {
-      return .failure(.failedToRunExecutable(.failedToRunProcess(error)))
+      return .failure(.failedToRunExecutable(error))
     }
 
     let exitStatus = Int(process.terminationStatus)
     if exitStatus != 0 {
-      return .failure(.failedToRunExecutable(.nonZeroExitStatus(exitStatus)))
+      return .failure(.failedToRunExecutable(Process.Error(.nonZeroExitStatus(exitStatus))))
     } else {
       return .success()
     }
@@ -156,10 +156,11 @@ enum Runner {
   ) async -> Result<Void, RunnerError> {
     // runAppImage is a workaround required to run certain app images, but it
     // works for regular executable too so we just use it in all cases.
-    await Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
-      .mapError { error in
-        .failedToRunExecutable(error)
-      }
+    await Result.catching { () async throws(Process.Error) in
+      try await Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
+    }.mapError { error in
+      .failedToRunExecutable(error)
+    }
   }
 
   /// Runs a Windows app on the host device. Assumes that the host is a Windows
@@ -174,11 +175,13 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) async -> Result<Void, RunnerError> {
-    await Process.create(
-      bundlerOutput.executable.path,
-      arguments: arguments,
-      environment: environmentVariables
-    ).runAndWait().mapError { error in
+    await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        bundlerOutput.executable.path,
+        arguments: arguments,
+        environment: environmentVariables
+      ).runAndWait()
+    }.mapError { error in
       .failedToRunExecutable(error)
     }
   }
@@ -235,8 +238,10 @@ enum Runner {
       environmentArguments = []
     }
 
-    return await Process.create("xcode-select", arguments: ["--print-path"])
-      .getOutput()
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create("xcode-select", arguments: ["--print-path"])
+        .getOutput()
+    }
       .mapError(RunnerError.failedToGetXcodeDeveloperDirectory)
       .map { output in
         let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -253,44 +258,52 @@ enum Runner {
           // Fall back to ios-deploy.
           // `ios-deploy` is explicitly resolved so that a detailed error
           // message can be emitted for this easy misconfiguration issue.
-          return await Process.locate("ios-deploy")
+          return await Result.catching { () async throws(Process.Error) in
+            try await Process.locate("ios-deploy")
+          }
             .mapError(RunnerError.failedToLocateIOSDeploy)
             .andThen { iosDeployExecutable in
-              await Process.create(
-                iosDeployExecutable,
-                arguments: [
-                  "--noninteractive",
-                  "--bundle", bundlerOutput.bundle.path,
-                  "--id", deviceId,
-                ] + environmentArguments
-                  + arguments.flatMap { argument in
-                    return ["--args", argument]
-                  },
-                runSilentlyWhenNotVerbose: false
-              ).runAndWait().mapError(RunnerError.failedToRunIOSDeploy)
+              await Result.catching { () async throws(Process.Error) in
+                try await Process.create(
+                  iosDeployExecutable,
+                  arguments: [
+                    "--noninteractive",
+                    "--bundle", bundlerOutput.bundle.path,
+                    "--id", deviceId,
+                  ] + environmentArguments
+                    + arguments.flatMap { argument in
+                      return ["--args", argument]
+                    },
+                  runSilentlyWhenNotVerbose: false
+                ).runAndWait()
+              }.mapError(RunnerError.failedToRunIOSDeploy)
             }
         }
 
         // Install and run with devicectl
-        return await Process.create(
-          devicectlExecutable.path,
-          arguments: [
-            "device", "install", "app",
-            "--device", deviceId,
-            bundlerOutput.bundle.path,
-          ],
-          runSilentlyWhenNotVerbose: false
-        ).runAndWait().andThen { _ in
-          await Process.create(
+        return await Result.catching { () async throws(Process.Error) in
+          try await Process.create(
             devicectlExecutable.path,
             arguments: [
-              "device", "process", "launch",
+              "device", "install", "app",
               "--device", deviceId,
-              "--console",
-              bundleIdentifier,
+              bundlerOutput.bundle.path,
             ],
             runSilentlyWhenNotVerbose: false
           ).runAndWait()
+        }.andThen { _ in
+          await Result.catching { () async throws(Process.Error) in
+            try await Process.create(
+              devicectlExecutable.path,
+              arguments: [
+                "device", "process", "launch",
+                "--device", deviceId,
+                "--console",
+                bundleIdentifier,
+              ],
+              runSilentlyWhenNotVerbose: false
+            ).runAndWait()
+          }
         }.mapError(RunnerError.failedToRunAppOnConnectedDevice)
       }
   }

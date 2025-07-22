@@ -1,10 +1,11 @@
 import Foundation
 import Version
+import ErrorKit
 
 /// An error returned by ``Templater``.
-enum TemplaterError: LocalizedError {
+enum TemplaterError: Throwable {
   case packageDirectoryAlreadyExists(URL)
-  case failedToCloneTemplateRepository(ProcessError)
+  case failedToCloneTemplateRepository(Process.Error)
   case failedToGetApplicationSupportDirectory(SystemError)
   case cannotCreatePackageFromBaseTemplate
   case noSuchTemplate(String)
@@ -20,14 +21,14 @@ enum TemplaterError: LocalizedError {
   case failedToWriteToOutputFile(file: URL, Error)
   case failedToCreateBareMinimumPackage(SwiftPackageManagerError)
   case failedToEnumerateTemplates(Error)
-  case failedToPullLatestTemplates(ProcessError)
+  case failedToPullLatestTemplates(Process.Error)
   case failedToEnumerateOutputFiles
   case failedToUpdateIndentationStyle(directory: URL, Error)
   case failedToCheckSwiftVersion(SwiftPackageManagerError)
   case failedToCreateConfigurationFile(PackageConfiguration, URL, Error)
   case missingVSCodeOverlay
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .packageDirectoryAlreadyExists(let directory):
         return "A directory already exists at '\(directory.relativePath)'"
@@ -74,7 +75,7 @@ enum TemplaterError: LocalizedError {
         return "Failed to enumerate templates"
       case .failedToPullLatestTemplates(let processError):
         return
-          "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
+          "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError)"
       case .failedToEnumerateOutputFiles:
         return "Failed to enumerate the files in the output directory"
       case .failedToUpdateIndentationStyle(let directory, _):

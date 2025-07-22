@@ -11,7 +11,7 @@ struct BundleArguments: ParsableArguments {
     help: "The bundler to use \(BundlerChoice.possibleValuesDescription).",
     transform: {
       guard let choice = BundlerChoice(rawValue: $0) else {
-        throw CLIError.invalidBundlerChoice($0)
+        throw SwiftBundlerError.invalidBundlerChoice($0)
       }
       return choice
     })
@@ -63,7 +63,7 @@ struct BundleArguments: ParsableArguments {
     help: "The build configuration to use \(BuildConfiguration.possibleValuesDescription).",
     transform: {
       guard let configuration = BuildConfiguration.init(rawValue: $0.lowercased()) else {
-        throw CLIError.invalidBuildConfiguration($0)
+        throw SwiftBundlerError.invalidBuildConfiguration($0)
       }
       return configuration
     })
@@ -80,7 +80,7 @@ struct BundleArguments: ParsableArguments {
     }(),
     transform: { string in
       guard let arch = BuildArchitecture.init(rawValue: string) else {
-        throw CLIError.invalidArchitecture(string)
+        throw SwiftBundlerError.invalidArchitecture(string)
       }
       return arch
     })
@@ -121,7 +121,7 @@ struct BundleArguments: ParsableArguments {
       }
 
       guard let platform = Platform(rawValue: string) else {
-        throw CLIError.invalidPlatform(string)
+        throw SwiftBundlerError.invalidPlatform(string)
       }
       return platform
     })

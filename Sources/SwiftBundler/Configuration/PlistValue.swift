@@ -344,7 +344,7 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable {
           return .failure(error)
       }
     } else {
-      return .failure(.invalidPlistValue(value))
+      return .failure(.invalidPlistValue(description: "\(value)"))
     }
 
     return .success(convertedValue)

@@ -5,7 +5,7 @@ import TOMLKit
 import Version
 
 #if SUPPORT_XCODEPROJ
-  import XcodeProj
+  @preconcurrency import XcodeProj
 #endif
 
 /// A utility for converting xcodeproj's to Swift Bundler projects.
