@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``ResourceBundler``.
-enum ResourceBundlerError: LocalizedError {
+enum ResourceBundlerError: Throwable {
   case failedToEnumerateBundles(directory: URL, Error)
   case failedToCopyBundle(source: URL, destination: URL, Error)
   case failedToCreateBundleDirectory(URL, Error)
@@ -9,12 +10,12 @@ enum ResourceBundlerError: LocalizedError {
   case failedToCopyResource(source: URL, destination: URL, Error)
   case failedToEnumerateBundleContents(directory: URL, Error)
   case failedToCompileMetalShaders(MetalCompilerError)
-  case failedToCompileXCAssets(ProcessError)
+  case failedToCompileXCAssets(Process.Error)
   case failedToDeleteAssetCatalog(Error)
   case failedToCompileStoryboards(StoryboardCompilerError)
   case failedToBuildStringsCatalogs(StringCatalogCompilerError)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToEnumerateBundles(let directory, _):
         return "Failed to enumerate bundles in directory at '\(directory.relativePath)'"

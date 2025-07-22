@@ -1,6 +1,7 @@
 import Crypto
 import Foundation
 import XMLCoder
+import ErrorKit
 
 /// The bundler for creating Windows MSI installers. The output of this bundler
 /// isn't directly executable.
@@ -9,14 +10,14 @@ enum MSIBundler: Bundler {
 
   static let outputIsRunnable = false
 
-  enum Error: LocalizedError {
+  enum Error: Throwable {
     case failedToRunGenericBundler(GenericWindowsBundler.Error)
     case failedToWriteWXSFile(Swift.Error)
     case failedToSerializeWXSFile(Swift.Error)
     case failedToEnumerateBundle(Swift.Error)
-    case failedToRunWiX(command: String, ProcessError)
+    case failedToRunWiX(command: String, Process.Error)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .failedToRunGenericBundler(let error):
           return error.localizedDescription
@@ -87,7 +88,9 @@ enum MSIBundler: Bundler {
         ],
         runSilentlyWhenNotVerbose: false
       )
-      return await process.runAndWait().mapError { error in
+      return await Result.catching { () async throws(Process.Error) in
+        try await process.runAndWait()
+      }.mapError { error in
         .failedToRunWiX(command: process.commandStringForLogging, error)
       }
     }

@@ -3,6 +3,7 @@
   import FileSystemWatcher
   import FlyingSocks
   import HotReloadingProtocol
+  import ErrorKit
 
   #if canImport(Darwin)
     import Darwin
@@ -16,7 +17,7 @@
     let port: UInt16
     let socket: AsyncSocket
 
-    enum Error: LocalizedError {
+    enum Error: Throwable {
       case failedToSendPing(Swift.Error)
       case expectedPong(Packet)
       case addrInUse
@@ -24,7 +25,7 @@
       case failedToAcceptConnection(Swift.Error)
       case failedToWatchPackage(Swift.Error)
 
-      var errorDescription: String? {
+      var userFriendlyMessage: String {
         switch self {
           case .failedToSendPing(let error):
             return "Failed to send ping: \(error.localizedDescription)"

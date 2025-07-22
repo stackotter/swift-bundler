@@ -180,7 +180,7 @@ enum ConfigurationFlattener {
         )
       ) {
         case .failure(let error):
-          return .failure(.other(error))
+          return .failure(.caught(error))
         case .success(let value):
           source = value
       }
@@ -190,7 +190,7 @@ enum ConfigurationFlattener {
         at: context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
       ) {
         case .failure(let error):
-          return .failure(.other(error))
+          return .failure(.caught(error))
         case .success(let value):
           builder = value
       }
@@ -204,7 +204,7 @@ enum ConfigurationFlattener {
         )
       }) {
         case .failure(let error):
-          return .failure(.other(error))
+          return .failure(.caught(error))
         case .success(let value):
           products = value
       }

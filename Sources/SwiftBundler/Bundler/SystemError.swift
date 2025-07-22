@@ -1,10 +1,11 @@
 import Foundation
+import ErrorKit
 
-enum SystemError: LocalizedError {
+enum SystemError: Throwable {
   case failedToGetApplicationSupportDirectory(Error)
   case failedToCreateApplicationSupportDirectory(Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToGetApplicationSupportDirectory:
         return "Failed to get application support directory"

@@ -1,14 +1,15 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``IconSetCreator``.
-enum IconSetCreatorError: LocalizedError {
+enum IconSetCreatorError: Throwable {
   case notPNG(URL)
-  case failedToScaleIcon(newDimension: Int, ProcessError)
+  case failedToScaleIcon(newDimension: Int, Process.Error)
   case failedToCreateIconSetDirectory(URL, Error)
-  case failedToConvertToICNS(ProcessError)
+  case failedToConvertToICNS(Process.Error)
   case failedToRemoveIconSetDirectory(URL, Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .notPNG(let file):
         return "Icon files must be png files, and '\(file)' is not a png"

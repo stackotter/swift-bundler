@@ -84,7 +84,9 @@ enum StoryboardCompiler {
       ]
     )
 
-    return await process.runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.runAndWait()
+    }.mapError { error in
       return .failedToRunIBTool(storyboard: storyboard, error)
     }
   }

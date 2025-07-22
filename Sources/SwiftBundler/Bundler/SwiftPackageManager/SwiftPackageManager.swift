@@ -57,13 +57,14 @@ enum SwiftPackageManager {
         )
         process.setOutputPipe(Pipe())
 
-        return await process.runAndWait()
-          .mapError { error in
-            .failedToRunSwiftInit(
-              command: "swift \(arguments.joined(separator: " "))",
-              error
-            )
-          }
+        return await Result.catching { () async throws(Process.Error) in
+          try await process.runAndWait()
+        }.mapError { error in
+          .failedToRunSwiftInit(
+            command: "swift \(arguments.joined(separator: " "))",
+            error
+          )
+        }
       }
       .andThen { _ in
         // Create the configuration file
@@ -103,7 +104,9 @@ enum SwiftPackageManager {
         ])
       }
 
-      return await process.runAndWait().mapError { error in
+      return await Result.catching { () async throws(Process.Error) in
+        try await process.runAndWait()
+      }.mapError { error in
         .failedToRunSwiftBuild(
           command: "swift \(arguments.joined(separator: " "))",
           error
@@ -198,30 +201,32 @@ enum SwiftPackageManager {
           "-dynamiclib",
         ])
 
-        let process = Process.create(
-          commandExecutable,
-          arguments: modifiedArguments,
-          directory: buildContext.genericContext.projectDirectory,
-          runSilentlyWhenNotVerbose: false
-        )
+        do {
+          let process = Process.create(
+            commandExecutable,
+            arguments: modifiedArguments,
+            directory: buildContext.genericContext.projectDirectory,
+            runSilentlyWhenNotVerbose: false
+          )
+          try await process.runAndWait()
+        } catch {
+          // TODO: Make a more robust way of converting commands to strings for display (keeping
+          //   correctness in mind in case users want to copy-paste commands from errors).
+          let error = SwiftPackageManagerError.failedToRunLinkingCommand(
+            command: ([commandExecutable]
+              + modifiedArguments.map { argument in
+                if argument.contains(" ") {
+                  return "\"\(argument)\""
+                } else {
+                  return argument
+                }
+              }).joined(separator: " "),
+            error
+          )
+          return .failure(error)
+        }
 
-        return await process.runAndWait()
-          .map { _ in dylibFile }
-          .mapError { error in
-            // TODO: Make a more robust way of converting commands to strings for display (keeping
-            //   correctness in mind in case users want to copy-paste commands from errors).
-            return .failedToRunLinkingCommand(
-              command: ([commandExecutable]
-                + modifiedArguments.map { argument in
-                  if argument.contains(" ") {
-                    return "\"\(argument)\""
-                  } else {
-                    return argument
-                  }
-                }).joined(separator: " "),
-              error
-            )
-          }
+        return .success(dylibFile)
       }
     #else
       fatalError("buildExecutableAsDylib not implemented for current platform")
@@ -346,13 +351,15 @@ enum SwiftPackageManager {
   static func getLatestSDKPath(
     for platform: Platform
   ) async -> Result<String, SwiftPackageManagerError> {
-    return await Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "--sdk", platform.sdkName,
-        "--show-sdk-path",
-      ]
-    ).getOutput().map { output in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "/usr/bin/xcrun",
+        arguments: [
+          "--sdk", platform.sdkName,
+          "--show-sdk-path",
+        ]
+      ).getOutput()
+    }.map { output in
       return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }.mapError { error in
       return .failedToGetLatestSDKPath(platform, error)
@@ -362,11 +369,12 @@ enum SwiftPackageManager {
   /// Gets the version of the current Swift installation.
   /// - Returns: The swift version, or a failure if an error occurs.
   static func getSwiftVersion() async -> Result<Version, SwiftPackageManagerError> {
-    let process = Process.create(
-      "swift",
-      arguments: ["--version"])
-
-    return await process.getOutput()
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "swift",
+        arguments: ["--version"]
+      ).getOutput()
+    }
       .mapError(SwiftPackageManagerError.failedToGetSwiftVersion)
       .andThen { output in
         // The first two examples are for release versions of Swift (the first on macOS, the second on Linux).
@@ -435,7 +443,9 @@ enum SwiftPackageManager {
         directory: buildContext.genericContext.projectDirectory
       )
 
-      return await process.getOutput().map { output in
+      return await Result.catching { () async throws(Process.Error) in
+        try await process.getOutput()
+      }.map { output in
         URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
       }.mapError { error in
         .failedToGetProductsDirectory(command: process.commandStringForLogging, error)
@@ -455,7 +465,9 @@ enum SwiftPackageManager {
       directory: packageDirectory
     )
 
-    return await process.getOutput(excludeStdError: true).mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.getOutput(excludeStdError: true)
+    }.mapError { error in
       .failedToRunSwiftPackageDescribe(
         command: process.commandStringForLogging,
         error
@@ -476,7 +488,9 @@ enum SwiftPackageManager {
       arguments: ["-print-target-info"]
     )
 
-    return await process.getOutput().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.getOutput()
+    }.mapError { error in
       .failedToGetTargetInfo(command: process.commandStringForLogging, error)
     }.andThen { output in
       guard let data = output.data(using: .utf8) else {
@@ -493,11 +507,13 @@ enum SwiftPackageManager {
   static func getToolsVersion(
     _ packageDirectory: URL
   ) async -> Result<Version, SwiftPackageManagerError> {
-    await Process.create(
-      "swift",
-      arguments: ["package", "tools-version"],
-      directory: packageDirectory
-    ).getOutput().mapError { error in
+    await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "swift",
+        arguments: ["package", "tools-version"],
+        directory: packageDirectory
+      ).getOutput()
+    }.mapError { error in
       .failedToGetToolsVersion(error)
     }.andThen { version in
       guard

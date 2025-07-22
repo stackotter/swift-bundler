@@ -1,12 +1,13 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``PlistCreator``.
-enum PlistCreatorError: LocalizedError {
+enum PlistCreatorError: Throwable {
   case failedToWriteAppInfoPlist(file: URL, Error)
   case failedToWriteResourceBundleInfoPlist(bundle: String, file: URL, Error)
   case serializationFailed(Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToWriteAppInfoPlist(let file, _):
         return "Failed to write to the app's 'Info.plist' at '\(file.relativePath)'"

@@ -101,11 +101,13 @@ enum RPMBundler: Bundler {
         "--define", "_topdir \(rpmBuildDirectory.root.path)",
         "-v", "-bb", rpmBuildDirectory.appSpec.path,
       ]
-      return await Process.create(command, arguments: arguments)
-        .runAndWait()
-        .mapError { error in
-          .failedToRunRPMBuildTool(command, error)
-        }
+
+      return await Result.catching { () async throws(Process.Error) in
+        try await Process.create(command, arguments: arguments)
+          .runAndWait()
+      }.mapError { error in
+        .failedToRunRPMBuildTool(command, error)
+      }
     }
     .andThen { _ in
       // Find the produced RPM because rpmbuild doesn't really tell us where

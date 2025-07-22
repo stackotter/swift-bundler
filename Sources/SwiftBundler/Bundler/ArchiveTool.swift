@@ -9,10 +9,12 @@ enum ArchiveTool {
   ) async -> Result<Void, ArchiveToolError> {
     let arguments = ["--create", "--file", outputFile.path, directory.lastPathComponent]
     let workingDirectory = directory.deletingLastPathComponent()
-    return await Process.create("tar", arguments: arguments, directory: workingDirectory)
-      .runAndWait()
-      .mapError { error in
-        .failedToCreateTarGz(directory: directory, outputFile: outputFile, error)
-      }
+
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create("tar", arguments: arguments, directory: workingDirectory)
+        .runAndWait()
+    }.mapError { error in
+      .failedToCreateTarGz(directory: directory, outputFile: outputFile, error)
+    }
   }
 }

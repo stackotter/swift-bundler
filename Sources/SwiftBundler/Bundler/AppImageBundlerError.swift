@@ -1,14 +1,15 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``AppImageBundler``.
-enum AppImageBundlerError: LocalizedError {
+enum AppImageBundlerError: Throwable {
   case failedToCreateSymlink(source: URL, relativeDestination: String, Error)
   case failedToBundleAppDir(AppImageToolError)
   case failedToRunGenericBundler(GenericLinuxBundlerError)
   case failedToRenameGenericBundle(source: URL, destination: URL, Error)
   case failedToCopyDesktopFile(source: URL, destination: URL, Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToCreateSymlink(let source, let destination, _):
         return """

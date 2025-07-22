@@ -1,11 +1,12 @@
 import Foundation
+import ErrorKit
 
 #if SUPPORT_XCODEPROJ
-  import XcodeProj
+  @preconcurrency import XcodeProj
 #endif
 
 /// An error returned by ``XcodeprojConverter``.
-enum XcodeprojConverterError: LocalizedError {
+enum XcodeprojConverterError: Throwable {
   case hostPlatformNotSupported
   case failedToLoadXcodeProj(URL, Error)
   case failedToEnumerateSources(target: String, Error)
@@ -23,7 +24,7 @@ enum XcodeprojConverterError: LocalizedError {
     case failedToGetRelativePath(PBXFileElement, Error?)
   #endif
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .hostPlatformNotSupported:
         return """

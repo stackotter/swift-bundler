@@ -1,8 +1,9 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``ConfigurationFlattener``.
 extension ConfigurationFlattener {
-  enum Error: LocalizedError {
+  enum Error: Catching, Throwable {
     case conditionNotMetForProperties(
       OverlayCondition,
       properties: [String]
@@ -10,9 +11,9 @@ extension ConfigurationFlattener {
     case projectBuilderNotASwiftFile(String)
     case reservedProjectName(String)
     case invalidRPMRequirement(String)
-    case other(LocalizedError)
+    case caught(any Swift.Error)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .conditionNotMetForProperties(let condition, let properties):
           let propertyList = properties.map { "'\($0)'" }.joinedGrammatically(
@@ -32,8 +33,8 @@ extension ConfigurationFlattener {
           return "The project name '\(name)' is reserved"
         case .invalidRPMRequirement(let name):
           return "Invalid RPM requirement contains restricted characters: \(name)"
-        case .other(let error):
-          return error.localizedDescription
+        case .caught(let error):
+          return ErrorKit.userFriendlyMessage(for: error)
       }
     }
   }

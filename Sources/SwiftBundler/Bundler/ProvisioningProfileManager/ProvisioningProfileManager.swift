@@ -1,4 +1,5 @@
 import Foundation
+import ErrorKit
 
 #if SUPPORT_XCODEPROJ
   import PathKit
@@ -10,7 +11,7 @@ import Foundation
 /// A provisioning profile manager. Can locate existing provisioning profiles,
 /// and generate new ones if required.
 enum ProvisioningProfileManager {
-  indirect enum Error: LocalizedError {
+  indirect enum Error: Throwable {
     case hostPlatformNotSupported
     case failedToLocateLibraryDirectory(Swift.Error)
     case failedToEnumerateProfiles(directory: URL, Swift.Error)
@@ -18,12 +19,12 @@ enum ProvisioningProfileManager {
     case failedToDeserializeProvisioningProfile(URL, Swift.Error)
     case failedToParseBundleIdentifier(String)
     case failedToGenerateDummyXcodeproj(message: String?, Swift.Error?)
-    case failedToRunXcodebuildAutoProvisioning(message: String?, ProcessError)
+    case failedToRunXcodebuildAutoProvisioning(message: String?, Process.Error)
     case failedToParseXcodebuildOutput(_ message: String)
     case failedToLocateGeneratedProvisioningProfile(_ predictedLocation: URL)
     case failedToGetTeamIdentifier(CodeSignerError)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .hostPlatformNotSupported:
           return """
@@ -146,16 +147,17 @@ enum ProvisioningProfileManager {
     _ provisioningProfile: URL
   ) async -> Result<ProvisioningProfile, Error> {
     #if SUPPORT_XCODEPROJ
-      return await Process.create(
-        opensslToolPath,
-        arguments: [
-          "smime", "-verify",
-          "-in", provisioningProfile.path,
-          "-noverify",
-          "-inform", "der",
-        ]
-      )
-      .getOutput(excludeStdError: true)
+      return await Result.catching { () async throws(Process.Error) in
+        try await Process.create(
+          opensslToolPath,
+          arguments: [
+            "smime", "-verify",
+            "-in", provisioningProfile.path,
+            "-noverify",
+            "-inform", "der",
+          ]
+        ).getOutput(excludeStdError: true)
+      }
       .mapError { error in
         .failedToExtractProvisioningProfilePlist(provisioningProfile, error)
       }
@@ -237,20 +239,22 @@ enum ProvisioningProfileManager {
         deviceId: deviceId,
         deviceOS: deviceOS
       ).andThen { (xcodeprojFile, scheme) in
-        await Process.create(
-          "xcodebuild",
-          arguments: [
-            "-project", xcodeprojFile.path,
-            "-scheme", scheme,
-            "-sdk", deviceOS.physicalPlatform.platform.sdkName,
-            "-destination", "id=\(deviceId)",
-            "-allowProvisioningUpdates",
-            "-allowProvisioningDeviceRegistration",
-            "build",
-          ]
-        ).getOutput(excludeStdError: false).mapError { error in
+        await Result.catching { () async throws(Process.Error) in
+          try await Process.create(
+            "xcodebuild",
+            arguments: [
+              "-project", xcodeprojFile.path,
+              "-scheme", scheme,
+              "-sdk", deviceOS.physicalPlatform.platform.sdkName,
+              "-destination", "id=\(deviceId)",
+              "-allowProvisioningUpdates",
+              "-allowProvisioningDeviceRegistration",
+              "build",
+            ]
+          ).getOutput(excludeStdError: false)
+        }.mapError { error in
           guard
-            case ProcessError.nonZeroExitStatusWithOutput(let data, _) = error,
+            case .nonZeroExitStatusWithOutput(let data, _) = error.message,
             let output = String(data: data, encoding: .utf8)
           else {
             return .failedToRunXcodebuildAutoProvisioning(message: nil, error)

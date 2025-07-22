@@ -146,11 +146,13 @@ enum VariableEvaluator {
         }
 
         // TODO: Consider using git library
-        let result = await Process.create(
-          "git",
-          arguments: ["rev-parse", "HEAD"],
-          directory: packageDirectory
-        ).getOutput()
+        let result = await Result { () async throws(Process.Error) in
+          try await Process.create(
+            "git",
+            arguments: ["rev-parse", "HEAD"],
+            directory: packageDirectory
+          ).getOutput()
+        }
 
         guard case let .success(string) = result else {
           return .failure(.failedToEvaluateCommitHash(directory: packageDirectory))
@@ -163,11 +165,13 @@ enum VariableEvaluator {
         }
 
         // TODO: Consider using a git library
-        let result = await Process.create(
-          "git",
-          arguments: ["rev-list", "--count", "HEAD"],
-          directory: packageDirectory
-        ).getOutput(excludeStdError: true)
+        let result = await Result { () async throws(Process.Error) in
+          try await Process.create(
+            "git",
+            arguments: ["rev-list", "--count", "HEAD"],
+            directory: packageDirectory
+          ).getOutput(excludeStdError: true)
+        }
 
         guard case let .success(string) = result else {
           return .failure(.failedToEvaluateRevisionNumber(directory: packageDirectory))

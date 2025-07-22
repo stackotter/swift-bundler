@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available simulators.
-struct SimulatorsListCommand: Command {
+struct SimulatorsListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "list",
     abstract: "List available iOS, tvOS and visionOS simulators."
@@ -13,8 +13,10 @@ struct SimulatorsListCommand: Command {
     help: "A search term to filter simulators with.")
   var filter: String?
 
-  func wrappedRun() async throws {
-    let simulators = try await SimulatorManager.listAvailableSimulators(searchTerm: filter).unwrap()
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let simulators = try await RichError<SwiftBundlerError>.catch {
+      try await SimulatorManager.listAvailableSimulators(searchTerm: filter).unwrap()
+    }
 
     Output {
       Section("Simulators") {

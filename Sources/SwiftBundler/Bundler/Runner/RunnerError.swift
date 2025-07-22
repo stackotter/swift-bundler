@@ -1,18 +1,19 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``Runner``.
-enum RunnerError: LocalizedError {
-  case failedToRunExecutable(ProcessError)
-  case failedToLocateIOSDeploy(ProcessError)
-  case failedToRunIOSDeploy(ProcessError)
+enum RunnerError: Throwable {
+  case failedToRunExecutable(Process.Error)
+  case failedToLocateIOSDeploy(Process.Error)
+  case failedToRunIOSDeploy(Process.Error)
   case failedToReadEnvironmentFile(URL, Error)
   case failedToParseEnvironmentFileEntry(line: String)
   case failedToRunOnSimulator(SimulatorManagerError)
   case missingExecutable(Device, BundlerOutputStructure)
-  case failedToGetXcodeDeveloperDirectory(ProcessError)
-  case failedToRunAppOnConnectedDevice(ProcessError)
+  case failedToGetXcodeDeveloperDirectory(Process.Error)
+  case failedToRunAppOnConnectedDevice(Process.Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToRunExecutable(let error):
         return "Failed to run executable: \(error)"

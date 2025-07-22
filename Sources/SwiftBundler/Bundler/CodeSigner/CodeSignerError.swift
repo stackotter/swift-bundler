@@ -1,10 +1,11 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``CodeSigner``.
-enum CodeSignerError: LocalizedError {
-  case failedToEnumerateIdentities(ProcessError)
+enum CodeSignerError: Throwable {
+  case failedToEnumerateIdentities(Process.Error)
   case failedToParseIdentityList(Error)
-  case failedToRunCodesignTool(ProcessError)
+  case failedToRunCodesignTool(Process.Error)
   case failedToWriteEntitlements(Error)
   case failedToLoadProvisioningProfile(URL, ProvisioningProfileManager.Error)
   case provisioningProfileMissingTeamIdentifier
@@ -17,7 +18,7 @@ enum CodeSignerError: LocalizedError {
   case invalidId(String)
   case certificateExpired(CodeSigner.Identity, notValidAfter: Date)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToEnumerateIdentities(let error):
         return "Failed to enumerate code signing identities: \(error)"
@@ -29,7 +30,7 @@ enum CodeSignerError: LocalizedError {
         return "Failed to write entitlements"
       case .failedToLoadProvisioningProfile(let file, let error):
         return """
-          Failed to load '\(file.path)': \(error.localizedDescription)
+          Failed to load '\(file.path)': \(error)
           """
       case .provisioningProfileMissingTeamIdentifier:
         return "The supplied provisioning profile is missing the 'TeamIdentifier' entry"
@@ -38,10 +39,10 @@ enum CodeSignerError: LocalizedError {
       case .failedToLocateSigningCertificate(let identity, let error):
         return """
           Failed to locate signing certificate for identity \
-          '\(identity.name)': \(error.localizedDescription)
+          '\(identity.name)': \(error)
           """
       case .failedToParseSigningCertificate(_, let error):
-        return "Failed to parse signing certificate: \(error.localizedDescription)"
+        return "Failed to parse signing certificate: \(error)"
       case .signingCertificateMissingTeamIdentifier(let identity):
         return """
           Failed to locate team identifier in signing certificate for \
