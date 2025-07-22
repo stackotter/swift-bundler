@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``GenericLinuxBundler``.
-enum GenericLinuxBundlerError: LocalizedError {
+enum GenericLinuxBundlerError: Throwable {
   case failedToCreateBundleStructure(root: URL, Error)
   case failedToCopyExecutable(source: URL, destination: URL, Error)
   case failedToCopyExecutableDependency(
@@ -22,7 +23,7 @@ enum GenericLinuxBundlerError: LocalizedError {
   case failedToCreateDirectory(URL, Error)
   case failedToInsertMetadata(MetadataInserterError)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToCreateBundleStructure(let root, _):
         return "Failed to create app bundle directory structure at '\(root)'"
@@ -68,12 +69,12 @@ enum GenericLinuxBundlerError: LocalizedError {
       case .failedToUpdateMainExecutableRunpath(let executable, let underlyingError):
         return """
           Failed to update the runpath of the main executable at \
-          '\(executable.relativePath)': \(underlyingError.localizedDescription)
+          '\(executable.relativePath)': \(underlyingError)
           """
       case .failedToCreateDirectory(let directory, _):
         return "Failed to create directory at '\(directory.relativePath)'"
       case .failedToInsertMetadata(let error):
-        return error.localizedDescription
+        return error.userFriendlyMessage
     }
   }
 }

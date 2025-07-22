@@ -1,13 +1,16 @@
 import ArgumentParser
 import Foundation
+import ErrorKit
 
 /// An extension to the `AsyncParsableCommand` API with custom error handling.
 protocol ErrorHandledCommand: AsyncParsableCommand {
+  associatedtype ErrorMessage: Throwable
+
   /// Implement this instead of `validate()` to get custom Swift Bundler error handling.
-  func wrappedValidate() throws
+  func wrappedValidate() throws(RichError<ErrorMessage>)
 
   /// Implement this instead of `run()` to get custom Swift Bundler error handling.
-  func wrappedRun() async throws
+  func wrappedRun() async throws(RichError<ErrorMessage>)
 }
 
 extension ErrorHandledCommand {
@@ -19,12 +22,8 @@ extension ErrorHandledCommand {
     do {
       try await wrappedRun()
     } catch {
-      log.error("\(error.localizedDescription)")
-      log.debug("Error details: \(error)")
-      if log.logLevel > .debug {
-        print("")
-        log.info("Use --verbose to get more error details")
-      }
+      print("\(chainDescription(for: error, verbose: log.logLevel < .info, indent: ""))")
+      log.error("\(ErrorKit.userFriendlyMessage(for: error))")
       Foundation.exit(1)
     }
   }
@@ -33,11 +32,8 @@ extension ErrorHandledCommand {
     do {
       try wrappedValidate()
     } catch {
-      if let error = error as? ValidationError {
-        log.error("\(error)")
-      } else {
-        log.error("\(error.localizedDescription)")
-      }
+      print("\(chainDescription(for: error, verbose: log.logLevel < .info, indent: ""))")
+      log.error("\(ErrorKit.userFriendlyMessage(for: error))")
       Foundation.exit(1)
     }
   }

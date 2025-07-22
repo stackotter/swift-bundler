@@ -3,7 +3,7 @@ import Foundation
 import TOMLKit
 
 /// The command for converting xcodeprojs to Swift Bundler projects.
-struct ConvertCommand: Command {
+struct ConvertCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "convert",
     abstract: "Converts an xcodeproj to a Swift Bundler project."
@@ -25,7 +25,7 @@ struct ConvertCommand: Command {
     help: "Disables the experimental feature warning")
   var dontWarn = false
 
-  func wrappedRun() async throws {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     // - [x] Convert executable targets
     // - [x] Convert library dependency targets
     // - [x] Preserve project structure
@@ -50,11 +50,19 @@ struct ConvertCommand: Command {
 
       switch xcodeFile.pathExtension {
         case "xcodeproj":
-          try await XcodeprojConverter.convertProject(xcodeFile, outputDirectory: outputDirectory)
-            .unwrap()
+          try await RichError<SwiftBundlerError>.catch {
+            try await XcodeprojConverter.convertProject(
+              xcodeFile,
+              outputDirectory: outputDirectory
+            ).unwrap()
+          }
         case "xcworkspace":
-          try await XcodeprojConverter.convertWorkspace(xcodeFile, outputDirectory: outputDirectory)
-            .unwrap()
+          try await RichError<SwiftBundlerError>.catch {
+            try await XcodeprojConverter.convertWorkspace(
+              xcodeFile,
+              outputDirectory: outputDirectory
+            ).unwrap()
+          }
         default:
           log.error(
             "Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'"

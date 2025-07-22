@@ -1,21 +1,22 @@
 import Foundation
+import ErrorKit
 
-/// An error thrown by the Swift Bundler CLI.
-enum CLIError: LocalizedError {
+/// A top-level error thrown by the Swift Bundler.
+enum SwiftBundlerError: Throwable {
   case invalidPlatform(String)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
   case invalidBundlerChoice(String)
-  case failedToCopyIcon(source: URL, destination: URL, Error)
+  case failedToCopyIcon(source: URL, destination: URL)
   case failedToGetPlatformVersion(platform: Platform, manifest: URL)
-  case failedToRemoveExistingOutputs(outputDirectory: URL, Error)
+  case failedToRemoveExistingOutputs(outputDirectory: URL)
   case invalidXcodeprojDetected
   case failedToResolveTargetDevice(reason: String)
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle(any Error)
   case missingConfigurationFile(URL)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .invalidPlatform(let platform):
         return """
@@ -37,7 +38,7 @@ enum CLIError: LocalizedError {
           Invalid bundler choice '\(choice)'. Must be one of \
           \(BundlerChoice.possibleValuesDescription)
           """
-      case .failedToCopyIcon(let source, let destination, _):
+      case .failedToCopyIcon(let source, let destination):
         return "Failed to copy icon from '\(source)' to '\(destination)'"
       case .failedToGetPlatformVersion(let platform, let manifest):
         return """
@@ -45,21 +46,21 @@ enum CLIError: LocalizedError {
           version for the relevant platform in the 'platforms' field of \
           '\(manifest.relativePath)'
           """
-      case .failedToRemoveExistingOutputs(let outputDirectory, let error):
+      case .failedToRemoveExistingOutputs(let outputDirectory):
         return """
           Failed to remove existing bundler outputs at \
-          '\(outputDirectory.relativePath): \(error.localizedDescription)'
+          '\(outputDirectory.relativePath)'
           """
       case .invalidXcodeprojDetected:
         return """
-          The --xcodebuild flag, which is the default flag when building any embedded Darwin
-          platforms such as iOS, visionOS, tvOS, and watchOS will not function correctly while
-          an xcodeproj or xcworkspace is in the same directory as your Package.swift. Please
-          remove any .xcodeproj and .xcworkspace directories listed above and try again.
+          The --xcodebuild flag, which is the default flag when building any embedded Darwin \
+          platforms such as iOS, visionOS, tvOS, and watchOS will not function correctly while \
+          an xcodeproj or xcworkspace is in the same directory as your Package.swift. Please \
+          remove any .xcodeproj and .xcworkspace directories listed above and try again. \
 
-          If you cannot remove the xcodeproj or xcworkspace, you must stick to Swift Bundler's
-          default SwiftPM-based build system, you may pass the --no-xcodebuild flag to the bundler
-          to override embedded Darwin platforms such as iOS, visionOS, tvOS, and watchOS to use the
+          If you cannot remove the xcodeproj or xcworkspace, you must stick to Swift Bundler's \
+          default SwiftPM-based build system, you may pass the --no-xcodebuild flag to the bundler \
+          to override embedded Darwin platforms such as iOS, visionOS, tvOS, and watchOS to use the \
           SwiftPM-based build system instead of the xcodebuild one.
           """
       case .failedToResolveTargetDevice(let reason):

@@ -35,10 +35,12 @@ enum IconSetCreator {
         }
       }
       .andThen { _ in
-        await Process.create(
-          "/usr/bin/iconutil",
-          arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
-        ).runAndWait().mapError { error in
+        await Result.catching { () async throws(Process.Error) in
+          try await Process.create(
+            "/usr/bin/iconutil",
+            arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
+          ).runAndWait()
+        }.mapError { error in
           .failedToConvertToICNS(error)
         }
       }
@@ -70,9 +72,10 @@ enum IconSetCreator {
       ],
       pipe: Pipe())
 
-    return await process.runAndWait()
-      .mapError { error in
-        .failedToScaleIcon(newDimension: dimension, error)
-      }
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.runAndWait()
+    }.mapError { error in
+      .failedToScaleIcon(newDimension: dimension, error)
+    }
   }
 }

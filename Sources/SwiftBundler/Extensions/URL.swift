@@ -39,6 +39,9 @@ extension URL {
 
     // Build relative path:
     var relComponents = Array(repeating: "..", count: baseComponents.count - commonComponentCount)
+    if relComponents.isEmpty {
+      relComponents.append(".")
+    }
     relComponents.append(contentsOf: destComponents[commonComponentCount...])
     return relComponents.joined(separator: "/")
   }

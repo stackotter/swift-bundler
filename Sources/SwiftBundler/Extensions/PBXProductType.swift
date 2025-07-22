@@ -1,5 +1,5 @@
 #if SUPPORT_XCODEPROJ
-  import XcodeProj
+  @preconcurrency import XcodeProj
 
   extension PBXProductType {
     /// Whether the product is executable or not.

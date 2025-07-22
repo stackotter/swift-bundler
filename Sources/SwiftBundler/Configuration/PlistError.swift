@@ -1,15 +1,16 @@
 import Foundation
+import ErrorKit
 
 /// An error that can occur while encoding or decoding a ``PlistValue``.
-enum PlistError: LocalizedError {
+enum PlistError: Throwable {
   case invalidValue(String, type: String, codingPath: [CodingKey])
   case failedToInferType(codingPath: [CodingKey])
   case invalidExplicitlyTypedValue(type: String, codingPath: [CodingKey])
   case failedToDeserializePlistFileContents(Data, Error?)
   case failedToReadInfoPlistFile(Error)
-  case invalidPlistValue(Any)
+  case invalidPlistValue(description: String)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .invalidValue(let value, let type, let codingPath):
         let path = CodingPath(codingPath)
@@ -24,8 +25,8 @@ enum PlistError: LocalizedError {
         return "Failed to deserialize contents"
       case .failedToReadInfoPlistFile:
         return "Failed to read info plist file"
-      case .invalidPlistValue(let value):
-        return "Invalid value found in plist: '\(value)'"
+      case .invalidPlistValue(let description):
+        return "Invalid value found in plist: '\(description)'"
     }
   }
 }

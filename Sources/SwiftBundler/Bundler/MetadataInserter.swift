@@ -85,21 +85,29 @@ enum MetadataInserter {
           }.andThen { objectFiles in
             await objectFiles.tryMap { objectFile, architecture in
               let staticLibraryFile = directory / "metadata-\(architecture).a"
-              return await Process.create(
-                "ar",
-                arguments: ["r", staticLibraryFile.path, objectFile.path]
-              ).runAndWait().mapError(MetadataInserterError.failedToCreateStaticLibrary)
+
+              return await Result.catching { () async throws(Process.Error) in
+                try await Process.create(
+                  "ar",
+                  arguments: ["r", staticLibraryFile.path, objectFile.path]
+                ).runAndWait()
+              }
+              .mapError(MetadataInserterError.failedToCreateStaticLibrary)
               .replacingSuccessValue(with: staticLibraryFile)
             }
           }.andThen { staticLibraries in
             let name = "metadata"
             let universalStaticLibrary = directory / "lib\(name).a"
-            return await Process.create(
-              "lipo",
-              arguments: [
-                "-o", universalStaticLibrary.path, "-create"
-              ] + staticLibraries.map(\.path)
-            ).runAndWait().mapError(MetadataInserterError.failedToCreateUniversalStaticLibrary)
+
+            return await Result.catching { () async throws(Process.Error) in
+              try await Process.create(
+                "lipo",
+                arguments: [
+                  "-o", universalStaticLibrary.path, "-create"
+                ] + staticLibraries.map(\.path)
+              ).runAndWait()
+            }
+            .mapError(MetadataInserterError.failedToCreateUniversalStaticLibrary)
             .replacingSuccessValue(with: .staticLibrary(universalStaticLibrary, name: name))
           }
         } else {
@@ -137,14 +145,16 @@ enum MetadataInserter {
       }
     }
 
-    return await Process.create(
-      "swiftc",
-      arguments: [
-        "-parse-as-library", "-c",
-        "-o", objectFile.path, codeFile.path,
-      ] + platformArguments,
-      runSilentlyWhenNotVerbose: false
-    ).runAndWait().mapError(MetadataInserterError.failedToCompileMetadataCodeFile)
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "swiftc",
+        arguments: [
+          "-parse-as-library", "-c",
+          "-o", objectFile.path, codeFile.path,
+        ] + platformArguments,
+        runSilentlyWhenNotVerbose: false
+      ).runAndWait()
+    }.mapError(MetadataInserterError.failedToCompileMetadataCodeFile)
   }
 
   /// Additional SwiftPM arguments to use when inserting metadata into a build.

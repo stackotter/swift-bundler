@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``VariableEvaluator``.
-enum VariableEvaluatorError: LocalizedError {
+enum VariableEvaluatorError: Throwable {
   case unmatchedBrackets(String, Error)
   case unknownVariable(String)
   case failedToEvaluateCommitHash(directory: URL)
@@ -10,7 +11,7 @@ enum VariableEvaluatorError: LocalizedError {
   case packageDirectoryRequiredToEvaluateCommitHash
   case packageDirectoryRequiredToEvaluateRevisionNumber
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .unmatchedBrackets(let string, let error):
         return "Unmatched brackets in '\(string)'\n\(error)"

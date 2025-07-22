@@ -1,14 +1,15 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``XcodeSupportGenerator``.
-enum XcodeSupportGeneratorError: LocalizedError {
+enum XcodeSupportGeneratorError: Throwable {
   case failedToGetApplicationSupportDirectory(SystemError)
   case applicationSupportDirectoryCannotContainSingleQuote(URL)
   case failedToCreateSchemesDirectory(URL, Error)
   case failedToWriteToAppScheme(app: String, Error)
   case failedToCreateOutputBundle(Error)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToGetApplicationSupportDirectory(let error):
         return error.localizedDescription

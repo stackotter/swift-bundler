@@ -1,5 +1,5 @@
 #if SUPPORT_XCODEPROJ
-  import XcodeProj
+  @preconcurrency import XcodeProj
 
   extension XcodeprojConverter {
     /// A type of target in a Swift package.

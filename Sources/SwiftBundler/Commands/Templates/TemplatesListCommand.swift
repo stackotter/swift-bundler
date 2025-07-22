@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available templates.
-struct TemplatesListCommand: Command {
+struct TemplatesListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "list",
     abstract: "List available templates."
@@ -15,12 +15,14 @@ struct TemplatesListCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
-  func wrappedRun() async throws {
-    let templates: [Template]
-    if let templateRepository = templateRepository {
-      templates = try Templater.enumerateTemplates(in: templateRepository).unwrap()
-    } else {
-      templates = try await Templater.enumerateTemplates().unwrap()
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let templates: [Template] = try await RichError<SwiftBundlerError>.catch {
+      let templateRepository = if let templateRepository {
+        templateRepository
+      } else {
+        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true).unwrap()
+      }
+      return try Templater.enumerateTemplates(in: templateRepository).unwrap()
     }
 
     let repositoryOption: String

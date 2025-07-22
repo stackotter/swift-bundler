@@ -4,7 +4,7 @@ extension Result {
   /// A utility for allowing `Result` to be used with APIs that require errors to be thrown.
   /// - Returns: The success value if the result is a success.
   /// - Throws: The error if the result is a failure.
-  @discardableResult func unwrap() throws -> Success {
+  @discardableResult func unwrap() throws(Failure) -> Success {
     switch self {
       case let .success(success):
         return success
@@ -377,6 +377,16 @@ extension Result where Failure == Swift.Error {
       self = .success(try await body())
     } catch {
       self = .failure(error)
+    }
+  }
+}
+
+extension Result {
+  static func catching(_ body: () async throws(Failure) -> Success) async -> Self {
+    do {
+      return .success(try await body())
+    } catch {
+      return .failure(error)
     }
   }
 }

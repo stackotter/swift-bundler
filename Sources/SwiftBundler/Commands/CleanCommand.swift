@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The command for cleaning scratch files and caches.
-struct CleanCommand: Command {
+struct CleanCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "clean",
     abstract: "Clean a project's scratch directory."
@@ -22,7 +22,7 @@ struct CleanCommand: Command {
     transform: URL.init(fileURLWithPath:))
   var scratchDirectory: URL?
 
-  func wrappedRun() async throws {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let packageDirectory = packageDirectory ?? URL.currentDirectory
 
     // Ensure that we're in a Swift package directory.
@@ -30,21 +30,24 @@ struct CleanCommand: Command {
       for: packageDirectory
     )
     guard configurationFile.exists() else {
-      throw CLIError.missingConfigurationFile(configurationFile)
+      throw RichError(.missingConfigurationFile(configurationFile))
     }
 
     // Running 'swift package clean' also clears out '.build/bundler' on our
     // behalf, so we don't need to do anything more.
     let scratchDirectory = scratchDirectory ?? (packageDirectory / ".build")
-    try await Process.create(
-      "swift",
-      arguments: [
-        "package",
-        "--scratch-path",
-        scratchDirectory.path,
-        "clean"
-      ]
-    ).runAndWait().unwrap()
+
+    try await RichError<SwiftBundlerError>.catch {
+      try await Process.create(
+        "swift",
+        arguments: [
+          "package",
+          "--scratch-path",
+          scratchDirectory.path,
+          "clean"
+        ]
+      ).runAndWait()
+    }
   }
 }
 

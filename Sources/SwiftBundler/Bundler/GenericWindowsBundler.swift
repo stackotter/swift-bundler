@@ -204,11 +204,13 @@ enum GenericWindowsBundler: Bundler {
     productsDirectory: URL
   ) async -> Result<Void, Error> {
     let productsDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
-    return await Process.create(
-      "dumpbin",
-      arguments: ["/DEPENDENTS", module.path],
-      runSilentlyWhenNotVerbose: false
-    ).getOutput().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        "dumpbin",
+        arguments: ["/DEPENDENTS", module.path],
+        runSilentlyWhenNotVerbose: false
+      ).getOutput()
+    }.mapError { error in
       .failedToEnumerateDynamicDependencies(error)
     }.andThen { output -> Result<[URL], Error> in
       let lines = output.split(

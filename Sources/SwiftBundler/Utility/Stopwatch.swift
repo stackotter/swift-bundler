@@ -25,7 +25,7 @@ enum Stopwatch {
 
   /// Times how long an action takes to run.
   /// - Returns: The time taken to execute the provided action.
-  static func time(_ action: () throws -> Void) rethrows -> Measurement {
+  static func time<E: Error>(_ action: () throws(E) -> Void) throws(E) -> Measurement {
     let start = ProcessInfo.processInfo.systemUptime
     try action()
     let elapsed = ProcessInfo.processInfo.systemUptime - start
@@ -34,7 +34,7 @@ enum Stopwatch {
 
   /// Times how long an action takes to run.
   /// - Returns: The time taken along with the result of the provided action.
-  static func time<R>(_ action: () throws -> R) rethrows -> (Measurement, R) {
+  static func time<R, E: Error>(_ action: () throws(E) -> R) throws(E) -> (Measurement, R) {
     let start = ProcessInfo.processInfo.systemUptime
     let result = try action()
     let elapsed = ProcessInfo.processInfo.systemUptime - start
@@ -43,7 +43,7 @@ enum Stopwatch {
 
   /// Times how long an action takes to run.
   /// - Returns: The time taken to execute the provided action.
-  static func time(_ action: () async throws -> Void) async rethrows -> Measurement {
+  static func time<E: Error>(_ action: () async throws(E) -> Void) async throws(E) -> Measurement {
     let start = ProcessInfo.processInfo.systemUptime
     try await action()
     let elapsed = ProcessInfo.processInfo.systemUptime - start
@@ -52,7 +52,9 @@ enum Stopwatch {
 
   /// Times how long an action takes to run.
   /// - Returns: The time taken along with the result of the provided action.
-  static func time<R>(_ action: () async throws -> R) async rethrows -> (Measurement, R) {
+  static func time<R, E: Error>(
+    _ action: () async throws(E) -> R
+  ) async throws(E) -> (Measurement, R) {
     let start = ProcessInfo.processInfo.systemUptime
     let result = try await action()
     let elapsed = ProcessInfo.processInfo.systemUptime - start

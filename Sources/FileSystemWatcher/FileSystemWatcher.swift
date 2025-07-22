@@ -7,8 +7,8 @@
 public enum FileSystemWatcher {
   public static func watch(
     paths: [String],
-    with handler: @escaping () -> Void,
-    errorHandler: @escaping (Swift.Error) -> Void
+    with handler: @escaping @Sendable () -> Void,
+    errorHandler: @escaping @Sendable (any Swift.Error) -> Void
   ) async throws {
     #if canImport(CoreServices)
       // TODO: Maybe update to use async/await?

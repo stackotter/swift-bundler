@@ -1,4 +1,5 @@
 import Foundation
+import ErrorKit
 
 /// Essentially just a ``Codable`` TOML value used for arbitrary TOMl values
 /// in the Swift Bundler configuration format.
@@ -38,10 +39,10 @@ enum MetadataValue: Codable, VariableEvaluatable {
     }
   }
 
-  enum Error: LocalizedError {
+  enum Error: Throwable {
     case unhandledType
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .unhandledType:
           return "Expected string, number, boolean, date, array, or dictionary"

@@ -64,9 +64,7 @@ extension Process {
   ///   - excludeStdError: If `true`, only stdout is returned.
   ///   - handleLine: A handler to run every time that a line is received.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutputData(
-    excludeStdError: Bool = false
-  ) async -> Result<Data, ProcessError> {
+  func getOutputData( excludeStdError: Bool = false) async throws(Error) -> Data {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
 
@@ -105,37 +103,40 @@ extension Process {
       return await handleDataTask.value
     }
 
-    return await runAndWait()
-      .mapAsync { _ in
-        await finalize()
+    let output: Data
+    do {
+      try await runAndWait()
+      output = await finalize()
+    } catch {
+      switch error.message {
+        case .nonZeroExitStatus(let status):
+          throw Error(.nonZeroExitStatusWithOutput(await finalize(), status))
+        default:
+          throw error
       }
-      .mapErrorAsync { error in
-        switch error {
-          case .nonZeroExitStatus(let status):
-            return .nonZeroExitStatusWithOutput(await finalize(), status)
-          default:
-            return error
-        }
-      }
+    }
+
+    return output
   }
 
   /// Gets the process's stdout and stderr as a string.
   /// - Parameter excludeStdError: If `true`, only stdout is returned.
   /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
-  func getOutput(excludeStdError: Bool = false) async -> Result<String, ProcessError> {
-    return await getOutputData(excludeStdError: excludeStdError)
-      .andThen { data in
-        String(data: data, encoding: .utf8)
-          .okOr(.invalidUTF8Output(output: data))
-      }
+  func getOutput(excludeStdError: Bool = false) async throws(Error) -> String {
+    let data = try await getOutputData(excludeStdError: excludeStdError)
+    guard let output = String(data: data, encoding: .utf8) else {
+      throw Error(.invalidUTF8Output(output: data))
+    }
+
+    return output
   }
 
   /// Runs the process and waits for it to complete.
   /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
-  func runAndWait() async -> Result<Void, ProcessError> {
-    await Result {
+  func runAndWait() async throws(Error) {
+    do {
       try await withCheckedThrowingContinuation {
-        (continuation: CheckedContinuation<Void, Error>) in
+        (continuation: CheckedContinuation<Void, Swift.Error>) in
         terminationHandler = { _ in
           continuation.resume()
         }
@@ -146,15 +147,14 @@ extension Process {
           continuation.resume(throwing: error)
         }
       }
-    }.mapError(ProcessError.failedToRunProcess)
-      .andThen { _ in
-        let exitStatus = Int(terminationStatus)
-        guard exitStatus == 0 else {
-          return .failure(.nonZeroExitStatus(exitStatus))
-        }
+    } catch {
+      throw Error(.failedToRunProcess, cause: error)
+    }
 
-        return .success()
-      }
+    let exitStatus = Int(terminationStatus)
+    guard exitStatus == 0 else {
+      throw Error(.nonZeroExitStatus(exitStatus))
+    }
   }
 
   func runAndLog() throws {
@@ -199,7 +199,7 @@ extension Process {
     if let pipe = pipe {
       process.setOutputPipe(pipe)
     } else if log.logLevel == .info && runSilentlyWhenNotVerbose {
-      // Silence output by default when not verbose.
+      // Silence standard output by default when not verbose.
       process.setOutputPipe(Pipe())
     }
 
@@ -242,7 +242,7 @@ extension Process {
   /// run the tool through `/usr/bin/env` which will find the tool on the user's `PATH`).
   /// - Parameter tool: The tool to expand into a full path.
   /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
-  static func locate(_ tool: String) async -> Result<String, ProcessError> {
+  static func locate(_ tool: String) async throws(Error) -> String {
     // Restrict the set of inputs to avoid command injection. This is very dodgy but there
     // doesn't seem to be any nice way to call bash built-ins directly with an argument
     // vector. Better approaches are extremely welcome!!
@@ -253,23 +253,22 @@ extension Process {
             || character.isNumber || character == "-" || character == "_")
       })
     else {
-      return .failure(.invalidToolName(tool))
+      throw Error(.invalidToolName(tool))
     }
 
-    return await Process.create(
-      "/bin/sh",
-      arguments: [
-        "-c",
-        "which \(tool)",
-      ],
-      runSilentlyWhenNotVerbose: false
-    )
-    .getOutput()
-    .map { path in
-      path.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    .mapError { error in
-      .failedToLocateTool(tool, error)
+    do {
+      let path = try await Process.create(
+        "/bin/sh",
+        arguments: [
+          "-c",
+          "which \(tool)",
+        ],
+        runSilentlyWhenNotVerbose: false
+      ).getOutput()
+
+      return path.trimmingCharacters(in: .whitespacesAndNewlines)
+    } catch {
+      throw Error(.failedToLocateTool(tool), cause: error)
     }
   }
 
@@ -285,7 +284,7 @@ extension Process {
     _ appImage: String,
     arguments: [String],
     additionalEnvironmentVariables: [String: String] = [:]
-  ) async -> Result<Void, ProcessError> {
+  ) async throws(Error) {
     #if os(Linux)
       var environment = ProcessInfo.processInfo.environment
       for (key, value) in additionalEnvironmentVariables {
@@ -342,10 +341,11 @@ extension Process {
         runSilentlyWhenNotVerbose: false
       )
 
-      return await process.runAndWait()
-        .mapError { error in
-          .failedToRunProcess(error)
-        }
+      do {
+        return try await process.runAndWait()
+      } catch {
+        throw Error(.failedToRunProcess, cause: error)
+      }
     #endif
   }
 

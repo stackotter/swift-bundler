@@ -1,7 +1,8 @@
 import Foundation
+import ErrorKit
 
 extension GenericWindowsBundler {
-  enum Error: LocalizedError {
+  enum Error: Throwable {
     case failedToCreateDirectory(URL, Swift.Error)
     case failedToCopyExecutableDependency(
       name: String,
@@ -15,11 +16,11 @@ extension GenericWindowsBundler {
     case failedToCopyExecutable(source: URL, destination: URL, Swift.Error)
     case failedToParseDumpbinOutput(output: String, message: String)
     case failedToResolveDLLName(String)
-    case failedToEnumerateDynamicDependencies(ProcessError)
+    case failedToEnumerateDynamicDependencies(Process.Error)
     case failedToCopyDLL(source: URL, destination: URL, Swift.Error)
     case failedToCopyPDB(source: URL, destination: URL, Swift.Error)
 
-    var errorDescription: String? {
+    var userFriendlyMessage: String {
       switch self {
         case .failedToCreateDirectory(let directory, let error):
           return """

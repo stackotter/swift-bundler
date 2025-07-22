@@ -1,4 +1,5 @@
 import ArgumentParser
+import ErrorKit
 import Foundation
 
 #if SUPPORT_HOT_RELOADING
@@ -44,7 +45,7 @@ struct RunCommand: ErrorHandledCommand {
 
   // MARK: Methods
 
-  func wrappedRun() async throws {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     guard !(skipBuild && hot) else {
       log.error("'--skip-build' is incompatible with '--hot' (nonsensical)")
       Foundation.exit(1)
@@ -109,15 +110,18 @@ struct RunCommand: ErrorHandledCommand {
       resolvedDevice: device
     )
 
-    let environmentVariables =
+    let environmentVariables = try RichError<SwiftBundlerError>.catch {
       try environmentFile.map { file in
         try Runner.loadEnvironmentVariables(from: file).unwrap()
       } ?? [:]
+    }
 
     // TODO: Avoid loading manifest twice
-    let manifest = try await SwiftPackageManager.loadPackageManifest(
-      from: packageDirectory
-    ).unwrap()
+    let manifest = try await RichError<SwiftBundlerError>.catch {
+      try await SwiftPackageManager.loadPackageManifest(
+        from: packageDirectory
+      ).unwrap()
+    }
 
     let platformVersion =
       device.platform.asApplePlatform.map { platform in
@@ -145,7 +149,10 @@ struct RunCommand: ErrorHandledCommand {
         )
 
         // Start server and file system watcher (integrated into server)
-        let server = try await HotReloadingServer.create().unwrap()
+        let server = try await RichError<SwiftBundlerError>.catch {
+          try await HotReloadingServer.create().unwrap()
+        }
+
         Task {
           do {
             try await server.start(
@@ -153,7 +160,9 @@ struct RunCommand: ErrorHandledCommand {
               buildContext: buildContext
             ).unwrap()
           } catch {
-            log.error("Failed to start hot reloading server: \(error.localizedDescription)")
+            log.error(
+              "Failed to start hot reloading server: \(ErrorKit.userFriendlyMessage(for: error))"
+            )
           }
         }
 
@@ -168,14 +177,16 @@ struct RunCommand: ErrorHandledCommand {
       additionalEnvironmentVariables = [:]
     #endif
 
-    try await Runner.run(
-      bundlerOutput: bundlerOutput,
-      bundleIdentifier: appConfiguration.identifier,
-      device: device,
-      arguments: passThroughArguments,
-      environmentVariables: environmentVariables.merging(
-        additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
-      )
-    ).unwrap()
+    try await RichError<SwiftBundlerError>.catch {
+      try await Runner.run(
+        bundlerOutput: bundlerOutput,
+        bundleIdentifier: appConfiguration.identifier,
+        device: device,
+        arguments: passThroughArguments,
+        environmentVariables: environmentVariables.merging(
+          additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
+        )
+      ).unwrap()
+    }
   }
 }

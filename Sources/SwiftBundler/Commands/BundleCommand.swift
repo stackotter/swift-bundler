@@ -182,7 +182,7 @@ struct BundleCommand: ErrorHandledCommand {
     provisioningProfile: URL?,
     entitlements: URL?,
     platform: Platform
-  ) async throws -> BundlerContext.DarwinCodeSigningContext? {
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.DarwinCodeSigningContext? {
     guard let platform = platform.asApplePlatform else {
       let invalidArguments = [
         ("--codesign", codesignArgument == true),
@@ -199,9 +199,8 @@ struct BundleCommand: ErrorHandledCommand {
               plural: "aren't"
             )
           )
-        throw CLIError.failedToResolveCodesigningConfiguration(
-          reason: "\(list) supported when targeting '\(platform.name)'"
-        )
+        let reason = "\(list) supported when targeting '\(platform.name)'"
+        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
       }
 
       return nil
@@ -212,12 +211,11 @@ struct BundleCommand: ErrorHandledCommand {
       if codesignArgument == nil || codesignArgument == true {
         codesign = true
       } else {
-        throw CLIError.failedToResolveCodesigningConfiguration(
-          reason: """
-            \(platform.platform.name) is incompatible with '--no-codesign' \
-            because it requires provisioning profiles
-            """
-        )
+        let reason = """
+          \(platform.platform.name) is incompatible with '--no-codesign' \
+          because it requires provisioning profiles
+          """
+        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
       }
     } else {
       codesign = codesignArgument ?? false
@@ -232,9 +230,8 @@ struct BundleCommand: ErrorHandledCommand {
       guard invalidArguments.count == 0 else {
         let list = invalidArguments.map { "'\($0)'" }
           .joinedGrammatically(withTrailingVerb: .be)
-        throw CLIError.failedToResolveCodesigningConfiguration(
-          reason: "\(list) invalid when not codesigning"
-        )
+        let reason = "\(list) invalid when not codesigning"
+        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
       }
       return nil
     }
@@ -242,17 +239,20 @@ struct BundleCommand: ErrorHandledCommand {
     do {
       let identity: CodeSigner.Identity
       if let identityShortName = identityArgument {
-        identity = try await CodeSigner.resolveIdentity(shortName: identityShortName)
-          .unwrap()
+        identity = try await RichError<SwiftBundlerError>.catch {
+          try await CodeSigner.resolveIdentity(shortName: identityShortName)
+            .unwrap()
+        }
       } else {
-        let identities = try await CodeSigner.enumerateIdentities().unwrap()
+        let identities = try await RichError<SwiftBundlerError>.catch {
+          try await CodeSigner.enumerateIdentities().unwrap()
+        }
 
         guard let firstIdentity = identities.first else {
-          throw CLIError.failedToResolveCodesigningConfiguration(
-            reason: """
-              No codesigning identities found. Please sign into Xcode and try again.
-              """
-          )
+          let reason = """
+            No codesigning identities found. Please sign into Xcode and try again.
+            """
+          throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
         }
 
         if identities.count > 1 {
@@ -277,7 +277,8 @@ struct BundleCommand: ErrorHandledCommand {
           """
         )
       }
-      throw error
+      // TODO: Remove this once full typed throws has been enabled
+      throw error as! RichError<SwiftBundlerError>
     }
   }
 
@@ -287,7 +288,7 @@ struct BundleCommand: ErrorHandledCommand {
     platform: Platform?,
     deviceSpecifier: String?,
     simulatorSpecifier: String?
-  ) async throws -> (Platform, Device?) {
+  ) async throws(RichError<SwiftBundlerError>) -> (Platform, Device?) {
     if let platform = platform, deviceSpecifier == nil, simulatorSpecifier == nil {
       return (platform, nil)
     }
@@ -304,31 +305,33 @@ struct BundleCommand: ErrorHandledCommand {
     platform: Platform?,
     deviceSpecifier: String?,
     simulatorSpecifier: String?
-  ) async throws -> Device {
+  ) async throws(RichError<SwiftBundlerError>) -> Device {
     // '--device' and '--simulator' are mutually exclusive
     guard deviceSpecifier == nil || simulatorSpecifier == nil else {
-      throw CLIError.failedToResolveTargetDevice(
-        reason: "'--device' and '--simulator' cannot be used at the same time"
-      )
+      let reason = "'--device' and '--simulator' cannot be used at the same time"
+      throw RichError(.failedToResolveTargetDevice(reason: reason))
     }
 
     if let deviceSpecifier {
       // This will also find simulators (--device can be used to specify any
       // destination).
-      return try await DeviceManager.resolve(
-        specifier: deviceSpecifier,
-        platform: platform
-      ).unwrap()
+      return try await RichError<SwiftBundlerError>.catch {
+        try await DeviceManager.resolve(
+          specifier: deviceSpecifier,
+          platform: platform
+        ).unwrap()
+      }
     } else if let simulatorSpecifier {
       if let platform = platform, !platform.isSimulator {
-        throw CLIError.failedToResolveTargetDevice(
-          reason: "'--simulator' is incompatible with '--platform \(platform)'"
-        )
+        let reason = "'--simulator' is incompatible with '--platform \(platform)'"
+        throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
 
-      let matchedSimulators = try await SimulatorManager.listAvailableSimulators(
-        searchTerm: simulatorSpecifier
-      ).unwrap().sorted { first, second in
+      let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
+        try await SimulatorManager.listAvailableSimulators(
+          searchTerm: simulatorSpecifier
+        ).unwrap()
+      }.sorted { first, second in
         // Put booted simulators first for convenience and put shorter names
         // first (otherwise there'd be no guarantee the "iPhone 15" matches
         // "iPhone 15" when both "iPhone 15" and "iPhone 15 Pro" exist, and
@@ -351,12 +354,11 @@ struct BundleCommand: ErrorHandledCommand {
 
       guard let simulator = matchedSimulators.first else {
         let platformCondition = platform.map { " with platform '\($0)'" } ?? ""
-        throw CLIError.failedToResolveTargetDevice(
-          reason: """
-            No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
-            'swift bundler simulators list' to list available simulators.
-            """
-        )
+        let reason = """
+          No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
+          'swift bundler simulators list' to list available simulators.
+          """
+        throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
 
       if matchedSimulators.count > 1 {
@@ -372,19 +374,19 @@ struct BundleCommand: ErrorHandledCommand {
         case .none, hostPlatform.platform:
           return Device.host(hostPlatform)
         case .some(let platform) where platform.isSimulator:
-          let matchedSimulators = try await SimulatorManager.listAvailableSimulators().unwrap()
-            .filter { simulator in
-              simulator.isBooted
-                && simulator.isAvailable
-                && simulator.os.simulatorPlatform.platform == platform
-            }
-            .sorted { first, second in
-              first.name < second.name
-            }
+          let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
+            try await SimulatorManager.listAvailableSimulators().unwrap()
+          }.filter { simulator in
+            simulator.isBooted
+              && simulator.isAvailable
+              && simulator.os.simulatorPlatform.platform == platform
+          }.sorted { first, second in
+            first.name < second.name
+          }
 
           guard let simulator = matchedSimulators.first else {
-            throw CLIError.failedToResolveTargetDevice(
-              reason: Output {
+            let reason =
+              Output {
                 """
                 No booted simulators found for platform '\(platform)'. Boot \
                 \(platform.os.rawValue.withIndefiniteArticle) simulator, or \
@@ -400,7 +402,7 @@ struct BundleCommand: ErrorHandledCommand {
                   ExampleCommand("swift bundler simulators boot <id-or-name>")
                 }
               }.description
-            )
+            throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
           }
 
           if matchedSimulators.count > 1 {
@@ -422,7 +424,7 @@ struct BundleCommand: ErrorHandledCommand {
                 ExampleCommand("swift bundler devices list")
               }
             }.description
-          throw CLIError.failedToResolveTargetDevice(reason: reason)
+          throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
     }
   }
@@ -448,7 +450,7 @@ struct BundleCommand: ErrorHandledCommand {
     return architectures
   }
 
-  func wrappedRun() async throws {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let (platform, device) = try await Self.resolvePlatform(
       platform: arguments.platform,
       deviceSpecifier: arguments.deviceSpecifier,
@@ -474,7 +476,7 @@ struct BundleCommand: ErrorHandledCommand {
     dryRun: Bool = false,
     resolvedPlatform: Platform,
     resolvedDevice: Device? = nil
-  ) async throws -> BundlerOutputStructure {
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
     let resolvedCodesigningContext = try await Self.resolveCodesigningContext(
       codesignArgument: arguments.codesign,
       identityArgument: arguments.identity,
@@ -484,7 +486,7 @@ struct BundleCommand: ErrorHandledCommand {
     )
 
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time {
+    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
@@ -522,12 +524,15 @@ struct BundleCommand: ErrorHandledCommand {
 
       if isUsingXcodebuild {
         // Terminate the program if the project is an Xcodeproj based project.
-        let xcodeprojs = try FileManager.default.contentsOfDirectory(
-          at: packageDirectory,
-          includingPropertiesForKeys: nil
-        ).filter({
-          $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace")
-        })
+        let xcodeprojs = try RichError<SwiftBundlerError>.catch {
+          try FileManager.default.contentsOfDirectory(
+            at: packageDirectory,
+            includingPropertiesForKeys: nil
+          ).filter({
+            $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace")
+          })
+        }
+
         guard xcodeprojs.isEmpty else {
           for xcodeproj in xcodeprojs {
             if xcodeproj.path.contains("xcodeproj") {
@@ -536,7 +541,7 @@ struct BundleCommand: ErrorHandledCommand {
               log.error("An xcworkspace was located at the following path: \(xcodeproj.path)")
             }
           }
-          throw CLIError.invalidXcodeprojDetected
+          throw RichError(.invalidXcodeprojDetected)
         }
       }
 
@@ -544,8 +549,10 @@ struct BundleCommand: ErrorHandledCommand {
 
       // Load package manifest
       log.info("Loading package manifest")
-      let manifest = try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
-        .unwrap()
+      let manifest = try await RichError<SwiftBundlerError>.catch {
+        try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+          .unwrap()
+      }
 
       let platformVersion =
         resolvedPlatform.asApplePlatform.map { platform in
@@ -554,17 +561,21 @@ struct BundleCommand: ErrorHandledCommand {
 
       let metadataDirectory = outputDirectory / "metadata"
       if !metadataDirectory.exists() {
-        try FileManager.default.createDirectory(
-          at: metadataDirectory,
-          withIntermediateDirectories: true
-        )
+        try RichError<SwiftBundlerError>.catch {
+          try FileManager.default.createDirectory(
+            at: metadataDirectory,
+            withIntermediateDirectories: true
+          )
+        }
       }
-      let compiledMetadata = try await MetadataInserter.compileMetadata(
-        in: metadataDirectory,
-        for: MetadataInserter.metadata(for: appConfiguration),
-        architectures: architectures,
-        platform: resolvedPlatform
-      ).unwrap()
+      let compiledMetadata = try await RichError<SwiftBundlerError>.catch {
+        try await MetadataInserter.compileMetadata(
+          in: metadataDirectory,
+          for: MetadataInserter.metadata(for: appConfiguration),
+          architectures: architectures,
+          platform: resolvedPlatform
+        ).unwrap()
+      }
 
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
@@ -590,8 +601,10 @@ struct BundleCommand: ErrorHandledCommand {
         if let argumentsProductsDirectory = arguments.productsDirectory {
           productsDirectory = argumentsProductsDirectory
         } else {
-          productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
-            .unwrap()
+          productsDirectory = try await RichError<SwiftBundlerError>.catch {
+            try await SwiftPackageManager.getProductsDirectory(buildContext)
+              .unwrap()
+          }
         }
       } else {
         let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
@@ -646,21 +659,25 @@ struct BundleCommand: ErrorHandledCommand {
 
       var dependencyContext = buildContext.genericContext
       dependencyContext.scratchDirectory = dependenciesScratchDirectory
-      let dependencies = try await ProjectBuilder.buildDependencies(
-        appConfiguration.dependencies,
-        packageConfiguration: configuration,
-        context: dependencyContext,
-        appName: appName,
-        dryRun: skipBuild
-      ).unwrap()
+      let dependencies = try await RichError<SwiftBundlerError>.catch {
+        try await ProjectBuilder.buildDependencies(
+          appConfiguration.dependencies,
+          packageConfiguration: configuration,
+          context: dependencyContext,
+          appName: appName,
+          dryRun: skipBuild
+        ).unwrap()
+      }
       bundlerContext.builtDependencies = dependencies
 
       if !skipBuild {
         if !FileManager.default.itemExists(at: productsDirectory, withType: .directory) {
-          try FileManager.default.createDirectory(
-            at: productsDirectory,
-            withIntermediateDirectories: true
-          )
+          try RichError<SwiftBundlerError>.catch {
+            try FileManager.default.createDirectory(
+              at: productsDirectory,
+              withIntermediateDirectories: true
+            )
+          }
         }
 
         // Copy built depdencies
@@ -677,29 +694,33 @@ struct BundleCommand: ErrorHandledCommand {
           }
 
           for artifact in dependency.artifacts {
-            let destination = productsDirectory / artifact.location.lastPathComponent
-            if FileManager.default.fileExists(atPath: destination.path) {
-              try FileManager.default.removeItem(at: destination)
-            }
+            try RichError<SwiftBundlerError>.catch {
+              let destination = productsDirectory / artifact.location.lastPathComponent
+              if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+              }
 
-            try FileManager.default.copyItem(
-              at: artifact.location,
-              to: destination
-            )
+              try FileManager.default.copyItem(
+                at: artifact.location,
+                to: destination
+              )
+            }
           }
         }
 
         log.info("Starting \(buildContext.genericContext.configuration.rawValue) build")
-        if isUsingXcodebuild {
-          try await Xcodebuild.build(
-            product: appConfiguration.product,
-            buildContext: buildContext
-          ).unwrap()
-        } else {
-          try await SwiftPackageManager.build(
-            product: appConfiguration.product,
-            buildContext: buildContext
-          ).unwrap()
+        try await RichError<SwiftBundlerError>.catch {
+          if isUsingXcodebuild {
+            try await Xcodebuild.build(
+              product: appConfiguration.product,
+              buildContext: buildContext
+            ).unwrap()
+          } else {
+            try await SwiftPackageManager.build(
+              product: appConfiguration.product,
+              buildContext: buildContext
+            ).unwrap()
+          }
         }
 
         var executable = productsDirectory.appendingPathComponent(appConfiguration.product)
@@ -708,22 +729,26 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if resolvedPlatform == .linux {
-          let debugInfoFile = originalExecutableArtifact.appendingPathExtension("debug")
-          if debugInfoFile.exists() {
-            try FileManager.default.removeItem(at: debugInfoFile)
+          try await RichError<SwiftBundlerError>.catch {
+            let debugInfoFile = originalExecutableArtifact.appendingPathExtension("debug")
+            if debugInfoFile.exists() {
+              try FileManager.default.removeItem(at: debugInfoFile)
+            }
+            try await Stripper.extractLinuxDebugInfo(
+              from: originalExecutableArtifact,
+              to: debugInfoFile
+            ).unwrap()
           }
-          try await Stripper.extractLinuxDebugInfo(
-            from: originalExecutableArtifact,
-            to: debugInfoFile
-          ).unwrap()
         }
 
         if arguments.strip {
-          if executableArtifact.exists() {
-            try FileManager.default.removeItem(at: executableArtifact)
+          try await RichError<SwiftBundlerError>.catch {
+            if executableArtifact.exists() {
+              try FileManager.default.removeItem(at: executableArtifact)
+            }
+            try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
+            try await Stripper.strip(executableArtifact).unwrap()
           }
-          try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
-          try await Stripper.strip(executableArtifact).unwrap()
         }
       }
 
@@ -733,7 +758,7 @@ struct BundleCommand: ErrorHandledCommand {
           dependenciesScratchDirectory.lastPathComponent,
           metadataDirectory.lastPathComponent
         ]
-      ).unwrap()
+      )
 
       return try await Self.bundle(
         with: arguments.bundler.bundler,
@@ -758,7 +783,7 @@ struct BundleCommand: ErrorHandledCommand {
             to: bundle
           )
         } catch {
-          throw CLIError.failedToCopyOutBundle(error)
+          throw RichError(SwiftBundlerError.failedToCopyOutBundle(error))
         }
       } else {
         bundle = bundlerOutputStructure.bundle
@@ -781,7 +806,7 @@ struct BundleCommand: ErrorHandledCommand {
   static func removeExistingOutputs(
     outputDirectory: URL,
     skip excludedItems: [String]
-  ) -> Result<Void, CLIError> {
+  ) throws(RichError<SwiftBundlerError>) {
     if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
       do {
         let contents = try FileManager.default.contentsOfDirectory(
@@ -795,15 +820,12 @@ struct BundleCommand: ErrorHandledCommand {
           try FileManager.default.removeItem(at: item)
         }
       } catch {
-        return .failure(
-          CLIError.failedToRemoveExistingOutputs(
-            outputDirectory: outputDirectory,
-            error
-          )
+        throw RichError(
+          .failedToRemoveExistingOutputs(outputDirectory: outputDirectory),
+          cause: error
         )
       }
     }
-    return .success()
   }
 
   /// This generic function is required to operate on `any Bundler`s.
@@ -812,14 +834,16 @@ struct BundleCommand: ErrorHandledCommand {
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
-  ) async throws -> BundlerOutputStructure {
-    try await bundler.computeContext(
-      context: context,
-      command: command,
-      manifest: manifest
-    ).andThen { additionalContext in
-      await bundler.bundle(context, additionalContext)
-    }.unwrap()
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
+    try await RichError<SwiftBundlerError>.catch {
+      try await bundler.computeContext(
+        context: context,
+        command: command,
+        manifest: manifest
+      ).andThen { additionalContext in
+        await bundler.bundle(context, additionalContext)
+      }.unwrap()
+    }
   }
 
   /// This generic function is required to operate on `any Bundler`s.
@@ -828,14 +852,16 @@ struct BundleCommand: ErrorHandledCommand {
     context: BundlerContext,
     command: Self,
     manifest: PackageManifest
-  ) throws -> BundlerOutputStructure {
-    try bundler.computeContext(
-      context: context,
-      command: command,
-      manifest: manifest
-    ).map { additionalContext in
-      bundler.intendedOutput(in: context, additionalContext)
-    }.unwrap()
+  ) throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
+    try RichError<SwiftBundlerError>.catch {
+      try bundler.computeContext(
+        context: context,
+        command: command,
+        manifest: manifest
+      ).map { additionalContext in
+        bundler.intendedOutput(in: context, additionalContext)
+      }.unwrap()
+    }
   }
 
   /// Gets the configuration for the specified app.
@@ -853,7 +879,7 @@ struct BundleCommand: ErrorHandledCommand {
     packageDirectory: URL,
     context: ConfigurationFlattener.Context,
     customFile: URL? = nil
-  ) async throws -> (
+  ) async throws(RichError<SwiftBundlerError>) -> (
     appName: String,
     appConfiguration: AppConfiguration.Flat,
     configuration: PackageConfiguration.Flat
@@ -862,22 +888,24 @@ struct BundleCommand: ErrorHandledCommand {
       return configuration
     }
 
-    let configuration = try await PackageConfiguration.load(
-      fromDirectory: packageDirectory,
-      customFile: customFile
-    ).unwrap()
+    return try await RichError<SwiftBundlerError>.catch {
+      let configuration = try await PackageConfiguration.load(
+        fromDirectory: packageDirectory,
+        customFile: customFile
+      ).unwrap()
 
-    let flatConfiguration = try ConfigurationFlattener.flatten(
-      configuration,
-      with: context
-    ).unwrap()
+      let flatConfiguration = try ConfigurationFlattener.flatten(
+        configuration,
+        with: context
+      ).unwrap()
 
-    let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
-      appName
-    ).unwrap()
+      let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
+        appName
+      ).unwrap()
 
-    Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
-    return (appName, appConfiguration, flatConfiguration)
+      Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
+      return (appName, appConfiguration, flatConfiguration)
+    }
   }
 
   static func outputDirectory(for scratchDirectory: URL) -> URL {

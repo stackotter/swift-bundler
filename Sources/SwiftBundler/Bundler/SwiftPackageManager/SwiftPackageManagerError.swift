@@ -1,18 +1,19 @@
 import Foundation
+import ErrorKit
 
 /// An error returned by ``SwiftPackageManager``.
-enum SwiftPackageManagerError: LocalizedError {
-  case failedToRunSwiftBuild(command: String, ProcessError)
+enum SwiftPackageManagerError: Throwable {
+  case failedToRunSwiftBuild(command: String, Process.Error)
   case failedToCreatePackageDirectory(URL, Error)
-  case failedToRunSwiftInit(command: String, ProcessError)
+  case failedToRunSwiftInit(command: String, Process.Error)
   case failedToCreateConfigurationFile(PackageConfigurationError)
-  case failedToGetSwiftVersion(ProcessError)
+  case failedToGetSwiftVersion(Process.Error)
   case invalidSwiftVersionOutput(String, Error)
-  case failedToGetProductsDirectory(command: String, ProcessError)
-  case failedToGetLatestSDKPath(Platform, ProcessError)
-  case failedToGetTargetInfo(command: String, ProcessError)
+  case failedToGetProductsDirectory(command: String, Process.Error)
+  case failedToGetLatestSDKPath(Platform, Process.Error)
+  case failedToGetTargetInfo(command: String, Process.Error)
   case failedToParseTargetInfo(json: String, Error?)
-  case failedToRunSwiftPackageDescribe(command: String, ProcessError)
+  case failedToRunSwiftPackageDescribe(command: String, Process.Error)
   case failedToParsePackageManifestOutput(json: String, Error?)
   case failedToParsePackageManifestToolsVersion(Error?)
   case failedToReadBuildPlan(path: URL, Error)
@@ -20,10 +21,10 @@ enum SwiftPackageManagerError: LocalizedError {
   case failedToComputeLinkingCommand(details: String)
   case failedToRunLinkingCommand(command: String, Error)
   case missingDarwinPlatformVersion(Platform)
-  case failedToGetToolsVersion(ProcessError)
+  case failedToGetToolsVersion(Process.Error)
   case invalidToolsVersion(String)
 
-  var errorDescription: String? {
+  var userFriendlyMessage: String {
     switch self {
       case .failedToRunSwiftBuild(let command, let processError):
         return "Failed to run '\(command)': \(processError.localizedDescription)"

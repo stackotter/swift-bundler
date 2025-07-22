@@ -3,7 +3,7 @@ import Foundation
 import Version
 
 /// The subcommand for creating new app packages from templates.
-struct CreateCommand: Command {
+struct CreateCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "create",
     abstract: "Create a new app package."
@@ -85,56 +85,67 @@ struct CreateCommand: Command {
     help: "Add vscode configuration files necessary to enable ergonomic debugging.")
   var addVSCodeOverlay = false
 
-  func wrappedValidate() throws {
+  func wrappedValidate() throws(RichError<SwiftBundlerError>) {
     guard Self.isValidAppName(appName) else {
-      throw ValidationError(
-        "Invalid app name, app names must only include uppercase and lowercase characters from the English alphabet"
-      )
+      let message = """
+        Invalid app name, app names must only include uppercase and lowercase \
+        characters from the English alphabet
+        """
+      throw RichError(cause: ValidationError(message))
     }
 
     if templateName == nil && templateRepository != nil {
-      throw ValidationError(
-        "The '--template-repository' option can only be used with the '--template' option")
+      let message = """
+        The '--template-repository' option can only be used with the \
+        '--template' option
+        """
+      throw RichError(cause: ValidationError(message))
     }
   }
 
-  func wrappedRun() async throws {
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let defaultPackageDirectory = URL(fileURLWithPath: ".").appendingPathComponent(appName)
     let packageDirectory = packageDirectory ?? defaultPackageDirectory
 
-    let configuration = try AppConfiguration.create(
-      appName: appName,
-      version: version,
-      identifier: identifier,
-      category: category,
-      infoPlistFile: infoPlistFile,
-      iconFile: iconFile
-    ).unwrap()
+    let configuration = try RichError<SwiftBundlerError>.catch {
+      try AppConfiguration.create(
+        appName: appName,
+        version: version,
+        identifier: identifier,
+        category: category,
+        infoPlistFile: infoPlistFile,
+        iconFile: iconFile
+      ).unwrap()
+    }
 
     var template: Template?
-    let elapsed = try await Stopwatch.time {
+    let elapsed = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       // Create package from template
       if let templateRepository = templateRepository, let templateName = templateName {
-        template = try await Templater.createPackage(
-          in: packageDirectory,
-          from: templateName,
-          in: templateRepository,
-          packageName: appName,
-          configuration: configuration,
-          forceCreation: force,
-          indentationStyle: indentation,
-          addVSCodeOverlay: addVSCodeOverlay
-        ).unwrap()
+        template = try await RichError<SwiftBundlerError>.catch {
+          try await Templater.createPackage(
+            in: packageDirectory,
+            from: templateName,
+            in: templateRepository,
+            packageName: appName,
+            configuration: configuration,
+            forceCreation: force,
+            indentationStyle: indentation,
+            addVSCodeOverlay: addVSCodeOverlay
+          ).unwrap()
+        }
       } else {
-        template = try await Templater.createPackage(
-          in: packageDirectory,
-          from: templateName,
-          packageName: appName,
-          configuration: configuration,
-          forceCreation: force,
-          indentationStyle: indentation,
-          addVSCodeOverlay: addVSCodeOverlay
-        ).unwrap()
+        template = try await RichError<SwiftBundlerError>.catch {
+          try await Templater.createPackage(
+            in: packageDirectory,
+            from: templateName,
+            packageName: appName,
+            configuration: configuration,
+            forceCreation: force,
+            indentationStyle: indentation,
+            addVSCodeOverlay: addVSCodeOverlay
+          ).unwrap()
+        }
       }
 
       if let iconFile = iconFile {
@@ -142,7 +153,10 @@ struct CreateCommand: Command {
         do {
           try FileManager.default.copyItem(at: iconFile, to: outputIcon)
         } catch {
-          throw CLIError.failedToCopyIcon(source: iconFile, destination: outputIcon, error)
+          throw RichError(
+            .failedToCopyIcon(source: iconFile, destination: outputIcon),
+            cause: error
+          )
         }
       }
     }

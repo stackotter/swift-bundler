@@ -156,12 +156,12 @@ enum CodeSigner {
         file.path,
       ]
 
-    let process = Process.create(
-      codesignToolPath,
-      arguments: arguments
-    )
-
-    return await process.runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        codesignToolPath,
+        arguments: arguments
+      ).runAndWait()
+    }.mapError { error in
       return .failedToRunCodesignTool(error)
     }
   }
@@ -170,12 +170,12 @@ enum CodeSigner {
   /// - Parameter file: The file to sign.
   /// - Returns: A failure if the `codesign` command fails.
   static func signAdHoc(file: URL) async -> Result<Void, CodeSignerError> {
-    let process = Process.create(
-      codesignToolPath,
-      arguments: ["--force", "-s", "-", file.path]
-    )
-
-    return await process.runAndWait().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        codesignToolPath,
+        arguments: ["--force", "-s", "-", file.path]
+      ).runAndWait()
+    }.mapError { error in
       return .failedToRunCodesignTool(error)
     }
   }
@@ -188,54 +188,55 @@ enum CodeSigner {
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
-    return await process.getOutput()
-      .mapError { error in
-        return .failedToEnumerateIdentities(error)
-      }
-      .andThen { output in
-        // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
-        let identityParser = Parse {
-          PrefixThrough(") ")
-          PrefixUpTo(" ").map { (id: Substring) in
-            String(id)
-          }
-          " "
-          OneOf {
-            PrefixUpTo("\n")
-            Rest<Substring>()
-          }.map { (substring: Substring) -> String in
-            // Remove quotation marks
-            let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
-            return String(withoutQuotationMarks)
-          }
-        }.map { (_: Substring, id: String, name: String) in
-          (id: id, name: name)
+    return await Result.catching { () async throws(Process.Error) in
+      try await process.getOutput()
+    }.mapError { error in
+      return .failedToEnumerateIdentities(error)
+    }
+    .andThen { output in
+      // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
+      let identityParser = Parse {
+        PrefixThrough(") ")
+        PrefixUpTo(" ").map { (id: Substring) in
+          String(id)
         }
-
-        let identityListParser = Parse {
-          Many {
-            identityParser
-          }
+        " "
+        OneOf {
+          PrefixUpTo("\n")
           Rest<Substring>()
-        }.map { (identities: [(id: String, name: String)], _: Substring) in
-          return identities
+        }.map { (substring: Substring) -> String in
+          // Remove quotation marks
+          let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
+          return String(withoutQuotationMarks)
         }
-
-        let identities: [Identity]
-        do {
-          identities = try identityListParser.parse(output)
-            .map { (id, name) in
-              guard let parsedId = Array(fromHex: id) else {
-                throw CodeSignerError.invalidId(id)
-              }
-              return Identity(id: id, certificateSHA1: parsedId, name: name)
-            }
-        } catch {
-          return .failure(.failedToParseIdentityList(error))
-        }
-
-        return .success(identities)
+      }.map { (_: Substring, id: String, name: String) in
+        (id: id, name: name)
       }
+
+      let identityListParser = Parse {
+        Many {
+          identityParser
+        }
+        Rest<Substring>()
+      }.map { (identities: [(id: String, name: String)], _: Substring) in
+        return identities
+      }
+
+      let identities: [Identity]
+      do {
+        identities = try identityListParser.parse(output)
+          .map { (id, name) in
+            guard let parsedId = Array(fromHex: id) else {
+              throw CodeSignerError.invalidId(id)
+            }
+            return Identity(id: id, certificateSHA1: parsedId, name: name)
+          }
+      } catch {
+        return .failure(.failedToParseIdentityList(error))
+      }
+
+      return .success(identities)
+    }
   }
 
   /// Resolves a short-hand identity name. Can either be a full identity id or
@@ -268,12 +269,14 @@ enum CodeSigner {
   static func loadCertificate(
     for identity: Identity
   ) async -> Result<Certificate, CodeSignerError> {
-    await Process.create(
-      securityToolPath,
-      arguments: [
-        "find-certificate", "-c", identity.id, "-p", "-a",
-      ]
-    ).getOutput().mapError { error in
+    return await Result.catching { () async throws(Process.Error) in
+      try await Process.create(
+        securityToolPath,
+        arguments: [
+          "find-certificate", "-c", identity.id, "-p", "-a",
+        ]
+      ).getOutput()
+    }.mapError { error in
       .failedToLocateSigningCertificate(identity, error)
     }.andThen { (output: String) in
       let separator = "-----BEGIN CERTIFICATE-----\n"

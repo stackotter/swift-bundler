@@ -67,20 +67,19 @@ enum Xcodebuild {
     let useXCBeautify = ProcessInfo.processInfo.bundlerEnvironment.useXCBeautify
     let xcbeautifyProcess: Process?
     if useXCBeautify {
-      let xcbeautifyCommand = await Process.locate("xcbeautify")
-      switch xcbeautifyCommand {
-        case .success(let command):
-          xcbeautifyProcess = Process.create(
-            command,
-            arguments: [
-              "--disable-logging",
-              "--preserve-unbeautified",
-            ],
-            directory: buildContext.genericContext.projectDirectory,
-            runSilentlyWhenNotVerbose: false
-          )
-        case .failure(_):
-          xcbeautifyProcess = nil
+      do {
+        let xcbeautifyCommand = try await Process.locate("xcbeautify")
+        xcbeautifyProcess = Process.create(
+          xcbeautifyCommand,
+          arguments: [
+            "--disable-logging",
+            "--preserve-unbeautified",
+          ],
+          directory: buildContext.genericContext.projectDirectory,
+          runSilentlyWhenNotVerbose: false
+        )
+      } catch {
+        xcbeautifyProcess = nil
       }
     } else {
       xcbeautifyProcess = nil
@@ -149,12 +148,16 @@ enum Xcodebuild {
       }
     }
 
-    return await process.runAndWait().mapError { error in
-      return .failedToRunXcodebuild(
+    do {
+      try await process.runAndWait()
+    } catch {
+      return .failure(.failedToRunXcodebuild(
         command: "Failed to run xcodebuild.",
         error
-      )
+      ))
     }
+
+    return .success()
   }
 
   /// Whether or not the bundle command utilizes xcodebuild instead of swiftpm.
