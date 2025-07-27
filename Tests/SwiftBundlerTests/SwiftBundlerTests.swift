@@ -48,6 +48,13 @@ import Foundation
   await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 }
 
+@Test func testHexParsing() throws {
+  #expect(Array(fromHex: "AB5D87") == [0xab, 0x5d, 0x87])
+  #expect(Array(fromHex: "ab5d87") == [0xab, 0x5d, 0x87])
+  #expect(Array(fromHex: "ef917") == nil)
+  #expect(Array(fromHex: "ef917g") == nil)
+}
+
 #if os(macOS)
   /// This test app depends on both a plain dynamic library and a framework.
   @Test func testDarwinDynamicDependencyCopying() async throws {

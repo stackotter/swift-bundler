@@ -4,6 +4,7 @@ import Foundation
   import PathKit
   import ProjectSpec
   import XcodeGenKit
+  import Crypto
 #endif
 
 /// A provisioning profile manager. Can locate existing provisioning profiles,
@@ -21,7 +22,6 @@ enum ProvisioningProfileManager {
     case failedToParseXcodebuildOutput(_ message: String)
     case failedToLocateGeneratedProvisioningProfile(_ predictedLocation: URL)
     case failedToGetTeamIdentifier(CodeSignerError)
-    case failedToLoadCertificates(CodeSignerError)
 
     var errorDescription: String? {
       switch self {
@@ -66,8 +66,7 @@ enum ProvisioningProfileManager {
             Failed to locate generated provisioning profile. Expected it be \
             located at '\(predictedLocation.path)'
             """
-        case .failedToGetTeamIdentifier(let error),
-          .failedToLoadCertificates(let error):
+        case .failedToGetTeamIdentifier(let error):
           return error.localizedDescription
       }
     }
@@ -95,6 +94,7 @@ enum ProvisioningProfileManager {
         identity: identity
       ).andThen { provisioningProfile in
         if let provisioningProfile = provisioningProfile {
+          log.debug("Found suitable provisioning profile at \(provisioningProfile.path)")
           return .success(provisioningProfile)
         }
 
@@ -103,7 +103,7 @@ enum ProvisioningProfileManager {
         ).mapError { error in
           Error.failedToGetTeamIdentifier(error)
         }.andThen { teamIdentifier in
-          await generateProvisioningProfile(
+          return await generateProvisioningProfile(
             bundleIdentifier: bundleIdentifier,
             teamId: teamIdentifier,
             deviceId: deviceId,
@@ -125,23 +125,18 @@ enum ProvisioningProfileManager {
     identity: CodeSigner.Identity
   ) async -> Result<URL?, Error> {
     #if SUPPORT_XCODEPROJ
-      return await CodeSigner.loadCertificates(for: identity)
-        .mapError(Error.failedToLoadCertificates)
-        .andThen { certificates in
-          await loadProvisioningProfiles().map { profiles in
-            profiles.filter { (_, profile) in
-              profile.provisionedDevices?.contains(deviceId) != false
-                && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
-                && profile.platforms.contains(deviceOS.provisioningProfileName)
-                && profile.suitable(forBundleIdentifier: bundleIdentifier)
-                && profile.certificates.contains { certificate in
-                  certificates.contains { other in
-                    other.serialNumber == certificate.serialNumber
-                  }
-                }
-            }.first?.0
-          }
-        }
+      return await loadProvisioningProfiles().map { profiles in
+        profiles.filter { (_, profile) in
+          profile.provisionedDevices?.contains(deviceId) != false
+            && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
+            && profile.platforms.contains(deviceOS.provisioningProfileName)
+            && profile.suitable(forBundleIdentifier: bundleIdentifier)
+            && profile.certificates.contains { certificate in
+              Crypto.Insecure.SHA1.hash(data: Data(certificate.derEncoded))
+                == identity.certificateSHA1
+            }
+        }.first?.0
+      }
     #else
       return .failure(.hostPlatformNotSupported)
     #endif
