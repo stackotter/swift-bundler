@@ -12,7 +12,7 @@ struct ProvisioningProfile {
   let platforms: [String]
   let appId: String
   let entitlements: Entitlements
-  let certificates: [Certificate]
+  let certificates: [(certificate: Certificate, derEncoded: [UInt8])]
 
   enum CodingKeys: String, CodingKey {
     case teamIdentifierArray = "TeamIdentifier"
@@ -65,9 +65,14 @@ extension ProvisioningProfile: Decodable {
       platforms: try container.decode([String].self, forKey: .platforms),
       appId: try container.decode(String.self, forKey: .appId),
       entitlements: try container.decode(Entitlements.self, forKey: .entitlements),
-      certificates: try container.decode([Data].self, forKey: .certificates).map { certificateDER in
-        try Certificate(derEncoded: [UInt8](certificateDER))
-      }
+      certificates: try container.decode([Data].self, forKey: .certificates)
+        .map { certificateDER in
+          let bytes = [UInt8](certificateDER)
+          return (
+            try Certificate(derEncoded: bytes),
+            bytes
+          )
+        }
     )
   }
 }

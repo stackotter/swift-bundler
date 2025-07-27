@@ -1,5 +1,6 @@
 import Foundation
 import Parsing
+import Crypto
 import SwiftASN1
 import X509
 
@@ -9,11 +10,18 @@ enum CodeSigner {
   static let codesignToolPath = "/usr/bin/codesign"
   /// The path to the `security` tool.
   static let securityToolPath = "/usr/bin/security"
+  /// We warn the user when they attempt to use a certificate within a certain
+  /// margin of its expiry.
+  static let certificateExpiryWarningMargin: TimeInterval = 24 * 60 * 60
 
   /// An identity that can be used to codesign a bundle.
   struct Identity {
-    /// The identity's id.
+    /// The identity's id, which is the SHA-1 hash of the corresponding
+    /// certificate's DER representation.
     var id: String
+    /// This is the parsed representation of ``id``, and is the SHA-1 hash of
+    /// the corresponding certificate's DER representation.
+    var certificateSHA1: [UInt8]
     /// The identity's display name.
     var name: String
   }
@@ -201,7 +209,7 @@ enum CodeSigner {
             return String(withoutQuotationMarks)
           }
         }.map { (_: Substring, id: String, name: String) in
-          return Identity(id: id, name: name)
+          (id: id, name: name)
         }
 
         let identityListParser = Parse {
@@ -209,13 +217,19 @@ enum CodeSigner {
             identityParser
           }
           Rest<Substring>()
-        }.map { (identities: [Identity], _: Substring) in
+        }.map { (identities: [(id: String, name: String)], _: Substring) in
           return identities
         }
 
         let identities: [Identity]
         do {
           identities = try identityListParser.parse(output)
+            .map { (id, name) in
+              guard let parsedId = Array(fromHex: id) else {
+                throw CodeSignerError.invalidId(id)
+              }
+              return Identity(id: id, certificateSHA1: parsedId, name: name)
+            }
         } catch {
           return .failure(.failedToParseIdentityList(error))
         }
@@ -251,13 +265,13 @@ enum CodeSigner {
     }
   }
 
-  static func loadCertificates(
+  static func loadCertificate(
     for identity: Identity
-  ) async -> Result<[Certificate], CodeSignerError> {
+  ) async -> Result<Certificate, CodeSignerError> {
     await Process.create(
       securityToolPath,
       arguments: [
-        "find-certificate", "-c", identity.name, "-p", "-a",
+        "find-certificate", "-c", identity.id, "-p", "-a",
       ]
     ).getOutput().mapError { error in
       .failedToLocateSigningCertificate(identity, error)
@@ -268,42 +282,61 @@ enum CodeSigner {
       }.map { part in
         // Add separator back to each certificate
         String(separator + part)
-      }
+      }.filter { certificatePEM in
+        let base64 = certificatePEM.split(separator: "\n")
+          .dropFirst().dropLast()
+          .joined(separator: "")
 
-      return certificates.tryMap { certificatePEM in
-        Result {
-          try Certificate(pemEncoded: certificatePEM)
-        }.mapError { error in
-          CodeSignerError.failedToParseSigningCertificate(
-            pem: certificatePEM,
-            error
-          )
+        guard let certificateDER = Data(base64Encoded: base64) else {
+          log.warning("Malformed PEM certificate")
+          return false
         }
-      }
-    }
-  }
-
-  static func getLatestCertificate(
-    for identity: Identity
-  ) async -> Result<Certificate, CodeSignerError> {
-    let now = Date()
-    return await loadCertificates(for: identity).andThen { certificates in
-      guard
-        let latest = certificates.filter({ certificate in
-          certificate.notValidAfter > now
-        }).sorted(by: { first, second in
-          first.notValidBefore > second.notValidBefore
-        }).first
-      else {
-        return .failure(.failedToLocateLatestCertificate(identity))
+        
+        let hash = Crypto.Insecure.SHA1.hash(data: certificateDER)
+        return hash == identity.certificateSHA1
       }
 
-      return .success(latest)
+      guard let certificatePEM = certificates.first else {
+        return .failure(.failedToLocateCertificate(identity))
+      }
+
+      if certificates.count > 1 {
+        log.warning(
+          """
+          Found multiple certificates matching identity '\(identity.name)' \
+          with SHA-1 hash '\(identity.id)'.
+          """
+        )
+      }
+
+      return  Result {
+        try Certificate(pemEncoded: certificatePEM)
+      }.mapError { error in
+        CodeSignerError.failedToParseSigningCertificate(
+          pem: certificatePEM,
+          error
+        )
+      }.andThen { certificate in
+        guard Date() <= certificate.notValidAfter else {
+          return .failure(.certificateExpired(identity, notValidAfter: certificate.notValidAfter))
+        }
+
+        if Date().advanced(by: certificateExpiryWarningMargin) >= certificate.notValidAfter {
+          log.warning(
+            """
+            The certificate with SHA-1 hash '\(identity.id)' corresponding to \
+            identity '\(identity.name)' expires soon; not valid after \
+            \(certificate.notValidAfter)
+            """)
+        }
+
+        return .success(certificate)
+      }
     }
   }
 
   static func getTeamIdentifier(for identity: Identity) async -> Result<String, CodeSignerError> {
-    await getLatestCertificate(for: identity).andThen { certificate in
+    await loadCertificate(for: identity).andThen { certificate in
       for element in certificate.subject {
         for attribute in element {
           guard

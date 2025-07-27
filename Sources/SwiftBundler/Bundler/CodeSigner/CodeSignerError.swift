@@ -13,7 +13,9 @@ enum CodeSignerError: LocalizedError {
   case failedToParseSigningCertificate(pem: String, Error)
   case signingCertificateMissingTeamIdentifier(CodeSigner.Identity)
   case identityShortNameNotMatched(String)
-  case failedToLocateLatestCertificate(CodeSigner.Identity)
+  case failedToLocateCertificate(CodeSigner.Identity)
+  case invalidId(String)
+  case certificateExpired(CodeSigner.Identity, notValidAfter: Date)
 
   var errorDescription: String? {
     switch self {
@@ -50,10 +52,17 @@ enum CodeSignerError: LocalizedError {
           Identity short name '\(shortName)' didn't match any known identities. \
           Run 'swift bundler list-identities' to list available identities.
           """
-      case .failedToLocateLatestCertificate(let identity):
+      case .failedToLocateCertificate(let identity):
         return """
-          Failed to locate latest signing certificate for identity \
-          '\(identity.name)'
+          Failed to locate signing certificate for identity \
+          '\(identity.name)' (id: \(identity.id))
+          """
+      case .invalidId(let id):
+        return "Invalid code signing id '\(id)', expected hexadecimal string."
+      case .certificateExpired(let identity, let notValidAfter):
+        return """
+          The certificate corresponding to code signing identity '\(identity.name)'
+          with SHA-1 hash '\(identity.id)' expired at \(notValidAfter).
           """
     }
   }
