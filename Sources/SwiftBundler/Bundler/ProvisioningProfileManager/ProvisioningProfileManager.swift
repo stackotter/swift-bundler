@@ -103,7 +103,8 @@ enum ProvisioningProfileManager {
         ).mapError { error in
           Error.failedToGetTeamIdentifier(error)
         }.andThen { teamIdentifier in
-          await generateProvisioningProfile(
+          log.debug("Generating new provisioning profile (no suitable profile found)")
+          return await generateProvisioningProfile(
             bundleIdentifier: bundleIdentifier,
             teamId: teamIdentifier,
             deviceId: deviceId,

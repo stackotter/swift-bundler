@@ -9,6 +9,10 @@ enum CodeSigner {
   static let codesignToolPath = "/usr/bin/codesign"
   /// The path to the `security` tool.
   static let securityToolPath = "/usr/bin/security"
+  /// How much earlier than the actual expiry we consider a certificate
+  /// to be expired. This margin reduces the risk of an app's certificate
+  /// expiring annoyingly soon after bundling/installing an app.
+  static let certificateExpirySafetyMargin: TimeInterval = 24 * 60 * 60
 
   /// An identity that can be used to codesign a bundle.
   struct Identity {
@@ -278,6 +282,15 @@ enum CodeSigner {
             pem: certificatePEM,
             error
           )
+        }
+      }.map { certificates in
+        // Ignore expired or soon-to-be-expired certificates.
+        certificates.compactMap { certificate in
+          if Date().advanced(by: certificateExpirySafetyMargin) >= certificate.notValidAfter {
+            return nil
+          } else {
+            return certificate
+          }
         }
       }
     }
