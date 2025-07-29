@@ -4,6 +4,8 @@ import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
+  typealias Error = RichError<TemplaterError>
+
   /// The repository of default templates.
   static let defaultTemplateRepository = "https://github.com/stackotter/swift-bundler-templates"
 
@@ -32,9 +34,9 @@ enum Templater {
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
     addVSCodeOverlay: Bool
-  ) async -> Result<Template?, TemplaterError> {
+  ) async throws(Error) -> Template? {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      return .failure(.packageDirectoryAlreadyExists(outputDirectory))
+      throw RichError(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
     // If no template is specified, create the most basic package that just
@@ -42,45 +44,47 @@ enum Templater {
     guard let template = template else {
       log.info("Creating package")
 
-      return await SwiftPackageManager.createPackage(
-        in: outputDirectory,
-        name: packageName
-      ).mapError { error -> TemplaterError in
-        .failedToCreateBareMinimumPackage(error)
-      }.andThen { _ in
+      do {
+        do {
+          try await SwiftPackageManager.createPackage(
+            in: outputDirectory,
+            name: packageName
+          ).unwrap()
+        } catch {
+          throw Error(.failedToCreateBareMinimumPackage, cause: error)
+        }
+
         log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
-        return updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
-      }.mapError { error -> TemplaterError in
-        attemptCleanup(outputDirectory)
-        return error
-      }.andThen { (_: Void) -> Result<Void, TemplaterError> in
-        return createPackageConfigurationFile(
+        try updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
+
+        try createPackageConfigurationFile(
           in: outputDirectory,
           packageName: packageName,
           configuration: configuration
         )
-      }.map { (_: Void) -> Template? in
-        // No template was used
-        return nil
+      } catch {
+        attemptCleanup(outputDirectory)
+        // TODO: Figure out why Swift doesn't infer this thrown type. Perhaps we
+        //   need full typed throws?
+        throw error as! Error
       }
+
+      return nil
     }
 
     // If a template was specified: Get the default templates directory (and download if not present), and then create the package
-    return await getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      .andThen { templatesDirectory in
-        await createPackage(
-          in: outputDirectory,
-          from: template,
-          in: templatesDirectory,
-          packageName: packageName,
-          configuration: configuration,
-          forceCreation: forceCreation,
-          indentationStyle: indentationStyle,
-          addVSCodeOverlay: addVSCodeOverlay
-        )
-      }.map { template in
-        .some(template)
-      }
+    let templatesDirectory = try await getDefaultTemplatesDirectory(downloadIfNecessary: true)
+
+    return try await createPackage(
+      in: outputDirectory,
+      from: template,
+      in: templatesDirectory,
+      packageName: packageName,
+      configuration: configuration,
+      forceCreation: forceCreation,
+      indentationStyle: indentationStyle,
+      addVSCodeOverlay: addVSCodeOverlay
+    )
   }
 
   /// Creates a package from the specified template from the specified template repository.
@@ -104,14 +108,14 @@ enum Templater {
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
     addVSCodeOverlay: Bool
-  ) async -> Result<Template, TemplaterError> {
+  ) async throws(Error) -> Template {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      return .failure(.packageDirectoryAlreadyExists(outputDirectory))
+      throw Error(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
     // The `Base` template should not be used to create packages directly
     guard template != "Base" else {
-      return .failure(.cannotCreatePackageFromBaseTemplate)
+      throw Error(.cannotCreatePackageFromBaseTemplate)
     }
 
     log.info("Creating package from the '\(template)' template")
@@ -119,29 +123,21 @@ enum Templater {
     // Check that the template exists
     let templateDirectory = templatesDirectory.appendingPathComponent(template)
     guard FileManager.default.itemExists(at: templateDirectory, withType: .directory) else {
-      return .failure(.noSuchTemplate(template))
+      throw Error(.noSuchTemplate(template))
     }
 
     // Load the template manifest
     let manifestFile = templateDirectory.appendingPathComponent("Template.toml")
-    let manifest: TemplateManifest
-    switch TemplateManifest.load(from: manifestFile, template: template) {
-      case let .success(templateManifest):
-        manifest = templateManifest
-      case let .failure(error):
-        return .failure(error)
-    }
+    let manifest = try TemplateManifest.load(from: manifestFile, template: template)
 
     if !forceCreation {
       // Verify that this machine's Swift version is supported
-      if case let .failure(error) = await verifyTemplateIsSupported(template, manifest) {
-        return .failure(error)
-      }
+      try await verifyTemplateIsSupported(template, manifest)
     }
 
     // Create the output directory
     if case let .failure(error) = FileManager.default.createDirectory(at: outputDirectory) {
-      return .failure(.failedToCreateOutputDirectory(outputDirectory, error))
+      throw Error(.failedToCreateOutputDirectory(outputDirectory), cause: error)
     }
 
     // Apply the base template first if it exists
@@ -149,67 +145,69 @@ enum Templater {
     if FileManager.default.itemExists(at: baseTemplate, withType: .directory) {
       // Set the indentation style to tab for now to avoid updating the tab style twice
       // because the final `applyTemplate` call will update all files in the output directory
-      let result = applyTemplate(
-        baseTemplate,
-        to: outputDirectory,
-        packageName: packageName,
-        identifier: configuration.identifier,
-        indentationStyle: indentationStyle
-      )
-
-      if case let .failure(error) = result {
+      do {
+        try applyTemplate(
+          baseTemplate,
+          to: outputDirectory,
+          packageName: packageName,
+          identifier: configuration.identifier,
+          indentationStyle: indentationStyle
+        )
+      } catch {
         attemptCleanup(outputDirectory)
-        return .failure(error)
+        throw error
       }
     }
 
     if addVSCodeOverlay {
       let vsCodeOverlay = templatesDirectory.appendingPathComponent("VSCode")
       guard FileManager.default.itemExists(at: vsCodeOverlay, withType: .directory) else {
-        return .failure(.missingVSCodeOverlay)
+        throw Error(.missingVSCodeOverlay)
       }
 
-      let result = applyTemplate(
-        vsCodeOverlay,
+      do {
+        try applyTemplate(
+          vsCodeOverlay,
+          to: outputDirectory,
+          packageName: packageName,
+          identifier: configuration.identifier,
+          indentationStyle: indentationStyle
+        )
+      } catch {
+        attemptCleanup(outputDirectory)
+        throw error
+      }
+    }
+
+    // Apply the template
+    do {
+      try applyTemplate(
+        templateDirectory,
         to: outputDirectory,
         packageName: packageName,
         identifier: configuration.identifier,
         indentationStyle: indentationStyle
       )
-
-      if case let .failure(error) = result {
-        attemptCleanup(outputDirectory)
-        return .failure(error)
-      }
-    }
-
-    // Apply the template
-    return applyTemplate(
-      templateDirectory,
-      to: outputDirectory,
-      packageName: packageName,
-      identifier: configuration.identifier,
-      indentationStyle: indentationStyle
-    ).mapError { error -> TemplaterError in
+    } catch {
       // Cleanup output directory
       attemptCleanup(outputDirectory)
-      return error
-    }.andThen { _ -> Result<Void, TemplaterError> in
-      createPackageConfigurationFile(
-        in: outputDirectory,
-        packageName: packageName,
-        configuration: configuration
-      )
-    }.map { _ -> Template in
-      Template(name: template, manifest: manifest)
+      throw error
     }
+
+    try createPackageConfigurationFile(
+      in: outputDirectory,
+      packageName: packageName,
+      configuration: configuration
+    )
+
+    return Template(name: template, manifest: manifest)
   }
 
   static func createPackageConfigurationFile(
     in packageDirectory: URL,
     packageName: String,
     configuration: AppConfiguration
-  ) -> Result<Void, TemplaterError> {
+  ) throws(Error) {
     // Create package configuration file
     let file = PackageConfiguration.standardConfigurationFileLocation(
       for: packageDirectory
@@ -221,9 +219,8 @@ enum Templater {
     do {
       let contents = try TOMLEncoder().encode(configuration)
       try contents.write(to: file, atomically: false, encoding: .utf8)
-      return .success()
     } catch {
-      return .failure(.failedToCreateConfigurationFile(configuration, file, error))
+      throw RichError(.failedToCreateConfigurationFile(configuration, file), cause: error)
     }
   }
 
@@ -234,14 +231,14 @@ enum Templater {
   static func template(
     named name: String,
     in templateRepository: URL?
-  ) async throws(RichError<TemplaterError>) -> Template {
+  ) async throws(Error) -> Template {
     let templates = try await RichError<TemplaterError>.catch {
       let templateRepository = if let templateRepository {
         templateRepository
       } else {
-        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true).unwrap()
+        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true)
       }
-      return try Templater.enumerateTemplates(in: templateRepository).unwrap()
+      return try Templater.enumerateTemplates(in: templateRepository)
     }
 
     guard let template = templates.first(where: { $0.name == name }) else {
@@ -256,23 +253,20 @@ enum Templater {
   static func verifyTemplateIsSupported(
     _ name: String,
     _ manifest: TemplateManifest
-  ) async -> Result<Void, TemplaterError> {
+  ) async throws(Error) {
     // Verify that the installed Swift version is supported
-    switch await SwiftPackageManager.getSwiftVersion() {
-      case .success(let version):
-        if version < manifest.minimumSwiftVersion {
-          return .failure(
-            .templateDoesNotSupportInstalledSwiftVersion(
-              template: name,
-              version: version,
-              minimumSupportedVersion: manifest.minimumSwiftVersion
-            ))
-        }
-      case .failure(let error):
-        return .failure(.failedToCheckSwiftVersion(error))
+    let version = try await Error.catch {
+      try await SwiftPackageManager.getSwiftVersion().unwrap()
     }
 
-    return .success()
+    if version < manifest.minimumSwiftVersion {
+      let message = TemplaterError.templateDoesNotSupportInstalledSwiftVersion(
+        template: name,
+        version: version,
+        minimumSupportedVersion: manifest.minimumSwiftVersion
+      )
+      throw Error(message)
+    }
   }
 
   /// Gets the default templates directory.
@@ -282,74 +276,67 @@ enum Templater {
   ///   directory doesn't exist and couldn't be downloaded.
   static func getDefaultTemplatesDirectory(
     downloadIfNecessary: Bool
-  ) async -> Result<URL, TemplaterError> {
+  ) async throws(Error) -> URL {
     // Get the templates directory
-    let templatesDirectory: URL
-    switch System.getApplicationSupportDirectory() {
-      case let .success(applicationSupport):
-        templatesDirectory = applicationSupport.appendingPathComponent("templates")
-      case let .failure(error):
-        return .failure(.failedToGetApplicationSupportDirectory(error))
+    let templatesDirectory = try Error.catch {
+      try System.getApplicationSupportDirectory() / "templates"
     }
 
     // Download the templates if they don't exist
     if !FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
-      let result = await downloadDefaultTemplates(into: templatesDirectory)
-      if case let .failure(error) = result {
-        return .failure(error)
-      }
+      try await downloadDefaultTemplates(into: templatesDirectory)
     }
 
-    return .success(templatesDirectory)
+    return templatesDirectory
   }
 
   /// Updates the default templates to the latest version from GitHub.
   /// - Returns: A failure if updating fails.
-  static func updateTemplates() async -> Result<Void, TemplaterError> {
-    return await getDefaultTemplatesDirectory(downloadIfNecessary: false)
-      .andThen { templatesDirectory in
-        guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
-          return await downloadDefaultTemplates(into: templatesDirectory)
-        }
+  static func updateTemplates() async throws(Error) {
+    let templatesDirectory = try await getDefaultTemplatesDirectory(downloadIfNecessary: false)
 
-        do {
-          try await Process.create(
-            "git",
-            arguments: [
-              "fetch"
-            ],
-            directory: templatesDirectory
-          ).runAndWait()
+    guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
+      try await downloadDefaultTemplates(into: templatesDirectory)
+      return
+    }
 
-          try await Process.create(
-            "git",
-            arguments: [
-              "checkout", "v\(SwiftBundler.version.major)",
-            ],
-            directory: templatesDirectory
-          ).runAndWait()
+    do {
+      try await Process.create(
+        "git",
+        arguments: [
+          "fetch"
+        ],
+        directory: templatesDirectory
+      ).runAndWait()
 
-          try await Process.create(
-            "git",
-            arguments: ["pull"],
-            directory: templatesDirectory
-          ).runAndWait()
-        } catch {
-          // TODO: Why was this error type not inferred?
-          return .failure(.failedToPullLatestTemplates(error as! Process.Error))
-        }
+      try await Process.create(
+        "git",
+        arguments: [
+          "checkout", "v\(SwiftBundler.version.major)",
+        ],
+        directory: templatesDirectory
+      ).runAndWait()
 
-        return .success()
-      }
+      try await Process.create(
+        "git",
+        arguments: ["pull"],
+        directory: templatesDirectory
+      ).runAndWait()
+    } catch {
+      throw Error(.failedToPullLatestTemplates, cause: error)
+    }
   }
 
   /// Gets the list of available templates from a templates directory.
   /// - Parameter templatesDirectory: The directory to search for templates in.
   /// - Returns: The available templates, or an error if template enumeration fails.
-  static func enumerateTemplates(in templatesDirectory: URL) -> Result<[Template], TemplaterError> {
+  static func enumerateTemplates(in templatesDirectory: URL) throws(Error) -> [Template] {
     do {
       let contents = try FileManager.default.contentsOfDirectory(
-        at: templatesDirectory, includingPropertiesForKeys: nil, options: [])
+        at: templatesDirectory,
+        includingPropertiesForKeys: nil,
+        options: []
+      )
       var templates: [Template] = []
 
       // Enumerate templates
@@ -369,32 +356,30 @@ enum Templater {
 
         // Load the template manifest file
         let manifestFile = directory.appendingPathComponent("Template.toml")
-        let manifest: TemplateManifest
-        switch TemplateManifest.load(from: manifestFile, template: templateName) {
-          case let .success(templateManifest):
-            manifest = templateManifest
-          case let .failure(error):
-            return .failure(error)
-        }
+        let manifest = try TemplateManifest.load(from: manifestFile, template: templateName)
 
         let template = Template(name: templateName, manifest: manifest)
         templates.append(template)
       }
 
-      return .success(templates)
+      return templates
     } catch {
-      return .failure(.failedToEnumerateTemplates(error))
+      throw Error(.failedToEnumerateTemplates, cause: error)
     }
   }
 
   /// Downloads the default template repository.
   /// - Parameter directory: The directory to clone the template repository in.
   /// - Returns: A failure if cloning the repository fails.
-  static func downloadDefaultTemplates(into directory: URL) async -> Result<Void, TemplaterError> {
+  static func downloadDefaultTemplates(into directory: URL) async throws(Error) {
     log.info("Downloading default templates (\(defaultTemplateRepository))")
 
     // Remove the directory if it already exists
-    try? FileManager.default.removeItem(at: directory)
+    if directory.exists() {
+      try Error.catch {
+        try FileManager.default.removeItem(at: directory)
+      }
+    }
 
     // Clone the templates repository
     let process = Process.create(
@@ -406,10 +391,10 @@ enum Templater {
       ]
     )
 
-    return await Result.catching { () async throws(Process.Error) in
+    do {
       try await process.runAndWait()
-    }.mapError { error in
-      .failedToCloneTemplateRepository(error)
+    } catch {
+      throw Error(.failedToCloneTemplateRepository, cause: error)
     }
   }
 
@@ -427,15 +412,15 @@ enum Templater {
     packageName: String,
     identifier: String,
     indentationStyle: IndentationStyle
-  ) -> Result<Void, TemplaterError> {
+  ) throws(Error) {
     log.info("Applying '\(templateDirectory.lastPathComponent)' template")
 
     guard
       let enumerator = FileManager.default.enumerator(
         at: templateDirectory, includingPropertiesForKeys: nil)
     else {
-      return .failure(
-        .failedToEnumerateTemplateContents(template: templateDirectory.lastPathComponent))
+      let template = templateDirectory.lastPathComponent
+      throw Error(.failedToEnumerateTemplateContents(template: template))
     }
 
     // Enumerate the template's files
@@ -448,23 +433,20 @@ enum Templater {
 
     // Process and copy each file
     for file in files {
-      let result = processAndCopyFile(
+      try processAndCopyFile(
         file,
         from: templateDirectory,
         to: outputDirectory,
         packageName: packageName,
         identifier: identifier
       )
-
-      if case .failure = result {
-        return result
-      }
     }
 
     if templateDirectory.lastPathComponent != "Base" {
       log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
     }
-    return updateIndentationStyle(in: outputDirectory, from: .tabs, to: indentationStyle)
+
+    try updateIndentationStyle(in: outputDirectory, from: .tabs, to: indentationStyle)
   }
 
   /// Updates the indentation style of all files within the given folder with another indentation style.
@@ -479,18 +461,21 @@ enum Templater {
     in directory: URL,
     from originalStyle: IndentationStyle,
     to newStyle: IndentationStyle
-  ) -> Result<Void, TemplaterError> {
-    if originalStyle == newStyle {
-      return .success()
+  ) throws(Error) {
+    guard originalStyle != newStyle else {
+      return
     }
 
     guard
       let enumerator = FileManager.default.enumerator(
-        at: directory, includingPropertiesForKeys: nil)
+        at: directory,
+        includingPropertiesForKeys: nil
+      )
     else {
-      return .failure(
-        .failedToUpdateIndentationStyle(
-          directory: directory, TemplaterError.failedToEnumerateOutputFiles))
+      throw Error(
+        .failedToUpdateIndentationStyle(directory: directory),
+        cause: TemplaterError.failedToEnumerateOutputFiles
+      )
     }
 
     do {
@@ -502,10 +487,8 @@ enum Templater {
         }
       }
     } catch {
-      return .failure(.failedToUpdateIndentationStyle(directory: directory, error))
+      throw RichError(.failedToUpdateIndentationStyle(directory: directory), cause: error)
     }
-
-    return .success()
   }
 
   // MARK: Private methods
@@ -532,22 +515,22 @@ enum Templater {
     to outputDirectory: URL,
     packageName: String,
     identifier: String
-  ) -> Result<Void, TemplaterError> {
+  ) throws(Error) {
     let variables: [String: String] = [
       "PACKAGE": packageName,
       "IDENTIFIER": identifier,
     ]
 
     // Read the file's contents
-    let contents = String.read(from: file).mapError { error in
-      TemplaterError.failedToReadFile(
-        template: templateDirectory.lastPathComponent,
-        file: file,
-        error
+    var contents: String
+    do {
+      contents = try String.read(from: file)
+    } catch {
+      let template = templateDirectory.lastPathComponent
+      throw Error(
+        .failedToReadFile(template: template, file: file),
+        cause: error
       )
-    }
-    guard case .success(var contents) = contents else {
-      return contents.replacingSuccessValue(with: ())
     }
 
     // If the file is a template, replace all instances of `{{variable}}` with the variable's value
@@ -570,8 +553,12 @@ enum Templater {
     // Write to the output file
     let outputFile = outputDirectory.appendingPathComponent(relativePath)
     _ = FileManager.default.createDirectory(at: outputFile.deletingLastPathComponent())
-    return contents.write(to: outputFile).mapError { error in
-      .failedToWriteToOutputFile(file: file, error)
+
+    do {
+      // TODO: Get rid of this once we get rid of the result-based overload
+      let _: Void = try contents.write(to: outputFile)
+    } catch {
+      throw Error(.failedToWriteToOutputFile(file: file), cause: error)
     }
   }
 }

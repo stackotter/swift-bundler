@@ -2,86 +2,66 @@ import Foundation
 import ErrorKit
 
 extension GenericWindowsBundler {
-  enum Error: Throwable {
-    case failedToCreateDirectory(URL, Swift.Error)
-    case failedToCopyExecutableDependency(
-      name: String,
-      source: URL,
-      destination: URL,
-      Swift.Error
-    )
-    case failedToInsertMetadata(MetadataInserterError)
-    case failedToEnumerateResourceBundles(URL, Swift.Error)
-    case failedToCopyResourceBundle(source: URL, destination: URL, Swift.Error)
-    case failedToCopyExecutable(source: URL, destination: URL, Swift.Error)
+  typealias Error = RichError<ErrorMessage>
+
+  enum ErrorMessage: Throwable {
+    case failedToCreateDirectory(URL)
+    case failedToCopyExecutableDependency(name: String)
+    case failedToInsertMetadata
+    case failedToEnumerateResourceBundles(URL)
+    case failedToCopyResourceBundle(source: URL, destination: URL)
+    case failedToCopyExecutable(source: URL, destination: URL)
     case failedToParseDumpbinOutput(output: String, message: String)
     case failedToResolveDLLName(String)
-    case failedToEnumerateDynamicDependencies(Process.Error)
-    case failedToCopyDLL(source: URL, destination: URL, Swift.Error)
-    case failedToCopyPDB(source: URL, destination: URL, Swift.Error)
+    case failedToEnumerateDynamicDependencies
+    case failedToCopyDLL(source: URL, destination: URL)
+    case failedToCopyPDB(source: URL, destination: URL)
 
     var userFriendlyMessage: String {
       switch self {
-        case .failedToCreateDirectory(let directory, let error):
+        case .failedToCreateDirectory(let directory):
           return """
             Failed to create directory at \
-            '\(directory.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(directory.path(relativeTo: .currentDirectory))'
             """
-        case .failedToCopyExecutableDependency(
-          let name,
-          _,
-          _,
-          let error
-        ):
-          return """
-            Failed to copy dependency '\(name)' to output bundle: \
-            \(error.localizedDescription)
-            """
-        case .failedToInsertMetadata(let error):
-          return """
-            Failed to insert metadata into main executable: \
-            \(error.localizedDescription)
-            """
-        case .failedToEnumerateResourceBundles(let directory, let error):
+        case .failedToCopyExecutableDependency(let name):
+          return "Failed to copy dependency '\(name)' to output bundle"
+        case .failedToInsertMetadata:
+          return "Failed to insert metadata into main executable"
+        case .failedToEnumerateResourceBundles(let directory):
           return """
             Failed to enumerate resource bundles in \
-            '\(directory.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(directory.path(relativeTo: .currentDirectory))'
             """
-        case .failedToCopyResourceBundle(let source, let destination, let error):
+        case .failedToCopyResourceBundle(let source, let destination):
           return """
             Failed to copy resource bundle from \
             '\(source.path(relativeTo: .currentDirectory))' to \
-            '\(destination.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(destination.path(relativeTo: .currentDirectory))'
             """
-        case .failedToCopyExecutable(let source, let destination, let error):
+        case .failedToCopyExecutable(let source, let destination):
           return """
             Failed to copy executable from \
             '\(source.path(relativeTo: .currentDirectory))' to \
-            '\(destination.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(destination.path(relativeTo: .currentDirectory))'
             """
         case .failedToParseDumpbinOutput(_, let message):
           return "Failed to parse dumpbin output: \(message)"
         case .failedToResolveDLLName(let name):
           return "Failed to resolve path to DLL named '\(name)'"
-        case .failedToEnumerateDynamicDependencies(let error):
-          return "Failed to run dumpbin: \(error.localizedDescription)"
-        case .failedToCopyDLL(let source, let destination, let error):
+        case .failedToEnumerateDynamicDependencies:
+          return "Failed to run dumpbin"
+        case .failedToCopyDLL(let source, let destination):
           return """
             Failed to copy DLL from \
             '\(source.path(relativeTo: .currentDirectory))' to \
-            '\(destination.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(destination.path(relativeTo: .currentDirectory))'
             """
-        case .failedToCopyPDB(let source, let destination, let error):
+        case .failedToCopyPDB(let source, let destination):
           return """
             Failed to copy PDB from \
             '\(source.path(relativeTo: .currentDirectory))' to \
-            '\(destination.path(relativeTo: .currentDirectory))': \
-            \(error.localizedDescription)
+            '\(destination.path(relativeTo: .currentDirectory))'
             """
       }
     }

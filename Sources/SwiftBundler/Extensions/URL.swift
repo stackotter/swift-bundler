@@ -73,6 +73,11 @@ extension URL {
     FileManager.default.fileExists(atPath: path)
   }
 
+  /// Gets whether the URL exists on disk with the given type or not.
+  func exists(withType type: FileManager.ItemType) -> Bool {
+    FileManager.default.itemExists(at: self, withType: type)
+  }
+
   /// Returns a copy of the URL with its path extension replaced.
   func replacingPathExtension(with newExtension: String) -> URL {
     deletingPathExtension().appendingPathExtension(newExtension)
