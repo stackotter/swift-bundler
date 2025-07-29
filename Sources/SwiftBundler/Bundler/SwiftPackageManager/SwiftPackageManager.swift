@@ -455,7 +455,7 @@ enum SwiftPackageManager {
       directory: packageDirectory
     )
 
-    return await process.getOutput().mapError { error in
+    return await process.getOutput(excludeStdError: true).mapError { error in
       .failedToRunSwiftPackageDescribe(
         command: process.commandStringForLogging,
         error
