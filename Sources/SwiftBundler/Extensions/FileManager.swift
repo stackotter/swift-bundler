@@ -44,6 +44,30 @@ extension FileManager {
     }
   }
 
+  func copyItem<E: Error>(
+    at source: URL,
+    to destination: URL,
+    errorMessage: (
+      _ source: URL,
+      _ destination: URL
+    ) -> E? = { _, _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) {
+    do {
+      try copyItem(at: source, to: destination)
+    } catch {
+      throw RichError(
+        errorMessage(source, destination),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
+    }
+  }
+
   /// Creates a directory, returning a result.
   ///
   /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
@@ -65,6 +89,30 @@ extension FileManager {
     }
   }
 
+  func createDirectory<E: Error>(
+    at directory: URL,
+    errorMessage: (_ directory: URL) -> E? = { _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) {
+    do {
+      try createDirectory(
+        at: directory,
+        withIntermediateDirectories: true,
+        attributes: nil
+      )
+    } catch {
+      throw RichError(
+        errorMessage(directory),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
+    }
+  }
+
   /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
   func contentsOfDirectory<Failure: Error>(
     at directory: URL,
@@ -81,6 +129,30 @@ extension FileManager {
       return .success(contents)
     } catch {
       return .failure(wrapError(directory, error))
+    }
+  }
+
+  func contentsOfDirectory<E: Error>(
+    at directory: URL,
+    errorMessage: (_ directory: URL) -> E? = { _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) -> [URL] {
+    do {
+      let contents = try FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil
+      )
+      return contents
+    } catch {
+      throw RichError(
+        errorMessage(directory),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
     }
   }
 
@@ -143,6 +215,26 @@ extension FileManager {
       try FileManager.default.removeItem(at: item)
     }.mapError { error in
       wrapError(item, error)
+    }
+  }
+
+  func removeItem<E: Error>(
+    at item: URL,
+    errorMessage: (_ item: URL) -> E? = { _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) {
+    do {
+      try FileManager.default.removeItem(at: item)
+    } catch {
+      throw RichError(
+        errorMessage(item),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
     }
   }
 }

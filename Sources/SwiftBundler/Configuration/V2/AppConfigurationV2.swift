@@ -82,7 +82,7 @@ struct AppConfigurationV2: Codable {
         }
       case .array(let array):
         return .array(
-          await array.asyncMap { value in
+          await array.typedAsyncMap { (value) async -> PlistValue in
             return await updateVariableDelimiters(value)
           }
         )
@@ -99,28 +99,20 @@ struct AppConfigurationV2: Codable {
 }
 
 extension Sequence where Element: Sendable {
-  public func asyncMap<T>(_ transform: @Sendable (Element) async throws -> T) async rethrows -> [T]
-  {
-    let initialCapacity = underestimatedCount
-    var result = ContiguousArray<T>()
-    result.reserveCapacity(initialCapacity)
-
+  func typedAsyncMap<T, E: Error>(
+    _ transform: @Sendable (Element) async throws(E) -> T
+  ) async throws(E) -> [T] {
     var iterator = self.makeIterator()
-
-    // Add elements up to the initial capacity without checking for regrowth.
-    for _ in 0..<initialCapacity {
-      result.append(try await transform(iterator.next()!))
-    }
-    // Add remaining elements, if any.
+    var result: [T] = []
     while let element = iterator.next() {
       result.append(try await transform(element))
     }
-    return Array(result)
+    return result
   }
 }
 
 extension Optional {
-  func asyncMap<T>(_ transform: (Wrapped) async throws -> T) async rethrows -> T? {
+  func asyncMap<T, E: Error>(_ transform: (Wrapped) async throws(E) -> T) async throws(E) -> T? {
     switch self {
       case .none:
         return nil
@@ -131,7 +123,9 @@ extension Optional {
 }
 
 extension Dictionary {
-  func asyncMapValues<T>(_ transform: (Value) async throws -> T) async rethrows -> [Key: T] {
+  func asyncMapValues<T, E: Error>(
+    _ transform: (Value) async throws(E) -> T
+  ) async throws(E) -> [Key: T] {
     var result: [Key: T] = .init(minimumCapacity: count)
     for (key, value) in self {
       result[key] = try await transform(value)

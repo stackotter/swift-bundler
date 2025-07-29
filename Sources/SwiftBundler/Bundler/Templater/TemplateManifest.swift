@@ -25,12 +25,15 @@ struct TemplateManifest: Codable {
   ///   - file: The manifest file to load.
   ///   - template: The name of the template that the manifest is for.
   /// - Returns: The loaded manifest, or a failure if the file could not be read or decoded.
-  static func load(from file: URL, template: String) -> Result<TemplateManifest, TemplaterError> {
+  static func load(from file: URL, template: String) throws(Templater.Error) -> TemplateManifest {
     let contents: String
     do {
       contents = try String.init(contentsOf: file)
     } catch {
-      return .failure(.failedToReadTemplateManifest(template: template, manifest: file, error))
+      throw Templater.Error(
+        .failedToReadTemplateManifest(template: template, manifest: file),
+        cause: error
+      )
     }
 
     let manifest: TemplateManifest
@@ -42,9 +45,12 @@ struct TemplateManifest: Codable {
 
       manifest = try decoder.decode(TemplateManifest.self, from: contents)
     } catch {
-      return .failure(.failedToDecodeTemplateManifest(template: template, manifest: file, error))
+      throw Templater.Error(
+        .failedToDecodeTemplateManifest(template: template, manifest: file),
+        cause: error
+      )
     }
 
-    return .success(manifest)
+    return manifest
   }
 }

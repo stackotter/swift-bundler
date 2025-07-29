@@ -132,7 +132,7 @@ struct CreateCommand: ErrorHandledCommand {
             forceCreation: force,
             indentationStyle: indentation,
             addVSCodeOverlay: addVSCodeOverlay
-          ).unwrap()
+          )
         }
       } else {
         template = try await RichError<SwiftBundlerError>.catch {
@@ -144,7 +144,7 @@ struct CreateCommand: ErrorHandledCommand {
             forceCreation: force,
             indentationStyle: indentation,
             addVSCodeOverlay: addVSCodeOverlay
-          ).unwrap()
+          )
         }
       }
 

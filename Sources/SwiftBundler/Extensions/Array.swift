@@ -85,6 +85,30 @@ extension Array {
     }
     return .success()
   }
+
+  /// A typed-throws version of `compactMap`.
+  func compactMap<NewElement, E: Error>(
+    _ transform: (Element) throws(E) -> NewElement?
+  ) throws(E) -> [NewElement] {
+    var result: [NewElement] = []
+    for element in self {
+      if let newElement = try transform(element) {
+        result.append(newElement)
+      }
+    }
+    return result
+  }
+
+  /// A typed-throws version of `compactMap`.
+  func map<NewElement, E: Error>(
+    _ transform: (Element) throws(E) -> NewElement
+  ) throws(E) -> [NewElement] {
+    var result: [NewElement] = []
+    for element in self {
+      result.append(try transform(element))
+    }
+    return result
+  }
 }
 
 struct Verb {

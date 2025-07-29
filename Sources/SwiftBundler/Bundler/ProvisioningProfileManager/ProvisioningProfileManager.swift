@@ -11,18 +11,19 @@ import ErrorKit
 /// A provisioning profile manager. Can locate existing provisioning profiles,
 /// and generate new ones if required.
 enum ProvisioningProfileManager {
-  indirect enum Error: Throwable {
+  typealias Error = RichError<ErrorMessage>
+
+  enum ErrorMessage: Throwable {
     case hostPlatformNotSupported
-    case failedToLocateLibraryDirectory(Swift.Error)
-    case failedToEnumerateProfiles(directory: URL, Swift.Error)
-    case failedToExtractProvisioningProfilePlist(URL, Swift.Error)
-    case failedToDeserializeProvisioningProfile(URL, Swift.Error)
+    case failedToLocateLibraryDirectory
+    case failedToEnumerateProfiles(directory: URL)
+    case failedToExtractProvisioningProfilePlist(URL)
+    case failedToDeserializeProvisioningProfile(URL)
     case failedToParseBundleIdentifier(String)
-    case failedToGenerateDummyXcodeproj(message: String?, Swift.Error?)
-    case failedToRunXcodebuildAutoProvisioning(message: String?, Process.Error)
+    case failedToGenerateDummyXcodeproj(message: String?)
+    case failedToRunXcodebuildAutoProvisioning(message: String?)
     case failedToParseXcodebuildOutput(_ message: String)
     case failedToLocateGeneratedProvisioningProfile(_ predictedLocation: URL)
-    case failedToGetTeamIdentifier(CodeSignerError)
 
     var userFriendlyMessage: String {
       switch self {
@@ -31,34 +32,25 @@ enum ProvisioningProfileManager {
             Provisioning profiles aren't supported on \
             \(HostPlatform.hostPlatform.platform.name)
             """
-        case .failedToLocateLibraryDirectory(let error):
-          return "Failed to locate user Developer directory: \(error.localizedDescription)"
-        case .failedToEnumerateProfiles(let directory, let error):
-          return """
-            Failed to enumerate provisioning profiles in '\(directory.path)': \
-            \(error.localizedDescription)
-            """
-        case .failedToExtractProvisioningProfilePlist(let file, let error):
-          return """
-            Failed to extract plist data from '\(file.path)': \
-            \(error.localizedDescription)
-            """
-        case .failedToDeserializeProvisioningProfile(let file, let error):
-          return """
-            Failed to deserialize plist data from '\(file.path)': \
-            \(error.localizedDescription)
-            """
+        case .failedToLocateLibraryDirectory:
+          return "Failed to locate user Developer directory"
+        case .failedToEnumerateProfiles(let directory):
+          return "Failed to enumerate provisioning profiles in '\(directory.path)'"
+        case .failedToExtractProvisioningProfilePlist(let file):
+          return "Failed to extract plist data from '\(file.path)'"
+        case .failedToDeserializeProvisioningProfile(let file):
+          return "Failed to deserialize plist data from '\(file.path)'"
         case .failedToParseBundleIdentifier(let identifier):
           return "Failed to parse bundle identifier '\(identifier)'"
-        case .failedToGenerateDummyXcodeproj(let message, let error):
+        case .failedToGenerateDummyXcodeproj(let message):
           return """
             Failed to generate dummy xcodeproj for automatic provisioning: \
-            \(message ?? error?.localizedDescription ?? "Unknown reason")
+            \(message ?? "Unknown reason")
             """
-        case .failedToRunXcodebuildAutoProvisioning(let message, let error):
+        case .failedToRunXcodebuildAutoProvisioning(let message):
           return """
             Failed to generate provisioning profile: \
-            \(message ?? error.localizedDescription)
+            \(message ?? "Unknown reason")
             """
         case .failedToParseXcodebuildOutput(let message):
           return "Failed to parse xcodebuild output: \(message)"
@@ -67,8 +59,6 @@ enum ProvisioningProfileManager {
             Failed to locate generated provisioning profile. Expected it be \
             located at '\(predictedLocation.path)'
             """
-        case .failedToGetTeamIdentifier(let error):
-          return error.localizedDescription
       }
     }
   }
@@ -86,34 +76,32 @@ enum ProvisioningProfileManager {
     deviceId: String,
     deviceOS: NonMacAppleOS,
     identity: CodeSigner.Identity
-  ) async -> Result<URL, Error> {
+  ) async throws(Error) -> URL {
     #if SUPPORT_XCODEPROJ
-      await locateSuitableProvisioningProfile(
+      let provisioningProfile = try await locateSuitableProvisioningProfile(
         bundleIdentifier: bundleIdentifier,
         deviceId: deviceId,
         deviceOS: deviceOS,
         identity: identity
-      ).andThen { provisioningProfile in
-        if let provisioningProfile = provisioningProfile {
-          log.debug("Found suitable provisioning profile at \(provisioningProfile.path)")
-          return .success(provisioningProfile)
-        }
+      )
 
-        return await CodeSigner.getTeamIdentifier(
-          for: identity
-        ).mapError { error in
-          Error.failedToGetTeamIdentifier(error)
-        }.andThen { teamIdentifier in
-          return await generateProvisioningProfile(
-            bundleIdentifier: bundleIdentifier,
-            teamId: teamIdentifier,
-            deviceId: deviceId,
-            deviceOS: deviceOS
-          )
-        }
+      if let provisioningProfile {
+        log.debug("Found suitable provisioning profile at \(provisioningProfile.path)")
+        return provisioningProfile
       }
+
+      let teamIdentifier = try await Error.catch {
+        try await CodeSigner.getTeamIdentifier(for: identity)
+      }
+
+      return try await generateProvisioningProfile(
+        bundleIdentifier: bundleIdentifier,
+        teamId: teamIdentifier,
+        deviceId: deviceId,
+        deviceOS: deviceOS
+      )
     #else
-      return .failure(.hostPlatformNotSupported)
+      throw Error(.hostPlatformNotSupported)
     #endif
   }
 
@@ -124,31 +112,31 @@ enum ProvisioningProfileManager {
     deviceId: String,
     deviceOS: NonMacAppleOS,
     identity: CodeSigner.Identity
-  ) async -> Result<URL?, Error> {
+  ) async throws(Error) -> URL? {
     #if SUPPORT_XCODEPROJ
-      return await loadProvisioningProfiles().map { profiles in
-        profiles.filter { (_, profile) in
-          profile.provisionedDevices?.contains(deviceId) != false
-            && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
-            && profile.platforms.contains(deviceOS.provisioningProfileName)
-            && profile.suitable(forBundleIdentifier: bundleIdentifier)
-            && profile.certificates.contains { certificate in
-              Crypto.Insecure.SHA1.hash(data: Data(certificate.derEncoded))
-                == identity.certificateSHA1
-            }
-        }.first?.0
-      }
+      let profiles = try await loadProvisioningProfiles()
+      return profiles.filter { (_, profile) in
+        profile.provisionedDevices?.contains(deviceId) != false
+          && profile.expirationDate > Date().advanced(by: expirationBufferSeconds)
+          && profile.platforms.contains(deviceOS.provisioningProfileName)
+          && profile.suitable(forBundleIdentifier: bundleIdentifier)
+          && profile.certificates.contains { certificate in
+            Crypto.Insecure.SHA1.hash(data: Data(certificate.derEncoded))
+              == identity.certificateSHA1
+          }
+      }.first?.0
     #else
-      return .failure(.hostPlatformNotSupported)
+      throw Error(.hostPlatformNotSupported)
     #endif
   }
 
   static func loadProvisioningProfile(
     _ provisioningProfile: URL
-  ) async -> Result<ProvisioningProfile, Error> {
+  ) async throws(Error) -> ProvisioningProfile {
     #if SUPPORT_XCODEPROJ
-      return await Result.catching { () async throws(Process.Error) in
-        try await Process.create(
+      let plistContent: String
+      do {
+        plistContent = try await Process.create(
           opensslToolPath,
           arguments: [
             "smime", "-verify",
@@ -157,66 +145,67 @@ enum ProvisioningProfileManager {
             "-inform", "der",
           ]
         ).getOutput(excludeStdError: true)
+      } catch {
+        throw Error(
+          .failedToExtractProvisioningProfilePlist(provisioningProfile),
+          cause: error
+        )
       }
-      .mapError { error in
-        .failedToExtractProvisioningProfilePlist(provisioningProfile, error)
-      }
-      .andThen { plistContent in
-        Result {
-          try PropertyListDecoder().decode(
-            ProvisioningProfile.self,
-            from: Data(plistContent.utf8)
-          )
-        }.mapError { error in
-          .failedToDeserializeProvisioningProfile(
-            provisioningProfile,
-            error
-          )
-        }
+
+      do {
+        return try PropertyListDecoder().decode(
+          ProvisioningProfile.self,
+          from: Data(plistContent.utf8)
+        )
+      } catch {
+        throw Error(
+          .failedToDeserializeProvisioningProfile(provisioningProfile),
+          cause: error
+        )
       }
     #else
-      return .failure(.hostPlatformNotSupported)
+      throw Error(.hostPlatformNotSupported)
     #endif
   }
 
   #if SUPPORT_XCODEPROJ
     private static func loadProvisioningProfiles()
-      async -> Result<[(URL, ProvisioningProfile)], Error>
+      async throws(Error) -> [(URL, ProvisioningProfile)]
     {
-      return await locateProvisioningProfilesDirectory()
-        .andThen { provisioningProfilesDirectory in
-          FileManager.default.contentsOfDirectory(
-            at: provisioningProfilesDirectory
-          ).mapError { error in
-            Error.failedToEnumerateProfiles(
-              directory: provisioningProfilesDirectory,
-              error
-            )
-          }
-        }
-        .andThen { provisioningProfiles in
-          await provisioningProfiles.filter { file in
-            file.pathExtension == "mobileprovision"
-          }.tryMap { profileFile in
-            await loadProvisioningProfile(profileFile).map { loadedProfile in
-              (profileFile, loadedProfile)
-            }
-          }
-        }
+      let provisioningProfilesDirectory = try locateProvisioningProfilesDirectory()
+
+      let provisioningProfiles: [URL]
+      do {
+        provisioningProfiles = try FileManager.default.contentsOfDirectory(
+          at: provisioningProfilesDirectory
+        ).unwrap()
+      } catch {
+        throw Error(
+          .failedToEnumerateProfiles(directory: provisioningProfilesDirectory),
+          cause: error
+        )
+      }
+
+      return try await provisioningProfiles.filter { file in
+        file.pathExtension == "mobileprovision"
+      }.typedAsyncMap { (profileFile: URL) async throws(Error) -> (URL, ProvisioningProfile) in
+        let loadedProfile = try await loadProvisioningProfile(profileFile)
+        return (profileFile, loadedProfile)
+      }
     }
 
-    private static func locateProvisioningProfilesDirectory() -> Result<URL, Error> {
-      Result {
-        try FileManager.default.url(
+    private static func locateProvisioningProfilesDirectory() throws(Error) -> URL {
+      do {
+        let libraryDirectory = try FileManager.default.url(
           for: .libraryDirectory,
           in: .userDomainMask,
           appropriateFor: nil,
           create: false
         )
-      }
-      .mapError(Error.failedToLocateLibraryDirectory)
-      .map { libraryDirectory in
-        libraryDirectory / "Developer/Xcode/UserData/Provisioning Profiles"
+
+        return libraryDirectory / "Developer/Xcode/UserData/Provisioning Profiles"
+      } catch {
+        throw Error(.failedToLocateLibraryDirectory, cause: error)
       }
     }
 
@@ -225,91 +214,89 @@ enum ProvisioningProfileManager {
       teamId: String,
       deviceId: String,
       deviceOS: NonMacAppleOS
-    ) async -> Result<URL, Error> {
+    ) async throws(Error) -> URL {
       log.info("Generating provisioning profile")
 
       let projectDirectory =
         FileManager.default.temporaryDirectory
         / "DummyProject-\(UUID().uuidString)"
 
-      return await generateDummyXcodeProject(
+      let (xcodeprojFile, scheme) = try generateDummyXcodeProject(
         projectDirectory: projectDirectory,
         bundleIdentifier: bundleIdentifier,
         teamId: teamId,
         deviceId: deviceId,
         deviceOS: deviceOS
-      ).andThen { (xcodeprojFile, scheme) in
-        await Result.catching { () async throws(Process.Error) in
-          try await Process.create(
-            "xcodebuild",
-            arguments: [
-              "-project", xcodeprojFile.path,
-              "-scheme", scheme,
-              "-sdk", deviceOS.physicalPlatform.platform.sdkName,
-              "-destination", "id=\(deviceId)",
-              "-allowProvisioningUpdates",
-              "-allowProvisioningDeviceRegistration",
-              "build",
-            ]
-          ).getOutput(excludeStdError: false)
-        }.mapError { error in
-          guard
-            case .nonZeroExitStatusWithOutput(let data, _) = error.message,
-            let output = String(data: data, encoding: .utf8)
-          else {
-            return .failedToRunXcodebuildAutoProvisioning(message: nil, error)
-          }
+      )
 
-          // Print the process' output to help users debug
-          log.error("\(output)")
-
-          let message: String?
-          if output.contains("Failed Registering Bundle Identifier") {
-            message = """
-              Bundle identifier '\(bundleIdentifier)' is already taken. Change \
-              your bundle identifier to a unique string and try again
-              """
-          } else {
-            message = nil
-          }
-
-          return .failedToRunXcodebuildAutoProvisioning(message: message, error)
-        }
-      }.andThen { output in
-        // We attempt to locate and parse the following part of xcodebuild's output;
-        // ```
-        //     Provisioning Profile: "iOS Team Provisioning Profile: *"
-        //                           (c48afb72-3423-4345-bca7-c31232d09b64)
-        // ```
-        let lines = output.split(separator: "\n")
+      let output: String
+      do {
+        output = try await Process.create(
+          "xcodebuild",
+          arguments: [
+            "-project", xcodeprojFile.path,
+            "-scheme", scheme,
+            "-sdk", deviceOS.physicalPlatform.platform.sdkName,
+            "-destination", "id=\(deviceId)",
+            "-allowProvisioningUpdates",
+            "-allowProvisioningDeviceRegistration",
+            "build",
+          ]
+        ).getOutput(excludeStdError: false)
+      } catch {
         guard
-          let profileLineIndex = lines.firstIndex(where: { line in
-            line.hasPrefix("    Provisioning Profile: ")
-          }),
-          profileLineIndex + 1 < lines.count
+          case .nonZeroExitStatusWithOutput(let data, _) = error.message,
+          let output = String(data: data, encoding: .utf8)
         else {
-          let error = Error.failedToParseXcodebuildOutput(
-            "Failed to locate generated provisioning profile ID"
-          )
-          log.debug("\(output)")
-          return .failure(error)
+          throw Error(.failedToRunXcodebuildAutoProvisioning(message: nil), cause: error)
         }
 
-        let profileId = lines[profileLineIndex + 1]
-          .trimmingCharacters(in: .whitespaces)
-          .dropFirst()
-          .dropLast()
-        return .success(String(profileId))
-      }.andThen { (profileId: String) in
-        locateProvisioningProfilesDirectory().map { directory in
-          directory / "\(profileId).mobileprovision"
+        // Print the process' output to help users debug
+        log.error("\(output)")
+
+        let message: String?
+        if output.contains("Failed Registering Bundle Identifier") {
+          message = """
+            Bundle identifier '\(bundleIdentifier)' is already taken. Change \
+            your bundle identifier to a unique string and try again
+            """
+        } else {
+          message = nil
         }
-      }.andThenDoSideEffect { file in
-        guard file.exists() else {
-          return .failure(.failedToLocateGeneratedProvisioningProfile(file))
-        }
-        return .success()
+
+        throw Error(.failedToRunXcodebuildAutoProvisioning(message: message), cause: error)
       }
+
+      // We attempt to locate and parse the following part of xcodebuild's output;
+      // ```
+      //     Provisioning Profile: "iOS Team Provisioning Profile: *"
+      //                           (c48afb72-3423-4345-bca7-c31232d09b64)
+      // ```
+      let lines = output.split(separator: "\n")
+      guard
+        let profileLineIndex = lines.firstIndex(where: { line in
+          line.hasPrefix("    Provisioning Profile: ")
+        }),
+        profileLineIndex + 1 < lines.count
+      else {
+        log.debug("\(output)")
+        let message = "Failed to locate generated provisioning profile ID"
+        throw Error(.failedToParseXcodebuildOutput(message))
+      }
+
+      let profileId = lines[profileLineIndex + 1]
+        .trimmingCharacters(in: .whitespaces)
+        .dropFirst()
+        .dropLast()
+
+      let file = try locateProvisioningProfilesDirectory()
+        / "\(profileId).mobileprovision"
+
+      guard file.exists() else {
+        throw Error(.failedToLocateGeneratedProvisioningProfile(file))
+      }
+
+      return file
     }
 
     private static func generateDummyXcodeProject(
@@ -318,76 +305,77 @@ enum ProvisioningProfileManager {
       teamId: String,
       deviceId: String,
       deviceOS: NonMacAppleOS
-    ) -> Result<(xcodeprojFile: URL, scheme: String), Error> {
+    ) throws(Error) -> (xcodeprojFile: URL, scheme: String) {
       let sourcesDirectory = projectDirectory / "Sources"
       let infoPlistFile = sourcesDirectory / "Info.plist"
       let xcodeprojFile = projectDirectory / "Dummy.xcodeproj"
 
-      return FileManager.default.createDirectory(at: sourcesDirectory)
-        .mapError { error in
-          .failedToGenerateDummyXcodeproj(
-            message: "Failed to create sources directory at '\(sourcesDirectory.path)'",
-            error
-          )
-        }
-        .andThen { _ in
-          generateDummyXcodeProjectSpec(
-            bundleIdentifier: bundleIdentifier,
-            teamId: teamId,
-            deviceOS: deviceOS,
-            projectDirectory: projectDirectory,
-            sourcesDirectory: sourcesDirectory,
-            infoPlistFile: infoPlistFile
-          )
-        }.andThenDoSideEffect { (_, productName) in
-          // Write source files
-          let dummySourceCode = "print(\"Hello, World!\")"
-          let infoPlist: [String: Any] = [
-            "CFBundleExecutable": productName,
-            "CFBundleIdentifier": bundleIdentifier,
-            "CFBundleInfoDictionaryVersion": "6.0",
-            "CFBundleName": productName,
-            "CFBundlePackageType": "APPL",
-          ]
+      do {
+        try FileManager.default.createDirectory(at: sourcesDirectory).unwrap()
+      } catch {
+        let message = "Failed to create sources directory at '\(sourcesDirectory.path)'"
+        throw Error(
+          .failedToGenerateDummyXcodeproj(message: message),
+          cause: error
+        )
+      }
 
-          return dummySourceCode.write(to: sourcesDirectory / "main.swift")
-            .andThen { _ in
-              return Result {
-                try PropertyListSerialization.data(
-                  fromPropertyList: infoPlist,
-                  format: .xml,
-                  options: 0
-                )
-              }.andThen { data in
-                data.write(to: infoPlistFile)
-              }
-            }.mapError { error in
-              .failedToGenerateDummyXcodeproj(message: nil, error)
-            }
-        }.andThen { (project, productName) in
-          guard let userName = ProcessInfo.processInfo.environment["LOGNAME"] else {
-            let error = Error.failedToGenerateDummyXcodeproj(
-              message: "Missing username (read from LOGNAME environment variable)",
-              nil
-            )
-            return .failure(error)
-          }
+      // Generate project spec
+      let (project, productName) = try generateDummyXcodeProjectSpec(
+        bundleIdentifier: bundleIdentifier,
+        teamId: teamId,
+        deviceOS: deviceOS,
+        projectDirectory: projectDirectory,
+        sourcesDirectory: sourcesDirectory,
+        infoPlistFile: infoPlistFile
+      )
 
-          let generator = ProjectGenerator(project: project)
-          return Result {
-            let xcodeProject = try generator.generateXcodeProject(
-              in: Path(projectDirectory.path),
-              userName: userName
-            )
-            let fileWriter = FileWriter(project: project)
-            try fileWriter.writeXcodeProject(
-              xcodeProject,
-              to: Path(xcodeprojFile.path)
-            )
-          }.mapError { error in
-            .failedToGenerateDummyXcodeproj(message: nil, error)
-          }.replacingSuccessValue(with: (xcodeprojFile, productName))
-        }
+      let dummySourceCode = "print(\"Hello, World!\")"
+      let infoPlist: [String: Any] = [
+        "CFBundleExecutable": productName,
+        "CFBundleIdentifier": bundleIdentifier,
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": productName,
+        "CFBundlePackageType": "APPL",
+      ]
+
+      // Create main.swift and Info.plist
+      do {
+        try dummySourceCode.write(to: sourcesDirectory / "main.swift").unwrap()
+
+        let data = try PropertyListSerialization.data(
+          fromPropertyList: infoPlist,
+          format: .xml,
+          options: 0
+        )
+
+        try data.write(to: infoPlistFile).unwrap()
+      } catch {
+        throw Error(.failedToGenerateDummyXcodeproj(message: nil), cause: error)
+      }
+
+      guard let userName = ProcessInfo.processInfo.environment["LOGNAME"] else {
+        let message = "Missing username (read from LOGNAME environment variable)"
+        throw Error(.failedToGenerateDummyXcodeproj(message: message))
+      }
+
+      // Generate project on disk
+      let generator = ProjectGenerator(project: project)
+      do {
+        let xcodeProject = try generator.generateXcodeProject(
+          in: Path(projectDirectory.path),
+          userName: userName
+        )
+        let fileWriter = FileWriter(project: project)
+        try fileWriter.writeXcodeProject(
+          xcodeProject,
+          to: Path(xcodeprojFile.path)
+        )
+      } catch {
+        throw Error(.failedToGenerateDummyXcodeproj(message: nil), cause: error)
+      }
+
+      return (xcodeprojFile, productName)
     }
 
     private static func generateDummyXcodeProjectSpec(
@@ -397,7 +385,7 @@ enum ProvisioningProfileManager {
       projectDirectory: URL,
       sourcesDirectory: URL,
       infoPlistFile: URL
-    ) -> Result<(project: Project, productName: String), Error> {
+    ) throws(Error) -> (project: Project, productName: String) {
       let bundleIdentifierParts = bundleIdentifier.split(separator: ".")
       let bundleIdentifierPrefix = bundleIdentifierParts.dropLast()
         .joined(separator: ".")
@@ -406,7 +394,7 @@ enum ProvisioningProfileManager {
         let productName = bundleIdentifier.split(separator: ".").last
           .map(String.init)
       else {
-        return .failure(.failedToParseBundleIdentifier(bundleIdentifier))
+        throw Error(.failedToParseBundleIdentifier(bundleIdentifier))
       }
 
       let target = Target(
@@ -426,7 +414,7 @@ enum ProvisioningProfileManager {
         options: SpecOptions(bundleIdPrefix: bundleIdentifierPrefix)
       )
 
-      return .success((project, productName))
+      return (project, productName)
     }
   #endif
 }

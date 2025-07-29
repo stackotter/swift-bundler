@@ -5,45 +5,43 @@ import ErrorKit
 /// An error returned by ``Templater``.
 enum TemplaterError: Throwable {
   case packageDirectoryAlreadyExists(URL)
-  case failedToCloneTemplateRepository(Process.Error)
-  case failedToGetApplicationSupportDirectory(SystemError)
+  case failedToCloneTemplateRepository
   case cannotCreatePackageFromBaseTemplate
   case noSuchTemplate(String)
-  case failedToCreateOutputDirectory(URL, Error)
-  case failedToDecodeTemplateManifest(template: String, manifest: URL, Error)
-  case failedToReadTemplateManifest(template: String, manifest: URL, Error)
+  case failedToCreateOutputDirectory(URL)
+  case failedToDecodeTemplateManifest(template: String, manifest: URL)
+  case failedToReadTemplateManifest(template: String, manifest: URL)
   case templateDoesNotSupportInstalledSwiftVersion(
     template: String, version: Version, minimumSupportedVersion: Version
   )
   case failedToEnumerateTemplateContents(template: String)
-  case failedToReadFile(template: String, file: URL, Error)
+  case failedToReadFile(template: String, file: URL)
   case failedToGetRelativePath(file: URL, base: URL)
-  case failedToWriteToOutputFile(file: URL, Error)
-  case failedToCreateBareMinimumPackage(SwiftPackageManagerError)
-  case failedToEnumerateTemplates(Error)
-  case failedToPullLatestTemplates(Process.Error)
+  case failedToWriteToOutputFile(file: URL)
+  case failedToCreateBareMinimumPackage
+  case failedToEnumerateTemplates
+  case failedToPullLatestTemplates
   case failedToEnumerateOutputFiles
-  case failedToUpdateIndentationStyle(directory: URL, Error)
-  case failedToCheckSwiftVersion(SwiftPackageManagerError)
-  case failedToCreateConfigurationFile(PackageConfiguration, URL, Error)
+  case failedToUpdateIndentationStyle(directory: URL)
+  case failedToCreateConfigurationFile(PackageConfiguration, URL)
   case missingVSCodeOverlay
 
   var userFriendlyMessage: String {
     switch self {
       case .packageDirectoryAlreadyExists(let directory):
         return "A directory already exists at '\(directory.relativePath)'"
-      case .failedToCloneTemplateRepository(let processError):
-        return
-          "Failed to clone the default template repository from '\(Templater.defaultTemplateRepository)': \(processError.localizedDescription)"
-      case .failedToGetApplicationSupportDirectory(let error):
-        return error.localizedDescription
+      case .failedToCloneTemplateRepository:
+        return """
+          Failed to clone the default template repository from \
+          '\(Templater.defaultTemplateRepository)'
+          """
       case .cannotCreatePackageFromBaseTemplate:
         return "Cannot create a package from the 'Base' template"
       case let .noSuchTemplate(template):
         return "The '\(template)' template does not exist"
-      case .failedToCreateOutputDirectory(let directory, _):
+      case .failedToCreateOutputDirectory(let directory):
         return "Failed to create package directory at '\(directory.relativePath)'"
-      case .failedToDecodeTemplateManifest(let template, _, _):
+      case .failedToDecodeTemplateManifest(let template, _):
         return Output {
           "Failed to decode the manifest for the '\(template)' template"
           ""
@@ -52,7 +50,7 @@ enum TemplaterError: Throwable {
             ExampleCommand("swift bundler templates update")
           }
         }.description
-      case .failedToReadTemplateManifest(let template, _, _):
+      case .failedToReadTemplateManifest(let template, _):
         return "Failed to read the contents of the manifest for the '\(template)' template"
       case .templateDoesNotSupportInstalledSwiftVersion(
         let template, let version, let minimumSupportedVersion):
@@ -63,27 +61,27 @@ enum TemplaterError: Throwable {
           "The '\(template)' template supports a minimum Swift version of \(minimumVersion) but \(version) is installed. \(tip)"
       case .failedToEnumerateTemplateContents(let template):
         return "Failed to enumerate the contents of the '\(template)' template"
-      case .failedToReadFile(let template, let file, _):
+      case .failedToReadFile(let template, let file):
         return "Failed to read the file '\(file.relativePath)' from the '\(template)' template"
       case .failedToGetRelativePath(let file, let base):
         return "Failed to get relative path from '\(file.relativePath)' to '\(base.relativePath)'"
-      case .failedToWriteToOutputFile(let file, _):
+      case .failedToWriteToOutputFile(let file):
         return "Failed to write to the output file at '\(file.relativePath)'"
-      case .failedToCreateBareMinimumPackage(let error):
-        return "Failed to create package: \(error.localizedDescription)"
+      case .failedToCreateBareMinimumPackage:
+        return "Failed to create package"
       case .failedToEnumerateTemplates:
         return "Failed to enumerate templates"
-      case .failedToPullLatestTemplates(let processError):
-        return
-          "Failed to pull the latest templates from '\(Templater.defaultTemplateRepository)': \(processError)"
+      case .failedToPullLatestTemplates:
+        return """
+          Failed to pull the latest templates from \
+          '\(Templater.defaultTemplateRepository)'
+          """
       case .failedToEnumerateOutputFiles:
         return "Failed to enumerate the files in the output directory"
-      case .failedToUpdateIndentationStyle(let directory, _):
+      case .failedToUpdateIndentationStyle(let directory):
         return
           "Failed to update the indentation style of the package in '\(directory.relativePath)'"
-      case .failedToCheckSwiftVersion(let swiftPackageManagerError):
-        return "Failed to check Swift version: \(swiftPackageManagerError.localizedDescription)"
-      case .failedToCreateConfigurationFile(_, let file, _):
+      case .failedToCreateConfigurationFile(_, let file):
         return "Failed to create configuration file at '\(file.relativePath)'"
       case .missingVSCodeOverlay:
         return Output {

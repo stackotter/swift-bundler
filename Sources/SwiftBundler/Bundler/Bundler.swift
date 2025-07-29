@@ -24,7 +24,7 @@ protocol Bundler {
     context: BundlerContext,
     command: BundleCommand,
     manifest: PackageManifest
-  ) -> Result<Context, Error>
+  ) throws(Error) -> Context
 
   /// Bundles an app from a package's built products directory.
   /// - Parameters:
@@ -34,7 +34,7 @@ protocol Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) async -> Result<BundlerOutputStructure, Error>
+  ) async throws(Error) -> BundlerOutputStructure
 
   /// Returns a description of the files that would be produced if
   /// ``Bundler/bundle(_:_:)`` were to get called with the provided context.
@@ -49,9 +49,7 @@ extension Bundler where Context == Void {
     context: BundlerContext,
     command: BundleCommand,
     manifest: PackageManifest
-  ) -> Result<Void, Error> {
-    .success()
-  }
+  ) throws(Error) {}
 }
 
 struct BundlerContext {

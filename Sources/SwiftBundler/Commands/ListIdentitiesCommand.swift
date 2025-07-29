@@ -10,7 +10,7 @@ struct ListIdentitiesCommand: ErrorHandledCommand {
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let identities = try await RichError<SwiftBundlerError>.catch {
-      try await CodeSigner.enumerateIdentities().unwrap()
+      try await CodeSigner.enumerateIdentities()
     }
 
     Output {
