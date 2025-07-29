@@ -69,8 +69,16 @@ import Foundation
     let library = outputPath / "Contents/Libraries/libLibrary.dylib"
     #expect(library.exists(), "didn't copy dynamic library")
 
+    // Move the app and remove the debug directory to ensure that the app
+    // is relocatable and independent of any compile-time artifacts. See
+    // issue #85.
+    let appCopy = fixture / "\(app).app"
+    try? FileManager.default.removeItem(at: appCopy)
+    try FileManager.default.copyItem(at: outputPath, to: appCopy)
+    try FileManager.default.removeItem(at: fixture / ".build")
+
     // Ensure that the copied dynamic dependencies are usable by the app.
-    let executable = outputPath / "Contents/MacOS/\(app)"
+    let executable = appCopy / "Contents/MacOS/\(app)"
     let process = Process.create(executable.path)
     let output = try await process.getOutput().unwrap()
     #expect(

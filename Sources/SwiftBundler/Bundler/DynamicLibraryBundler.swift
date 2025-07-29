@@ -262,8 +262,8 @@ enum DynamicLibraryBundler {
 
     // Update the install name of the dylib
     let outputDylib = isFramework
-      ? dependency.appendingPathComponent(dylibLocation.path(relativeTo: framework))
-      : dependency
+      ? outputDependency.appendingPathComponent(dylibLocation.path(relativeTo: framework))
+      : outputDependency
     let newRelativePath = outputDylib.path(
       relativeTo: binary.deletingLastPathComponent()
     )
