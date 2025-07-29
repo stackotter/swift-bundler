@@ -1,22 +1,24 @@
 import Foundation
 import ErrorKit
 
-/// An error thrown by ``PatchElfTool``.
-enum PatchElfToolError: Throwable {
-  case patchelfNotFound(Process.Error)
-  case failedToSetRunpath(elfFile: URL, Process.Error)
+extension PatchElfTool {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .patchelfNotFound:
-        return """
-          Command 'patchelf' not found, but required by selected bundler. \
-          Please install it and try again
-          """
-      case .failedToSetRunpath(let elfFile, let error):
-        return """
-          Failed to set runpath of '\(elfFile.path)': \(error.localizedDescription)
-          """
+  /// An error message related to ``PatchElfTool``.
+  enum ErrorMessage: Throwable {
+    case patchelfNotFound
+    case failedToSetRunpath(elfFile: URL)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .patchelfNotFound:
+          return """
+            Command 'patchelf' not found, but required by selected bundler. \
+            Please install it and try again.
+            """
+        case .failedToSetRunpath(let elfFile):
+          return "Failed to set runpath of '\(elfFile.path)'"
+      }
     }
   }
 }

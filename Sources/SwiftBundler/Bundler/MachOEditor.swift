@@ -22,13 +22,13 @@ enum MachOEditor {
     }
 
     struct Regular {
-      /// The big endian magic number of a 32-bit big endian MachO file.
+      /// The big endian magic number of a 32-bit big endian Mach-O file.
       static let magicNumber32BitBigEndian: UInt32 = 0xfeed_face
-      /// The big endian magic number of a 64-bit big endian MachO file.
+      /// The big endian magic number of a 64-bit big endian Mach-O file.
       static let magicNumber64BitBigEndian: UInt32 = 0xfeed_facf
-      /// The big endian magic number of a 32-bit little endian MachO file.
+      /// The big endian magic number of a 32-bit little endian Mach-O file.
       static let magicNumber32BitLittleEndian: UInt32 = 0xcefa_edfe
-      /// The big endian magic number of a 64-bit little endian MachO file.
+      /// The big endian magic number of a 64-bit little endian Mach-O file.
       static let magicNumber64BitLittleEndian: UInt32 = 0xcffa_edfe
 
       var endianness: Endianness
@@ -115,24 +115,23 @@ enum MachOEditor {
     case replace(_ offset: MachOFile.Offset, _ bytes: [UInt8])
   }
 
-  indirect enum Error: Throwable {
-    case failedToReadFile(URL, Swift.Error)
+  typealias Error = RichError<ErrorMessage>
+
+  enum ErrorMessage: Throwable {
+    case failedToReadFile(URL)
     case fileCorrupted(_ reason: String)
-    case failedToParseFile(URL, Error)
+    case failedToParseFile(URL)
     case unknownMagicBytes(UInt32)
     case outOfBoundsEdit(Edit, bufferSize: Int)
 
     var userFriendlyMessage: String {
       switch self {
-        case .failedToReadFile(let file, let error):
-          return """
-            Failed to read MachO file '\(file.relativePath)': \
-            \(error.localizedDescription)
-            """
+        case .failedToReadFile(let file):
+          return "Failed to read Mach-O file '\(file.relativePath)'"
         case .fileCorrupted(let reason):
           return "File corrupted: \(reason)"
-        case .failedToParseFile(let file, let error):
-          return "'\(file.relativePath)': \(error.localizedDescription)"
+        case .failedToParseFile(let file):
+          return "Failed to parse Mach-O file '\(file.relativePath)'"
         case .unknownMagicBytes:
           return "Encountered unknown magic bytes. File may be corrupted"
         case .outOfBoundsEdit(let edit, let bufferSize):
@@ -144,19 +143,17 @@ enum MachOEditor {
     }
   }
 
-  static func applyEdit(_ edit: Edit, to bytes: inout [UInt8]) -> Result<Void, Error> {
+  static func applyEdit(_ edit: Edit, to bytes: inout [UInt8]) throws(Error) {
     switch edit {
       case .replace(let offset, let newBytes):
         let end = offset.value + newBytes.count
         guard end <= bytes.count else {
-          return .failure(.outOfBoundsEdit(edit, bufferSize: bytes.count))
+          throw Error(.outOfBoundsEdit(edit, bufferSize: bytes.count))
         }
 
         for (index, byte) in newBytes.enumerated() {
           bytes[offset.value + index] = byte
         }
-
-        return .success()
     }
   }
 
@@ -215,59 +212,63 @@ enum MachOEditor {
     }
   }
 
-  static func parseMachOFile(_ file: URL) -> Result<MachOFile, Error> {
-    Data.read(from: file).mapError { error in
-      .failedToReadFile(file, error)
-    }.map { data in
-      Array(data)
-    }.andThen { bytes in
-      parseMachOFile(bytes).mapError { error in
-        .failedToParseFile(file, error)
-      }
+  static func parseMachOFile(_ file: URL) throws(Error) -> MachOFile {
+    let data: Data
+    do {
+      data = try Data.read(from: file).unwrap()
+    } catch {
+      throw Error(.failedToReadFile(file), cause: error)
+    }
+
+    do {
+      return try parseMachOFile(Array(data))
+    } catch {
+      throw Error(.failedToParseFile(file), cause: error)
     }
   }
 
-  static func parseMachOFile(_ bytes: [UInt8]) -> Result<MachOFile, Error> {
+  static func parseMachOFile(_ bytes: [UInt8]) throws(Error) -> MachOFile {
     var buffer = Buffer(bytes: bytes)
 
     guard let magicBytes = buffer.readUInt32() else {
-      return .failure(.fileCorrupted("File too short to have magic bytes"))
+      throw Error(.fileCorrupted("File too short to have magic bytes"))
     }
 
-    let file: Result<MachOFile, Error>
+    let file: MachOFile
     switch magicBytes {
       case MachOFile.Regular.magicNumber32BitBigEndian:
-        let regularFile = parseRegularMachOFile(
+        let regularFile = try parseRegularMachOFile(
           &buffer,
           is64Bit: false,
           endianness: .big
         )
-        file = regularFile.map(MachOFile.regular)
+        file = .regular(regularFile)
       case MachOFile.Regular.magicNumber64BitBigEndian:
-        let regularFile = parseRegularMachOFile(
+        let regularFile = try parseRegularMachOFile(
           &buffer,
           is64Bit: true,
           endianness: .big
         )
-        file = regularFile.map(MachOFile.regular)
+        file = .regular(regularFile)
       case MachOFile.Regular.magicNumber32BitLittleEndian:
-        let regularFile = parseRegularMachOFile(
+        let regularFile = try parseRegularMachOFile(
           &buffer,
           is64Bit: false,
           endianness: .little
         )
-        file = regularFile.map(MachOFile.regular)
+        file = .regular(regularFile)
       case MachOFile.Regular.magicNumber64BitLittleEndian:
-        let regularFile = parseRegularMachOFile(
+        let regularFile = try parseRegularMachOFile(
           &buffer,
           is64Bit: true,
           endianness: .little
         )
-        file = regularFile.map(MachOFile.regular)
+        file = .regular(regularFile)
       case MachOFile.Universal.magicNumber:
-        file = parseUniversalMachOFile(&buffer).map(MachOFile.universal)
+        let universalFile = try parseUniversalMachOFile(&buffer)
+        file = .universal(universalFile)
       default:
-        return .failure(.unknownMagicBytes(magicBytes))
+        throw Error(.unknownMagicBytes(magicBytes))
     }
 
     return file
@@ -277,7 +278,7 @@ enum MachOEditor {
     _ buffer: inout Buffer,
     is64Bit: Bool,
     endianness: MachOFile.Endianness
-  ) -> Result<MachOFile.Regular, Error> {
+  ) throws(Error) -> MachOFile.Regular {
     guard
       let cpuType = buffer.readUInt32(endianness: endianness),
       let cpuSubtype = buffer.readUInt32(endianness: endianness),
@@ -288,7 +289,7 @@ enum MachOEditor {
       // For 64-bit binaries, there's an additional 4 byte reserved field
       !is64Bit || buffer.readUInt32(endianness: endianness) != nil
     else {
-      return .failure(.fileCorrupted("MachO header too short"))
+      throw Error(.fileCorrupted("Mach-O header too short"))
     }
 
     var loadCommands: [(MachOFile.Offset, MachOFile.LoadCommand)] = []
@@ -300,7 +301,7 @@ enum MachOEditor {
         let commandSize = buffer.readUInt32(endianness: endianness),
         let commandBytes = buffer.readBytes(Int(commandSize) - 8)
       else {
-        return .failure(.fileCorrupted("Malformed load command"))
+        throw Error(.fileCorrupted("Malformed load command"))
       }
 
       guard commandType == MachOFile.LoadCommand.SegmentLoad64.commandType else {
@@ -325,7 +326,7 @@ enum MachOEditor {
         let numberOfSections = commandBuffer.readUInt32(endianness: endianness),
         let flags = commandBuffer.readUInt32(endianness: endianness)
       else {
-        return .failure(.fileCorrupted("Malformed Segment Load 64 load command"))
+        throw Error(.fileCorrupted("Malformed Segment Load 64 load command"))
       }
 
       let command = MachOFile.LoadCommand.SegmentLoad64(
@@ -346,7 +347,7 @@ enum MachOEditor {
       loadCommands.append((offset, .segmentLoad64(command)))
     }
 
-    let file = MachOFile.Regular(
+    return MachOFile.Regular(
       endianness: endianness,
       cpuType: cpuType,
       cpuSubtype: cpuSubtype,
@@ -356,14 +357,13 @@ enum MachOEditor {
       flags: flags,
       loadCommands: loadCommands
     )
-    return .success(file)
   }
 
   static func parseUniversalMachOFile(
     _ buffer: inout Buffer
-  ) -> Result<MachOFile.Universal, Error> {
+  ) throws(Error) -> MachOFile.Universal {
     guard let numberOfBinaries = buffer.readUInt32() else {
-      return .failure(.fileCorrupted("Malformed universal header"))
+      throw Error(.fileCorrupted("Malformed universal header"))
     }
 
     var binaries: [MachOFile.Universal.Binary] = []
@@ -375,7 +375,7 @@ enum MachOEditor {
         let size = buffer.readUInt32(),
         let sectionAlignment = buffer.readUInt32()
       else {
-        return .failure(.fileCorrupted("Malformed universal binary header"))
+        throw Error(.fileCorrupted("Malformed universal binary header"))
       }
 
       let binary = MachOFile.Universal.Binary(
@@ -388,7 +388,7 @@ enum MachOEditor {
       binaries.append(binary)
     }
 
-    return .success(MachOFile.Universal(binaries: binaries))
+    return MachOFile.Universal(binaries: binaries)
   }
 
   struct Buffer {

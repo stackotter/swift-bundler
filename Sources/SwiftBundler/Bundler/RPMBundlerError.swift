@@ -1,47 +1,42 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``RPMBundler``.
-enum RPMBundlerError: Throwable {
-  case failedToRunGenericBundler(GenericLinuxBundlerError)
-  case failedToCreateRPMBuildDirectory(directory: URL, any Error)
-  case failedToArchiveSources(ArchiveToolError)
-  case failedToWriteSpecFile(URL, any Error)
-  case failedToRunRPMBuildTool(_ command: String, Process.Error)
-  case failedToCopyGenericBundle(source: URL, destination: URL, any Error)
-  case failedToEnumerateRPMs(_ directory: URL)
-  case failedToFindProducedRPM(_ directory: URL)
-  case failedToCopyRPMToOutputDirectory(source: URL, destination: URL, any Error)
+extension RPMBundler {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToRunGenericBundler(let error):
-        return error.localizedDescription
-      case .failedToCreateRPMBuildDirectory(let directory, _):
-        return "Failed to create '\(directory.relativePath)'"
-      case .failedToArchiveSources(let error):
-        return error.localizedDescription
-      case .failedToWriteSpecFile(let file, _):
-        return "Failed to write spec file at '\(file.relativePath)'"
-      case .failedToRunRPMBuildTool(let command, let error):
-        return """
-          Failed to run '\(command)' (rerun with -v to see invocation): \
-          \(error.localizedDescription)
-          """
-      case .failedToCopyGenericBundle(let source, let destination, _):
-        return """
-          Failed to copy generic linux bundle from '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
-      case .failedToEnumerateRPMs(let directory):
-        return "Failed to enumerate RPMs in '\(directory.relativePath)'"
-      case .failedToFindProducedRPM(let directory):
-        return "Failed to find produced RPM in '\(directory.relativePath)'"
-      case .failedToCopyRPMToOutputDirectory(let source, let destination, _):
-        return """
-          Failed to copy '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
+  /// An error message related to ``RPMBundler``.
+  enum ErrorMessage: Throwable {
+    case failedToCreateRPMBuildDirectory(directory: URL)
+    case failedToWriteSpecFile(URL)
+    case failedToRunRPMBuildTool(_ command: String)
+    case failedToCopyGenericBundle(source: URL, destination: URL)
+    case failedToEnumerateRPMs(_ directory: URL)
+    case failedToFindProducedRPM(_ directory: URL)
+    case failedToCopyRPMToOutputDirectory(source: URL, destination: URL)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToCreateRPMBuildDirectory(let directory):
+          return "Failed to create '\(directory.relativePath)'"
+        case .failedToWriteSpecFile(let file):
+          return "Failed to write spec file at '\(file.relativePath)'"
+        case .failedToRunRPMBuildTool(let command):
+          return "Failed to run '\(command)' (rerun with -v to see invocation)"
+        case .failedToCopyGenericBundle(let source, let destination):
+          return """
+            Failed to copy generic linux bundle from '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+        case .failedToEnumerateRPMs(let directory):
+          return "Failed to enumerate RPMs in '\(directory.relativePath)'"
+        case .failedToFindProducedRPM(let directory):
+          return "Failed to find produced RPM in '\(directory.relativePath)'"
+        case .failedToCopyRPMToOutputDirectory(let source, let destination):
+          return """
+            Failed to copy '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+      }
     }
   }
 }

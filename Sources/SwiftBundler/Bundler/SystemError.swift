@@ -1,16 +1,20 @@
 import Foundation
 import ErrorKit
 
-enum SystemError: Throwable {
-  case failedToGetApplicationSupportDirectory(Error)
-  case failedToCreateApplicationSupportDirectory(Error)
+extension System {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToGetApplicationSupportDirectory:
-        return "Failed to get application support directory"
-      case .failedToCreateApplicationSupportDirectory:
-        return "Failed to create application support directory"
+  enum ErrorMessage: Throwable {
+    case failedToGetApplicationSupportDirectory
+    case failedToCreateApplicationSupportDirectory
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToGetApplicationSupportDirectory:
+          return "Failed to get application support directory"
+        case .failedToCreateApplicationSupportDirectory:
+          return "Failed to create application support directory"
+      }
     }
   }
 }

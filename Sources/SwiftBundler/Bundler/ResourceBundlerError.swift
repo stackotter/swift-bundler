@@ -1,47 +1,57 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``ResourceBundler``.
-enum ResourceBundlerError: Throwable {
-  case failedToEnumerateBundles(directory: URL, Error)
-  case failedToCopyBundle(source: URL, destination: URL, Error)
-  case failedToCreateBundleDirectory(URL, Error)
-  case failedToCreateInfoPlist(file: URL, PlistCreatorError)
-  case failedToCopyResource(source: URL, destination: URL, Error)
-  case failedToEnumerateBundleContents(directory: URL, Error)
-  case failedToCompileMetalShaders(MetalCompilerError)
-  case failedToCompileXCAssets(Process.Error)
-  case failedToDeleteAssetCatalog(Error)
-  case failedToCompileStoryboards(StoryboardCompilerError)
-  case failedToBuildStringsCatalogs(StringCatalogCompilerError)
+extension ResourceBundler {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToEnumerateBundles(let directory, _):
-        return "Failed to enumerate bundles in directory at '\(directory.relativePath)'"
-      case .failedToCopyBundle(let source, let destination, _):
-        return
-          "Failed to copy bundle from '\(source.relativePath)' to '\(destination.relativePath)'"
-      case .failedToCreateBundleDirectory(let directory, _):
-        return "Failed to create bundle directory at '\(directory.relativePath)'"
-      case .failedToCreateInfoPlist(let file, let plistCreatorError):
-        return
-          "Failed to create bundle 'Info.plist' at \(file.relativePath): \(plistCreatorError.localizedDescription)"
-      case .failedToCopyResource(let source, let destination, _):
-        return
-          "Failed to copy resource from '\(source.relativePath)' to '\(destination.relativePath)'"
-      case .failedToEnumerateBundleContents(let directory, _):
-        return "Failed to enumerate bundle contents at '\(directory.relativePath)'"
-      case .failedToCompileMetalShaders(let metalCompilerError):
-        return "Failed to compile Metal shaders: \(metalCompilerError.localizedDescription)"
-      case .failedToCompileXCAssets(let error):
-        return "Failed to compile XCAssets with 'actool': \(error)"
-      case .failedToDeleteAssetCatalog:
-        return "Failed to delete asset catalog after compilation"
-      case .failedToBuildStringsCatalogs(let error):
-        return "Failed to build strings catalogs: \(error.localizedDescription)"
-      case .failedToCompileStoryboards(let error):
-        return error.localizedDescription
+  /// An error message related to ``ResourceBundler``.
+  enum ErrorMessage: Throwable {
+    case failedToEnumerateBundles(directory: URL)
+    case failedToCopyBundle(source: URL, destination: URL)
+    case failedToCreateBundleDirectory(URL)
+    case failedToCreateInfoPlist(file: URL)
+    case failedToCopyResource(source: URL, destination: URL)
+    case failedToEnumerateBundleContents(directory: URL)
+    case failedToCompileMetalShaders
+    case failedToCompileXCAssets
+    case failedToDeleteAssetCatalog(URL)
+    case failedToCompileStringsCatalogs
+    case failedToCompileStoryboards
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToEnumerateBundles(let directory):
+          let directoryPath = directory.path(relativeTo: .currentDirectory)
+          return "Failed to enumerate bundles in directory at '\(directoryPath)'"
+        case .failedToCopyBundle(let source, let destination):
+          let sourcePath = source.path(relativeTo: .currentDirectory)
+          let destinationPath = destination.path(relativeTo: .currentDirectory)
+          return "Failed to copy bundle from '\(sourcePath)' to '\(destinationPath)'"
+        case .failedToCreateBundleDirectory(let directory):
+          let directoryPath = directory.path(relativeTo: .currentDirectory)
+          return "Failed to create bundle directory at '\(directoryPath)'"
+        case .failedToCreateInfoPlist(let file):
+          let filePath = file.path(relativeTo: .currentDirectory)
+          return "Failed to create bundle 'Info.plist' at \(filePath)"
+        case .failedToCopyResource(let source, let destination):
+          let sourcePath = source.path(relativeTo: .currentDirectory)
+          let destinationPath = destination.path(relativeTo: .currentDirectory)
+          return "Failed to copy resource from '\(sourcePath)' to '\(destinationPath)'"
+        case .failedToEnumerateBundleContents(let directory):
+          let directoryPath = directory.path(relativeTo: .currentDirectory)
+          return "Failed to enumerate bundle contents at '\(directoryPath)'"
+        case .failedToCompileMetalShaders:
+          return "Failed to compile Metal shaders"
+        case .failedToCompileXCAssets:
+          return "Failed to compile XCAssets with 'actool'"
+        case .failedToDeleteAssetCatalog(let catalog):
+          let catalogPath = catalog.path(relativeTo: .currentDirectory)
+          return "Failed to delete asset catalog at '\(catalogPath)' after compilation"
+        case .failedToCompileStringsCatalogs:
+          return "Failed to compile strings catalogs"
+        case .failedToCompileStoryboards:
+          return "Failed to compile storyboards"
+      }
     }
   }
 }

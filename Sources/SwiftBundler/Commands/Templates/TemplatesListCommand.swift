@@ -20,9 +20,9 @@ struct TemplatesListCommand: ErrorHandledCommand {
       let templateRepository = if let templateRepository {
         templateRepository
       } else {
-        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true).unwrap()
+        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true)
       }
-      return try Templater.enumerateTemplates(in: templateRepository).unwrap()
+      return try Templater.enumerateTemplates(in: templateRepository)
     }
 
     let repositoryOption: String

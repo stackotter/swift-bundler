@@ -36,7 +36,7 @@ struct GenerateXcodeSupportCommand: ErrorHandledCommand {
         try XcodeSupportGenerator.generateXcodeSupport(
           for: configuration,
           in: packageDirectory
-        ).unwrap()
+        )
       }
     }
 

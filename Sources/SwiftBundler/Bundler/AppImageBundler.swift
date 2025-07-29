@@ -33,46 +33,54 @@ enum AppImageBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) async -> Result<BundlerOutputStructure, AppImageBundlerError> {
+  ) async throws(Error) -> BundlerOutputStructure {
     let outputStructure = intendedOutput(in: context, additionalContext)
-    let appDir = context.outputDirectory
-      .appendingPathComponent("\(context.appName).AppDir")
     let bundleName = outputStructure.bundle.lastPathComponent
 
-    return await GenericLinuxBundler.bundle(
-      context,
-      GenericLinuxBundler.Context(cosmeticBundleName: bundleName)
-    )
-    .mapError(AppImageBundlerError.failedToRunGenericBundler)
-    .andThenDoSideEffect { structure in
-      log.info("Creating symlinks")
-      return createSymlinks(in: structure)
-    }
-    .andThenDoSideEffect { structure in
-      // Copy the app's desktop file to the root of the output directory for
-      // convenience.
-      return FileManager.default.copyItem(
-        at: structure.desktopFile,
-        to: desktopFileLocation(for: context),
-        onError: AppImageBundlerError.failedToCopyDesktopFile
+    // Run generic bundler
+    let structure: GenericLinuxBundler.BundleStructure = try await Error.catch {
+      try await GenericLinuxBundler.bundle(
+        context,
+        GenericLinuxBundler.Context(cosmeticBundleName: bundleName)
       )
     }
-    .andThenDoSideEffect { structure in
-      // This isn't strictly necessary but it's probably a nice courtesy to
-      // anyone poking around in the outputs of this bundler if we let them
-      // know that the directory in question is meant to be an `AppDir`.
-      FileManager.default.moveItem(
-        at: structure.root,
-        to: appDir,
-        onError: AppImageBundlerError.failedToRenameGenericBundle
+
+    try createSymlinks(in: structure)
+
+    // Copy the app's desktop file to the root of the output directory for
+    // convenience.
+    let desktopFileDestination = desktopFileLocation(for: context)
+    do {
+      try FileManager.default.copyItem(at: structure.desktopFile, to: desktopFileDestination)
+    } catch {
+      let message = ErrorMessage.failedToCopyDesktopFile(
+        source: structure.desktopFile,
+        destination: desktopFileDestination
+      )
+      throw Error(message, cause: error)
+    }
+
+    // This isn't strictly necessary but it's probably a nice courtesy to
+    // anyone poking around in the outputs of this bundler if we let them
+    // know that the directory in question is meant to be an `AppDir`.
+    let appDir = context.outputDirectory / "\(context.appName).AppDir"
+    do {
+      try FileManager.default.moveItem(at: structure.root, to: appDir)
+    } catch {
+      throw Error(
+        .failedToRenameGenericBundle(source: structure.root, destination: appDir),
+        cause: error
       )
     }
-    .andThenDoSideEffect { structure in
-      log.info("Converting '\(context.appName).AppDir' to '\(bundleName)'")
-      return await AppImageTool.bundle(appDir: appDir, to: outputStructure.bundle)
-        .mapError { .failedToBundleAppDir($0) }
+
+    log.info("Converting '\(context.appName).AppDir' to '\(bundleName)'")
+    do {
+      try await AppImageTool.bundle(appDir: appDir, to: outputStructure.bundle)
+    } catch {
+      throw Error(.failedToBundleAppDir, cause: error)
     }
-    .replacingSuccessValue(with: outputStructure)
+
+    return outputStructure
   }
 
   // MARK: Private methods
@@ -80,49 +88,52 @@ enum AppImageBundler: Bundler {
   /// Creates the symlinks required to turn a generic bundle into an `AppDir`.
   private static func createSymlinks(
     in structure: GenericLinuxBundler.BundleStructure
-  ) -> Result<Void, AppImageBundlerError> {
-    return Result.success()
-      .andThen { _ in
-        // Create `.DirIcon` and `[AppName].png` if an icon is present. Both are
-        // just symlinks to the real icon file at `iconRelativePath`.
-        let icon = structure.icon1024x1024
-        guard FileManager.default.fileExists(atPath: icon.path) else {
-          return .success()
-        }
+  ) throws(Error) {
+    // Create `.DirIcon` and `[AppName].png` if an icon is present. Both are
+    // just symlinks to the real icon file at `iconRelativePath`.
+    let icon = structure.icon1024x1024
+    guard FileManager.default.fileExists(atPath: icon.path) else {
+      return
+    }
 
-        let relativeIconPath = icon.path(relativeTo: structure.root)
-        return FileManager.default.createSymlink(
-          at: structure.root.appendingPathComponent(icon.lastPathComponent),
-          withRelativeDestination: relativeIconPath,
-          onError: AppImageBundlerError.failedToCreateSymlink
-        )
-        .andThen { _ in
-          FileManager.default.createSymlink(
-            at: structure.root.appendingPathComponent(".DirIcon"),
-            withRelativeDestination: icon.lastPathComponent,
-            onError: AppImageBundlerError.failedToCreateSymlink
-          )
-        }
-      }
-      .andThen { (_: Void) in
-        // Create `AppRun` symlink pointing to the main executable.
-        FileManager.default.createSymlink(
-          at: structure.root.appendingPathComponent("AppRun"),
-          withRelativeDestination: structure.mainExecutable
-            .path(relativeTo: structure.root),
-          onError: AppImageBundlerError.failedToCreateSymlink
-        )
-      }
-      .andThen { (_: Void) in
-        // Create symlink in root pointing to desktop file.
-        FileManager.default.createSymlink(
-          at: structure.root.appendingPathComponent(
-            structure.desktopFile.lastPathComponent
-          ),
-          withRelativeDestination: structure.desktopFile
-            .path(relativeTo: structure.root),
-          onError: AppImageBundlerError.failedToCreateSymlink
-        )
-      }
+    let relativeIconPath = icon.path(relativeTo: structure.root)
+    try createSymlink(
+      at: structure.root / icon.lastPathComponent,
+      withRelativeDestination: relativeIconPath
+    )
+
+    try createSymlink(
+      at: structure.root / ".DirIcon",
+      withRelativeDestination: icon.lastPathComponent
+    )
+
+    // Create `AppRun` symlink pointing to the main executable.
+    try createSymlink(
+      at: structure.root / "AppRun",
+      withRelativeDestination: structure.mainExecutable.path(relativeTo: structure.root)
+    )
+
+    // Create symlink in root pointing to desktop file.
+    try createSymlink(
+      at: structure.root / structure.desktopFile.lastPathComponent,
+      withRelativeDestination: structure.desktopFile.path(relativeTo: structure.root)
+    )
+  }
+
+  private static func createSymlink(
+    at source: URL,
+    withRelativeDestination relativeDestination: String
+  ) throws(Error) {
+    do {
+      try FileManager.default.createSymlink(
+        at: source,
+        withRelativeDestination: relativeDestination
+      ).unwrap()
+    } catch {
+      throw Error(
+        .failedToCreateSymlink(source: source, relativeDestination: relativeDestination),
+        cause: error
+      )
+    }
   }
 }

@@ -11,11 +11,15 @@ enum CodeSigner {
   static let securityToolPath = "/usr/bin/security"
 
   /// An identity that can be used to codesign a bundle.
-  struct Identity {
+  struct Identity: CustomStringConvertible {
     /// The identity's id.
     var id: String
     /// The identity's display name.
     var name: String
+
+    var description: String {
+      "'\(name)' (\(id))"
+    }
   }
 
   /// Generates an iOS entitlements file.
@@ -30,24 +34,23 @@ enum CodeSigner {
     for bundle: URL,
     identityId: String,
     bundleIdentifier: String
-  ) async -> Result<Void, CodeSignerError> {
-    return await extractTeamIdentifier(from: bundle)
-      .map { teamIdentifier -> String in
-        let content = generateEntitlementsContent(
-          teamIdentifier: teamIdentifier,
-          bundleIdentifier: bundleIdentifier
-        )
-        return content
-      }
-      .andThen { entitlementsContent in
-        Result {
-          try entitlementsContent.write(
-            to: outputFile,
-            atomically: false,
-            encoding: .utf8
-          )
-        }.mapError(CodeSignerError.failedToWriteEntitlements)
-      }
+  ) async throws(Error) {
+    let teamIdentifier = try await extractTeamIdentifier(from: bundle)
+
+    let entitlementsContent = generateEntitlementsContent(
+      teamIdentifier: teamIdentifier,
+      bundleIdentifier: bundleIdentifier
+    )
+
+    do {
+      try entitlementsContent.write(
+        to: outputFile,
+        atomically: false,
+        encoding: .utf8
+      )
+    } catch {
+      throw Error(.failedToWriteEntitlements, cause: error)
+    }
   }
 
   /// Signs a Darwin app bundle.
@@ -68,7 +71,7 @@ enum CodeSigner {
     bundleIdentifier: String,
     platform: ApplePlatform,
     entitlements: URL?
-  ) async -> Result<Void, CodeSignerError> {
+  ) async throws(Error) {
     log.info("Codesigning app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
@@ -80,13 +83,11 @@ enum CodeSigner {
           includingPropertiesForKeys: nil
         )
       } catch {
-        return .failure(.failedToEnumerateDynamicLibraries(error))
+        throw Error(.failedToEnumerateDynamicLibraries, cause: error)
       }
 
       for file in contents where file.pathExtension == "dylib" {
-        if case let .failure(error) = await sign(file: file, identityId: identityId) {
-          return .failure(error)
-        }
+        try await sign(file: file, identityId: identityId)
       }
     }
 
@@ -101,19 +102,17 @@ enum CodeSigner {
 
       entitlementsFile = file
 
-      if case .failure(let error) = await CodeSigner.generateEntitlementsFile(
+      try await CodeSigner.generateEntitlementsFile(
         at: file,
         for: bundle,
         identityId: identityId,
         bundleIdentifier: bundleIdentifier
-      ) {
-        return .failure(error)
-      }
+      )
     } else {
       entitlementsFile = nil
     }
 
-    return await sign(
+    try await sign(
       file: bundle,
       identityId: identityId,
       entitlements: entitlementsFile
@@ -130,7 +129,7 @@ enum CodeSigner {
     file: URL,
     identityId: String,
     entitlements: URL? = nil
-  ) async -> Result<Void, CodeSignerError> {
+  ) async throws(Error) {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
       entitlementArguments = [
@@ -148,195 +147,190 @@ enum CodeSigner {
         file.path,
       ]
 
-    return await Result.catching { () async throws(Process.Error) in
+    do {
       try await Process.create(
         codesignToolPath,
         arguments: arguments
       ).runAndWait()
-    }.mapError { error in
-      return .failedToRunCodesignTool(error)
+    } catch {
+      throw Error(.failedToRunCodesignTool, cause: error)
     }
   }
 
   /// Signs a binary or app bundle using ad-hoc signing.
   /// - Parameter file: The file to sign.
   /// - Returns: A failure if the `codesign` command fails.
-  static func signAdHoc(file: URL) async -> Result<Void, CodeSignerError> {
-    return await Result.catching { () async throws(Process.Error) in
+  static func signAdHoc(file: URL) async throws(Error) {
+    do {
       try await Process.create(
         codesignToolPath,
         arguments: ["--force", "-s", "-", file.path]
       ).runAndWait()
-    }.mapError { error in
-      return .failedToRunCodesignTool(error)
+    } catch {
+      throw Error(.failedToRunCodesignTool, cause: error)
     }
   }
 
   /// Enumerates the user's available codesigning identities.
   /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
-  static func enumerateIdentities() async -> Result<[Identity], CodeSignerError> {
+  static func enumerateIdentities() async throws(Error) -> [Identity] {
     let process = Process.create(
       securityToolPath,
       arguments: ["find-identity", "-pcodesigning", "-v"]
     )
 
-    return await Result.catching { () async throws(Process.Error) in
-      try await process.getOutput()
-    }.mapError { error in
-      return .failedToEnumerateIdentities(error)
+    let output: String
+    do {
+      output = try await process.getOutput()
+    } catch {
+      throw Error(.failedToEnumerateIdentities, cause: error)
     }
-    .andThen { output in
-      // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
-      let identityParser = Parse {
-        PrefixThrough(") ")
-        PrefixUpTo(" ").map { (id: Substring) in
-          String(id)
-        }
-        " "
-        OneOf {
-          PrefixUpTo("\n")
-          Rest<Substring>()
-        }.map { (substring: Substring) -> String in
-          // Remove quotation marks
-          let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
-          return String(withoutQuotationMarks)
-        }
-      }.map { (_: Substring, id: String, name: String) in
-        return Identity(id: id, name: name)
+    // Example input: `52635337831A02427192D4FC5EC8528323456F17 "Apple Development: stackotter@stackotter.dev (LK3JHG2345)"`
+    let identityParser = Parse {
+      PrefixThrough(") ")
+      PrefixUpTo(" ").map { (id: Substring) in
+        String(id)
       }
-
-      let identityListParser = Parse {
-        Many {
-          identityParser
-        }
+      " "
+      OneOf {
+        PrefixUpTo("\n")
         Rest<Substring>()
-      }.map { (identities: [Identity], _: Substring) in
-        return identities
+      }.map { (substring: Substring) -> String in
+        // Remove quotation marks
+        let withoutQuotationMarks: Substring = substring.dropFirst().dropLast()
+        return String(withoutQuotationMarks)
       }
-
-      let identities: [Identity]
-      do {
-        identities = try identityListParser.parse(output)
-      } catch {
-        return .failure(.failedToParseIdentityList(error))
-      }
-
-      return .success(identities)
+    }.map { (_: Substring, id: String, name: String) in
+      return Identity(id: id, name: name)
     }
+
+    let identityListParser = Parse {
+      Many {
+        identityParser
+      }
+      Rest<Substring>()
+    }.map { (identities: [Identity], _: Substring) in
+      return identities
+    }
+
+    let identities: [Identity]
+    do {
+      identities = try identityListParser.parse(output)
+    } catch {
+      throw Error(.failedToParseIdentityList, cause: error)
+    }
+
+    return identities
   }
 
   /// Resolves a short-hand identity name. Can either be a full identity id or
   /// a substring of an identity's display name.
   static func resolveIdentity(
     shortName: String
-  ) async -> Result<Identity, CodeSignerError> {
-    await enumerateIdentities().map { identities in
-      identities.filter { identity in
-        identity.id == shortName || identity.name.contains(shortName)
-      }
-    }.andThen { matchedIdentities in
-      guard let identity = matchedIdentities.first else {
-        return .failure(.identityShortNameNotMatched(shortName))
-      }
-
-      if matchedIdentities.count > 1 {
-        log.warning(
-          """
-          Multiple identities matched short name '\(shortName)', using \
-          '\(identity.name)' (id: \(identity.id))
-          """
-        )
-      }
-
-      return .success(identity)
+  ) async throws(Error) -> Identity {
+    let identities = try await enumerateIdentities()
+    let matchingIdentities = identities.filter { identity in
+      identity.id == shortName || identity.name.contains(shortName)
     }
+    guard let identity = matchingIdentities.first else {
+      throw Error(.identityShortNameNotMatched(shortName))
+    }
+
+    if matchingIdentities.count > 1 {
+      log.warning(
+        "Multiple identities matched short name '\(shortName)', using \(identity)"
+      )
+    }
+
+    return identity
   }
 
   static func loadCertificates(
     for identity: Identity
-  ) async -> Result<[Certificate], CodeSignerError> {
-    return await Result.catching { () async throws(Process.Error) in
-      try await Process.create(
+  ) async throws(Error) -> [Certificate] {
+    let output: String
+    do {
+      output = try await Process.create(
         securityToolPath,
         arguments: [
           "find-certificate", "-c", identity.name, "-p", "-a",
         ]
       ).getOutput()
-    }.mapError { error in
-      .failedToLocateSigningCertificate(identity, error)
-    }.andThen { (output: String) in
-      let separator = "-----BEGIN CERTIFICATE-----\n"
-      let certificates = output.components(separatedBy: separator).filter { part in
-        !part.isEmpty
-      }.map { part in
-        // Add separator back to each certificate
-        String(separator + part)
-      }
+    } catch {
+      throw Error(.failedToLocateSigningCertificate(identity), cause: error)
+    }
 
-      return certificates.tryMap { certificatePEM in
-        Result {
-          try Certificate(pemEncoded: certificatePEM)
-        }.mapError { error in
-          CodeSignerError.failedToParseSigningCertificate(
-            pem: certificatePEM,
-            error
-          )
-        }
+    let separator = "-----BEGIN CERTIFICATE-----\n"
+    let certificates = output.components(separatedBy: separator).filter { part in
+      !part.isEmpty
+    }.map { part in
+      // Add separator back to each certificate
+      String(separator + part)
+    }
+
+    return try certificates.map { (certificatePEM) throws(Error) in
+      do {
+        return try Certificate(pemEncoded: certificatePEM)
+      } catch {
+        throw Error(
+          .failedToParseSigningCertificate(pem: certificatePEM),
+          cause: error
+        )
       }
     }
   }
 
   static func getLatestCertificate(
     for identity: Identity
-  ) async -> Result<Certificate, CodeSignerError> {
+  ) async throws(Error) -> Certificate {
     let now = Date()
-    return await loadCertificates(for: identity).andThen { certificates in
-      guard
-        let latest = certificates.filter({ certificate in
-          certificate.notValidAfter > now
-        }).sorted(by: { first, second in
-          first.notValidBefore > second.notValidBefore
-        }).first
-      else {
-        return .failure(.failedToLocateLatestCertificate(identity))
-      }
+    let certificates = try await loadCertificates(for: identity)
 
-      return .success(latest)
+    guard
+      let latest = certificates.filter({ certificate in
+        certificate.notValidAfter > now
+      }).sorted(by: { first, second in
+        first.notValidBefore > second.notValidBefore
+      }).first
+    else {
+      throw Error(.failedToLocateLatestCertificate(identity))
     }
+
+    return latest
   }
 
-  static func getTeamIdentifier(for identity: Identity) async -> Result<String, CodeSignerError> {
-    await getLatestCertificate(for: identity).andThen { certificate in
-      for element in certificate.subject {
-        for attribute in element {
-          guard
-            attribute.type == ASN1ObjectIdentifier.RDNAttributeType.organizationalUnitName
-          else {
-            continue
-          }
-          return .success(attribute.value.description)
+  static func getTeamIdentifier(for identity: Identity) async throws(Error) -> String {
+    let certificate = try await getLatestCertificate(for: identity)
+
+    for element in certificate.subject {
+      for attribute in element {
+        guard
+          attribute.type == ASN1ObjectIdentifier.RDNAttributeType.organizationalUnitName
+        else {
+          continue
         }
+        return attribute.value.description
       }
-
-      let error = CodeSignerError.signingCertificateMissingTeamIdentifier(
-        identity
-      )
-      return .failure(error)
     }
+
+    throw Error(.signingCertificateMissingTeamIdentifier(identity))
   }
 
-  static func extractTeamIdentifier(from bundle: URL) async -> Result<String, CodeSignerError> {
+  static func extractTeamIdentifier(from bundle: URL) async throws(Error) -> String {
     let provisioningProfile = bundle / "embedded.mobileprovision"
-    return await ProvisioningProfileManager.loadProvisioningProfile(provisioningProfile)
-      .mapError { error in
-        CodeSignerError.failedToLoadProvisioningProfile(provisioningProfile, error)
-      }
-      .andThen { profile in
-        guard let identifier = profile.teamIdentifierArray.first else {
-          return .failure(.provisioningProfileMissingTeamIdentifier)
-        }
-        return .success(identifier)
-      }
+    let profile: ProvisioningProfile
+    do {
+      profile = try await ProvisioningProfileManager
+        .loadProvisioningProfile(provisioningProfile)
+    } catch {
+      throw Error(.failedToLoadProvisioningProfile(provisioningProfile), cause: error)
+    }
+
+    guard let identifier = profile.teamIdentifierArray.first else {
+      throw Error(.provisioningProfileMissingTeamIdentifier)
+    }
+
+    return identifier
   }
 
   /// Generates the contents of an entitlements file.

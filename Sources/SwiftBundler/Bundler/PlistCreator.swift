@@ -18,17 +18,18 @@ enum PlistCreator {
     configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String
-  ) -> Result<Void, PlistCreatorError> {
-    createAppInfoPlistContents(
+  ) throws(Error) {
+    let contents = try createAppInfoPlistContents(
       appName: appName,
       configuration: configuration,
       platform: platform,
       platformVersion: platformVersion
-    ).andThen { contents in
-      contents.write(to: file)
-        .mapError { error in
-          .failedToWriteAppInfoPlist(file: file, error)
-        }
+    )
+
+    do {
+      try contents.write(to: file).unwrap()
+    } catch {
+      throw Error(.failedToWriteAppInfoPlist(file: file), cause: error)
     }
   }
 
@@ -47,16 +48,20 @@ enum PlistCreator {
     bundleName: String,
     platform: Platform,
     platformVersion: String
-  ) -> Result<Void, PlistCreatorError> {
-    createResourceBundleInfoPlistContents(
+  ) throws(Error) {
+    let contents = try createResourceBundleInfoPlistContents(
       bundleName: bundleName,
       platform: platform,
       platformVersion: platformVersion
-    ).andThen { contents in
-      contents.write(to: file)
-        .mapError { error in
-          .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file, error)
-        }
+    )
+
+    do {
+      try contents.write(to: file).unwrap()
+    } catch {
+      throw Error(
+        .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file),
+        cause: error
+      )
     }
   }
 
@@ -74,7 +79,7 @@ enum PlistCreator {
     configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String
-  ) -> Result<Data, PlistCreatorError> {
+  ) throws(Error) -> Data {
     var entries: [String: Any?] = [
       "CFBundleDevelopmentRegion": "en",
       "CFBundleExecutable": appName,
@@ -128,7 +133,7 @@ enum PlistCreator {
       entries[key] = value.value
     }
 
-    return Self.serialize(entries.compactMapValues { $0 })
+    return try Self.serialize(entries.compactMapValues { $0 })
   }
 
   /// Creates the contents of a resource bundle's `Info.plist` file.
@@ -141,7 +146,7 @@ enum PlistCreator {
     bundleName: String,
     platform: Platform,
     platformVersion: String
-  ) -> Result<Data, PlistCreatorError> {
+  ) throws(Error) -> Data {
     let bundleIdentifier = bundleName.replacingOccurrences(of: "_", with: "-") + "-resources"
     var entries: [String: Any?] = [
       "CFBundleIdentifier": bundleIdentifier,
@@ -172,19 +177,20 @@ enum PlistCreator {
         break
     }
 
-    return Self.serialize(entries.compactMapValues { $0 })
+    return try Self.serialize(entries.compactMapValues { $0 })
   }
 
   /// Serializes a plist dictionary into an `xml` format.
   /// - Parameter entries: The dictionary of entries to serialize.
-  /// - Returns: The plist dictionary serialized as a string containing xml. If an error occurs, a failure is returned.
-  static func serialize(_ entries: [String: Any]) -> Result<Data, PlistCreatorError> {
-    do {
-      let data = try PropertyListSerialization.data(
-        fromPropertyList: entries, format: .xml, options: 0)
-      return .success(data)
-    } catch {
-      return .failure(.serializationFailed(error))
+  /// - Returns: The plist dictionary serialized as a string containing xml.
+  ///   If an error occurs, a failure is returned.
+  static func serialize(_ entries: [String: Any]) throws(Error) -> Data {
+    try Error.catch(withMessage: .serializationFailed) {
+      try PropertyListSerialization.data(
+        fromPropertyList: entries,
+        format: .xml,
+        options: 0
+      )
     }
   }
 }

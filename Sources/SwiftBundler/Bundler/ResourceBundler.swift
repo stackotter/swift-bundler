@@ -16,10 +16,10 @@ enum ResourceBundler {
     for platform: Platform,
     platformVersion: String,
     keepSource: Bool = true
-  ) async -> Result<Void, ResourceBundlerError> {
+  ) async throws(Error) {
     // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
-    return await Result.catching { () async throws(Process.Error) in
+    try await Error.catch(withMessage: .failedToCompileXCAssets) {
       try await Process.create(
         "/usr/bin/xcrun",
         arguments: [
@@ -29,11 +29,13 @@ enum ResourceBundler {
           "--minimum-deployment-target", platformVersion,
         ]
       ).runAndWait()
-    }.mapError { error in
-      .failedToCompileXCAssets(error)
-    }.andThen { _ in
-      FileManager.default.removeItem(at: assetCatalog)
-        .mapError(ResourceBundlerError.failedToDeleteAssetCatalog)
+    }
+
+    if keepSource {
+      try FileManager.default.removeItem(
+        at: assetCatalog,
+        errorMessage: ErrorMessage.failedToDeleteAssetCatalog
+      )
     }
   }
 
@@ -56,34 +58,26 @@ enum ResourceBundler {
     platformVersion: String,
     packageName: String,
     productName: String
-  ) async -> Result<Void, ResourceBundlerError> {
-    let contents: [URL]
-    do {
-      contents = try FileManager.default.contentsOfDirectory(
-        at: sourceDirectory,
-        includingPropertiesForKeys: nil,
-        options: []
-      )
-    } catch {
-      return .failure(.failedToEnumerateBundles(directory: sourceDirectory, error))
-    }
+  ) async throws(Error) {
+    let contents = try FileManager.default.contentsOfDirectory(
+      at: sourceDirectory,
+      errorMessage: ErrorMessage.failedToEnumerateBundles
+    )
 
     let mainBundleName = "\(packageName)_\(productName)"
-
     for file in contents where file.pathExtension == "bundle" {
-      guard FileManager.default.itemExists(at: file, withType: .directory) else {
+      guard file.exists(withType: .directory) else {
         continue
       }
 
-      let result: Result<Void, ResourceBundlerError>
       if !fixBundles {
-        result = copyResourceBundle(
+        try copyResourceBundle(
           file,
           to: destinationDirectory
         )
       } else {
         let bundleName = file.deletingPathExtension().lastPathComponent
-        result = await fixAndCopyResourceBundle(
+        try await fixAndCopyResourceBundle(
           file,
           to: destinationDirectory,
           platform: platform,
@@ -91,13 +85,7 @@ enum ResourceBundler {
           isMainBundle: bundleName == mainBundleName
         )
       }
-
-      if case .failure = result {
-        return result
-      }
     }
-
-    return .success()
   }
 
   /// Copies the specified resource bundle into a destination directory.
@@ -108,18 +96,13 @@ enum ResourceBundler {
   static func copyResourceBundle(
     _ bundle: URL,
     to destination: URL
-  ) -> Result<Void, ResourceBundlerError> {
+  ) throws(Error) {
     log.info("Copying resource bundle '\(bundle.lastPathComponent)'")
-
-    let destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
-
-    do {
-      try FileManager.default.copyItem(at: bundle, to: destinationBundle)
-    } catch {
-      return .failure(.failedToCopyBundle(source: bundle, destination: destinationBundle, error))
-    }
-
-    return .success()
+    try FileManager.default.copyItem(
+      at: bundle,
+      to: destination / bundle.lastPathComponent,
+      errorMessage: ErrorMessage.failedToCopyBundle
+    )
   }
 
   /// Copies the specified resource bundle into a destination directory. Before
@@ -142,7 +125,7 @@ enum ResourceBundler {
     platform: Platform,
     platformVersion: String,
     isMainBundle: Bool
-  ) async -> Result<Void, ResourceBundlerError> {
+  ) async throws(Error) {
     log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
 
     let destinationBundle: URL
@@ -172,64 +155,58 @@ enum ResourceBundler {
       withType: .directory
     )
 
-    return await Result.success()
-      .andThen(if: !isMainBundle) { _ in
-        // All resource bundles other than the main one get put in separate
-        // resource bundles (whereas the main resources just get put in the root
-        // of the resources directory).
-        createResourceBundleDirectoryStructure(at: destinationBundle, for: platform)
-          .andThen { _ in
-            createResourceBundleInfoPlist(
-              in: destinationBundle,
-              platform: platform,
-              platformVersion: platformVersion
-            )
-          }
-      }
-      .andThen { _ in
-        copyResources(from: bundle, to: destinationBundleResources)
-      }
-      .andThen(if: assetCatalogExists) { _ in
-        // Compile asset catalog if present
-        await Self.compileAssetCatalog(
-          assetCatalog,
-          to: destinationBundleResources,
-          for: platform,
-          platformVersion: platformVersion,
-          keepSource: false
-        )
-      }
-      .andThen { _ in
-        // Copile metal shaders
-        await MetalCompiler.compileMetalShaders(
-          in: destinationBundleResources,
-          for: platform,
-          platformVersion: platformVersion,
-          keepSources: false
-        ).mapError { error in
-          .failedToCompileMetalShaders(error)
-        }
-      }
-      .andThen { _ in
-        // Compile storyboards
-        await StoryboardCompiler.compileStoryboards(
-          in: destinationBundleResources,
-          to: destinationBundleResources.appendingPathComponent("Base.lproj"),
-          keepSources: false
-        ).mapError { error in
-          .failedToCompileStoryboards(error)
-        }
-      }
-      .andThen { _ in
-        // Compile string catalogs
-        StringCatalogCompiler.compileStringCatalogs(
-          in: destinationBundleResources,
-          to: destinationBundleResources,
-          keepSources: false
-        ).mapError { error in
-          .failedToBuildStringsCatalogs(error)
-        }
-      }
+    if !isMainBundle {
+      // All resource bundles other than the main one get put in separate
+      // resource bundles (whereas the main resources just get put in the root
+      // of the resources directory).
+      try createResourceBundleDirectoryStructure(at: destinationBundle, for: platform)
+      try createResourceBundleInfoPlist(
+        in: destinationBundle,
+        platform: platform,
+        platformVersion: platformVersion
+      )
+    }
+
+    try copyResources(from: bundle, to: destinationBundleResources)
+
+    if assetCatalogExists {
+      // Compile asset catalog if present
+      try await compileAssetCatalog(
+        assetCatalog,
+        to: destinationBundleResources,
+        for: platform,
+        platformVersion: platformVersion,
+        keepSource: false
+      )
+    }
+
+    // Copile metal shaders
+    try await Error.catch(withMessage: .failedToCompileMetalShaders) {
+      try await MetalCompiler.compileMetalShaders(
+        in: destinationBundleResources,
+        for: platform,
+        platformVersion: platformVersion,
+        keepSources: false
+      ).unwrap()
+    }
+
+    // Compile storyboards
+    try await Error.catch(withMessage: .failedToCompileStoryboards) {
+      try await StoryboardCompiler.compileStoryboards(
+        in: destinationBundleResources,
+        to: destinationBundleResources.appendingPathComponent("Base.lproj"),
+        keepSources: false
+      ).unwrap()
+    }
+
+    // Compile string catalogs
+    try Error.catch(withMessage: .failedToCompileStringsCatalogs) {
+      try StringCatalogCompiler.compileStringCatalogs(
+        in: destinationBundleResources,
+        to: destinationBundleResources,
+        keepSources: false
+      ).unwrap()
+    }
   }
 
   // MARK: Private methods
@@ -245,9 +222,7 @@ enum ResourceBundler {
   /// - Returns: If an error occurs, a failure is returned.
   private static func createResourceBundleDirectoryStructure(
     at bundle: URL, for platform: Platform
-  )
-    -> Result<Void, ResourceBundlerError>
-  {
+  ) throws(Error) {
     let directory: URL
     switch platform {
       case .macOS:
@@ -261,10 +236,10 @@ enum ResourceBundler {
         fatalError("TODO: Implement resource bundle fixing on Linux and Windows")
     }
 
-    return FileManager.default.createDirectory(at: directory)
-      .mapError { error in
-        .failedToCreateBundleDirectory(bundle, error)
-      }
+    try FileManager.default.createDirectory(
+      at: directory,
+      errorMessage: ErrorMessage.failedToCreateBundleDirectory
+    )
   }
 
   /// Creates the `Info.plist` file for a resource bundle.
@@ -277,7 +252,7 @@ enum ResourceBundler {
     in bundle: URL,
     platform: Platform,
     platformVersion: String
-  ) -> Result<Void, ResourceBundlerError> {
+  ) throws(Error) {
     let bundleName = bundle.deletingPathExtension().lastPathComponent
 
     let infoPlist: URL
@@ -296,18 +271,16 @@ enum ResourceBundler {
         fatalError("Implement for Linux and Windows")
     }
 
-    let result = PlistCreator.createResourceBundleInfoPlist(
-      at: infoPlist,
-      bundleName: bundleName,
-      platform: platform,
-      platformVersion: platformVersion
-    )
-
-    if case let .failure(error) = result {
-      return .failure(.failedToCreateInfoPlist(file: infoPlist, error))
+    do {
+      try PlistCreator.createResourceBundleInfoPlist(
+        at: infoPlist,
+        bundleName: bundleName,
+        platform: platform,
+        platformVersion: platformVersion
+      )
+    } catch {
+      throw Error(.failedToCreateInfoPlist(file: infoPlist), cause: error)
     }
-
-    return .success()
   }
 
   /// Copies the resources from a source directory to a destination directory.
@@ -319,29 +292,21 @@ enum ResourceBundler {
   ///   - destination: The destination directory.
   /// - Returns: If an error occurs, a failure is returned.
   private static func copyResources(
-    from source: URL, to destination: URL
-  ) -> Result<
-    Void, ResourceBundlerError
-  > {
-    let contents: [URL]
-    do {
-      contents = try FileManager.default.contentsOfDirectory(
-        at: source, includingPropertiesForKeys: nil, options: [])
-    } catch {
-      return .failure(.failedToEnumerateBundleContents(directory: source, error))
-    }
+    from source: URL,
+    to destination: URL
+  ) throws(Error) {
+    let contents = try FileManager.default.contentsOfDirectory(
+      at: source,
+      errorMessage: ErrorMessage.failedToEnumerateBundleContents
+    )
 
     for file in contents {
-      let fileDestination = destination.appendingPathComponent(file.lastPathComponent)
-      do {
-        try FileManager.default.copyItem(
-          at: file,
-          to: fileDestination)
-      } catch {
-        return .failure(.failedToCopyResource(source: file, destination: fileDestination, error))
-      }
+      let fileDestination = destination / file.lastPathComponent
+      try FileManager.default.copyItem(
+        at: file,
+        to: fileDestination,
+        errorMessage: ErrorMessage.failedToCopyResource
+      )
     }
-
-    return .success()
   }
 }

@@ -1,14 +1,18 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``AppImageTool``.
-enum AppImageToolError: Throwable {
-  case failedToRunAppImageTool(command: String, Process.Error)
+extension AppImageTool {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToRunAppImageTool(_, let error):
-        return "Failed to run appimagetool: \(error)"
+  /// An error message related to ``AppImageTool``.
+  enum ErrorMessage: Throwable {
+    case failedToRunAppImageTool
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToRunAppImageTool:
+          return "Failed to run appimagetool"
+      }
     }
   }
 }

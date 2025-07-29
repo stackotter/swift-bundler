@@ -1,80 +1,77 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``GenericLinuxBundler``.
-enum GenericLinuxBundlerError: Throwable {
-  case failedToCreateBundleStructure(root: URL, Error)
-  case failedToCopyExecutable(source: URL, destination: URL, Error)
-  case failedToCopyExecutableDependency(
-    name: String,
-    source: URL,
-    destination: URL,
-    Error
-  )
-  case failedToCopyIcon(source: URL, destination: URL, Error)
-  case failedToCreateDesktopFile(URL, Error)
-  case failedToCreateDBusServiceFile(URL, Error)
-  case failedToCreateSymlink(source: URL, relativeDestination: String, Error)
-  case failedToCopyResourceBundle(source: URL, destination: URL, Error)
-  case failedToEnumerateResourceBundles(directory: URL, Error)
-  case failedToEnumerateDynamicDependencies(Error)
-  case failedToCopyDynamicLibrary(source: URL, destination: URL, Error)
-  case failedToUpdateMainExecutableRunpath(executable: URL, Error)
-  case failedToCreateDirectory(URL, Error)
-  case failedToInsertMetadata(MetadataInserterError)
+extension GenericLinuxBundler {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToCreateBundleStructure(let root, _):
-        return "Failed to create app bundle directory structure at '\(root)'"
-      case .failedToCopyExecutable(let source, let destination, _):
-        return """
-          Failed to copy executable from '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
-      case .failedToCopyExecutableDependency(let dependencyName, let source, let destination, _):
-        return
-          """
-          Failed to copy executable dependency '\(dependencyName)' from \
-          '\(source.relativePath)' to '\(destination.relativePath)'
-          """
-      case .failedToCopyIcon(let source, let destination, _):
-        return """
-          Failed to copy 'icns' file from '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
-      case .failedToCreateDesktopFile(let file, _):
-        return "Failed to create desktop file at '\(file.relativePath)'"
-      case .failedToCreateDBusServiceFile(let file, _):
-        return "Failed to create DBus service file at '\(file.relativePath)'"
-      case .failedToCreateSymlink(let source, let destination, _):
-        return """
-          Failed to create symlink from '\(source.relativePath)' to relative \
-          path '\(destination)'
-          """
-      case .failedToCopyResourceBundle(let source, let destination, _):
-        return """
-          Failed to copy resource bundle at '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
-      case .failedToEnumerateResourceBundles(let directory, _):
-        return "Failed to enumerate resource bundles in '\(directory.relativePath)'"
-      case .failedToEnumerateDynamicDependencies:
-        return "Failed to enumerate dynamically linked dependencies of main executable"
-      case .failedToCopyDynamicLibrary(let source, let destination, _):
-        return """
-          Failed to copy dynamic library from '\(source.relativePath)' to \
-          '\(destination.relativePath)'
-          """
-      case .failedToUpdateMainExecutableRunpath(let executable, let underlyingError):
-        return """
-          Failed to update the runpath of the main executable at \
-          '\(executable.relativePath)': \(underlyingError)
-          """
-      case .failedToCreateDirectory(let directory, _):
-        return "Failed to create directory at '\(directory.relativePath)'"
-      case .failedToInsertMetadata(let error):
-        return error.userFriendlyMessage
+  /// An error message related to ``GenericLinuxBundler``.
+  enum ErrorMessage: Throwable {
+    case failedToCreateBundleStructure(root: URL)
+    case failedToCopyExecutable(source: URL, destination: URL)
+    case failedToCopyExecutableDependency(
+      name: String,
+      source: URL,
+      destination: URL
+    )
+    case failedToCopyIcon(source: URL, destination: URL)
+    case failedToCreateDesktopFile(URL)
+    case failedToCreateDBusServiceFile(URL)
+    case failedToCreateSymlink(source: URL, relativeDestination: String)
+    case failedToCopyResourceBundle(source: URL, destination: URL)
+    case failedToEnumerateResourceBundles(directory: URL)
+    case failedToEnumerateDynamicDependencies
+    case failedToCopyDynamicLibrary(source: URL, destination: URL)
+    case failedToUpdateMainExecutableRunpath(executable: URL)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToCreateBundleStructure(let root):
+          return "Failed to create app bundle directory structure at '\(root)'"
+        case .failedToCopyExecutable(let source, let destination):
+          return """
+            Failed to copy executable from '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+        case .failedToCopyExecutableDependency(let dependencyName, let source, let destination):
+          return
+            """
+            Failed to copy executable dependency '\(dependencyName)' from \
+            '\(source.relativePath)' to '\(destination.relativePath)'
+            """
+        case .failedToCopyIcon(let source, let destination):
+          return """
+            Failed to copy 'icns' file from '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+        case .failedToCreateDesktopFile(let file):
+          return "Failed to create desktop file at '\(file.relativePath)'"
+        case .failedToCreateDBusServiceFile(let file):
+          return "Failed to create DBus service file at '\(file.relativePath)'"
+        case .failedToCreateSymlink(let source, let destination):
+          return """
+            Failed to create symlink from '\(source.relativePath)' to relative \
+            path '\(destination)'
+            """
+        case .failedToCopyResourceBundle(let source, let destination):
+          return """
+            Failed to copy resource bundle at '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+        case .failedToEnumerateResourceBundles(let directory):
+          return "Failed to enumerate resource bundles in '\(directory.relativePath)'"
+        case .failedToEnumerateDynamicDependencies:
+          return "Failed to enumerate dynamically linked dependencies of main executable"
+        case .failedToCopyDynamicLibrary(let source, let destination):
+          return """
+            Failed to copy dynamic library from '\(source.relativePath)' to \
+            '\(destination.relativePath)'
+            """
+        case .failedToUpdateMainExecutableRunpath(let executable):
+          return """
+            Failed to update the runpath of the main executable at \
+            '\(executable.relativePath)'
+            """
+      }
     }
   }
 }

@@ -4,7 +4,7 @@ import Foundation
 enum System {
   /// Gets the application support directory for Swift Bundler.
   /// - Returns: The application support directory, or a failure if the directory couldn't be found or created.
-  static func getApplicationSupportDirectory() -> Result<URL, SystemError> {
+  static func getApplicationSupportDirectory() throws(Error) -> URL {
     let directory: URL
     do {
       directory = try FileManager.default.url(
@@ -14,13 +14,15 @@ enum System {
         create: false
       ).appendingPathComponent("dev.stackotter.swift-bundler")
     } catch {
-      return .failure(.failedToGetApplicationSupportDirectory(error))
+      throw Error(.failedToGetApplicationSupportDirectory, cause: error)
     }
 
-    return FileManager.default.createDirectory(at: directory)
-      .mapError { error in
-        .failedToCreateApplicationSupportDirectory(error)
-      }
-      .replacingSuccessValue(with: directory)
+    do {
+      try FileManager.default.createDirectory(at: directory).unwrap()
+    } catch {
+      throw Error(.failedToCreateApplicationSupportDirectory, cause: error)
+    }
+
+    return directory
   }
 }

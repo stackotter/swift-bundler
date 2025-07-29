@@ -45,13 +45,31 @@ struct RichError<Message: Error>: Throwable, RichErrorProtocol {
     self.location = Location(file: file, line: line, column: column)
   }
 
+  /// Creates a rich error with an underlying cause but no message.
   init(cause: any Error, file: String = #file, line: Int = #line, column: Int = #column) {
     self.message = nil
     self.cause = cause
     self.location = Location(file: file, line: line, column: column)
   }
 
+  /// Creates a rich error from an optional message and an underlying cause.
+  /// This is sometimes convenient, but causes overload ambiguity so it's
+  /// a disfavored overload.
+  @_disfavoredOverload
+  init(
+    _ message: Message?,
+    cause: any Error,
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) {
+    self.message = message
+    self.cause = cause
+    self.location = Location(file: file, line: line, column: column)
+  }
+
   static func `catch`<R>(
+    withMessage message: Message? = nil,
     do body: () throws -> R,
     file: String = #file,
     line: Int = #line,
@@ -59,14 +77,19 @@ struct RichError<Message: Error>: Throwable, RichErrorProtocol {
   ) throws(Self) -> R {
     do {
       return try body()
-    } catch let error as Message {
-      throw Self(error, file: file, line: line, column: column)
     } catch {
-      throw Self(cause: error, file: file, line: line, column: column)
+      if message == nil, let error = error as? Message {
+        throw Self(error, file: file, line: line, column: column)
+      } else if let message {
+        throw Self(message, cause: error, file: file, line: line, column: column)
+      } else {
+        throw Self(cause: error, file: file, line: line, column: column)
+      }
     }
   }
 
   static func `catch`<R>(
+    withMessage message: Message? = nil,
     do body: () async throws -> R,
     file: String = #file,
     line: Int = #line,
@@ -74,10 +97,14 @@ struct RichError<Message: Error>: Throwable, RichErrorProtocol {
   ) async throws(Self) -> R {
     do {
       return try await body()
-    } catch let error as Message {
-      throw Self(error, file: file, line: line, column: column)
     } catch {
-      throw Self(cause: error, file: file, line: line, column: column)
+      if message == nil, let error = error as? Message {
+        throw Self(error, file: file, line: line, column: column)
+      } else if let message {
+        throw Self(message, cause: error, file: file, line: line, column: column)
+      } else {
+        throw Self(cause: error, file: file, line: line, column: column)
+      }
     }
   }
 

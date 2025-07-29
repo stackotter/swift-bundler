@@ -1,21 +1,25 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``PlistCreator``.
-enum PlistCreatorError: Throwable {
-  case failedToWriteAppInfoPlist(file: URL, Error)
-  case failedToWriteResourceBundleInfoPlist(bundle: String, file: URL, Error)
-  case serializationFailed(Error)
+extension PlistCreator {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToWriteAppInfoPlist(let file, _):
-        return "Failed to write to the app's 'Info.plist' at '\(file.relativePath)'"
-      case .failedToWriteResourceBundleInfoPlist(let bundle, let file, _):
-        return
-          "Failed to write to the '\(bundle)' resource bundle's 'Info.plist' at '\(file.relativePath)'"
-      case .serializationFailed:
-        return "Failed to serialize a plist dictionary"
+  /// An error message related to ``PlistCreator``.
+  enum ErrorMessage: Throwable {
+    case failedToWriteAppInfoPlist(file: URL)
+    case failedToWriteResourceBundleInfoPlist(bundle: String, file: URL)
+    case serializationFailed
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToWriteAppInfoPlist(let file):
+          return "Failed to write to the app's 'Info.plist' at '\(file.relativePath)'"
+        case .failedToWriteResourceBundleInfoPlist(let bundle, let file):
+          return
+            "Failed to write to the '\(bundle)' resource bundle's 'Info.plist' at '\(file.relativePath)'"
+        case .serializationFailed:
+          return "Failed to serialize a plist dictionary"
+      }
     }
   }
 }

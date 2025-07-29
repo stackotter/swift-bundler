@@ -241,11 +241,10 @@ struct BundleCommand: ErrorHandledCommand {
       if let identityShortName = identityArgument {
         identity = try await RichError<SwiftBundlerError>.catch {
           try await CodeSigner.resolveIdentity(shortName: identityShortName)
-            .unwrap()
         }
       } else {
         let identities = try await RichError<SwiftBundlerError>.catch {
-          try await CodeSigner.enumerateIdentities().unwrap()
+          try await CodeSigner.enumerateIdentities()
         }
 
         guard let firstIdentity = identities.first else {
@@ -256,7 +255,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if identities.count > 1 {
-          log.info("Multiple codesigning identities found, using \(firstIdentity.name)")
+          log.info("Multiple codesigning identities found, using \(firstIdentity)")
         }
 
         identity = firstIdentity
@@ -737,7 +736,7 @@ struct BundleCommand: ErrorHandledCommand {
             try await Stripper.extractLinuxDebugInfo(
               from: originalExecutableArtifact,
               to: debugInfoFile
-            ).unwrap()
+            )
           }
         }
 
@@ -747,7 +746,7 @@ struct BundleCommand: ErrorHandledCommand {
               try FileManager.default.removeItem(at: executableArtifact)
             }
             try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
-            try await Stripper.strip(executableArtifact).unwrap()
+            try await Stripper.strip(executableArtifact)
           }
         }
       }
@@ -836,13 +835,12 @@ struct BundleCommand: ErrorHandledCommand {
     manifest: PackageManifest
   ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
     try await RichError<SwiftBundlerError>.catch {
-      try await bundler.computeContext(
+      let additionalContext = try bundler.computeContext(
         context: context,
         command: command,
         manifest: manifest
-      ).andThen { additionalContext in
-        await bundler.bundle(context, additionalContext)
-      }.unwrap()
+      )
+      return try await bundler.bundle(context, additionalContext)
     }
   }
 
@@ -854,13 +852,12 @@ struct BundleCommand: ErrorHandledCommand {
     manifest: PackageManifest
   ) throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
     try RichError<SwiftBundlerError>.catch {
-      try bundler.computeContext(
+      let additionalContext = try bundler.computeContext(
         context: context,
         command: command,
         manifest: manifest
-      ).map { additionalContext in
-        bundler.intendedOutput(in: context, additionalContext)
-      }.unwrap()
+      )
+      return bundler.intendedOutput(in: context, additionalContext)
     }
   }
 

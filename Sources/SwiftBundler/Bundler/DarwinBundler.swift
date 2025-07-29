@@ -22,13 +22,13 @@ enum DarwinBundler: Bundler {
     context: BundlerContext,
     command: BundleCommand,
     manifest: PackageManifest
-  ) -> Result<Context, DarwinBundlerError> {
+  ) throws(Error) -> Context {
     guard let applePlatform = context.platform.asApplePlatform else {
-      return .failure(.unsupportedPlatform(context.platform))
+      throw Error(.unsupportedPlatform(context.platform))
     }
 
     guard let platformVersion = manifest.platformVersion(for: applePlatform.os) else {
-      return .failure(.missingDarwinPlatformVersion(context.platform))
+      throw Error(.missingDarwinPlatformVersion(context.platform))
     }
 
     // Whether a universal application binary (arm64 and x86_64) will be created.
@@ -47,7 +47,7 @@ enum DarwinBundler: Bundler {
       platform: applePlatform,
       platformVersion: platformVersion
     )
-    return .success(additionalContext)
+    return additionalContext
   }
 
   static func intendedOutput(
@@ -70,9 +70,10 @@ enum DarwinBundler: Bundler {
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
-  ) async -> Result<BundlerOutputStructure, DarwinBundlerError> {
+  ) async throws(Error) -> BundlerOutputStructure {
     let outputStructure = intendedOutput(in: context, additionalContext)
     let appBundle = outputStructure.bundle
+
     log.info("Bundling '\(appBundle.lastPathComponent)'")
 
     let bundleStructure = DarwinAppBundleStructure(
@@ -81,16 +82,81 @@ enum DarwinBundler: Bundler {
       appName: context.appName
     )
 
-    let createAppIconIfPresent: () async -> Result<Void, DarwinBundlerError> = {
-      if let path = context.appConfiguration.icon {
-        let icon = context.packageDirectory / path
-        return await Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
-      }
-      return .success()
+    // Create bundle skeleton
+    try bundleStructure.createDirectories()
+
+    try copyExecutable(
+      at: context.executableArtifact,
+      to: bundleStructure.mainExecutable
+    )
+
+    // Create PkgInfo and Info.plist
+    try createMetadataFiles(
+      bundleStructure: bundleStructure,
+      context: context,
+      additionalContext: additionalContext
+    )
+
+    // Copy app icon and package resources
+    try await copyResources(
+      bundleStructure: bundleStructure,
+      context: context,
+      additionalContext: additionalContext
+    )
+
+    // Copy helper executables, dynamic libraries and frameworks
+    try await copyDependencies(
+      bundleStructure: bundleStructure,
+      context: context,
+      additionalContext: additionalContext
+    )
+
+    // Embed provisioning profile if necessary
+    if let provisioningProfile = try await Self.provisioningProfile(for: context) {
+      try Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
     }
 
-    let copyResourcesBundles: () async -> Result<Void, DarwinBundlerError> = {
-      await ResourceBundler.copyResources(
+    try await Self.sign(
+      appBundle: appBundle,
+      context: context,
+      additionalContext: additionalContext
+    )
+
+    return outputStructure
+  }
+
+  // MARK: Private methods
+
+  /// Creates the app's `PkgInfo` and `Info.plist` files.
+  private static func createMetadataFiles(
+    bundleStructure: DarwinAppBundleStructure,
+    context: BundlerContext,
+    additionalContext: Context
+  ) throws(Error) {
+    try Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile)
+
+    try Self.createInfoPlistFile(
+      at: bundleStructure.infoPlistFile,
+      appName: context.appName,
+      appConfiguration: context.appConfiguration,
+      platform: additionalContext.platform,
+      platformVersion: additionalContext.platformVersion
+    )
+  }
+
+  /// Copies app icon and package resources into the app bundle.
+  private static func copyResources(
+    bundleStructure: DarwinAppBundleStructure,
+    context: BundlerContext,
+    additionalContext: Context
+  ) async throws(Error) {
+    if let path = context.appConfiguration.icon {
+      let icon = context.packageDirectory / path
+      try await Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
+    }
+
+    do {
+      try await ResourceBundler.copyResources(
         from: context.productsDirectory,
         to: bundleStructure.resourcesDirectory,
         fixBundles: !additionalContext.isXcodeBuild && !additionalContext.universal,
@@ -98,156 +164,124 @@ enum DarwinBundler: Bundler {
         platformVersion: additionalContext.platformVersion,
         packageName: context.packageName,
         productName: context.appConfiguration.product
-      ).mapError { error in
-        .failedToCopyResourceBundles(error)
-      }
+      )
+    } catch {
+      throw Error(.failedToCopyResourceBundles, cause: error)
     }
+  }
 
-    let copyDynamicLibraries: () async -> Result<Void, DarwinBundlerError> = {
-      await Result<Void, DynamicLibraryBundler.Error>.catching { () async throws(DynamicLibraryBundler.Error) in
-        try await DynamicLibraryBundler.copyDynamicDependencies(
-          dependedOnBy: bundleStructure.mainExecutable,
-          toLibraryDirectory: bundleStructure.librariesDirectory,
-          orFrameworkDirectory: bundleStructure.frameworksDirectory,
-          productsDirectory: context.productsDirectory,
-          isXcodeBuild: additionalContext.isXcodeBuild,
-          universal: additionalContext.universal,
-          makeStandAlone: additionalContext.standAlone
-        )
-      }.mapError { error in
-        .failedToCopyDynamicLibraries(error)
+  /// Copies the app's helper executables, dynamic libraries and frameworks
+  /// into the app bundle.
+  private static func copyDependencies(
+    bundleStructure: DarwinAppBundleStructure,
+    context: BundlerContext,
+    additionalContext: Context
+  ) async throws(Error) {
+    // Copy all executable dependencies into the bundle next to the main executable
+    let executableDirectory = bundleStructure.mainExecutable.deletingLastPathComponent()
+    for (name, dependency) in context.builtDependencies {
+      guard dependency.product.type == .executable else {
+        continue
       }
-    }
 
-    let embedProfile: () async -> Result<Void, DarwinBundlerError> = {
-      return await Result.success().andThen { _ -> Result<URL?, DarwinBundlerError> in
-        // If the user provided a provisioning profile, use it
-        if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
-          return .success(profile)
-        }
-
-        guard
-          case .connected(let device) = context.device,
-          !device.platform.isSimulator
-        else {
-          // Simulators and hosts don't require provisioning profiles
-          return .success(nil)
-        }
-
-        // If the target platform requires provisioning profiles, locate or
-        // generate one. This requires a code signing context.
-        guard let codeSigningContext = context.darwinCodeSigningContext else {
-          let error = DarwinBundlerError.missingCodeSigningContextForProvisioning(
-            device.platform.os
+      for artifact in dependency.artifacts {
+        do {
+          let source = artifact.location
+          try FileManager.default.copyItem(
+            at: source,
+            to: executableDirectory / source.lastPathComponent
           )
-          return .failure(error)
+        } catch {
+          throw Error(.failedToCopyExecutableDependency(name: name), cause: error)
         }
-
-        return await ProvisioningProfileManager.locateOrGenerateSuitableProvisioningProfile(
-          bundleIdentifier: context.appConfiguration.identifier,
-          deviceId: device.id,
-          deviceOS: device.platform.os,
-          identity: codeSigningContext.identity
-        )
-        .mapError(DarwinBundlerError.failedToGenerateProvisioningProfile)
-        .map(Optional.some)
-      }.andThen { provisioningProfile in
-        guard let provisioningProfile = provisioningProfile else {
-          return .success()
-        }
-
-        return Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
       }
     }
 
-    let sign: () async -> Result<Void, DarwinBundlerError> = {
-      // If credentials are supplied for codesigning, use them
+    // Copy dynamic libraries and frameworks into the bundle
+    do {
+      try await DynamicLibraryBundler.copyDynamicDependencies(
+        dependedOnBy: bundleStructure.mainExecutable,
+        toLibraryDirectory: bundleStructure.librariesDirectory,
+        orFrameworkDirectory: bundleStructure.frameworksDirectory,
+        productsDirectory: context.productsDirectory,
+        isXcodeBuild: additionalContext.isXcodeBuild,
+        universal: additionalContext.universal,
+        makeStandAlone: additionalContext.standAlone
+      )
+    } catch {
+      throw Error(.failedToCopyDynamicLibraries, cause: error)
+    }
+  }
+
+  /// Signs the given app bundle if requested. If not required by the target
+  /// platform but not requested, then we sign with an adhoc signature.
+  private static func sign(
+    appBundle: URL,
+    context: BundlerContext,
+    additionalContext: Context
+  ) async throws(Error) {
+    try await Error.catch {
       if let codeSigningContext = context.darwinCodeSigningContext {
-        return await CodeSigner.signAppBundle(
+        try await CodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity.id,
           bundleIdentifier: context.appConfiguration.identifier,
           platform: additionalContext.platform,
           entitlements: codeSigningContext.entitlements
-        ).mapError { error in
-          return .failedToCodesign(error)
-        }
+        )
       } else {
         if context.platform != .macOS {
           // Codesign using an adhoc signature if the target platform requires
           // codesigning
-          return await CodeSigner.signAppBundle(
+          try await CodeSigner.signAppBundle(
             bundle: appBundle,
             identityId: "-",
             bundleIdentifier: context.appConfiguration.identifier,
             platform: additionalContext.platform,
             entitlements: nil
-          ).mapError { error in
-            return .failedToCodesign(error)
-          }
-        } else {
-          // On macOS (and for simulators) we can skip codesigning for running
-          // locally
-          return .success()
+          )
         }
       }
     }
-
-    let bundleApp = flatten(
-      bundleStructure.createDirectories,
-      {
-        Self.copyExecutable(
-          at: context.executableArtifact,
-          to: bundleStructure.mainExecutable
-        )
-      },
-      {
-        // Copy all executable dependencies into the bundle next to the main
-        // executable
-        context.builtDependencies.filter { (_, dependency) in
-          dependency.product.type == .executable
-        }.tryForEach { (name, dependency) in
-          dependency.artifacts.tryForEach { artifact in
-            let source = artifact.location
-            let destination =
-              bundleStructure.mainExecutable.deletingLastPathComponent()
-              / source.lastPathComponent
-            return FileManager.default.copyItem(
-              at: source,
-              to: destination
-            ).mapError { error in
-              DarwinBundlerError.failedToCopyExecutableDependency(
-                name: name,
-                source: source,
-                destination: destination,
-                error
-              )
-            }
-          }
-        }
-      },
-      { Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile) },
-      {
-        Self.createInfoPlistFile(
-          at: bundleStructure.infoPlistFile,
-          appName: context.appName,
-          appConfiguration: context.appConfiguration,
-          platform: additionalContext.platform,
-          platformVersion: additionalContext.platformVersion
-        )
-      },
-      createAppIconIfPresent,
-      copyResourcesBundles,
-      copyDynamicLibraries,
-      embedProfile,
-      sign
-    )
-
-    return await bundleApp()
-      .replacingSuccessValue(with: outputStructure)
   }
 
-  // MARK: Private methods
+  /// Locates the provisioning profile to use for the given bundler context.
+  /// Returns `nil` if the context doesn't require a profile, and throws an
+  /// error if a provisioning profile is required but couldn't be located.
+  private static func provisioningProfile(
+    for context: BundlerContext
+  ) async throws(Error) -> URL? {
+    // If the user provided a provisioning profile, use it
+    if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
+      return profile
+    }
+
+    // Simulators and hosts don't require provisioning profiles
+    guard
+      case .connected(let device) = context.device,
+      !device.platform.isSimulator
+    else {
+      return nil
+    }
+
+    // If the target platform requires provisioning profiles, locate or
+    // generate one. This requires a code signing context.
+    guard let codeSigningContext = context.darwinCodeSigningContext else {
+      throw Error(.missingCodeSigningContextForProvisioning(device.platform.os))
+    }
+
+    do {
+      return try await ProvisioningProfileManager
+        .locateOrGenerateSuitableProvisioningProfile(
+          bundleIdentifier: context.appConfiguration.identifier,
+          deviceId: device.id,
+          deviceOS: device.platform.os,
+          identity: codeSigningContext.identity
+        )
+    } catch {
+      throw Error(.failedToGenerateProvisioningProfile, cause: error)
+    }
+  }
 
   /// Copies the built executable into the app bundle.
   /// - Parameters:
@@ -255,110 +289,103 @@ enum DarwinBundler: Bundler {
   ///   - destination: The target location of the built executable (the file not the directory).
   /// - Returns: If an error occurs, a failure is returned.
   private static func copyExecutable(
-    at source: URL, to destination: URL
-  ) -> Result<Void, DarwinBundlerError> {
+    at source: URL,
+    to destination: URL
+  ) throws(Error) {
     log.info("Copying executable")
-
     do {
       try FileManager.default.copyItem(at: source, to: destination)
-      return .success()
     } catch {
-      return .failure(.failedToCopyExecutable(source: source, destination: destination, error))
+      throw Error(
+        .failedToCopyExecutable(source: source, destination: destination),
+        cause: error
+      )
     }
   }
 
   /// Create's a `PkgInfo` file.
-  /// - Parameters:
-  ///   - pkgInfoFile: the location of the output `PkgInfo` file (needn't exist yet).
-  /// - Returns: If an error occurs, a failure is returned.
-  private static func createPkgInfoFile(at pkgInfoFile: URL) -> Result<Void, DarwinBundlerError> {
+  private static func createPkgInfoFile(at pkgInfoFile: URL) throws(Error) {
     log.info("Creating 'PkgInfo'")
-
     let pkgInfoBytes: [UInt8] = [0x41, 0x50, 0x50, 0x4c, 0x3f, 0x3f, 0x3f, 0x3f]
     let pkgInfoData = Data(bytes: pkgInfoBytes, count: pkgInfoBytes.count)
-    return pkgInfoData.write(to: pkgInfoFile)
-      .mapError { error in
-        .failedToCreatePkgInfo(file: pkgInfoFile, error)
-      }
+
+    try Error.catch(withMessage: .failedToCreatePkgInfo(file: pkgInfoFile)) {
+      try pkgInfoData.write(to: pkgInfoFile).unwrap()
+    }
   }
 
   /// Creates an app's `Info.plist` file.
-  /// - Parameters:
-  ///   - infoPlistFile: The output `Info.plist` file (needn't exist yet).
-  ///   - appName: The app's name.
-  ///   - appConfiguration: The app's configuration.
-  ///   - macOSVersion: The macOS version to target.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func createInfoPlistFile(
     at infoPlistFile: URL,
     appName: String,
     appConfiguration: AppConfiguration.Flat,
     platform: ApplePlatform,
     platformVersion: String
-  ) -> Result<Void, DarwinBundlerError> {
+  ) throws(Error) {
     log.info("Creating 'Info.plist'")
-    return PlistCreator.createAppInfoPlist(
-      at: infoPlistFile,
-      appName: appName,
-      configuration: appConfiguration,
-      platform: platform.platform,
-      platformVersion: platformVersion
-    ).mapError { error in
-      .failedToCreateInfoPlist(error)
+    try Error.catch(withMessage: .failedToCreateInfoPlist) {
+      try PlistCreator.createAppInfoPlist(
+        at: infoPlistFile,
+        appName: appName,
+        configuration: appConfiguration,
+        platform: platform.platform,
+        platformVersion: platformVersion
+      )
     }
   }
 
-  /// If given an `icns`, the `icns` gets copied to the output file. If given a `png`, an `icns` is created from the `png`.
+  /// If given an `icns`, the `icns` gets copied to the output file. If given
+  /// a `png`, an `icns` is created from the `png`.
   ///
   /// The files are not validated any further than checking their file extensions.
   /// - Parameters:
-  ///   - inputIconFile: The app's icon. Should be either an `icns` file or a 1024x1024 `png` with an alpha channel.
+  ///   - inputIconFile: The app's icon. Should be either an `icns` file or a
+  ///     1024x1024 `png` with an alpha channel.
   ///   - outputIconFile: The `icns` file to output to.
-  /// - Returns: If the png exists and there is an error while converting it to `icns`, a failure is returned.
-  ///   If the file is neither an `icns` or a `png`, a failure is also returned.
+  /// - Throws: If the png exists and there is an error while converting it to
+  ///   `icns`, or if the file is neither an `icns` or a `png`.
   private static func compileAppIcon(
     at inputIconFile: URL,
     to outputIconFile: URL
-  ) async -> Result<Void, DarwinBundlerError> {
+  ) async throws(Error) {
     // Copy `AppIcon.icns` if present
     if inputIconFile.pathExtension == "icns" {
       log.info("Copying '\(inputIconFile.lastPathComponent)'")
       do {
         try FileManager.default.copyItem(at: inputIconFile, to: outputIconFile)
-        return .success()
       } catch {
-        return .failure(
-          .failedToCopyICNS(source: inputIconFile, destination: outputIconFile, error)
+        throw Error(
+          .failedToCopyICNS(source: inputIconFile, destination: outputIconFile),
+          cause: error
         )
       }
     } else if inputIconFile.pathExtension == "png" {
       log.info(
         "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'"
       )
-      return await IconSetCreator.createIcns(from: inputIconFile, outputFile: outputIconFile)
-        .mapError { error in
-          .failedToCreateIcon(error)
-        }
-    }
 
-    return .failure(.invalidAppIconFile(inputIconFile))
+      try await Error.catch(withMessage: .failedToCreateIcon) {
+        try await IconSetCreator.createIcns(
+          from: inputIconFile,
+          outputFile: outputIconFile
+        ).unwrap()
+      }
+    } else {
+      throw Error(.invalidAppIconFile(inputIconFile))
+    }
   }
 
   private static func embedProvisioningProfile(
     _ provisioningProfile: URL,
     in bundle: URL
-  ) -> Result<Void, DarwinBundlerError> {
+  ) throws(Error) {
     log.info("Embedding provisioning profile")
 
-    do {
+    try Error.catch(withMessage: .failedToCopyProvisioningProfile) {
       try FileManager.default.copyItem(
         at: provisioningProfile,
         to: bundle.appendingPathComponent("embedded.mobileprovision")
       )
-    } catch {
-      return .failure(.failedToCopyProvisioningProfile(error))
     }
-
-    return .success()
   }
 }

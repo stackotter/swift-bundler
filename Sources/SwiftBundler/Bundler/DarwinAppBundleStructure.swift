@@ -43,17 +43,18 @@ struct DarwinAppBundleStructure {
 
   /// Attempts to create all directories within the app bundle. Ignores directories which
   /// already exist.
-  func createDirectories() -> Result<Void, DarwinBundlerError> {
+  func createDirectories() throws(DarwinBundler.Error) {
     let directories = [
       contentsDirectory, resourcesDirectory, librariesDirectory,
       frameworksDirectory, executableDirectory,
     ]
 
-    return directories.filter { directory in
-      !FileManager.default.itemExists(at: directory, withType: .directory)
-    }.tryForEach { directory in
-      FileManager.default.createDirectory(at: directory)
-        .mapError(DarwinBundlerError.failedToCreateAppBundleDirectoryStructure)
+    for directory in directories where !directory.exists() {
+      do {
+        try FileManager.default.createDirectory(at: directory).unwrap()
+      } catch {
+        throw DarwinBundler.Error(.failedToCreateAppBundleDirectoryStructure)
+      }
     }
   }
 }
