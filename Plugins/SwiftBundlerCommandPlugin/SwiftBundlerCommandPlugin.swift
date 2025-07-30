@@ -7,16 +7,14 @@ struct SwiftBundlerCommandPlugin: CommandPlugin {
   func performCommand(context: PluginContext, arguments: [String]) async throws {
     let bundler = try context.tool(named: "swift-bundler")
 
-    try await run(command: bundler.path, with: arguments)
+    try await run(command: bundler.url, with: arguments)
   }
 }
 
 extension SwiftBundlerCommandPlugin {
   /// Run a command with the given arguments.
-  func run(command: Path, with arguments: [String]) async throws {
-    let exec = URL(fileURLWithPath: command.string)
-
-    let process = try await Process.runAndWait(exec, arguments: arguments)
+  func run(command: URL, with arguments: [String]) async throws {
+    let process = try await Process.runAndWait(command, arguments: arguments)
 
     // Check whether the subprocess invocation was successful.
     if process.terminationReason == .exit,
