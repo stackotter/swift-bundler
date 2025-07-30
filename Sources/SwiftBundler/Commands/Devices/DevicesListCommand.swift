@@ -10,7 +10,7 @@ struct DevicesListCommand: ErrorHandledCommand {
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let devices = try await RichError<SwiftBundlerError>.catch {
-      try await DeviceManager.listDestinations().unwrap()
+      try await DeviceManager.listDestinations()
         .filter { device in
           !device.platform.isSimulator
         }

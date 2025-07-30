@@ -112,7 +112,7 @@ struct RunCommand: ErrorHandledCommand {
 
     let environmentVariables = try RichError<SwiftBundlerError>.catch {
       try environmentFile.map { file in
-        try Runner.loadEnvironmentVariables(from: file).unwrap()
+        try Runner.loadEnvironmentVariables(from: file)
       } ?? [:]
     }
 
@@ -186,7 +186,7 @@ struct RunCommand: ErrorHandledCommand {
         environmentVariables: environmentVariables.merging(
           additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
         )
-      ).unwrap()
+      )
     }
   }
 }
