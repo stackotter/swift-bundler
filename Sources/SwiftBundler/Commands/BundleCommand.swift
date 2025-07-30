@@ -277,6 +277,7 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
       // TODO: Remove this once full typed throws has been enabled
+      // swiftlint:disable:next force_cast
       throw error as! RichError<SwiftBundlerError>
     }
   }
