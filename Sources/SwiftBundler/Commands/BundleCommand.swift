@@ -573,7 +573,7 @@ struct BundleCommand: ErrorHandledCommand {
           for: MetadataInserter.metadata(for: appConfiguration),
           architectures: architectures,
           platform: resolvedPlatform
-        ).unwrap()
+        )
       }
 
       let buildContext = SwiftPackageManager.BuildContext(
@@ -665,7 +665,7 @@ struct BundleCommand: ErrorHandledCommand {
           context: dependencyContext,
           appName: appName,
           dryRun: skipBuild
-        ).unwrap()
+        )
       }
       bundlerContext.builtDependencies = dependencies
 

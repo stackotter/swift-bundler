@@ -1,29 +1,33 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``MetadataInserter``.
-enum MetadataInserterError: Throwable {
-  case failedToEncodeMetadata(any Error)
-  case failedToWriteMetadataCodeFile(any Error)
-  case failedToCompileMetadataCodeFile(Process.Error)
-  case failedToGetSDKPath(SwiftPackageManagerError)
-  case failedToCreateStaticLibrary(Process.Error)
-  case failedToCreateUniversalStaticLibrary(Process.Error)
+extension MetadataInserter {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToEncodeMetadata(let error):
-        return "Failed to encode metadata: \(error.localizedDescription)"
-      case .failedToWriteMetadataCodeFile(let error):
-        return "Failed to write metadata code file: \(error.localizedDescription)"
-      case .failedToCompileMetadataCodeFile(let error):
-        return "Failed to compile metadata code file: \(error.localizedDescription)"
-      case .failedToGetSDKPath(let error):
-        return "Failed to get SDK path for target platform: \(error.localizedDescription)"
-      case .failedToCreateStaticLibrary(let error):
-        return "Failed to create static library: \(error.localizedDescription)"
-      case .failedToCreateUniversalStaticLibrary(let error):
-        return "Failed to create universal static library: \(error.localizedDescription)"
+  /// An error related to ``MetadataInserter``.
+  enum ErrorMessage: Throwable {
+    case failedToEncodeMetadata
+    case failedToWriteMetadataCodeFile
+    case failedToCompileMetadataCodeFile
+    case failedToGetSDKPath
+    case failedToCreateStaticLibrary
+    case failedToCreateUniversalStaticLibrary
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToEncodeMetadata:
+          return "Failed to encode metadata"
+        case .failedToWriteMetadataCodeFile:
+          return "Failed to write metadata code file"
+        case .failedToCompileMetadataCodeFile:
+          return "Failed to compile metadata code file"
+        case .failedToGetSDKPath:
+          return "Failed to get SDK path for target platform"
+        case .failedToCreateStaticLibrary:
+          return "Failed to create static library"
+        case .failedToCreateUniversalStaticLibrary:
+          return "Failed to create universal static library"
+      }
     }
   }
 }

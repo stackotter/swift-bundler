@@ -43,83 +43,95 @@ enum MetadataInserter {
     for metadata: Metadata,
     architectures: [BuildArchitecture],
     platform: Platform
-  ) async -> Result<CompiledMetadata, MetadataInserterError> {
+  ) async throws(Error) -> CompiledMetadata {
     let codeFile = directory / "metadata.swift"
-    return await JSONEncoder().encode(metadata)
-      .mapError { error in
-        .failedToEncodeMetadata(error)
-      }
-      .map { data in
-        // We insert our JSON encoded metadata as the first entry in an array of
-        // byte arrays, because we want to support binary attachments in future
-        // (for embedding arbitrary resource files in executables).
-        let array = Array(data)
-        let code = """
-          let metadata: [[UInt8]] = [[\(array.map(\.description).joined(separator: ", "))]]
+    let data = try Error.catch(withMessage: .failedToEncodeMetadata) {
+      try JSONEncoder().encode(metadata).unwrap()
+    }
 
-          @_cdecl("_getSwiftBundlerMetadata")
-          func getSwiftBundlerMetadata() -> UnsafeRawPointer? {
-              return withUnsafePointer(to: metadata) { pointer in
-                  UnsafeRawPointer(pointer)
-              }
-          }
-          """
-        return code
-      }
-      .andThen { (code: String) in
-        code.write(to: codeFile)
-          .mapError { error in
-            .failedToWriteMetadataCodeFile(error)
+    // We insert our JSON encoded metadata as the first entry in an array of
+    // byte arrays, because we want to support binary attachments in future
+    // (for embedding arbitrary resource files in executables).
+    let array = Array(data)
+    let code = """
+      let metadata: [[UInt8]] = [[\(array.map(\.description).joined(separator: ", "))]]
+
+      @_cdecl("_getSwiftBundlerMetadata")
+      func getSwiftBundlerMetadata() -> UnsafeRawPointer? {
+          return withUnsafePointer(to: metadata) { pointer in
+              UnsafeRawPointer(pointer)
           }
       }
-      .andThen { _ in
-        if architectures.count > 1 || platform.isApplePlatform {
-          return await architectures.tryMap { architecture in
-            let objectFile = directory / "metadata-\(architecture).o"
-            return await compileMetadataCodeFile(
-              codeFile,
-              to: objectFile,
-              platform: platform,
-              architecture: architecture
-            ).replacingSuccessValue(with: (objectFile, architecture))
-          }.andThen { objectFiles in
-            await objectFiles.tryMap { objectFile, architecture in
-              let staticLibraryFile = directory / "metadata-\(architecture).a"
+      """
 
-              return await Result.catching { () async throws(Process.Error) in
-                try await Process.create(
-                  "ar",
-                  arguments: ["r", staticLibraryFile.path, objectFile.path]
-                ).runAndWait()
-              }
-              .mapError(MetadataInserterError.failedToCreateStaticLibrary)
-              .replacingSuccessValue(with: staticLibraryFile)
-            }
-          }.andThen { staticLibraries in
-            let name = "metadata"
-            let universalStaticLibrary = directory / "lib\(name).a"
+    try Error.catch(withMessage: .failedToWriteMetadataCodeFile) {
+      try code.write(to: codeFile).unwrap()
+    }
 
-            return await Result.catching { () async throws(Process.Error) in
-              try await Process.create(
-                "lipo",
-                arguments: [
-                  "-o", universalStaticLibrary.path, "-create"
-                ] + staticLibraries.map(\.path)
-              ).runAndWait()
-            }
-            .mapError(MetadataInserterError.failedToCreateUniversalStaticLibrary)
-            .replacingSuccessValue(with: .staticLibrary(universalStaticLibrary, name: name))
-          }
-        } else {
-          let objectFile = directory / "metadata.o"
-          return await compileMetadataCodeFile(
-            codeFile,
-            to: objectFile,
-            platform: platform,
-            architecture: architectures[0]
-          ).replacingSuccessValue(with: .objectFile(objectFile))
-        }
+    if architectures.count > 1 || platform.isApplePlatform {
+      let name = "metadata"
+      let universalStaticLibrary = directory / "lib\(name).a"
+      try await compileMetadataCodeFile(
+        codeFile,
+        toUniversalStaticLibrary: universalStaticLibrary,
+        scratchDirectory: directory,
+        platform: platform,
+        architectures: architectures
+      )
+      return .staticLibrary(universalStaticLibrary, name: name)
+    } else {
+      let objectFile = directory / "metadata.o"
+      try await compileMetadataCodeFile(
+        codeFile,
+        to: objectFile,
+        platform: platform,
+        architecture: architectures[0]
+      )
+      return .objectFile(objectFile)
+    }
+  }
+
+  private static func compileMetadataCodeFile(
+    _ codeFile: URL,
+    toUniversalStaticLibrary universalStaticLibrary: URL,
+    scratchDirectory: URL,
+    platform: Platform,
+    architectures: [BuildArchitecture]
+  ) async throws(Error) {
+    let objectFiles = architectures.map { architecture in
+      scratchDirectory / "metadata-\(architecture).o"
+    }
+
+    for (objectFile, architecture) in zip(objectFiles, architectures) {
+      try await compileMetadataCodeFile(
+        codeFile,
+        to: objectFile,
+        platform: platform,
+        architecture: architecture
+      )
+    }
+
+    let staticLibraries = architectures.map { architecture in
+      scratchDirectory / "metadata-\(architecture).a"
+    }
+
+    for (staticLibraryFile, objectFile) in zip(staticLibraries, objectFiles) {
+      try await Error.catch(withMessage: .failedToCreateStaticLibrary) {
+        try await Process.create(
+          "ar",
+          arguments: ["r", staticLibraryFile.path, objectFile.path]
+        ).runAndWait()
       }
+    }
+
+    try await Error.catch(withMessage: .failedToCreateUniversalStaticLibrary) {
+      try await Process.create(
+        "lipo",
+        arguments: [
+          "-o", universalStaticLibrary.path, "-create"
+        ] + staticLibraries.map(\.path)
+      ).runAndWait()
+    }
   }
 
   static func compileMetadataCodeFile(
@@ -127,8 +139,9 @@ enum MetadataInserter {
     to objectFile: URL,
     platform: Platform,
     architecture: BuildArchitecture
-  ) async -> Result<(), MetadataInserterError> {
+  ) async throws(Error) {
     var platformArguments: [String] = []
+
     if let platform = platform.asApplePlatform {
       let target = LLVMTargetTriple.apple(
         architecture,
@@ -137,15 +150,14 @@ enum MetadataInserter {
       )
       platformArguments += ["-target", target.description]
 
-      switch await SwiftPackageManager.getLatestSDKPath(for: platform.platform) {
-        case .success(let sdkPath):
-          platformArguments += ["-sdk", sdkPath]
-        case .failure(let error):
-          return .failure(.failedToGetSDKPath(error))
+      let sdkPath = try await Error.catch(withMessage: .failedToGetSDKPath) {
+        try await SwiftPackageManager.getLatestSDKPath(for: platform.platform).unwrap()
       }
+
+      platformArguments += ["-sdk", sdkPath]
     }
 
-    return await Result.catching { () async throws(Process.Error) in
+    try await Error.catch(withMessage: .failedToCompileMetadataCodeFile) {
       try await Process.create(
         "swiftc",
         arguments: [
@@ -154,7 +166,7 @@ enum MetadataInserter {
         ] + platformArguments,
         runSilentlyWhenNotVerbose: false
       ).runAndWait()
-    }.mapError(MetadataInserterError.failedToCompileMetadataCodeFile)
+    }
   }
 
   /// Additional SwiftPM arguments to use when inserting metadata into a build.

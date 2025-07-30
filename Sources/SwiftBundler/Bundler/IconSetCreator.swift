@@ -4,52 +4,45 @@ import Foundation
 enum IconSetCreator {
   /// Creates an `AppIcon.icns` in the given directory from the given 1024x1024 input png.
   /// - Parameters:
-  ///   - icon: The 1024x1024 input icon. Must be a png. An error is returned if the icon's path extension is not `png` (case insensitive).
+  ///   - icon: The 1024x1024 input icon. Must be a png. An error is returned
+  ///     if the icon's path extension is not `png` (case insensitive).
   ///   - outputFile: The location of the output `icns` file.
-  /// - Returns: If an error occurs, a failure is returned.
   static func createIcns(
     from icon: URL,
     outputFile: URL
-  ) async -> Result<Void, IconSetCreatorError> {
+  ) async throws(Error) {
     guard icon.pathExtension.lowercased() == "png" else {
-      return .failure(.notPNG(icon))
+      throw Error(.notPNG(icon))
     }
 
     let temporaryDirectory = FileManager.default.temporaryDirectory
     let iconSet = temporaryDirectory.appendingPathComponent("AppIcon.iconset")
     let sizes = [16, 32, 128, 256, 512]
 
-    return await FileManager.default.createDirectory(at: iconSet)
-      .mapError { error in
-        .failedToCreateIconSetDirectory(iconSet, error)
-      }
-      .andThen { _ in
-        await sizes.tryForEach { size in
-          let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
-          let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
+    try FileManager.default.createDirectory(
+      at: iconSet,
+      errorMessage: ErrorMessage.failedToCreateIconSetDirectory
+    )
 
-          return await createScaledIcon(icon, dimension: size, output: regularScale)
-            .andThen { _ in
-              await createScaledIcon(icon, dimension: size * 2, output: doubleScale)
-            }
-        }
-      }
-      .andThen { _ in
-        await Result.catching { () async throws(Process.Error) in
-          try await Process.create(
-            "/usr/bin/iconutil",
-            arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
-          ).runAndWait()
-        }.mapError { error in
-          .failedToConvertToICNS(error)
-        }
-      }
-      .andThen { _ in
-        FileManager.default.removeItem(
-          at: iconSet,
-          onError: IconSetCreatorError.failedToRemoveIconSetDirectory
-        )
-      }
+    for size in sizes {
+      let regularScale = iconSet.appendingPathComponent("icon_\(size)x\(size).png")
+      let doubleScale = iconSet.appendingPathComponent("icon_\(size)x\(size)@2x.png")
+
+      try await createScaledIcon(icon, dimension: size, output: regularScale)
+      try await createScaledIcon(icon, dimension: size * 2, output: doubleScale)
+    }
+
+    try await Error.catch(withMessage: .failedToConvertToICNS) {
+      try await Process.create(
+        "/usr/bin/iconutil",
+        arguments: ["--convert", "icns", "--output", outputFile.path, iconSet.path]
+      ).runAndWait()
+    }
+
+    try FileManager.default.removeItem(
+      at: iconSet,
+      errorMessage: ErrorMessage.failedToRemoveIconSetDirectory
+    )
   }
 
   /// Creates a scaled copy of an icon.
@@ -62,7 +55,7 @@ enum IconSetCreator {
     _ icon: URL,
     dimension: Int,
     output: URL
-  ) async -> Result<Void, IconSetCreatorError> {
+  ) async throws(Error) {
     let process = Process.create(
       "/usr/bin/sips",
       arguments: [
@@ -70,12 +63,13 @@ enum IconSetCreator {
         icon.path,
         "--out", output.path,
       ],
-      pipe: Pipe())
+      pipe: Pipe()
+    )
 
-    return await Result.catching { () async throws(Process.Error) in
+    do {
       try await process.runAndWait()
-    }.mapError { error in
-      .failedToScaleIcon(newDimension: dimension, error)
+    } catch {
+      throw Error(.failedToScaleIcon(newDimension: dimension), cause: error)
     }
   }
 }
