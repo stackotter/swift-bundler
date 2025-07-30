@@ -318,7 +318,7 @@ struct BundleCommand: ErrorHandledCommand {
         try await DeviceManager.resolve(
           specifier: deviceSpecifier,
           platform: platform
-        ).unwrap()
+        )
       }
     } else if let simulatorSpecifier {
       if let platform = platform, !platform.isSimulator {
