@@ -368,7 +368,7 @@ enum DarwinBundler: Bundler {
         try await IconSetCreator.createIcns(
           from: inputIconFile,
           outputFile: outputIconFile
-        ).unwrap()
+        )
       }
     } else {
       throw Error(.invalidAppIconFile(inputIconFile))

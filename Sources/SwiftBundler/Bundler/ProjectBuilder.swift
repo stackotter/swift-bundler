@@ -4,94 +4,8 @@ import SwiftBundlerBuilders
 import Version
 import ErrorKit
 
-// TODO: Major clean-up required. Pyramids of doom need some attention.
-
 enum ProjectBuilder {
   static let builderProductName = "Builder"
-
-  indirect enum Error: Throwable {
-    case failedToCloneRepo(URL, Process.Error)
-    case failedToWriteBuilderManifest(any Swift.Error)
-    case failedToCreateBuilderSourceDirectory(URL, any Swift.Error)
-    case failedToSymlinkBuilderSourceFile(any Swift.Error)
-    case failedToBuildBuilder(name: String, SwiftPackageManagerError)
-    case builderFailed(any Swift.Error)
-    case missingProject(name: String, appName: String)
-    case missingProduct(project: String, product: String, appName: String)
-    case failedToBuildProject(name: String, Error)
-    case failedToCopyProduct(source: URL, destination: URL, any Swift.Error)
-    case failedToBuildRootProjectProduct(name: String, any Swift.Error)
-    case noSuchProduct(project: String, product: String)
-    case unsupportedRootProjectProductType(
-      PackageManifest.ProductType,
-      product: String
-    )
-    case invalidLocalSource(URL)
-    case missingProductArtifact(URL, product: String)
-    case other(any Swift.Error)
-
-    /// An internal error used in control flow.
-    case mismatchedGitURL(_ actual: String, expected: URL)
-
-    var userFriendlyMessage: String {
-      switch self {
-        case .failedToCloneRepo(let gitURL, let error):
-          return """
-            Failed to clone project source repository '\(gitURL)': \
-            \(error.localizedDescription)
-            """
-        case .failedToCreateBuilderSourceDirectory(_, let error),
-          .failedToWriteBuilderManifest(let error),
-          .failedToSymlinkBuilderSourceFile(let error):
-          return "Failed to generate builder package: \(error.localizedDescription)"
-        case .failedToBuildBuilder(let name, _):
-          return "Failed to build builder '\(name)'"
-        case .builderFailed(let error):
-          return "Failed to run builder: \(error.localizedDescription)"
-        case .missingProject(let name, let appName):
-          return "Missing project named '\(name)' (required by '\(appName)')"
-        case .missingProduct(let project, let product, let appName):
-          return "Missing product '\(project).\(product)' (required by '\(appName)')"
-        case .failedToBuildProject(let name, let error):
-          return "'\(name)': \(error.localizedDescription)"
-        case .failedToCopyProduct(let source, _, let error):
-          return """
-            Failed to copy product '\(source.lastPathComponent)': \
-            \(error.localizedDescription)
-            """
-        case .failedToBuildRootProjectProduct(let name, let error):
-          let absoluteName = "\(ProjectConfiguration.rootProjectName).\(name)"
-          return "Failed to build '\(absoluteName)': \(error.localizedDescription)"
-        case .noSuchProduct(let project, let product):
-          return "No such product \(project).\(product)"
-        case .unsupportedRootProjectProductType(_, let product):
-          // TODO: Ideally this error message should include the name of the app
-          //   that has the dependency.
-          return """
-            Could not find executable product with name '\(product)' \
-            (the ability to depend on library products from SwiftPM \
-            packages isn't implemented yet)
-            """
-        case .invalidLocalSource(let source):
-          return """
-            Project source directory \
-            '\(source.path(relativeTo: .currentDirectory))' doesn't exist
-            """
-        case .missingProductArtifact(let location, let product):
-          return """
-            Missing artifact at '\(location.path(relativeTo: .currentDirectory))' \
-            required by product '\(product)'
-            """
-        case .other(let error):
-          return error.localizedDescription
-        case .mismatchedGitURL(let actualURL, let expectedURL):
-          return """
-            Expected repository to have origin url \
-            '\(expectedURL.absoluteString)' but had '\(actualURL)'
-            """
-      }
-    }
-  }
 
   struct BuiltProduct {
     var product: ProjectConfiguration.Product.Flat
@@ -108,298 +22,319 @@ enum ProjectBuilder {
     context: GenericBuildContext,
     appName: String,
     dryRun: Bool
-  ) async -> Result<[String: BuiltProduct], Error> {
+  ) async throws(Error) -> [String: BuiltProduct] {
     var builtProjects: Set<String> = []
-    return await dependencies.tryMap {
-      dependency -> Result<(String, BuiltProduct), Error> in
-      let projectName = dependency.project
+    var builtProducts: [String: BuiltProduct] = [:]
+    for dependency in dependencies {
+      try await buildDependency(
+        dependency,
+        context: context,
+        packageConfiguration: packageConfiguration,
+        appName: appName,
+        dryRun: dryRun,
+        builtProjects: &builtProjects,
+        builtProducts: &builtProducts,
+      )
+    }
+    return builtProducts
+  }
 
-      if projectName == ProjectConfiguration.rootProjectName {
+  private static func buildDependency(
+    _ dependency: AppConfiguration.Dependency,
+    context: GenericBuildContext,
+    packageConfiguration: PackageConfiguration.Flat,
+    appName: String,
+    dryRun: Bool,
+    builtProjects: inout Set<String>,
+    builtProducts: inout [String: BuiltProduct]
+  ) async throws(Error) {
+    let projectName = dependency.project
+
+    // Special case the root project (just use SwiftPM)
+    if projectName == ProjectConfiguration.rootProjectName {
+      if !dryRun {
         log.info("Building product '\(dependency.product)'")
-        return await buildRootProjectProduct(dependency.product, context: context)
       }
 
-      guard let project = packageConfiguration.projects[projectName] else {
-        return .failure(Error.missingProject(name: projectName, appName: appName))
-      }
-
-      guard let product = project.products[dependency.product] else {
-        return .failure(
-          Error.missingProduct(
-            project: projectName,
-            product: dependency.product,
-            appName: appName
-          )
-        )
-      }
-
-      let projectScratchDirectory = ScratchDirectoryStructure(
-        scratchDirectory: context.scratchDirectory / projectName
+      let (productName, builtProduct) = try await buildRootProjectProduct(
+        dependency.product,
+        context: context,
+        dryRun: dryRun
       )
+      builtProducts[productName] = builtProduct
+      return
+    }
 
-      let productsDirectoryExists = FileManager.default.itemExists(
-        at: projectScratchDirectory.products,
-        withType: .directory
+    guard let project = packageConfiguration.projects[projectName] else {
+      throw Error(.missingProject(name: projectName, appName: appName))
+    }
+
+    guard let product = project.products[dependency.product] else {
+      let message = ErrorMessage.missingProduct(
+        project: projectName,
+        product: dependency.product,
+        appName: appName
       )
+      throw Error(message)
+    }
 
-      let requiresBuilding = !builtProjects.contains(dependency.project)
-      builtProjects.insert(dependency.project)
+    let projectScratchDirectory = ScratchDirectoryStructure(
+      scratchDirectory: context.scratchDirectory / projectName
+    )
 
-      let productPath = product.artifactPath(
-        whenNamed: dependency.product,
-        platform: context.platform
-      )
-      let auxiliaryArtifactPaths = product.auxiliaryArtifactPaths(
-        whenNamed: dependency.product,
-        platform: context.platform
-      )
+    let productsDirectoryExists =
+      projectScratchDirectory.products.exists(withType: .directory)
 
-      let artifactPaths = [productPath] + auxiliaryArtifactPaths
-      let artifactDescriptors = artifactPaths.map { path in
-        let builtProduct = projectScratchDirectory.build / path
-        return (
-          builtProduct: builtProduct,
-          productDestination: projectScratchDirectory.products / builtProduct.lastPathComponent,
-          isRequired: path == productPath  // Slightly jank but should work
-        )
-      }
+    let requiresBuilding = !builtProjects.contains(dependency.project)
+    builtProjects.insert(dependency.project)
 
-      return await Result.success()
-        .andThen(if: requiresBuilding && !dryRun) { _ in
-          // Set up required directories and build whole project
-          log.info("Building project '\(projectName)'")
-          return await Result.success()
-            .andThenDoSideEffect(if: productsDirectoryExists) { _ in
-              FileManager.default.removeItem(at: projectScratchDirectory.products)
-                .mapError(Error.other)
-            }.andThen { _ in
-              projectScratchDirectory.createRequiredDirectories()
-            }.andThen { _ in
-              await ProjectBuilder.buildProject(
-                projectName,
-                configuration: project,
-                packageDirectory: context.projectDirectory,
-                scratchDirectory: projectScratchDirectory
-              ).mapError { error in
-                Error.failedToBuildProject(name: projectName, error)
-              }
-            }
-        }.andThen { buildDirectory -> Result<(String, BuiltProduct), Error> in
-          if !dryRun {
-            log.info("Copying product '\(dependency.identifier)'")
-          }
+    let productPath = product.artifactPath(
+      whenNamed: dependency.product,
+      platform: context.platform
+    )
+    let auxiliaryArtifactPaths = product.auxiliaryArtifactPaths(
+      whenNamed: dependency.product,
+      platform: context.platform
+    )
 
-          return artifactDescriptors.tryMap { artifact -> Result<Artifact?, Error> in
-            // Ensure that the artifact either exists or is not required.
-            guard artifact.builtProduct.exists() || !artifact.isRequired else {
-              let error = Error.missingProductArtifact(
-                artifact.builtProduct,
-                product: dependency.product
-              )
-              return .failure(error)
-            }
-
-            // Copy the artifact if present and not a dry run, then report it if
-            // it exists.
-            return Result.success()
-              .andThen(if: !dryRun && artifact.builtProduct.exists()) { _ in
-                FileManager.default.copyItem(
-                  at: artifact.builtProduct,
-                  to: artifact.productDestination,
-                  onError: Error.failedToCopyProduct
-                )
-              }.map { _ in
-                if artifact.builtProduct.exists() {
-                  Artifact(location: artifact.productDestination)
-                } else {
-                  nil
-                }
-              }
-          }
-          .map { artifacts in
-            let artifacts = artifacts.compactMap { $0 }
-            let builtProduct = BuiltProduct(product: product, artifacts: artifacts)
-            return (dependency.product, builtProduct)
-          }
+    if requiresBuilding && !dryRun {
+      // Set up required directories and build whole project
+      log.info("Building project '\(projectName)'")
+      if productsDirectoryExists {
+        try Error.catch {
+          try FileManager.default.removeItem(at: projectScratchDirectory.products)
         }
-    }.map { pairs in
-      Dictionary(pairs) { first, _ in first }
+      }
+
+      try projectScratchDirectory.createRequiredDirectories()
+
+      do {
+        try await ProjectBuilder.buildProject(
+          projectName,
+          configuration: project,
+          packageDirectory: context.projectDirectory,
+          scratchDirectory: projectScratchDirectory
+        )
+      } catch {
+        throw Error(.failedToBuildProject(name: projectName), cause: error)
+      }
+    }
+
+    if !dryRun {
+      log.info("Copying product '\(dependency.identifier)'")
+    }
+
+    let artifactPaths = [productPath] + auxiliaryArtifactPaths
+    let artifacts = try artifactPaths.compactMap { (path) throws(Error) -> Artifact? in
+      let builtProduct = projectScratchDirectory.build / path
+      return try copyArtifact(
+        builtProduct,
+        to: projectScratchDirectory.products,
+        isRequired: path == productPath,
+        product: dependency.product,
+        dryRun: dryRun
+      )
+    }
+
+    let builtProduct = BuiltProduct(product: product, artifacts: artifacts)
+    builtProducts[dependency.product] = builtProduct
+  }
+
+  /// Attempts to copy the given artifact to the given directory. If the artifact
+  /// isn't required and doesn't exist then we return `nil`. For required but
+  /// missing artifacts, an error is thrown.
+  static func copyArtifact(
+    _ builtArtifact: URL,
+    to directory: URL,
+    isRequired: Bool,
+    product: String,
+    dryRun: Bool
+  ) throws(Error) -> Artifact? {
+    // Ensure that the artifact either exists or is not required.
+    guard builtArtifact.exists() || !isRequired else {
+      let message = ErrorMessage.missingProductArtifact(
+        builtArtifact,
+        product: product
+      )
+      throw Error(message)
+    }
+
+    // Copy the artifact if present and not a dry run, then report it if
+    // it exists.
+    let destination = directory / builtArtifact.lastPathComponent
+    if !dryRun && builtArtifact.exists() {
+      try FileManager.default.copyItem(
+        at: builtArtifact,
+        to: destination,
+        errorMessage: ErrorMessage.failedToCopyProduct
+      )
+    }
+
+    if builtArtifact.exists() {
+      return Artifact(location: destination)
+    } else {
+      return nil
     }
   }
 
   static func buildRootProjectProduct(
     _ product: String,
-    context: GenericBuildContext
-  ) async -> Result<(String, BuiltProduct), Error> {
+    context: GenericBuildContext,
+    dryRun: Bool
+  ) async throws(Error) -> (String, BuiltProduct) {
+    let manifest: PackageManifest
+    do {
+      manifest = try await SwiftPackageManager.loadPackageManifest(
+        from: context.projectDirectory
+      ).unwrap()
+    } catch {
+      throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
+    }
+
+    // Locate product in manifest
+    guard
+      let manifestProduct = manifest.products.first(where: { $0.name == product })
+    else {
+      let project = ProjectConfiguration.rootProjectName
+      throw Error(.noSuchProduct(project: project, product: product))
+    }
+
+    // We only support 'helper executable'-style dependencies for SwiftPM products at the moment
+    guard manifestProduct.type == .executable else {
+      let message = ErrorMessage.unsupportedRootProjectProductType(
+        manifestProduct.type,
+        product: product
+      )
+      throw Error(message)
+    }
+
+    // Build product
     let buildContext = SwiftPackageManager.BuildContext(
       genericContext: context,
       hotReloadingEnabled: false,
       isGUIExecutable: false
     )
-    let wrapSPMError = { error in
-      Error.failedToBuildRootProjectProduct(name: product, error)
-    }
-    return await SwiftPackageManager.loadPackageManifest(from: context.projectDirectory)
-      .mapError(wrapSPMError)
-      .andThenDoSideEffect { manifest in
-        guard
-          let manifestProduct = manifest.products.first(where: { $0.name == product })
-        else {
-          let project = ProjectConfiguration.rootProjectName
-          return .failure(.noSuchProduct(project: project, product: product))
-        }
 
-        guard manifestProduct.type == .executable else {
-          let error = Error.unsupportedRootProjectProductType(
-            manifestProduct.type,
-            product: product
-          )
-          return .failure(error)
-        }
+    let productsDirectory: URL
+    do {
+      if !dryRun {
+        try await SwiftPackageManager.build(
+          product: product,
+          buildContext: buildContext
+        ).unwrap()
+      }
 
-        return .success()
-      }
-      .andThen { _ in
-        await SwiftPackageManager.build(product: product, buildContext: buildContext)
-          .mapError(wrapSPMError)
-      }
-      .andThen { _ in
-        await SwiftPackageManager.getProductsDirectory(buildContext)
-          .mapError(wrapSPMError)
-      }
-      .map { productsDirectory in
-        let productConfiguration = ProjectConfiguration.Product.Flat(type: .executable)
-        let artifactPath = productConfiguration.artifactPath(
-          whenNamed: product,
-          platform: context.platform
-        )
-        let artifacts = [
-          ProjectBuilder.Artifact(location: productsDirectory / artifactPath)
-        ]
-        let builtProduct = BuiltProduct(product: productConfiguration, artifacts: artifacts)
-        return (product, builtProduct)
-      }
-  }
-
-  struct ScratchDirectoryStructure {
-    var root: URL
-    var sources: URL
-    var builder: URL
-    var build: URL
-    var products: URL
-    var builderManifest: URL
-    var builderSourceFile: URL
-
-    var requireDirectories: [URL] {
-      [
-        root,
-        builder,
-        build,
-        products,
-        builderManifest.deletingLastPathComponent(),
-        builderSourceFile.deletingLastPathComponent(),
-      ]
+      productsDirectory = try await SwiftPackageManager.getProductsDirectory(
+        buildContext
+      ).unwrap()
+    } catch {
+      throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
     }
 
-    init(scratchDirectory: URL) {
-      root = scratchDirectory
-      sources = scratchDirectory / "sources"
-      builder = scratchDirectory / "builder"
-      build = scratchDirectory / "build"
-      products = scratchDirectory / "products"
-      builderManifest = builder / "Package.swift"
-      builderSourceFile = builder / "Sources/Builder/Builder.swift"
-    }
+    // Produce built product description
+    let productConfiguration = ProjectConfiguration.Product.Flat(type: .executable)
+    let artifactPath = productConfiguration.artifactPath(
+      whenNamed: product,
+      platform: context.platform
+    )
+    let artifacts = [
+      ProjectBuilder.Artifact(location: productsDirectory / artifactPath)
+    ]
+    let builtProduct = BuiltProduct(product: productConfiguration, artifacts: artifacts)
 
-    func createRequiredDirectories() -> Result<Void, Error> {
-      requireDirectories.filter { directory in
-        !FileManager.default.itemExists(at: directory, withType: .directory)
-      }.tryForEach { directory in
-        FileManager.default.createDirectory(at: directory).mapError(Error.other)
-      }
-    }
+    return (product, builtProduct)
   }
 
   static func checkoutSource(
     _ source: ProjectConfiguration.Source.Flat,
     at destination: URL,
     packageDirectory: URL
-  ) async -> Result<(), Error> {
-    func clone(_ repository: URL, to destination: URL) async -> Result<(), Error> {
-      await Result.catching { () async throws(Process.Error) in
-        try await Process.create(
-          "git",
-          arguments: [
-            "clone",
-            "--recursive",
-            repository.absoluteString,
-            destination.path,
-          ],
-          runSilentlyWhenNotVerbose: false
-        ).runAndWait()
-      }.mapError { error in
-        Error.failedToCloneRepo(repository, error)
+  ) async throws(Error) {
+    let destinationExists = (try? destination.checkResourceIsReachable()) == true
+    switch source {
+      case .git(let url, let requirement):
+        try await checkoutGitSource(
+          destination: destination,
+          destinationExists: destinationExists,
+          repository: url,
+          requirement: requirement
+        )
+      case .local(let path):
+        try await checkoutLocalSource(
+          destination: destination,
+          destinationExists: destinationExists,
+          packageDirectory: packageDirectory,
+          path: path
+        )
+    }
+  }
+
+  static func checkoutGitSource(
+    destination: URL,
+    destinationExists: Bool,
+    repository: URL,
+    requirement: ProjectConfiguration.APIRequirement
+  ) async throws(Error) {
+    do {
+      let currentURL = try await Error.catch {
+        try await Git.getRemoteURL(destination, remote: "origin")
+      }
+
+      guard currentURL.absoluteString == repository.absoluteString else {
+        throw Error(.mismatchedGitURL(currentURL, expected: repository))
+      }
+    } catch {
+      if destinationExists {
+        try Error.catch {
+          try FileManager.default.removeItem(at: destination)
+        }
+      }
+
+      try await Error.catch {
+        try await Git.clone(repository, to: destination)
       }
     }
 
-    let destinationExists = (try? destination.checkResourceIsReachable()) == true
+    let revision: String
+    switch requirement {
+      case .revision(let value):
+        revision = value
+    }
 
-    switch source {
-      case .git(let url, let requirement):
-        return await Result.catching { () async throws(Process.Error) in
-          try await Process.create(
-            "git",
-            arguments: [
-              "remote",
-              "get-url",
-              "origin",
-            ],
-            directory: destination
-          ).getOutput()
-        }.mapError(Error.other).andThen { output in
-          let currentURL = output.trimmingCharacters(in: .whitespacesAndNewlines)
-          guard currentURL == url.absoluteString else {
-            return .failure(.mismatchedGitURL(currentURL, expected: url))
-          }
-          return .success()
-        }.tryRecover { _ in
-          await Result.success().andThen(if: destinationExists) { _ in
-            FileManager.default.removeItem(at: destination)
-              .mapError(Error.other)
-          }.andThen { _ in
-            await clone(url, to: destination)
-          }
-        }.andThen { _ in
-          let revision: String
-          switch requirement {
-            case .revision(let value):
-              revision = value
-          }
+    try await Error.catch {
+      try await Process.create(
+        "git",
+        arguments: ["checkout", revision],
+        directory: destination
+      ).runAndWait()
+    }
+  }
 
-          return await Result.catching { () async throws(Process.Error) in
-            try await Process.create(
-              "git",
-              arguments: ["checkout", revision],
-              directory: destination
-            ).runAndWait()
-          }.mapError(Error.other)
-        }
-      case .local(let path):
-        return Result.success().andThen(if: destinationExists) { _ in
-          FileManager.default.removeItem(at: destination)
-            .mapError(Error.other)
-        }.andThen { _ in
-          let source = packageDirectory / path
-          guard source.exists() else {
-            return .failure(.invalidLocalSource(source))
-          }
-          return FileManager.default.createSymlink(
-            at: destination,
-            withRelativeDestination: source.path(
-              relativeTo: destination.deletingLastPathComponent()
-            )
-          ).mapError(Error.other)
-        }
+
+  static func checkoutLocalSource(
+    destination: URL,
+    destinationExists: Bool,
+    packageDirectory: URL,
+    path: String
+  ) async throws(Error) {
+    if destinationExists {
+      try Error.catch {
+        try FileManager.default.removeItem(at: destination)
+      }
+    }
+
+    let source = packageDirectory / path
+    guard source.exists() else {
+      throw Error(.invalidLocalSource(source))
+    }
+
+    try Error.catch {
+      try FileManager.default.createSymlink(
+        at: destination,
+        withRelativeDestination: source.path(
+          relativeTo: destination.deletingLastPathComponent()
+        )
+      ).unwrap()
     }
   }
 
@@ -410,116 +345,146 @@ enum ProjectBuilder {
     configuration: ProjectConfiguration.Flat,
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure
-  ) async -> Result<Void, Error> {
+  ) async throws(Error) {
     // Just sitting here to raise alarms when more types are added
     switch configuration.builder.type {
       case .wholeProject:
         break
     }
 
-    return await Result.success()
-      .andThen { _ in
-        await checkoutSource(
-          configuration.source,
-          at: scratchDirectory.sources,
-          packageDirectory: packageDirectory
-        )
+    try await checkoutSource(
+      configuration.source,
+      at: scratchDirectory.sources,
+      packageDirectory: packageDirectory
+    )
+
+    try await createBuilderPackage(
+      for: configuration,
+      packageDirectory: packageDirectory,
+      scratchDirectory: scratchDirectory
+    )
+    let builder = try await buildBuilder(
+      for: configuration,
+      scratchDirectory: scratchDirectory
+    )
+    try await runBuilder(
+      builder,
+      for: configuration,
+      scratchDirectory: scratchDirectory
+    )
+  }
+
+  static func createBuilderPackage(
+    for configuration: ProjectConfiguration.Flat,
+    packageDirectory: URL,
+    scratchDirectory: ScratchDirectoryStructure
+  ) async throws(Error) {
+    // Create builder source file symlink
+    try Error.catch(withMessage: .failedToSymlinkBuilderSourceFile) {
+      let masterBuilderSourceFile = packageDirectory / configuration.builder.name
+      if FileManager.default.fileExists(atPath: scratchDirectory.builderSourceFile.path) {
+        try FileManager.default.removeItem(at: scratchDirectory.builderSourceFile)
       }
-      .andThen { _ in
-        // Create builder source file symlink
-        Result {
-          let masterBuilderSourceFile = packageDirectory / configuration.builder.name
-          if FileManager.default.fileExists(atPath: scratchDirectory.builderSourceFile.path) {
-            try FileManager.default.removeItem(at: scratchDirectory.builderSourceFile)
-          }
-          try FileManager.default.createSymbolicLink(
-            at: scratchDirectory.builderSourceFile,
-            withDestinationURL: masterBuilderSourceFile
-          )
-        }.mapError(Error.failedToSymlinkBuilderSourceFile)
+      try FileManager.default.createSymbolicLink(
+        at: scratchDirectory.builderSourceFile,
+        withDestinationURL: masterBuilderSourceFile
+      )
+    }
+
+    // Create/update the builder's Package.swift
+    let toolsVersion = try await Error.catch {
+      try await SwiftPackageManager.getToolsVersion(packageDirectory).unwrap()
+    }
+
+    let manifestContents = generateBuilderPackageManifest(
+      toolsVersion,
+      builderAPI: configuration.builder.api.normalized(
+        usingDefault: SwiftBundler.gitURL
+      ),
+      rootPackageDirectory: packageDirectory,
+      builderPackageDirectory: scratchDirectory.builder
+    )
+
+    try Error.catch(withMessage: .failedToWriteBuilderManifest) {
+      try manifestContents.write(to: scratchDirectory.builderManifest).unwrap()
+    }
+  }
+
+  static func buildBuilder(
+    for configuration: ProjectConfiguration.Flat,
+    scratchDirectory: ScratchDirectoryStructure
+  ) async throws(Error) -> URL {
+    // Build the builder
+    let buildContext = SwiftPackageManager.BuildContext(
+      genericContext: GenericBuildContext(
+        projectDirectory: scratchDirectory.builder,
+        scratchDirectory: scratchDirectory.builder / ".build",
+        configuration: .debug,
+        architectures: [.current],
+        platform: .host,
+        additionalArguments: []
+      ),
+      isGUIExecutable: false
+    )
+
+    let productsDirectory: URL
+    do {
+      try await SwiftPackageManager.build(
+        product: builderProductName,
+        buildContext: buildContext
+      ).unwrap()
+
+      productsDirectory =
+        try await SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+    } catch {
+      throw Error(.failedToBuildBuilder(name: configuration.builder.name), cause: error)
+    }
+
+    let builderFileName = HostPlatform.hostPlatform
+      .executableFileName(forBaseName: builderProductName)
+    let builder = productsDirectory / builderFileName
+    return builder
+  }
+
+  static func runBuilder(
+    _ builder: URL,
+    for configuration: ProjectConfiguration.Flat,
+    scratchDirectory: ScratchDirectoryStructure,
+  ) async throws(Error) {
+    let context = _BuilderContextImpl(
+      buildDirectory: scratchDirectory.build
+    )
+
+    let inputPipe = Pipe()
+    let process = Process()
+
+    process.executableURL = builder
+    process.standardInput = inputPipe
+    process.currentDirectoryURL = scratchDirectory.sources
+      .actuallyResolvingSymlinksInPath()
+    process.arguments = []
+
+    let processWaitSemaphore = AsyncSemaphore(value: 0)
+
+    process.terminationHandler = { _ in
+      processWaitSemaphore.signal()
+    }
+
+    do {
+      _ = try process.runAndLog()
+      let data = try JSONEncoder().encode(context).get()
+      inputPipe.fileHandleForWriting.write(data)
+      inputPipe.fileHandleForWriting.write("\n")
+      try? inputPipe.fileHandleForWriting.close()
+      try await processWaitSemaphore.wait()
+
+      let exitStatus = Int(process.terminationStatus)
+      guard exitStatus == 0 else {
+        throw Process.ErrorMessage.nonZeroExitStatus(exitStatus)
       }
-      .andThen { _ in
-        // Create/update the builder's Package.swift
-        await SwiftPackageManager.getToolsVersion(packageDirectory)
-          .mapError(Error.other)
-          .map { toolsVersion in
-            generateBuilderPackageManifest(
-              toolsVersion,
-              builderAPI: configuration.builder.api.normalized(
-                usingDefault: SwiftBundler.gitURL
-              ),
-              rootPackageDirectory: packageDirectory,
-              builderPackageDirectory: scratchDirectory.builder
-            )
-          }
-          .andThen { manifestContents in
-            manifestContents.write(to: scratchDirectory.builderManifest)
-              .mapError(Error.failedToWriteBuilderManifest)
-          }
-      }
-      .andThen { _ in
-        // Build the builder
-        let buildContext = SwiftPackageManager.BuildContext(
-          genericContext: GenericBuildContext(
-            projectDirectory: scratchDirectory.builder,
-            scratchDirectory: scratchDirectory.builder / ".build",
-            configuration: .debug,
-            architectures: [.current],
-            platform: .host,
-            additionalArguments: []
-          ),
-          isGUIExecutable: false
-        )
-
-        return await SwiftPackageManager.build(
-          product: builderProductName,
-          buildContext: buildContext
-        ).andThen { _ in
-          await SwiftPackageManager.getProductsDirectory(buildContext)
-        }.mapError { error in
-          Error.failedToBuildBuilder(name: configuration.builder.name, error)
-        }
-      }
-      .andThen { productsDirectory in
-        let builderFileName = HostPlatform.hostPlatform.executableFileName(
-          forBaseName: builderProductName
-        )
-
-        let context = _BuilderContextImpl(
-          buildDirectory: scratchDirectory.build
-        )
-
-        let inputPipe = Pipe()
-        let process = Process()
-
-        process.executableURL = productsDirectory / builderFileName
-        process.standardInput = inputPipe
-        process.currentDirectoryURL = scratchDirectory.sources
-          .actuallyResolvingSymlinksInPath()
-        process.arguments = []
-
-        let processWaitSemaphore = AsyncSemaphore(value: 0)
-
-        process.terminationHandler = { _ in
-          processWaitSemaphore.signal()
-        }
-
-        return await Result {
-          _ = try process.runAndLog()
-          let data = try JSONEncoder().encode(context).get()
-          inputPipe.fileHandleForWriting.write(data)
-          inputPipe.fileHandleForWriting.write("\n")
-          try? inputPipe.fileHandleForWriting.close()
-          try await processWaitSemaphore.wait()
-          return Int(process.terminationStatus)
-        }.andThen { exitStatus in
-          if exitStatus == 0 {
-            return .success()
-          } else {
-            return .failure(Process.Error(.nonZeroExitStatus(exitStatus)))
-          }
-        }.mapError(Error.builderFailed)
-      }
+    } catch {
+      throw Error(.builderFailed, cause: error)
+    }
   }
 
   static func generateBuilderPackageManifest(
