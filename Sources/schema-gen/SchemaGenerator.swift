@@ -9,12 +9,15 @@ extension FileHandle: Swift.TextOutputStream {
   }
 }
 
+func printError(_ message: String) {
+  var standardError = FileHandle.standardError
+  print(message, to: &standardError)
+}
+
 @main
 struct SchemaGenerator {
-  static var standardError = FileHandle.standardError
-
   /// A simple conversion from Swift type to JSON type.
-  static var jsonTypeConversion: [String: String] = [
+  static let jsonTypeConversion: [String: String] = [
     "Int": "integer",
     "Float": "number",
     "Double": "number",
@@ -23,10 +26,7 @@ struct SchemaGenerator {
 
   static func main() {
     guard CommandLine.arguments.count == 2 else {
-      print(
-        "Usage: schema-gen /path/to/Sources/swift-bundler/Configuration",
-        to: &standardError
-      )
+      printError("Usage: schema-gen /path/to/Sources/swift-bundler/Configuration")
       Foundation.exit(1)
     }
 
@@ -38,7 +38,7 @@ struct SchemaGenerator {
       case .success(let decl):
         packageConfigStruct = decl
       case .failure(let error):
-        print("\(error)", to: &standardError)
+        printError("\(error)")
         Foundation.exit(1)
     }
 
@@ -59,7 +59,7 @@ struct SchemaGenerator {
       let jsonString = String(data: json, encoding: .utf8)!
       print(jsonString)
     } catch {
-      print("Failed to serialize schema", to: &standardError)
+      printError("Failed to serialize schema")
       Foundation.exit(1)
     }
   }
@@ -77,10 +77,7 @@ struct SchemaGenerator {
     switch typeDecl {
       case .enumDecl:
         guard let schema = explicitSchema(of: typeDecl) else {
-          print(
-            "Enum '\(typeDecl.identifier)' requires an explicit schema",
-            to: &standardError
-          )
+          printError("Enum '\(typeDecl.identifier)' requires an explicit schema")
           Foundation.exit(1)
         }
         return schema
@@ -102,18 +99,12 @@ struct SchemaGenerator {
           guard
             let description = property.documentation?.split(separator: "\n").first
           else {
-            print(
-              "'\(typeDecl.identifier).\(property.identifier)' missing documentation",
-              to: &standardError
-            )
+            printError("'\(typeDecl.identifier).\(property.identifier)' missing documentation")
             Foundation.exit(1)
           }
 
           guard let type = property.type else {
-            print(
-              "'\(typeDecl.identifier).\(property.identifier)' missing type annotation",
-              to: &standardError
-            )
+            printError("'\(typeDecl.identifier).\(property.identifier)' missing type annotation")
             Foundation.exit(1)
           }
 
@@ -161,7 +152,7 @@ struct SchemaGenerator {
         let valueType = String(parts[1]).trimmingCharacters(in: .whitespaces)
 
         guard keyType == "String" else {
-          print("Dictionary keys must be strings", to: &standardError)
+          printError("Dictionary keys must be strings")
           Foundation.exit(1)
         }
 
@@ -184,7 +175,7 @@ struct SchemaGenerator {
         case .success(let decl):
           schema = partialSchema(for: decl, namespace: namespace)
         case .failure(let error):
-          print("\(error)", to: &standardError)
+          printError("\(error)")
           Foundation.exit(1)
       }
     }
@@ -223,14 +214,8 @@ struct SchemaGenerator {
       let schemaObject = try? JSONSerialization.jsonObject(with: data),
       let schema = schemaObject as? [String: Any]
     else {
-      print(
-        "Failed to decode explicit schema for '\(typeDecl.identifier)'.",
-        to: &standardError
-      )
-      print(
-        "Ensure that it is a string literal containing valid JSON.",
-        to: &standardError
-      )
+      printError("Failed to decode explicit schema for '\(typeDecl.identifier)'.")
+      printError("Ensure that it is a string literal containing valid JSON.")
       Foundation.exit(1)
     }
 
