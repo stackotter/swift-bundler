@@ -66,6 +66,7 @@ enum Templater {
         attemptCleanup(outputDirectory)
         // TODO: Figure out why Swift doesn't infer this thrown type. Perhaps we
         //   need full typed throws?
+        // swiftlint:disable:next force_cast
         throw error as! Error
       }
 
