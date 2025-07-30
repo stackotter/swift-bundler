@@ -187,7 +187,7 @@ enum ResourceBundler {
         for: platform,
         platformVersion: platformVersion,
         keepSources: false
-      ).unwrap()
+      )
     }
 
     // Compile storyboards
@@ -196,7 +196,7 @@ enum ResourceBundler {
         in: destinationBundleResources,
         to: destinationBundleResources.appendingPathComponent("Base.lproj"),
         keepSources: false
-      ).unwrap()
+      )
     }
 
     // Compile string catalogs
@@ -205,7 +205,7 @@ enum ResourceBundler {
         in: destinationBundleResources,
         to: destinationBundleResources,
         keepSources: false
-      ).unwrap()
+      )
     }
   }
 

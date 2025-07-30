@@ -14,11 +14,11 @@ enum MetalCompiler {
     for platform: Platform,
     platformVersion: String,
     keepSources: Bool
-  ) async -> Result<Void, MetalCompilerError> {
+  ) async throws(Error) {
     guard
       let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: [])
     else {
-      return .failure(.failedToEnumerateShaders(directory: directory))
+      throw Error(.failedToEnumerateShaders(directory: directory))
     }
 
     var shaderSources: [URL] = []
@@ -27,25 +27,24 @@ enum MetalCompiler {
     }
 
     guard !shaderSources.isEmpty else {
-      return .success()
+      return
     }
 
     log.info("Compiling metal shaders")
 
-    // Compile metal shaders, and if successful, delete all shader sources
-    return await compileMetalShaders(
+    _ = try await compileMetalShaders(
       shaderSources,
       to: directory,
       for: platform,
       platformVersion: platformVersion
     )
-    .replacingSuccessValue(with: ())
-    .andThen(if: !keepSources) { _ in
-      shaderSources.tryForEach { source in
-        FileManager.default.removeItem(at: source)
-          .mapError { error in
-            .failedToDeleteShaderSource(source, error)
-          }
+
+    if !keepSources {
+      for source in shaderSources {
+        try FileManager.default.removeItem(
+          at: source,
+          errorMessage: ErrorMessage.failedToDeleteShaderSource
+        )
       }
     }
   }
@@ -63,41 +62,41 @@ enum MetalCompiler {
     to destination: URL,
     for platform: Platform,
     platformVersion: String
-  ) async -> Result<URL, MetalCompilerError> {
+  ) async throws(Error) -> URL {
     // Create a temporary directory for compilation
     let tempDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("metal_compilation-\(UUID().uuidString)")
     let archive = tempDirectory.appendingPathComponent("default.metal-ar")
 
-    return await FileManager.default.createDirectory(
+    try FileManager.default.createDirectory(
       at: tempDirectory,
-      onError: MetalCompilerError.failedToCreateTemporaryCompilationDirectory
+      errorMessage: ErrorMessage.failedToCreateTemporaryCompilationDirectory
     )
-    .andThen { _ in
-      // Compile the shaders into `.air` files
-      await sources.tryMap { shaderSource in
-        let outputFileName = shaderSource.deletingPathExtension()
-          .appendingPathExtension("air").lastPathComponent
-        let outputFile = tempDirectory.appendingPathComponent(outputFileName)
 
-        return await compileShader(
-          shaderSource,
-          to: outputFile,
-          for: platform,
-          platformVersion: platformVersion
-        ).replacingSuccessValue(with: outputFile)
-      }
+    // Compile the shaders into `.air` files
+    let airFiles = try await sources.typedAsyncMap { (shaderSource) throws(Error) -> URL in
+      let outputFileName = shaderSource.deletingPathExtension()
+        .appendingPathExtension("air").lastPathComponent
+      let outputFile = tempDirectory.appendingPathComponent(outputFileName)
+
+      try await compileShader(
+        shaderSource,
+        to: outputFile,
+        for: platform,
+        platformVersion: platformVersion
+      )
+
+      return outputFile
     }
-    .andThen { airFiles in
-      // Combine the compiled shaders into a `.metal-ar` archive
-      await createArchive(at: archive, from: airFiles, for: platform)
-    }
-    .andThen { _ in
-      // Convert the `metal-ar` archive into a `metallib` library
-      let library = destination.appendingPathComponent("default.metallib")
-      return await createLibrary(at: library, from: archive, for: platform)
-        .replacingSuccessValue(with: library)
-    }
+
+    // Combine the compiled shaders into a `.metal-ar` archive
+    try await createArchive(at: archive, from: airFiles, for: platform)
+
+    // Convert the `metal-ar` archive into a `metallib` library
+    let library = destination.appendingPathComponent("default.metallib")
+    try await createLibrary(at: library, from: archive, for: platform)
+
+    return library
   }
 
   /// Compiles a metal shader file into an `air` file.
@@ -112,7 +111,7 @@ enum MetalCompiler {
     to outputFile: URL,
     for platform: Platform,
     platformVersion: String
-  ) async -> Result<Void, MetalCompilerError> {
+  ) async throws(Error) {
     var arguments = [
       "-sdk", platform.sdkName, "metal",
       "-o", outputFile.path,
@@ -140,10 +139,8 @@ enum MetalCompiler {
     do {
       try await process.runAndWait()
     } catch {
-      return .failure(.failedToCompileShader(shader, error))
+      throw Error(.failedToCompileShader(shader), cause: error)
     }
-
-    return .success()
   }
 
   /// Creates a metal archive (a `metal-ar` file) from a list of `air` files (which can be created by ``compileShader(_:outputDirectory:)``).
@@ -156,7 +153,7 @@ enum MetalCompiler {
     at archive: URL,
     from airFiles: [URL],
     for platform: Platform
-  ) async -> Result<Void, MetalCompilerError> {
+  ) async throws(Error) {
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -168,10 +165,8 @@ enum MetalCompiler {
     do {
       try await process.runAndWait()
     } catch {
-      return .failure(.failedToCreateMetalArchive(error))
+      throw Error(.failedToCreateMetalArchive, cause: error)
     }
-
-    return .success()
   }
 
   /// Creates a metal library from a metal archive.
@@ -184,8 +179,8 @@ enum MetalCompiler {
     at library: URL,
     from archive: URL,
     for platform: Platform
-  ) async -> Result<Void, MetalCompilerError> {
-    let libraryCreationProcess = Process.create(
+  ) async throws(Error) {
+    let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
         "-sdk", platform.sdkName, "metallib",
@@ -194,13 +189,8 @@ enum MetalCompiler {
       ]
     )
 
-    let libraryCreationResult = await Result.catching { () async throws(Process.Error) in
-      try await libraryCreationProcess.runAndWait()
+    try await Error.catch(withMessage: .failedToCreateMetalLibrary) {
+      try await process.runAndWait()
     }
-    if case let .failure(error) = libraryCreationResult {
-      return .failure(.failedToCreateMetalLibrary(error))
-    }
-
-    return .success()
   }
 }

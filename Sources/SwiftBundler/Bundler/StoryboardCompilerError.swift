@@ -1,23 +1,27 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``StoryboardCompiler``.
-enum StoryboardCompilerError: Throwable {
-  case failedToEnumerateStoryboards(URL, Error)
-  case failedToCreateOutputDirectory(URL, Error)
-  case failedToRunIBTool(storyboard: URL, Process.Error)
-  case failedToDeleteStoryboard(URL, Error)
+extension StoryboardCompiler {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToEnumerateStoryboards(let directory, _):
-        return "Failed to enumerate storyboards in '\(directory.relativePath)'"
-      case .failedToCreateOutputDirectory(let directory, _):
-        return "Failed to create output directory at '\(directory.relativePath)'"
-      case .failedToRunIBTool(let storyboard, _):
-        return "Failed to run IB tool on '\(storyboard)'"
-      case .failedToDeleteStoryboard(let file, _):
-        return "Failed to delete storyboard at '\(file.relativePath)' after compilation"
+  /// An error message related to ``StoryboardCompiler``.
+  enum ErrorMessage: Throwable {
+    case failedToEnumerateStoryboards(URL)
+    case failedToCreateOutputDirectory(URL)
+    case failedToRunIBTool(storyboard: URL)
+    case failedToDeleteStoryboard(URL)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToEnumerateStoryboards(let directory):
+          return "Failed to enumerate storyboards in '\(directory.relativePath)'"
+        case .failedToCreateOutputDirectory(let directory):
+          return "Failed to create output directory at '\(directory.relativePath)'"
+        case .failedToRunIBTool(let storyboard):
+          return "Failed to run IB tool on '\(storyboard)'"
+        case .failedToDeleteStoryboard(let file):
+          return "Failed to delete storyboard at '\(file.relativePath)' after compilation"
+      }
     }
   }
 }
