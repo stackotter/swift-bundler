@@ -38,7 +38,7 @@ struct ConvertCommand: ErrorHandledCommand {
 
     #if !SUPPORT_XCODEPROJ
       // Throw an error as early as possible if the host platform isn't supported
-      throw XcodeprojConverterError.hostPlatformNotSupported
+      throw RichError<SwiftBundlerError>(cause: XcodeprojConverterError.hostPlatformNotSupported)
     #else
       if !dontWarn {
         log.warning(
