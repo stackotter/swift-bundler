@@ -115,7 +115,7 @@ struct CreateCommand: ErrorHandledCommand {
         category: category,
         infoPlistFile: infoPlistFile,
         iconFile: iconFile
-      ).unwrap()
+      )
     }
 
     var template: Template?

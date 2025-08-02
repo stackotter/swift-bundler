@@ -151,7 +151,7 @@ enum MetadataInserter {
       platformArguments += ["-target", target.description]
 
       let sdkPath = try await Error.catch(withMessage: .failedToGetSDKPath) {
-        try await SwiftPackageManager.getLatestSDKPath(for: platform.platform).unwrap()
+        try await SwiftPackageManager.getLatestSDKPath(for: platform.platform)
       }
 
       platformArguments += ["-sdk", sdkPath]

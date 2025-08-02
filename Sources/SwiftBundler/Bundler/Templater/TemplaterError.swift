@@ -23,7 +23,6 @@ enum TemplaterError: Throwable {
   case failedToPullLatestTemplates
   case failedToEnumerateOutputFiles
   case failedToUpdateIndentationStyle(directory: URL)
-  case failedToCreateConfigurationFile(PackageConfiguration, URL)
   case missingVSCodeOverlay
 
   var userFriendlyMessage: String {
@@ -81,8 +80,6 @@ enum TemplaterError: Throwable {
       case .failedToUpdateIndentationStyle(let directory):
         return
           "Failed to update the indentation style of the package in '\(directory.relativePath)'"
-      case .failedToCreateConfigurationFile(_, let file):
-        return "Failed to create configuration file at '\(file.relativePath)'"
       case .missingVSCodeOverlay:
         return Output {
           "Missing VSCode overlay."

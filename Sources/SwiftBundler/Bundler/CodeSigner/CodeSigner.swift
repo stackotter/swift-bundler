@@ -180,7 +180,7 @@ enum CodeSigner {
   }
 
   /// Enumerates the user's available codesigning identities.
-  /// - Returns: An array of identities, or a failure if the `security` command fails or produces invalid output.
+  /// - Returns: An array of identities.
   static func enumerateIdentities() async throws(Error) -> [Identity] {
     let process = Process.create(
       securityToolPath,

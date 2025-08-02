@@ -49,7 +49,7 @@ enum Templater {
           try await SwiftPackageManager.createPackage(
             in: outputDirectory,
             name: packageName
-          ).unwrap()
+          )
         } catch {
           throw Error(.failedToCreateBareMinimumPackage, cause: error)
         }
@@ -217,11 +217,8 @@ enum Templater {
       packageName: configuration
     ])
 
-    do {
-      let contents = try TOMLEncoder().encode(configuration)
-      try contents.write(to: file, atomically: false, encoding: .utf8)
-    } catch {
-      throw RichError(.failedToCreateConfigurationFile(configuration, file), cause: error)
+    try Error.catch {
+      try PackageConfiguration.writeConfiguration(configuration, to: file)
     }
   }
 
@@ -257,7 +254,7 @@ enum Templater {
   ) async throws(Error) {
     // Verify that the installed Swift version is supported
     let version = try await Error.catch {
-      try await SwiftPackageManager.getSwiftVersion().unwrap()
+      try await SwiftPackageManager.getSwiftVersion()
     }
 
     if version < manifest.minimumSwiftVersion {

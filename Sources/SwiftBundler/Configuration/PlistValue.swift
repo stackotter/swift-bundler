@@ -158,10 +158,10 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable {
       } else if let dictionary = try? container.decode([String: PlistValue].self) {
         self = .dictionary(dictionary)
       } else {
-        throw PlistError.failedToInferType(codingPath: decoder.codingPath)
+        throw Error(.failedToInferType(codingPath: decoder.codingPath))
       }
     } else {
-      throw PlistError.failedToInferType(codingPath: decoder.codingPath)
+      throw Error(.failedToInferType(codingPath: decoder.codingPath))
     }
   }
 
@@ -200,31 +200,33 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable {
         case "date":
           let string = try container.decode(String.self, forKey: .value)
           guard let date = ISO8601DateFormatter().date(from: string) else {
-            throw PlistError.invalidValue(
+            let message = ErrorMessage.invalidValue(
               string, type: "ISO8601 date", codingPath: container.codingPath
             )
+            throw Error(message)
           }
           return .date(date)
         case "data":
           let base64 = try container.decode(String.self, forKey: .value)
           guard let data = Data(base64Encoded: base64) else {
-            throw PlistError.invalidValue(
+            let message = ErrorMessage.invalidValue(
               base64, type: "base64 data", codingPath: container.codingPath
             )
+            throw Error(message)
           }
           return .data(data)
         case "string":
           return .string(try container.decode(String.self, forKey: .value))
         default:
-          throw PlistError.invalidValue(
+          let message = ErrorMessage.invalidValue(
             type, type: "plist data type", codingPath: container.codingPath
           )
+          throw Error(message)
       }
+    } catch let error as Error {
+      throw error
     } catch {
-      if let error = error as? PlistError {
-        throw error
-      }
-      throw PlistError.invalidExplicitlyTypedValue(type: type, codingPath: container.codingPath)
+      throw Error(.invalidExplicitlyTypedValue(type: type, codingPath: container.codingPath))
     }
   }
 
@@ -262,15 +264,15 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable {
 
   /// Loads a dictionary of ``PlistValue``s from a plist file.
   /// - Parameter plistFile: The plist file to load the dictionary from.
-  /// - Returns: The loaded plist dictionary, or a failure if an error occurs.
+  /// - Returns: The loaded plist dictionary.
   static func loadDictionary(
     fromPlistFile plistFile: URL
-  ) -> Result<[String: PlistValue], PlistError> {
+  ) throws(Error) -> [String: PlistValue] {
     let contents: Data
     do {
       contents = try Data(contentsOf: plistFile)
     } catch {
-      return .failure(.failedToReadInfoPlistFile(error))
+      throw Error(.failedToReadInfoPlistFile, cause: error)
     }
 
     let dictionary: [String: Any]
@@ -283,70 +285,48 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable {
           format: &propertyListFormat
         ) as? [String: Any]
       else {
-        return .failure(.failedToDeserializePlistFileContents(contents, nil))
+        throw Error(.failedToDeserializePlistFileContents(contents))
       }
 
       dictionary = plist
+    } catch let error as Error {
+      throw error
     } catch {
-      return .failure(.failedToDeserializePlistFileContents(contents, error))
+      throw Error(.failedToDeserializePlistFileContents(contents), cause: error)
     }
 
-    return convert(dictionary)
+    return try convert(dictionary)
   }
 
   /// Converts a Swift dictionary to a dictionary of ``PlistValue``s.
   /// - Parameter value: The value to convert.
-  /// - Returns: The converted value, or a failure if the value is invalid.
-  static func convert(_ dictionary: [String: Any]) -> Result<[String: PlistValue], PlistError> {
-    var convertedDictionary: [String: PlistValue] = [:]
-    for (key, value) in dictionary {
-      switch convert(value) {
-        case .success(let convertedValue):
-          convertedDictionary[key] = convertedValue
-        case .failure(let error):
-          return .failure(error)
-      }
+  /// - Returns: The converted value.
+  static func convert(_ dictionary: [String: Any]) throws(Error) -> [String: PlistValue] {
+    try dictionary.mapValues { (key, value) throws(Error) in
+      try convert(value)
     }
-    return .success(convertedDictionary)
   }
 
   /// Converts a Swift value to a ``PlistValue``.
   /// - Parameter value: The value to convert.
-  /// - Returns: The converted value, or a failure if the value is invalid.
-  static func convert(_ value: Any) -> Result<PlistValue, PlistError> {  // swiftlint:disable:this cyclomatic_complexity
-    let convertedValue: PlistValue
+  /// - Returns: The converted value.
+  static func convert(_ value: Any) throws(Error) -> PlistValue {
     if let string = value as? String {
-      convertedValue = .string(string)
+      return .string(string)
     } else if let date = value as? Date {
-      convertedValue = .date(date)
+      return .date(date)
     } else if let integer = value as? Int {
-      convertedValue = .integer(integer)
+      return .integer(integer)
     } else if let double = value as? Double {
-      convertedValue = .real(double)
+      return .real(double)
     } else if let boolean = value as? Bool {
-      convertedValue = .boolean(boolean)
+      return .boolean(boolean)
     } else if let array = value as? [Any] {
-      var convertedArray: [PlistValue] = []
-      for element in array {
-        switch convert(element) {
-          case .success(let convertedElement):
-            convertedArray.append(convertedElement)
-          case .failure(let error):
-            return .failure(error)
-        }
-      }
-      convertedValue = .array(convertedArray)
+      return .array(try array.map(convert))
     } else if let dictionary = value as? [String: Any] {
-      switch convert(dictionary) {
-        case .success(let convertedDictionary):
-          convertedValue = .dictionary(convertedDictionary)
-        case .failure(let error):
-          return .failure(error)
-      }
+      return .dictionary(try convert(dictionary))
     } else {
-      return .failure(.invalidPlistValue(description: "\(value)"))
+      throw Error(.invalidPlistValue(description: "\(value)"))
     }
-
-    return .success(convertedValue)
   }
 }

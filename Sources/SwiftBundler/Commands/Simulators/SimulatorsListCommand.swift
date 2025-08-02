@@ -15,7 +15,7 @@ struct SimulatorsListCommand: ErrorHandledCommand {
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let simulators = try await RichError<SwiftBundlerError>.catch {
-      try await SimulatorManager.listAvailableSimulators(searchTerm: filter).unwrap()
+      try await SimulatorManager.listAvailableSimulators(searchTerm: filter)
     }
 
     Output {

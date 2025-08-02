@@ -1,4 +1,5 @@
 import Foundation
+import ErrorKit
 import SwiftBundler
 
 #if os(macOS)
@@ -10,5 +11,7 @@ import SwiftBundler
 #endif
 
 Process.killAllRunningProcessesOnExit()
+
+ErrorKit.registerMapper(SwiftBundlerErrorMapper.self)
 
 await Task { @MainActor in await SwiftBundler.main() }.value

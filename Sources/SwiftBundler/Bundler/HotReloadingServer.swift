@@ -133,7 +133,7 @@
                   let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
                     product: product,
                     buildContext: buildContext
-                  ).unwrap()
+                  )
                   log.info("Successfully built dylib")
 
                   try await Packet.reloadDylib(path: dylibFile).write(to: &connection)

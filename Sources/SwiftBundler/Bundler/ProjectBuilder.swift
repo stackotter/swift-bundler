@@ -186,7 +186,7 @@ enum ProjectBuilder {
     do {
       manifest = try await SwiftPackageManager.loadPackageManifest(
         from: context.projectDirectory
-      ).unwrap()
+      )
     } catch {
       throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
     }
@@ -221,12 +221,12 @@ enum ProjectBuilder {
         try await SwiftPackageManager.build(
           product: product,
           buildContext: buildContext
-        ).unwrap()
+        )
       }
 
       productsDirectory = try await SwiftPackageManager.getProductsDirectory(
         buildContext
-      ).unwrap()
+      )
     } catch {
       throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
     }
@@ -393,7 +393,7 @@ enum ProjectBuilder {
 
     // Create/update the builder's Package.swift
     let toolsVersion = try await Error.catch {
-      try await SwiftPackageManager.getToolsVersion(packageDirectory).unwrap()
+      try await SwiftPackageManager.getToolsVersion(packageDirectory)
     }
 
     let manifestContents = generateBuilderPackageManifest(
@@ -432,10 +432,9 @@ enum ProjectBuilder {
       try await SwiftPackageManager.build(
         product: builderProductName,
         buildContext: buildContext
-      ).unwrap()
+      )
 
-      productsDirectory =
-        try await SwiftPackageManager.getProductsDirectory(buildContext).unwrap()
+      productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
     } catch {
       throw Error(.failedToBuildBuilder(name: configuration.builder.name), cause: error)
     }

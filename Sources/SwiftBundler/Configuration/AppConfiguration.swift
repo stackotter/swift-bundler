@@ -184,13 +184,15 @@ struct AppConfiguration: Codable {
     }
   }
 
-  /// Creates a new app configuration. Uses an `Info.plist` file to supplement missing values where possible.
+  /// Creates a new app configuration. Uses an `Info.plist` file to supplement
+  /// missing values where possible.
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - version: The app's version.
   ///   - identifier: The app's identifier (e.g. com.example.ExampleApp).
   ///   - category: The app's category identifier. See ``category``.
-  ///   - infoPlistFile: An `Info.plist` file to extract missing configuration from (any non-standard keys are also added to the configuration).
+  ///   - infoPlistFile: An `Info.plist` file to extract missing configuration
+  ///     from (any non-standard keys are also added to the configuration).
   ///   - iconFile: The app's icon.
   /// - Returns: The app configuration, or a failure if an error occurs.
   static func create(
@@ -200,19 +202,18 @@ struct AppConfiguration: Codable {
     category: String?,
     infoPlistFile: URL?,
     iconFile: URL?
-  ) -> Result<AppConfiguration, AppConfigurationError> {
+  ) throws(Error) -> AppConfiguration {
     // Load the Info.plist file if it's provided. Use it to populate any non-specified options.
     var version = version
     var identifier = identifier
     var category = category
 
     let plist: [String: PlistValue]
-    if let infoPlistFile = infoPlistFile {
-      switch PlistValue.loadDictionary(fromPlistFile: infoPlistFile) {
-        case .success(let value):
-          plist = value
-        case .failure(let error):
-          return .failure(.failedToLoadInfoPlistEntries(file: infoPlistFile, error: error))
+    if let infoPlistFile {
+      do {
+        plist = try PlistValue.loadDictionary(fromPlistFile: infoPlistFile)
+      } catch {
+        throw Error(.failedToLoadInfoPlistEntries(file: infoPlistFile), cause: error)
       }
 
       if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
@@ -238,11 +239,9 @@ struct AppConfiguration: Codable {
       icon: iconFile?.lastPathComponent
     )
 
-    return .success(
-      configuration.appendingInfoPlistEntries(
-        plist,
-        excludeHandledKeys: true
-      )
+    return configuration.appendingInfoPlistEntries(
+      plist,
+      excludeHandledKeys: true
     )
   }
 

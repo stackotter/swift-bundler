@@ -303,13 +303,13 @@ enum Runner {
   ) async throws(Error) {
     do {
       log.info("Preparing simulator")
-      try await SimulatorManager.bootSimulator(id: simulatorId).unwrap()
+      try await SimulatorManager.bootSimulator(id: simulatorId)
 
       log.info("Installing app")
-      try await SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId).unwrap()
+      try await SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
 
       log.info("Opening Simulator")
-      try await SimulatorManager.openSimulatorApp().unwrap()
+      try await SimulatorManager.openSimulatorApp()
 
       log.info("Launching \(bundleIdentifier)")
       try await SimulatorManager.launchApp(
@@ -318,7 +318,7 @@ enum Runner {
         connectConsole: true,
         arguments: arguments,
         environmentVariables: environmentVariables
-      ).unwrap()
+      )
     } catch {
       throw Error(.failedToRunOnSimulator, cause: error)
     }

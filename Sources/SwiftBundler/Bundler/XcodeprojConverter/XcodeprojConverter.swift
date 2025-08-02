@@ -301,25 +301,22 @@ enum XcodeprojConverter {
     ///   - targetName: The name of the target the value is from.
     /// - Returns: The evaluated string, or the original string if there are unknown variables.
     private static func evaluateBuildSetting(_ value: String, targetName: String) async -> String {
-      let result = await VariableEvaluator.evaluateVariables(
-        in: value,
-        with: .default(
-          .init(
-            appName: targetName,
-            productName: targetName,
-            date: Date()
+      do {
+        return try await VariableEvaluator.evaluateVariables(
+          in: value,
+          with: .default(
+            .init(
+              appName: targetName,
+              productName: targetName,
+              date: Date()
+            )
           )
         )
-      )
-
-      switch result {
-        case .success(let evaluatedValue):
-          return evaluatedValue
-        case .failure:
-          log.warning(
-            "Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'."
-          )
-          return value
+      } catch {
+        log.warning(
+          "Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'."
+        )
+        return value
       }
     }
 
@@ -422,14 +419,16 @@ enum XcodeprojConverter {
     ) -> Result<PackageConfiguration, XcodeprojConverterError> {
       var apps: [String: AppConfiguration] = [:]
       for target in targets {
-        let result = AppConfiguration.create(
-          appName: target.name,
-          version: target.version ?? "0.1.0",
-          identifier: target.identifier ?? "com.example.\(target.name)",
-          category: nil,
-          infoPlistFile: target.infoPlist,
-          iconFile: nil
-        )
+        let result = Result { () throws(AppConfiguration.Error) in
+          try AppConfiguration.create(
+            appName: target.name,
+            version: target.version ?? "0.1.0",
+            identifier: target.identifier ?? "com.example.\(target.name)",
+            category: nil,
+            infoPlistFile: target.infoPlist,
+            iconFile: nil
+          )
+        }
 
         switch result {
           case .success(let app):

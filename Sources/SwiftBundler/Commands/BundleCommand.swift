@@ -330,7 +330,7 @@ struct BundleCommand: ErrorHandledCommand {
       let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
         try await SimulatorManager.listAvailableSimulators(
           searchTerm: simulatorSpecifier
-        ).unwrap()
+        )
       }.sorted { first, second in
         // Put booted simulators first for convenience and put shorter names
         // first (otherwise there'd be no guarantee the "iPhone 15" matches
@@ -375,7 +375,7 @@ struct BundleCommand: ErrorHandledCommand {
           return Device.host(hostPlatform)
         case .some(let platform) where platform.isSimulator:
           let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
-            try await SimulatorManager.listAvailableSimulators().unwrap()
+            try await SimulatorManager.listAvailableSimulators()
           }.filter { simulator in
             simulator.isBooted
               && simulator.isAvailable
@@ -551,7 +551,6 @@ struct BundleCommand: ErrorHandledCommand {
       log.info("Loading package manifest")
       let manifest = try await RichError<SwiftBundlerError>.catch {
         try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
-          .unwrap()
       }
 
       let platformVersion =
@@ -603,7 +602,6 @@ struct BundleCommand: ErrorHandledCommand {
         } else {
           productsDirectory = try await RichError<SwiftBundlerError>.catch {
             try await SwiftPackageManager.getProductsDirectory(buildContext)
-              .unwrap()
           }
         }
       } else {
@@ -714,12 +712,12 @@ struct BundleCommand: ErrorHandledCommand {
             try await Xcodebuild.build(
               product: appConfiguration.product,
               buildContext: buildContext
-            ).unwrap()
+            )
           } else {
             try await SwiftPackageManager.build(
               product: appConfiguration.product,
               buildContext: buildContext
-            ).unwrap()
+            )
           }
         }
 
@@ -890,7 +888,7 @@ struct BundleCommand: ErrorHandledCommand {
       let configuration = try await PackageConfiguration.load(
         fromDirectory: packageDirectory,
         customFile: customFile
-      ).unwrap()
+      )
 
       let flatConfiguration = try ConfigurationFlattener.flatten(
         configuration,
@@ -899,7 +897,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
         appName
-      ).unwrap()
+      )
 
       Self.bundlerConfiguration = (appName, appConfiguration, flatConfiguration)
       return (appName, appConfiguration, flatConfiguration)

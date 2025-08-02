@@ -27,42 +27,42 @@ struct PackageConfigurationV1: Codable {
   /// - Returns: The configuration. If an error occurs, a failure is returned.
   static func load(
     from file: URL
-  ) -> Result<PackageConfigurationV1, PackageConfigurationError> {
+  ) throws(PackageConfiguration.Error) -> PackageConfigurationV1 {
     // Load the file's contents
-    Data.read(from: file)
-      .mapError { error in
-        .failedToReadContentsOfOldConfigurationFile(file, error)
-      }
-      .andThen { data in
-        // Parse the configuration. The `extraInfoPlistEntries` field requires
-        // special attention so we parse the configuration twice, once as a
-        // PackageConfigurationV1 and once as a JSON object.
-        JSONDecoder().decode(
-          PackageConfigurationV1.self,
-          from: data
-        )
-        .andThen { configuration in
-          Result {
-            try JSONSerialization.jsonObject(with: data)
-          }
-          .map { json in
-            (configuration, json)
-          }
-        }
-        .mapError(PackageConfigurationError.failedToDeserializeOldConfiguration)
-      }
-      .map { (configuration: PackageConfigurationV1, json: Any) in
-        // Load the `extraInfoPlistEntries` property if present
-        var configuration = configuration
+    let data: Data
+    do {
+      data = try Data.read(from: file).unwrap()
+    } catch {
+      throw PackageConfiguration.Error(
+        .failedToReadContentsOfOldConfigurationFile(file),
+        cause: error
+      )
+    }
 
-        if let json = json as? [String: Any],
-          let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
-        {
-          configuration.extraInfoPlistEntries = extraEntries
-        }
+    // Parse the configuration. The `extraInfoPlistEntries` field requires
+    // special attention so we parse the configuration twice, once as a
+    // PackageConfigurationV1 and once as a JSON object.
+    var configuration: PackageConfigurationV1
+    let json: Any
+    do {
+      configuration = try JSONDecoder().decode(
+        PackageConfigurationV1.self,
+        from: data
+      ).unwrap()
 
-        return configuration
-      }
+      json = try JSONSerialization.jsonObject(with: data)
+    } catch {
+      throw PackageConfiguration.Error(.failedToDeserializeOldConfiguration, cause: error)
+    }
+
+    // Load the `extraInfoPlistEntries` property if present
+    if let json = json as? [String: Any],
+      let extraEntries = json["extraInfoPlistEntries"] as? [String: Any]
+    {
+      configuration.extraInfoPlistEntries = extraEntries
+    }
+
+    return configuration
   }
 
   func migrate() -> PackageConfiguration {

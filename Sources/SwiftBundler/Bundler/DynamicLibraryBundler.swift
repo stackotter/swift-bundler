@@ -3,8 +3,6 @@ import Overture
 
 /// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {
-  typealias Error = RichError<DynamicLibraryBundlerError>
-
   /// Copies the dynamic libraries within a build's products directory to an output directory.
   ///
   /// The app's executable's rpath is updated to reflect the new relative location of each dynamic library.
@@ -42,11 +40,12 @@ enum DynamicLibraryBundler {
       do {
         try await process.runAndWait()
       } catch {
-        throw DynamicLibraryBundlerError.failedToUpdateAppRPath(
+        let message = ErrorMessage.failedToUpdateAppRPath(
           binary: appExecutable,
           original: original,
           new: new
-        ).becauseOf(error)
+        )
+        throw Error(message, cause: error)
       }
     }
 
@@ -165,7 +164,7 @@ enum DynamicLibraryBundler {
     do {
       try await process.runAndWait()
     } catch {
-      throw DynamicLibraryBundlerError.failedToUpdateLibraryInstallName(
+      throw ErrorMessage.failedToUpdateLibraryInstallName(
         binary: binary,
         original: originalInstallName,
         new: newInstallName
@@ -181,7 +180,7 @@ enum DynamicLibraryBundler {
     do {
       otoolOutput = try await process.getOutput()
     } catch {
-      throw DynamicLibraryBundlerError.failedToEnumerateDynamicDependencies(
+      throw ErrorMessage.failedToEnumerateDynamicDependencies(
         binary: binary
       ).becauseOf(error)
     }

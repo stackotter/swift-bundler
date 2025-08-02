@@ -173,26 +173,23 @@ enum ConfigurationFlattener {
       with: context
     ).andThen { mergedConfiguration in
       let source: ProjectConfiguration.Source.Flat
-      switch mergedConfiguration.source.flatten(
-        withRevision: mergedConfiguration.revision,
-        revisionField: context.codingPath.appendingKey(
-          ProjectConfiguration.CodingKeys.revision
+      do {
+        source = try mergedConfiguration.source.flatten(
+          withRevision: mergedConfiguration.revision,
+          revisionField: context.codingPath.appendingKey(
+            ProjectConfiguration.CodingKeys.revision
+          )
         )
-      ) {
-        case .failure(let error):
-          return .failure(.caught(error))
-        case .success(let value):
-          source = value
+      } catch {
+        return .failure(.caught(error))
       }
 
       let builder: ProjectConfiguration.Builder.Flat
-      switch mergedConfiguration.builder.flatten(
-        at: context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
-      ) {
-        case .failure(let error):
-          return .failure(.caught(error))
-        case .success(let value):
-          builder = value
+      do {
+        let path = context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
+        builder = try mergedConfiguration.builder.flatten(at: path)
+      } catch {
+        return .failure(.caught(error))
       }
 
       let products: [String: ProjectConfiguration.Product.Flat]
