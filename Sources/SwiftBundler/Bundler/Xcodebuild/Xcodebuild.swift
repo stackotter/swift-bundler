@@ -14,9 +14,9 @@ enum Xcodebuild {
   static func build(
     product: String,
     buildContext: SwiftPackageManager.BuildContext
-  ) async -> Result<Void, XcodebuildError> {
+  ) async throws(Error) {
     guard let applePlatform = buildContext.genericContext.platform.asApplePlatform else {
-      return .failure(.unsupportedPlatform(buildContext.genericContext.platform))
+      throw Error(.unsupportedPlatform(buildContext.genericContext.platform))
     }
 
     let scheme =
@@ -30,12 +30,12 @@ enum Xcodebuild {
       do {
         try FileManager.default.moveItem(at: scheme, to: temporaryScheme)
       } catch {
-        return .failure(
+        throw Error(
           .failedToMoveInterferingScheme(
             scheme,
-            destination: temporaryScheme,
-            error
-          )
+            destination: temporaryScheme
+          ),
+          cause: error
         )
       }
 
@@ -151,13 +151,11 @@ enum Xcodebuild {
     do {
       try await process.runAndWait()
     } catch {
-      return .failure(.failedToRunXcodebuild(
-        command: "Failed to run xcodebuild.",
-        error
-      ))
+      throw Error(
+        .failedToRunXcodebuild( command: "Failed to run xcodebuild."),
+        cause: error
+      )
     }
-
-    return .success()
   }
 
   /// Whether or not the bundle command utilizes xcodebuild instead of swiftpm.

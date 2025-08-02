@@ -20,7 +20,7 @@ struct MigrateCommand: ErrorHandledCommand {
       try await PackageConfiguration.load(
         fromDirectory: packageDirectory ?? URL(fileURLWithPath: "."),
         migrateConfiguration: true
-      ).unwrap()
+      )
     }
 
     log.info("Successfully migrated configuration to the latest format.")

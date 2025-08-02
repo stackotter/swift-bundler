@@ -16,7 +16,7 @@ enum XcodeprojConverterError: Throwable {
   case failedToCreateConfigurationFile(URL, Error)
   case directoryAlreadyExists(URL)
   case failedToLoadXcodeWorkspace(URL, Error)
-  case failedToCreateAppConfiguration(target: String, AppConfigurationError)
+  case failedToCreateAppConfiguration(target: String, AppConfiguration.Error)
 
   #if SUPPORT_XCODEPROJ
     case unsupportedFilePathType(PBXSourceTree)

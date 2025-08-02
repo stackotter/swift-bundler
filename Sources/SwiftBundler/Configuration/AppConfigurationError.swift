@@ -1,15 +1,18 @@
 import Foundation
 import ErrorKit
 
-/// An error related to the configuration of a specific app.
-enum AppConfigurationError: Throwable {
-  case failedToLoadInfoPlistEntries(file: URL, error: PlistError)
+extension AppConfiguration {
+  typealias Error = RichError<ErrorMessage>
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .failedToLoadInfoPlistEntries(let file, let error):
-        return
-          "Failed to load '\(file.relativePath)' for appending to app configuration: \(error.localizedDescription)"
+  /// An error meesage related to ``AppConfiguration``.
+  enum ErrorMessage: Throwable {
+    case failedToLoadInfoPlistEntries(file: URL)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .failedToLoadInfoPlistEntries(let file):
+          return "Failed to load '\(file.relativePath)' for appending to app configuration"
+      }
     }
   }
 }

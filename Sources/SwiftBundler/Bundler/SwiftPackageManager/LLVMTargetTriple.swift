@@ -6,20 +6,21 @@ struct LLVMTargetTriple: CustomStringConvertible {
   var vendor: Vendor
   /// The target system (e.g. iOS 15.0).
   var system: System
-  /// The target environment. This is where we specify whether the platform
+  /// The target environment/ABI. This is where we specify whether the platform
   /// is a simulator or not.
-  var environment: Environment?
+  var abi: ABI?
 
   var description: String {
     var triple = "\(architecture.rawValue)-\(vendor.rawValue)-\(system.description)"
-    if let environment = environment {
-      triple += "-\(environment.rawValue)"
+    if let abi {
+      triple += "-\(abi.rawValue)"
     }
     return triple
   }
 
   enum Vendor: String {
     case apple
+    case unknown
   }
 
   struct System: CustomStringConvertible {
@@ -41,23 +42,33 @@ struct LLVMTargetTriple: CustomStringConvertible {
     static func tvOS(_ version: String) -> Self {
       Self(name: "tvos", version: version)
     }
+
+    static func macOS(_ version: String) -> Self {
+      Self(name: "macosx", version: version)
+    }
+
+    static let linux = Self(name: "linux")
+
+    static let windows = Self(name: "windows")
   }
 
-  enum Environment: String {
+  enum ABI: String {
     case simulator
+    case gnu
+    case msvc
   }
 
   /// Creates the target triple for the specified Apple platform.
   static func apple(
     _ architecture: BuildArchitecture,
     _ system: System,
-    _ environment: Environment? = nil
+    _ abi: ABI? = nil
   ) -> Self {
     Self(
       architecture: architecture,
       vendor: .apple,
       system: system,
-      environment: environment
+      abi: abi
     )
   }
 
@@ -73,7 +84,25 @@ struct LLVMTargetTriple: CustomStringConvertible {
         name: platform.os.tripleName,
         version: platformVersion
       ),
-      environment: platform.isSimulator ? .simulator : nil
+      abi: platform.isSimulator ? .simulator : nil
+    )
+  }
+
+  static func linux(_ architecture: BuildArchitecture) -> Self {
+    Self(
+      architecture: architecture,
+      vendor: .unknown,
+      system: .linux,
+      abi: .gnu
+    )
+  }
+
+  static func windows(_ architecture: BuildArchitecture) -> Self {
+    Self(
+      architecture: architecture,
+      vendor: .unknown,
+      system: .windows,
+      abi: .msvc
     )
   }
 }

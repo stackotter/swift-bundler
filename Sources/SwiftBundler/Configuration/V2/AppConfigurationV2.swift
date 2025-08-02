@@ -62,23 +62,24 @@ struct AppConfigurationV2: Codable {
   static func updateVariableDelimiters(_ value: PlistValue) async -> PlistValue {
     switch value {
       case .string(let string):
-        let result = await VariableEvaluator.evaluateVariables(
-          in: string,
-          with: .custom { variable in
-            return .success("$(\(variable))")
-          },
-          openingDelimiter: "{",
-          closingDelimiter: "}"
-        )
-
-        switch result {
-          case .success(let newValue):
-            return .string(newValue)
-          case .failure(let error):
-            log.warning(
-              "Failed to update variable delimiters in plist value '\(string)': \(error.localizedDescription)"
-            )
-            return value
+        do {
+          let newValue = try await VariableEvaluator.evaluateVariables(
+            in: string,
+            with: .custom { variable in
+              return "$(\(variable))"
+            },
+            openingDelimiter: "{",
+            closingDelimiter: "}"
+          )
+          return .string(newValue)
+        } catch {
+          log.warning(
+            """
+            Failed to update variable delimiters in plist value '\(string)': \
+            \(error.localizedDescription)
+            """
+          )
+          return value
         }
       case .array(let array):
         return .array(

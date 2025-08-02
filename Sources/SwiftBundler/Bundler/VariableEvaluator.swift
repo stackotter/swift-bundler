@@ -22,19 +22,19 @@ enum VariableEvaluator {
   /// An evaluator for evaluating the values of variables.
   enum Evaluator {
     case `default`(Context)
-    case custom((String) -> Result<String, Error>)
+    case custom((String) throws(Error) -> String)
   }
 
   /// Evaluates the variables present in a string with the default evaluator.
   /// - Parameters:
   ///   - string: The string to evaluate variables in.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated string, or a failure if an error occurs.
+  /// - Returns: The evaluated string.
   static func evaluateVariables(
     in string: String,
     with context: Context
-  ) async -> Result<String, VariableEvaluatorError> {
-    return await evaluateVariables(in: string, with: .`default`(context))
+  ) async throws(Error) -> String {
+    try await evaluateVariables(in: string, with: .`default`(context))
   }
 
   /// Evaluates the variables present in a string.
@@ -43,13 +43,13 @@ enum VariableEvaluator {
   ///   - evaluator: The evaluator to use when evaluating each variable.
   ///   - openingDelimiter: The opening delimiter for a variable. Defaults to `$(`.
   ///   - closingDelimiter: The closing delimiter for a variable. Defaults to `)`.
-  /// - Returns: The evaluated string, or a failure if an error occurs.
+  /// - Returns: The evaluated string.
   static func evaluateVariables(
     in string: String,
     with evaluator: Evaluator,
     openingDelimiter: String = "$(",
     closingDelimiter: String = ")"
-  ) async -> Result<String, VariableEvaluatorError> {
+  ) async throws(Error) -> String {
     var input = string[...]
     var output = ""
 
@@ -83,7 +83,7 @@ enum VariableEvaluator {
         output += result.0
         variable = result.1
       } catch {
-        return .failure(.unmatchedBrackets(string, error))
+        throw Error(.unmatchedBrackets(string), cause: error)
       }
 
       guard let variable = variable else {
@@ -91,33 +91,30 @@ enum VariableEvaluator {
       }
 
       // Evaluate variable value and append to output
-      switch await evaluateVariable(variable, with: evaluator) {
-        case .success(let value):
-          output += value
-        case .failure(let error):
-          return .failure(error)
-      }
+      output += try await evaluateVariable(variable, with: evaluator)
     }
 
-    return .success(output)
+    return output
   }
 
   /// Evaluates the value of a variable.
   /// - Parameters:
   ///   - variable: The variable to evaluate.
   ///   - evaluator: The evaluator to use.
-  /// - Returns: The variable's value, or a failure if an error occurs.
+  /// - Returns: The variable's value.
   static func evaluateVariable(
     _ variable: String,
     with evaluator: Evaluator
-  ) async -> Result<String, VariableEvaluatorError> {
+  ) async throws(Error) -> String {
     switch evaluator {
       case .custom(let evaluator):
-        return evaluator(variable).mapError { error in
-          return .customEvaluatorFailedToEvaluateVariable(variable, error)
+        do {
+          return try evaluator(variable)
+        } catch {
+          throw Error(.customEvaluatorFailedToEvaluateVariable(variable), cause: error)
         }
       case .`default`(let context):
-        return await evaluateVariable(variable, with: context)
+        return try await evaluateVariable(variable, with: context)
     }
   }
 
@@ -125,11 +122,11 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - variable: The variable to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The variable's value, or a failure if an error occurs.
+  /// - Returns: The variable's value.
   static func evaluateVariable(  // swiftlint:disable:this cyclomatic_complexity
     _ variable: String,
     with context: Context
-  ) async -> Result<String, VariableEvaluatorError> {
+  ) async throws(Error) -> String {
     // TODO: Make text macros more generic
     let rfc1034Characters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     let productRFC1034Identifier = String(
@@ -142,42 +139,24 @@ enum VariableEvaluator {
     switch variable {
       case "COMMIT_HASH":
         guard let packageDirectory = context.packageDirectory else {
-          return .failure(.packageDirectoryRequiredToEvaluateCommitHash)
+          throw Error(.packageDirectoryRequiredToEvaluateCommitHash)
         }
 
-        // TODO: Consider using git library
-        let result = await Result { () async throws(Process.Error) in
-          try await Process.create(
-            "git",
-            arguments: ["rev-parse", "HEAD"],
-            directory: packageDirectory
-          ).getOutput()
+        do {
+          value = try await Git.getCommitHash(packageDirectory)
+        } catch {
+          throw Error(.failedToEvaluateCommitHash(directory: packageDirectory), cause: error)
         }
-
-        guard case let .success(string) = result else {
-          return .failure(.failedToEvaluateCommitHash(directory: packageDirectory))
-        }
-
-        value = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
       case "REVISION_NUMBER":
         guard let packageDirectory = context.packageDirectory else {
-          return .failure(.packageDirectoryRequiredToEvaluateRevisionNumber)
+          throw Error(.packageDirectoryRequiredToEvaluateRevisionNumber)
         }
 
-        // TODO: Consider using a git library
-        let result = await Result { () async throws(Process.Error) in
-          try await Process.create(
-            "git",
-            arguments: ["rev-list", "--count", "HEAD"],
-            directory: packageDirectory
-          ).getOutput(excludeStdError: true)
+        do {
+          value = String(try await Git.countRevisions(packageDirectory))
+        } catch {
+          throw Error(.failedToEvaluateRevisionNumber(directory: packageDirectory), cause: error)
         }
-
-        guard case let .success(string) = result else {
-          return .failure(.failedToEvaluateRevisionNumber(directory: packageDirectory))
-        }
-
-        value = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
       case "VERSION", "MARKETING_VERSION", "CURRENT_PROJECT_VERSION":
         value = context.version
       case "PRODUCT_BUNDLE_IDENTIFIER":
@@ -201,10 +180,10 @@ enum VariableEvaluator {
     }
 
     guard let value = value else {
-      return .failure(.unknownVariable(variable))
+      throw Error(.unknownVariable(variable))
     }
 
-    return .success(value)
+    return value
   }
 
   /// Evaluates the expressions present in tree-like structure (only string
@@ -212,22 +191,22 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - value: The value to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated value, or a failure if evaluation fails.
+  /// - Returns: The evaluated value.
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in value: Tree,
     with context: Context
-  ) async -> Result<Tree, VariableEvaluatorError> {
+  ) async throws(Error) -> Tree {
     if let stringValue = value.stringValue {
-      return await evaluateVariables(in: stringValue, with: context)
-        .map(Tree.string(_:))
+      let string = try await evaluateVariables(in: stringValue, with: context)
+      return Tree.string(string)
     } else if let arrayValue = value.arrayValue {
-      return await evaluateVariables(in: arrayValue, with: context)
-        .map(Tree.array(_:))
+      let array = try await evaluateVariables(in: arrayValue, with: context)
+      return Tree.array(array)
     } else if let dictionaryValue = value.dictionaryValue {
-      return await evaluateVariables(in: dictionaryValue, with: context)
-        .map(Tree.dictionary(_:))
+      let dictionary = try await evaluateVariables(in: dictionaryValue, with: context)
+      return Tree.dictionary(dictionary)
     } else {
-      return .success(value)
+      return value
     }
   }
 
@@ -236,21 +215,17 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - array: The array to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated array, or a failure if evaluation fails.
+  /// - Returns: The evaluated array.
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in array: [Tree],
     with context: Context
-  ) async -> Result<[Tree], VariableEvaluatorError> {
+  ) async throws(Error) -> [Tree] {
     var evaluatedArray: [Tree] = []
     for value in array {
-      switch await evaluateVariables(in: value, with: context) {
-        case .success(let evaluatedValue):
-          evaluatedArray.append(evaluatedValue)
-        case .failure(let error):
-          return .failure(error)
-      }
+      let evaluatedValue = try await evaluateVariables(in: value, with: context)
+      evaluatedArray.append(evaluatedValue)
     }
-    return .success(evaluatedArray)
+    return evaluatedArray
   }
 
   /// Evaluates the variables present in a map containing tree-like structures
@@ -258,21 +233,17 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - value: The dictionary to evaluate.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated dictionary, or a failure if evaluation fails.
+  /// - Returns: The evaluated dictionary.
   static func evaluateVariables<Tree: VariableEvaluatable>(
     in dictionary: [String: Tree],
     with context: Context
-  ) async -> Result<[String: Tree], VariableEvaluatorError> {
+  ) async throws(Error) -> [String: Tree] {
     var evaluatedDictionary: [String: Tree] = [:]
     for (key, value) in dictionary {
-      switch await evaluateVariables(in: value, with: context) {
-        case .success(let evaluatedValue):
-          evaluatedDictionary[key] = evaluatedValue
-        case .failure(let error):
-          return .failure(error)
-      }
+      let evaluatedValue = try await evaluateVariables(in: value, with: context)
+      evaluatedDictionary[key] = evaluatedValue
     }
-    return .success(evaluatedDictionary)
+    return evaluatedDictionary
   }
 
   /// Evaluates the variables present in supported sections of an app
@@ -283,23 +254,19 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - overlay: The configuration overlay to evaluate expressions in.
   ///   - context: The context required to evaluate variables.
-  /// - Returns: The evaluated configuration overlay, or a failure if
-  ///   evaluation fails.
+  /// - Returns: The evaluated configuration overlay.
   static func evaluateVariables(
     in overlay: AppConfiguration.Overlay,
     with context: Context
-  ) async -> Result<AppConfiguration.Overlay, VariableEvaluatorError> {
-    return await Result.success(overlay)
-      .andThen(ifLet: \AppConfiguration.Overlay.plist) { overlay, plist in
-        await evaluateVariables(in: plist, with: context).map { plist in
-          with(overlay, set(\.plist, plist))
-        }
-      }
-      .andThen(ifLet: \AppConfiguration.Overlay.metadata) { overlay, metadata in
-        await evaluateVariables(in: metadata, with: context).map { metadata in
-          with(overlay, set(\.metadata, metadata))
-        }
-      }
+  ) async throws(Error) -> AppConfiguration.Overlay {
+    var overlay = overlay
+    if let plist = overlay.plist {
+      overlay.plist = try await evaluateVariables(in: plist, with: context)
+    }
+    if let metadata = overlay.metadata {
+      overlay.metadata = try await evaluateVariables(in: metadata, with: context)
+    }
+    return overlay
   }
 
   /// Evaluates the variables present in supported sections of an app's configuration.
@@ -311,12 +278,12 @@ enum VariableEvaluator {
   ///   - configuration: The configuration to evaluate expressions in.
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
-  /// - Returns: The evaluated configuration, or a failure if evaluation fails.
+  /// - Returns: The evaluated configuration.
   static func evaluateVariables(
     in configuration: AppConfiguration,
     named appName: String,
     packageDirectory: URL
-  ) async -> Result<AppConfiguration, VariableEvaluatorError> {
+  ) async throws(Error) -> AppConfiguration {
     let context = Context(
       appName: appName,
       productName: configuration.product,
@@ -326,24 +293,20 @@ enum VariableEvaluator {
       identifier: configuration.identifier
     )
 
-    return await Result.success(configuration)
-      .andThen(ifLet: \AppConfiguration.plist) { configuration, plist in
-        await evaluateVariables(in: plist, with: context).map { plist in
-          with(configuration, set(\.plist, plist))
-        }
+    var configuration = configuration
+    if let plist = configuration.plist {
+      configuration.plist = try await evaluateVariables(in: plist, with: context)
+    }
+    if let metadata = configuration.metadata {
+      configuration.metadata = try await evaluateVariables(in: metadata, with: context)
+    }
+    if let overlays = configuration.overlays {
+      configuration.overlays = try await overlays.typedAsyncMap {
+        (overlay) throws(Error) -> AppConfiguration.Overlay in
+        try await evaluateVariables(in: overlay, with: context)
       }
-      .andThen(ifLet: \AppConfiguration.metadata) { configuration, metadata in
-        await evaluateVariables(in: metadata, with: context).map { metadata in
-          with(configuration, set(\.metadata, metadata))
-        }
-      }
-      .andThen(ifLet: \AppConfiguration.overlays) { configuration, overlays in
-        await overlays.tryMap { overlay in
-          await evaluateVariables(in: overlay, with: context)
-        }.map { overlays in
-          with(configuration, set(\.overlays, overlays))
-        }
-      }
+    }
+    return configuration
   }
 
   /// Evaluates the variables present in supported sections of a package's configuration.
@@ -352,28 +315,19 @@ enum VariableEvaluator {
   /// - Parameters:
   ///   - configuration: The configuration to evaluate expressions in.
   ///   - packageDirectory: The package's root directory (used to evaluate certain variables).
-  /// - Returns: The evaluated configuration, or a failure if evaluation fails.
+  /// - Returns: The evaluated configuration.
   static func evaluateVariables(
     in configuration: PackageConfiguration,
     packageDirectory: URL
-  ) async -> Result<PackageConfiguration, VariableEvaluatorError> {
+  ) async throws(Error) -> PackageConfiguration {
     var evaluatedConfiguration = configuration
-
     for (name, app) in configuration.apps {
-      let result = await evaluateVariables(
+      evaluatedConfiguration.apps[name] = try await evaluateVariables(
         in: app,
         named: name,
         packageDirectory: packageDirectory
       )
-
-      switch result {
-        case .success(let evaluatedAppConfiguration):
-          evaluatedConfiguration.apps[name] = evaluatedAppConfiguration
-        case .failure(let error):
-          return .failure(error)
-      }
     }
-
-    return .success(evaluatedConfiguration)
+    return evaluatedConfiguration
   }
 }

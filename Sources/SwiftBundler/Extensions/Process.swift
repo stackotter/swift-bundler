@@ -241,7 +241,7 @@ extension Process {
   /// tool to `Process.create` instead (which will detect that it's not a path and instead
   /// run the tool through `/usr/bin/env` which will find the tool on the user's `PATH`).
   /// - Parameter tool: The tool to expand into a full path.
-  /// - Returns: The absolute path to the tool, or a failure if the tool can't be located.
+  /// - Returns: The absolute path to the tool.
   static func locate(_ tool: String) async throws(Error) -> String {
     // Restrict the set of inputs to avoid command injection. This is very dodgy but there
     // doesn't seem to be any nice way to call bash built-ins directly with an argument

@@ -31,7 +31,7 @@ struct GenerateXcodeSupportCommand: ErrorHandledCommand {
         let configuration = try await PackageConfiguration.load(
           fromDirectory: packageDirectory,
           customFile: configurationFileOverride
-        ).unwrap()
+        )
 
         try XcodeSupportGenerator.generateXcodeSupport(
           for: configuration,

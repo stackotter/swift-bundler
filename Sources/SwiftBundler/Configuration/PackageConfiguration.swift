@@ -36,19 +36,16 @@ struct PackageConfiguration: Codable {
     ///   there is more than one app, a failure is returned.
     func getAppConfiguration(
       _ name: String?
-    ) -> Result<
-      (name: String, app: AppConfiguration.Flat),
-      PackageConfigurationError
-    > {
+    ) throws(Error) -> (name: String, app: AppConfiguration.Flat) {
       if let name = name {
         guard let selected = apps[name] else {
-          return .failure(.noSuchApp(name))
+          throw Error(.noSuchApp(name))
         }
-        return .success((name: name, app: selected))
+        return (name: name, app: selected)
       } else if let first = apps.first, apps.count == 1 {
-        return .success((name: first.key, app: first.value))
+        return (name: first.key, app: first.value)
       } else {
-        return .failure(.multipleAppsAndNoneSpecified)
+        throw Error(.multipleAppsAndNoneSpecified)
       }
     }
   }
@@ -79,83 +76,78 @@ struct PackageConfiguration: Codable {
     fromDirectory packageDirectory: URL,
     customFile: URL? = nil,
     migrateConfiguration: Bool = false
-  ) async -> Result<PackageConfiguration, PackageConfigurationError> {
+  ) async throws(Error) -> PackageConfiguration {
     let configurationFile = customFile
       ?? standardConfigurationFileLocation(for: packageDirectory)
 
     // Migrate old configuration if no new configuration exists
     let shouldAttemptJSONMigration = customFile == nil
     if shouldAttemptJSONMigration {
-      let oldConfigurationFile = packageDirectory.appendingPathComponent("Bundle.json")
-      let configurationExists = FileManager.default.itemExists(
-        at: configurationFile,
-        withType: .file
-      )
-      let oldConfigurationExists = FileManager.default.itemExists(
-        at: oldConfigurationFile,
-        withType: .file
-      )
+      let oldConfigurationFile = packageDirectory / "Bundle.json"
+      let configurationExists = configurationFile.exists(withType: .file)
+      let oldConfigurationExists = oldConfigurationFile.exists(withType: .file)
       if oldConfigurationExists && !configurationExists {
-        return migrateV1Configuration(
+        return try migrateV1Configuration(
           from: oldConfigurationFile,
           to: migrateConfiguration ? configurationFile : nil
         )
       }
     }
 
-    return await String.read(from: configurationFile)
-      .mapError { error in
-        .failedToReadConfigurationFile(configurationFile, error)
-      }
-      .andThen { contents in
-        await Result {
-          try TOMLDecoder(strictDecoding: true).decode(
-            PackageConfiguration.self,
-            from: contents
-          )
-        }
-        .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
-        .andThen { configuration in
-          if migrateConfiguration {
-            return .failure(.configurationIsAlreadyUpToDate)
-          } else {
-            return .success(configuration)
-          }
-        }
-        .tryRecover(unless: [.configurationIsAlreadyUpToDate]) {
-          (error) -> Result<PackageConfiguration, PackageConfigurationError> in
-          // Maybe the configuration is a Swift Bundler v2 configuration.
-          // Attempt to migrate it.
-          await Result {
-            try TOMLTable(string: contents)
-          }
-          .mapError(PackageConfigurationError.failedToDeserializeConfiguration)
-          .andThen { table in
-            guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-              return .failure(error)
-            }
+    let contents: String
+    do {
+      contents = try String.read(from: configurationFile).unwrap()
+    } catch {
+      throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
+    }
 
-            return await migrateV2Configuration(
-              configurationFile,
-              mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
-            )
-          }
-        }
+    let configuration: PackageConfiguration
+    do {
+      configuration = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
+        try TOMLDecoder(strictDecoding: true).decode(
+          PackageConfiguration.self,
+          from: contents
+        )
       }
-      .andThenDoSideEffect { configuration in
-        guard configuration.formatVersion == PackageConfiguration.currentFormatVersion else {
-          return .failure(.unsupportedFormatVersion(configuration.formatVersion))
-        }
-        return .success()
+
+      if migrateConfiguration {
+        throw Error(.configurationIsAlreadyUpToDate)
       }
-      .andThen { configuration in
-        await VariableEvaluator.evaluateVariables(
-          in: configuration,
-          packageDirectory: packageDirectory
-        ).mapError { error in
-          return .failedToEvaluateVariables(error)
-        }
+    } catch {
+      guard (error as? Error)?.message != .configurationIsAlreadyUpToDate else {
+        // TODO: See if full typed throws fixes this
+        // swiftlint:disable:next force_cast
+        throw error as! Error
       }
+
+      // Maybe the configuration is a Swift Bundler v2 configuration.
+      // Attempt to migrate it.
+      let table = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
+        try TOMLTable(string: contents)
+      }
+
+      guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
+        // TODO: See if full typed throws fixes this
+        // swiftlint:disable:next force_cast
+        throw error as! Error
+      }
+
+      return try await migrateV2Configuration(
+        configurationFile,
+        mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
+      )
+    }
+
+    guard configuration.formatVersion == PackageConfiguration.currentFormatVersion else {
+      throw Error(.unsupportedFormatVersion(configuration.formatVersion))
+    }
+
+    return try await Error.catch(withMessage: .failedToEvaluateVariables) {
+      try await VariableEvaluator.evaluateVariables(
+        in: configuration,
+        packageDirectory: packageDirectory
+      )
+    }
   }
 
   /// Migrates a Swift Bundler `v2.0.0` configuration file to the current configuration format.
@@ -168,53 +160,49 @@ struct PackageConfiguration: Codable {
   static func migrateV2Configuration(
     _ configurationFile: URL,
     mode: MigrationMode
-  ) async -> Result<PackageConfiguration, PackageConfigurationError> {
+  ) async throws(Error) -> PackageConfiguration {
     if mode == .readOnly {
       log.warning("'\(configurationFile.relativePath)' is outdated.")
       log.warning("Run 'swift bundler migrate' to migrate it to the latest config format.")
     }
 
-    return await String.read(from: configurationFile)
-      .mapError { error in
-        PackageConfigurationError
-          .failedToReadConfigurationFile(configurationFile, error)
-      }
-      .andThenDoSideEffect { contents in
-        // Back up the file if requested.
-        guard mode == .writeChanges(backup: true) else {
-          return .success()
-        }
+    let contents: String
+    do {
+      contents = try String.read(from: configurationFile).unwrap()
+    } catch {
+      throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
+    }
 
-        let backupFile = configurationFile.appendingPathExtension("orig")
-        return contents.write(to: configurationFile)
-          .mapError(PackageConfigurationError.failedToCreateConfigurationBackup)
-          .ifSuccess { _ in
-            log.info(
-              """
-              The original configuration has been backed up to \
-              '\(backupFile.relativePath)'
-              """
-            )
-          }
+    // Back up the file if requested.
+    if mode == .writeChanges(backup: true) {
+      let backupFile = configurationFile.appendingPathExtension("orig")
+      try Error.catch(withMessage: .failedToCreateConfigurationBackup) {
+        try contents.write(to: configurationFile).unwrap()
       }
-      .andThen { contents in
-        // Decode the old configuration
-        TOMLDecoder().decode(PackageConfigurationV2.self, from: contents)
-          .mapError(PackageConfigurationError.failedToDeserializeV2Configuration)
-      }
-      .mapAsync { oldConfiguration in
-        // Migrate the configuration
-        await oldConfiguration.migrate()
-      }
-      .andThenDoSideEffect { configuration in
-        // Write the changes if requested
-        guard case .writeChanges = mode else {
-          return .success()
-        }
 
-        log.info("Writing migrated config to disk.")
-        return writeConfiguration(configuration, to: configurationFile)
-      }
+      log.info(
+        """
+        The original configuration has been backed up to \
+        '\(backupFile.relativePath)'
+        """
+      )
+    }
+
+    // Decode the old configuration
+    let oldConfiguration = try Error.catch(withMessage: .failedToDeserializeV2Configuration) {
+      try TOMLDecoder().decode(PackageConfigurationV2.self, from: contents).unwrap()
+    }
+
+    // Migrate the configuration
+    let configuration = await oldConfiguration.migrate()
+
+    // Write the changes if requested
+    if case .writeChanges = mode {
+      log.info("Writing migrated config to disk.")
+      try writeConfiguration(configuration, to: configurationFile)
+    }
+
+    return configuration
   }
 
   /// Migrates a `Bundle.json` to a `Bundler.toml` file.
@@ -226,7 +214,7 @@ struct PackageConfiguration: Codable {
   static func migrateV1Configuration(
     from oldConfigurationFile: URL,
     to newConfigurationFile: URL?
-  ) -> Result<PackageConfiguration, PackageConfigurationError> {
+  ) throws(Error) -> PackageConfiguration {
     log.warning("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     if newConfigurationFile == nil {
       log.warning("Use 'swift bundler migrate' to update your configuration to the latest format")
@@ -234,76 +222,45 @@ struct PackageConfiguration: Codable {
       log.info("Migrating 'Bundle.json' to the new configuration format")
     }
 
-    return PackageConfigurationV1.load(
+    let oldConfiguration = try PackageConfigurationV1.load(
       from: oldConfigurationFile
     )
-    .map { oldConfiguration in
-      oldConfiguration.migrate()
-    }
-    .andThenDoSideEffect { newConfiguration in
-      guard let newConfigurationFile = newConfigurationFile else {
-        return .success()
-      }
+    let newConfiguration = oldConfiguration.migrate()
 
-      return writeConfiguration(newConfiguration, to: newConfigurationFile)
-        .ifSuccess { _ in
-          log.info(
-            """
-            Only the 'product' and 'version' fields are mandatory. You can \
-            delete any others that you don't need
-            """
-          )
-          log.info(
-            """
-            'Bundle.json' was successfully migrated to 'Bundler.toml', you can \
-            now safely delete it
-            """
-          )
-        }
+    if let newConfigurationFile {
+      try writeConfiguration(newConfiguration, to: newConfigurationFile)
+
+      log.info(
+        """
+        Only the 'product' and 'version' fields are mandatory. You can \
+        delete any others that you don't need
+        """
+      )
+      log.info(
+        """
+        'Bundle.json' was successfully migrated to 'Bundler.toml', you can \
+        now safely delete it
+        """
+      )
     }
+
+    return newConfiguration
   }
 
   /// Writes the given configuration to the given file.
   static func writeConfiguration(
     _ configuration: PackageConfiguration,
     to file: URL
-  ) -> Result<Void, PackageConfigurationError> {
-    Result {
+  ) throws(Error) {
+    let newContents = try Error.catch(withMessage: .failedToSerializeConfiguration) {
       try TOMLEncoder().encode(configuration)
     }
-    .mapError(PackageConfigurationError.failedToSerializeConfiguration)
-    .andThen { newContents in
-      Result {
-        try newContents.write(to: file, atomically: false, encoding: .utf8)
-      }.mapError { error in
-        .failedToWriteToConfigurationFile(file, error)
-      }
+
+    do {
+      try newContents.write(to: file).unwrap()
+    } catch {
+      throw Error(.failedToWriteToConfigurationFile(file), cause: error)
     }
-  }
-
-  /// Creates a configuration file for the specified app and product in the given directory.
-  /// - Parameters:
-  ///   - directory: The directory to create the configuration file in.
-  ///   - app: The name of the app.
-  ///   - product: The name of the product.
-  /// - Returns: If an error occurs, a failure is returned.
-  static func createConfigurationFile(
-    in directory: URL,
-    app: String,
-    product: String
-  ) -> Result<Void, PackageConfigurationError> {
-    let configuration = PackageConfiguration(
-      apps: [
-        app: AppConfiguration(
-          identifier: "com.example.\(product)",
-          product: product,
-          version: "0.1.0"
-        )
-      ]
-    )
-    let file = standardConfigurationFileLocation(for: directory)
-
-    return writeConfiguration(configuration, to: file)
   }
 
   /// Gets the standard configuration file location for a given directory.
@@ -313,21 +270,23 @@ struct PackageConfiguration: Codable {
 
   // MARK: Instance methods
 
-  /// Gets the configuration for the specified app. If no app is specified and there is only one app, that app is returned.
+  /// Gets the configuration for the specified app. If no app is specified and
+  /// there is only one app, that app is returned.
   /// - Parameter name: The name of the app to get.
-  /// - Returns: The app's name and configuration. If no app is specified, and there is more than one app, a failure is returned.
+  /// - Returns: The app's name and configuration.
+  /// - Throws: If no app is specified, and there is more than one app.
   func getAppConfiguration(
     _ name: String?
-  ) -> Result<(name: String, app: AppConfiguration), PackageConfigurationError> {
+  ) throws(Error) -> (name: String, app: AppConfiguration) {
     if let name = name {
       guard let selected = apps[name] else {
-        return .failure(.noSuchApp(name))
+        throw Error(.noSuchApp(name))
       }
-      return .success((name: name, app: selected))
+      return (name: name, app: selected)
     } else if let first = apps.first, apps.count == 1 {
-      return .success((name: first.key, app: first.value))
+      return (name: first.key, app: first.value)
     } else {
-      return .failure(.multipleAppsAndNoneSpecified)
+      throw Error(.multipleAppsAndNoneSpecified)
     }
   }
 }

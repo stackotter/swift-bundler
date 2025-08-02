@@ -120,7 +120,7 @@ struct RunCommand: ErrorHandledCommand {
     let manifest = try await RichError<SwiftBundlerError>.catch {
       try await SwiftPackageManager.loadPackageManifest(
         from: packageDirectory
-      ).unwrap()
+      )
     }
 
     let platformVersion =

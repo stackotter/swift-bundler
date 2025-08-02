@@ -164,6 +164,32 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  func targetTriple(
+    withArchitecture architecture: BuildArchitecture,
+    andPlatformVersion platformVersion: String
+  ) -> LLVMTargetTriple {
+    switch self {
+      case .iOS:
+        return .apple(architecture, .iOS(platformVersion))
+      case .visionOS:
+        return .apple(architecture, .visionOS(platformVersion))
+      case .tvOS:
+        return .apple(architecture, .tvOS(platformVersion))
+      case .iOSSimulator:
+        return .apple(architecture, .iOS(platformVersion), .simulator)
+      case .visionOSSimulator:
+        return .apple(architecture, .visionOS(platformVersion), .simulator)
+      case .tvOSSimulator:
+        return .apple(architecture, .tvOS(platformVersion), .simulator)
+      case .macOS:
+        return .apple(architecture, .macOS(platformVersion))
+      case .linux:
+        return .linux(architecture)
+      case .windows:
+        return .windows(architecture)
+    }
+  }
+
   /// The platform that Swift Bundler is currently being run on.
   static var host: Platform {
     HostPlatform.hostPlatform.platform

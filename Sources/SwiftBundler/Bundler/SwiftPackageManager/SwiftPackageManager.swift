@@ -32,50 +32,38 @@ enum SwiftPackageManager {
   static func createPackage(
     in directory: URL,
     name: String
-  ) async -> Result<Void, SwiftPackageManagerError> {
+  ) async throws(Error) {
     // Create the package directory if it doesn't exist
-    let directoryExists = FileManager.default.itemExists(at: directory, withType: .directory)
-    return await Result.success()
-      .andThen(if: !directoryExists) { _ in
-        FileManager.default.createDirectory(
-          at: directory,
-          onError: SwiftPackageManagerError.failedToCreatePackageDirectory
-        )
-      }
-      .andThen { _ in
-        // Run the init command
-        let arguments = [
-          "package", "init",
-          "--type=executable",
-          "--name=\(name)",
-        ]
+    let directoryExists = directory.exists(withType: .directory)
+    if !directoryExists {
+      try FileManager.default.createDirectory(
+        at: directory,
+        errorMessage: ErrorMessage.failedToCreatePackageDirectory
+      )
+    }
 
-        let process = Process.create(
-          "swift",
-          arguments: arguments,
-          directory: directory
-        )
-        process.setOutputPipe(Pipe())
+    // Run the init command
+    let arguments = [
+      "package", "init",
+      "--type=executable",
+      "--name=\(name)",
+    ]
 
-        return await Result.catching { () async throws(Process.Error) in
-          try await process.runAndWait()
-        }.mapError { error in
-          .failedToRunSwiftInit(
-            command: "swift \(arguments.joined(separator: " "))",
-            error
-          )
-        }
-      }
-      .andThen { _ in
-        // Create the configuration file
-        PackageConfiguration.createConfigurationFile(
-          in: directory,
-          app: name,
-          product: name
-        ).mapError { error in
-          .failedToCreateConfigurationFile(error)
-        }
-      }
+    let process = Process.create(
+      "swift",
+      arguments: arguments,
+      directory: directory
+    )
+    process.setOutputPipe(Pipe())
+
+    do {
+      try await process.runAndWait()
+    } catch {
+      throw Error(
+        .failedToRunSwiftInit(command: "swift \(arguments.joined(separator: " "))"),
+        cause: error
+      )
+    }
   }
 
   /// Builds the specified product of a Swift package.
@@ -86,32 +74,46 @@ enum SwiftPackageManager {
   static func build(
     product: String,
     buildContext: BuildContext
-  ) async -> Result<Void, SwiftPackageManagerError> {
-    return await createBuildArguments(
+  ) async throws(Error) {
+    let arguments = try await createBuildArguments(
       product: product,
       buildContext: buildContext
-    ).andThen { arguments in
-      let process = Process.create(
-        "swift",
-        arguments: arguments,
-        directory: buildContext.genericContext.projectDirectory,
-        runSilentlyWhenNotVerbose: false
+    )
+
+    let process = Process.create(
+      "swift",
+      arguments: arguments,
+      directory: buildContext.genericContext.projectDirectory,
+      runSilentlyWhenNotVerbose: false
+    )
+
+    if buildContext.hotReloadingEnabled {
+      process.addEnvironmentVariables([
+        "SWIFT_BUNDLER_HOT_RELOADING": "1"
+      ])
+    }
+
+    do {
+      try await process.runAndWait()
+    } catch {
+      throw Error(
+        .failedToRunSwiftBuild(command: "swift \(arguments.joined(separator: " "))"),
+        cause: error
       )
+    }
+  }
 
-      if buildContext.hotReloadingEnabled {
-        process.addEnvironmentVariables([
-          "SWIFT_BUNDLER_HOT_RELOADING": "1"
-        ])
-      }
+  /// Reads a build plan yaml file.
+  private static func readBuildPlan(_ file: URL) throws(Error) -> BuildPlan {
+    let buildPlanString: String
+    do {
+      buildPlanString = try String(contentsOf: file)
+    } catch {
+      throw Error(.failedToReadBuildPlan(path: file), cause: error)
+    }
 
-      return await Result.catching { () async throws(Process.Error) in
-        try await process.runAndWait()
-      }.mapError { error in
-        .failedToRunSwiftBuild(
-          command: "swift \(arguments.joined(separator: " "))",
-          error
-        )
-      }
+    return try Error.catch(withMessage: .failedToDecodeBuildPlan) {
+      try YAMLDecoder().decode(BuildPlan.self, from: buildPlanString)
     }
   }
 
@@ -120,114 +122,74 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - product: The product to build.
   ///   - buildContext: The context to build in.
-  /// - Returns: If an error occurs, returns a failure.
   static func buildExecutableAsDylib(
     product: String,
     buildContext: BuildContext
-  ) async -> Result<URL, SwiftPackageManagerError> {
+  ) async throws(Error) -> URL {
     #if os(macOS)
-      let productsDirectory: URL
-      switch await SwiftPackageManager.getProductsDirectory(buildContext) {
-        case let .success(value):
-          productsDirectory = value
-        case let .failure(error):
-          return .failure(error)
-      }
-      let dylibFile = productsDirectory.appendingPathComponent("lib\(product).dylib")
+      let productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
+      let dylibFile = productsDirectory / "lib\(product).dylib"
 
-      return await build(
+      try await build(
         product: product,
         buildContext: buildContext
-      ).andThen { _ in
-        let buildPlanFile = buildContext.genericContext.scratchDirectory
-          .appendingPathComponent("\(buildContext.genericContext.configuration).yaml")
-        let buildPlanString: String
-        do {
-          buildPlanString = try String(contentsOf: buildPlanFile)
-        } catch {
-          return .failure(.failedToReadBuildPlan(path: buildPlanFile, error))
-        }
+      )
 
-        let buildPlan: BuildPlan
-        do {
-          buildPlan = try YAMLDecoder().decode(BuildPlan.self, from: buildPlanString)
-        } catch {
-          return .failure(.failedToDecodeBuildPlan(error))
-        }
+      let buildPlanFile = buildContext.genericContext.scratchDirectory
+        / "\(buildContext.genericContext.configuration).yaml"
+      let buildPlan = try readBuildPlan(buildPlanFile)
 
-        let targetInfo: SwiftTargetInfo
-        switch await getHostTargetInfo() {
-          case .success(let value):
-            targetInfo = value
-          case .failure(let error):
-            return .failure(error)
-        }
+      let targetInfo = try await getHostTargetInfo()
 
-        // Swift versions before 6.0 or so named commands differently in the build plan.
-        // We check for the newer format (with triple) then the older format (no triple).
-        let triple = targetInfo.target.triple
-        let configuration = buildContext.genericContext.configuration
-        let commandName = "C.\(product)-\(triple)-\(configuration).exe"
-        let oldCommandName = "C.\(product)-\(configuration).exe"
-        guard
-          let linkCommand = buildPlan.commands[commandName] ?? buildPlan.commands[oldCommandName],
-          linkCommand.tool == "shell",
-          let commandExecutable = linkCommand.arguments?.first,
-          let arguments = linkCommand.arguments?.dropFirst()
-        else {
-          return .failure(
-            .failedToComputeLinkingCommand(
-              details: "Couldn't find valid command for \(commandName)"
-            )
-          )
-        }
-
-        var modifiedArguments = Array(arguments)
-        guard
-          let index = modifiedArguments.firstIndex(of: "-o"),
-          index < modifiedArguments.count - 1
-        else {
-          return .failure(
-            .failedToComputeLinkingCommand(details: "Couldn't find '-o' argument to replace")
-          )
-        }
-
-        modifiedArguments.remove(at: index)
-        modifiedArguments.remove(at: index)
-        modifiedArguments.append(contentsOf: [
-          "-o",
-          dylibFile.path,
-          "-Xcc",
-          "-dynamiclib",
-        ])
-
-        do {
-          let process = Process.create(
-            commandExecutable,
-            arguments: modifiedArguments,
-            directory: buildContext.genericContext.projectDirectory,
-            runSilentlyWhenNotVerbose: false
-          )
-          try await process.runAndWait()
-        } catch {
-          // TODO: Make a more robust way of converting commands to strings for display (keeping
-          //   correctness in mind in case users want to copy-paste commands from errors).
-          let error = SwiftPackageManagerError.failedToRunLinkingCommand(
-            command: ([commandExecutable]
-              + modifiedArguments.map { argument in
-                if argument.contains(" ") {
-                  return "\"\(argument)\""
-                } else {
-                  return argument
-                }
-              }).joined(separator: " "),
-            error
-          )
-          return .failure(error)
-        }
-
-        return .success(dylibFile)
+      // Swift versions before 6.0 or so named commands differently in the build plan.
+      // We check for the newer format (with triple) then the older format (no triple).
+      let triple = targetInfo.target.triple
+      let configuration = buildContext.genericContext.configuration
+      let commandName = "C.\(product)-\(triple)-\(configuration).exe"
+      let oldCommandName = "C.\(product)-\(configuration).exe"
+      guard
+        let linkCommand = buildPlan.commands[commandName] ?? buildPlan.commands[oldCommandName],
+        linkCommand.tool == "shell",
+        let commandExecutable = linkCommand.arguments?.first,
+        let arguments = linkCommand.arguments?.dropFirst()
+      else {
+        let message = ErrorMessage.failedToComputeLinkingCommand(
+          details: "Couldn't find valid command for \(commandName)"
+        )
+        throw Error(message)
       }
+
+      var modifiedArguments = Array(arguments)
+      guard
+        let index = modifiedArguments.firstIndex(of: "-o"),
+        index < modifiedArguments.count - 1
+      else {
+        let details = "Couldn't find '-o' argument to replace"
+        throw Error(.failedToComputeLinkingCommand(details: details))
+      }
+
+      modifiedArguments.remove(at: index)
+      modifiedArguments.remove(at: index)
+      modifiedArguments.append(contentsOf: [
+        "-o",
+        dylibFile.path,
+        "-Xcc",
+        "-dynamiclib",
+      ])
+
+      do {
+        let process = Process.create(
+          commandExecutable,
+          arguments: modifiedArguments,
+          directory: buildContext.genericContext.projectDirectory,
+          runSilentlyWhenNotVerbose: false
+        )
+        try await process.runAndWait()
+      } catch {
+        throw Error(.failedToRunModifiedLinkingCommand)
+      }
+
+      return dylibFile
     #else
       fatalError("buildExecutableAsDylib not implemented for current platform")
       #warning("buildExecutableAsDylib not implemented for current platform")
@@ -238,13 +200,14 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - product: The product to build.
   ///   - buildContext: The context to build in.
-  /// - Returns: The build arguments, or a failure if an error occurs.
+  /// - Returns: The build arguments.
   static func createBuildArguments(
     product: String?,
     buildContext: BuildContext
-  ) async -> Result<[String], SwiftPackageManagerError> {
+  ) async throws(Error) -> [String] {
+    let platform = buildContext.genericContext.platform
     let platformArguments: [String]
-    switch buildContext.genericContext.platform {
+    switch platform {
       case .windows:
         let debugArguments: [String]
         let guiArguments: [String]
@@ -271,37 +234,17 @@ enum SwiftPackageManager {
       case .iOS, .visionOS, .tvOS,
         .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms
-        let sdkPath: String
-        switch await getLatestSDKPath(for: buildContext.genericContext.platform) {
-          case .success(let path):
-            sdkPath = path
-          case .failure(let error):
-            return .failure(error)
-        }
+        let sdkPath = try await getLatestSDKPath(for: platform)
 
         guard let platformVersion = buildContext.genericContext.platformVersion else {
-          return .failure(.missingDarwinPlatformVersion(buildContext.genericContext.platform))
+          throw Error(.missingDarwinPlatformVersion(platform))
         }
         let hostArchitecture = BuildArchitecture.current
 
-        let targetTriple: LLVMTargetTriple
-        switch buildContext.genericContext.platform {
-          case .iOS:
-            targetTriple = .apple(.arm64, .iOS(platformVersion))
-          case .visionOS:
-            targetTriple = .apple(.arm64, .visionOS(platformVersion))
-          case .tvOS:
-            targetTriple = .apple(.arm64, .tvOS(platformVersion))
-          case .iOSSimulator:
-            targetTriple = .apple(hostArchitecture, .iOS(platformVersion), .simulator)
-          case .visionOSSimulator:
-            targetTriple = .apple(hostArchitecture, .visionOS(platformVersion), .simulator)
-          case .tvOSSimulator:
-            targetTriple = .apple(hostArchitecture, .tvOS(platformVersion), .simulator)
-          case .macOS, .linux, .windows:
-            // TODO: Refactor to make this properly unreachable
-            fatalError("Supposedly unreachable...")
-        }
+        let targetTriple = platform.targetTriple(
+          withArchitecture: platform.isSimulator ? hostArchitecture : .arm64,
+          andPlatformVersion: platformVersion
+        )
 
         platformArguments =
           [
@@ -313,7 +256,6 @@ enum SwiftPackageManager {
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
       case .macOS, .linux:
-        // Handle macOS and all non-Apple platforms
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]
           : []
@@ -342,188 +284,183 @@ enum SwiftPackageManager {
       )
     }
 
-    return .success(arguments)
+    return arguments
   }
 
   /// Gets the path to the latest SDK for a given platform.
   /// - Parameter platform: The platform to get the SDK path for.
-  /// - Returns: The SDK's path, or a failure if an error occurs.
-  static func getLatestSDKPath(
-    for platform: Platform
-  ) async -> Result<String, SwiftPackageManagerError> {
-    return await Result.catching { () async throws(Process.Error) in
-      try await Process.create(
+  /// - Returns: The SDK's path.
+  static func getLatestSDKPath(for platform: Platform) async throws(Error) -> String {
+    do {
+      let output = try await Process.create(
         "/usr/bin/xcrun",
         arguments: [
           "--sdk", platform.sdkName,
           "--show-sdk-path",
         ]
       ).getOutput()
-    }.map { output in
       return output.trimmingCharacters(in: .whitespacesAndNewlines)
-    }.mapError { error in
-      return .failedToGetLatestSDKPath(platform, error)
+    } catch {
+      throw Error(.failedToGetLatestSDKPath(platform), cause: error)
+    }
+  }
+
+  // The first two examples are for release versions of Swift (the first on
+  // macOS, the second on Linux). The next two examples are for snapshot
+  // versions of Swift (the first on macOS, the second on Linux).
+  //
+  // Sample: "swift-driver version: 1.45.2 Apple Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
+  //     OR: "swift-driver version: 1.45.2 Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
+  //     OR: "Apple Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
+  //     OR: "Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
+  private static let swiftVersionParser = OneOf {
+    Parse {
+      "swift-driver version"
+      Prefix { $0 != "(" }
+      "(swiftlang-"
+      Parse({ Version(major: $0, minor: $1, patch: $2) }) {
+        Int.parser(radix: 10)
+        "."
+        Int.parser(radix: 10)
+        "."
+        Int.parser(radix: 10)
+      }
+      Rest<Substring>()
+    }.map { (_: Substring, version: Version, _: Substring) in
+      version
+    }
+
+    Parse {
+      Optionally {
+        "Apple "
+      }
+      "Swift version "
+      Parse({ Version(major: $0, minor: $1, patch: 0) }) {
+        Int.parser(radix: 10)
+        "."
+        Int.parser(radix: 10)
+      }
+      Rest<Substring>()
+    }.map { (_: Void?, version: Version, _: Substring) in
+      version
     }
   }
 
   /// Gets the version of the current Swift installation.
-  /// - Returns: The swift version, or a failure if an error occurs.
-  static func getSwiftVersion() async -> Result<Version, SwiftPackageManagerError> {
-    return await Result.catching { () async throws(Process.Error) in
+  /// - Returns: The swift version.
+  static func getSwiftVersion() async throws(Error) -> Version {
+    let output = try await Error.catch(withMessage: .failedToGetSwiftVersion) {
       try await Process.create(
         "swift",
         arguments: ["--version"]
       ).getOutput()
     }
-      .mapError(SwiftPackageManagerError.failedToGetSwiftVersion)
-      .andThen { output in
-        // The first two examples are for release versions of Swift (the first on macOS, the second on Linux).
-        // The next two examples are for snapshot versions of Swift (the first on macOS, the second on Linux).
-        // Sample: "swift-driver version: 1.45.2 Apple Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
-        //     OR: "swift-driver version: 1.45.2 Swift version 5.6 (swiftlang-5.6.0.323.62 clang-1316.0.20.8)"
-        //     OR: "Apple Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
-        //     OR: "Swift version 5.9-dev (LLVM 464b04eb9b157e3, Swift 7203d52cb1e074d)"
-        let parser = OneOf {
-          Parse {
-            "swift-driver version"
-            Prefix { $0 != "(" }
-            "(swiftlang-"
-            Parse({ Version(major: $0, minor: $1, patch: $2) }) {
-              Int.parser(radix: 10)
-              "."
-              Int.parser(radix: 10)
-              "."
-              Int.parser(radix: 10)
-            }
-            Rest<Substring>()
-          }.map { (_: Substring, version: Version, _: Substring) in
-            version
-          }
 
-          Parse {
-            Optionally {
-              "Apple "
-            }
-            "Swift version "
-            Parse({ Version(major: $0, minor: $1, patch: 0) }) {
-              Int.parser(radix: 10)
-              "."
-              Int.parser(radix: 10)
-            }
-            Rest<Substring>()
-          }.map { (_: Void?, version: Version, _: Substring) in
-            version
-          }
-        }
-
-        return Result {
-          try parser.parse(output)
-        }.mapError { error in
-          .invalidSwiftVersionOutput(output, error)
-        }
-      }
+    do {
+      return try swiftVersionParser.parse(output)
+    } catch {
+      throw Error(.invalidSwiftVersionOutput(output), cause: error)
+    }
   }
 
-  /// Gets the default products directory for builds occuring within the given
-  /// context.
+  /// Gets the default products directory for builds occuring within the given context.
   /// - Parameters:
   ///   - buildContext: The context the build is occuring within.
-  /// - Returns: The default products directory. If `swift build --show-bin-path ... # extra args`
-  ///   fails, a failure is returned.
-  static func getProductsDirectory(
-    _ buildContext: BuildContext
-  ) async -> Result<URL, SwiftPackageManagerError> {
-    return await createBuildArguments(
+  /// - Returns: The default products directory.
+  static func getProductsDirectory(_ buildContext: BuildContext) async throws(Error) -> URL {
+    let arguments = try await createBuildArguments(
       product: nil,
       buildContext: buildContext
-    ).andThen { arguments in
-      let process = Process.create(
-        "swift",
-        arguments: arguments + ["--show-bin-path"],
-        directory: buildContext.genericContext.projectDirectory
-      )
+    )
 
-      return await Result.catching { () async throws(Process.Error) in
-        try await process.getOutput()
-      }.map { output in
-        URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
-      }.mapError { error in
-        .failedToGetProductsDirectory(command: process.commandStringForLogging, error)
-      }
+    let process = Process.create(
+      "swift",
+      arguments: arguments + ["--show-bin-path"],
+      directory: buildContext.genericContext.projectDirectory
+    )
+
+    do {
+      let output = try await process.getOutput()
+      return URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
+    } catch {
+      throw Error(
+        .failedToGetProductsDirectory(command: process.commandStringForLogging),
+        cause: error
+      )
     }
   }
 
   /// Loads a root package manifest from a package's root directory.
   /// - Parameter packageDirectory: The package's root directory.
-  /// - Returns: The loaded manifest, or a failure if an error occurs.
+  /// - Returns: The loaded manifest.
   static func loadPackageManifest(
     from packageDirectory: URL
-  ) async -> Result<PackageManifest, SwiftPackageManagerError> {
+  ) async throws(Error) -> PackageManifest {
     let process = Process.create(
       "swift",
       arguments: ["package", "describe", "--type", "json"],
       directory: packageDirectory
     )
 
-    return await Result.catching { () async throws(Process.Error) in
-      try await process.getOutput(excludeStdError: true)
-    }.mapError { error in
-      .failedToRunSwiftPackageDescribe(
-        command: process.commandStringForLogging,
-        error
+    let output: String
+    do {
+      output = try await process.getOutput(excludeStdError: true)
+    } catch {
+      throw Error(
+        .failedToRunSwiftPackageDescribe(command: process.commandStringForLogging),
+        cause: error
       )
-    }.andThen { output in
-      let jsonData = Data(output.utf8)
-      return JSONDecoder().decode(PackageManifest.self, from: jsonData)
-        .mapError { error in
-          .failedToParsePackageManifestOutput(json: output, error)
-        }
+    }
+
+    let jsonData = Data(output.utf8)
+    do {
+      return try JSONDecoder().decode(PackageManifest.self, from: jsonData).unwrap()
+    } catch {
+      throw Error(.failedToParsePackageManifestOutput(json: output), cause: error)
     }
   }
 
-  static func getHostTargetInfo() async -> Result<SwiftTargetInfo, SwiftPackageManagerError> {
+  static func getHostTargetInfo() async throws(Error) -> SwiftTargetInfo {
     // TODO: This could be a nice easy one to unit test
     let process = Process.create(
       "swift",
       arguments: ["-print-target-info"]
     )
 
-    return await Result.catching { () async throws(Process.Error) in
-      try await process.getOutput()
-    }.mapError { error in
-      .failedToGetTargetInfo(command: process.commandStringForLogging, error)
-    }.andThen { output in
-      guard let data = output.data(using: .utf8) else {
-        return .failure(.failedToParseTargetInfo(json: output, nil))
-      }
+    let output: String
+    do {
+      output = try await process.getOutput()
+    } catch {
+      throw Error(
+        .failedToGetTargetInfo(command: process.commandStringForLogging),
+        cause: error
+      )
+    }
 
-      return JSONDecoder().decode(SwiftTargetInfo.self, from: data)
-        .mapError { error in
-          .failedToParseTargetInfo(json: output, error)
-        }
+    let data = Data(output.utf8)
+    do {
+      return try JSONDecoder().decode(SwiftTargetInfo.self, from: data).unwrap()
+    } catch {
+      throw Error(.failedToParseTargetInfo(json: output), cause: error)
     }
   }
 
-  static func getToolsVersion(
-    _ packageDirectory: URL
-  ) async -> Result<Version, SwiftPackageManagerError> {
-    await Result.catching { () async throws(Process.Error) in
+  static func getToolsVersion(_ packageDirectory: URL) async throws(Error) -> Version {
+    let version = try await Error.catch(withMessage: .failedToGetToolsVersion) {
       try await Process.create(
         "swift",
         arguments: ["package", "tools-version"],
         directory: packageDirectory
       ).getOutput()
-    }.mapError { error in
-      .failedToGetToolsVersion(error)
-    }.andThen { version in
-      guard
-        let parsedVersion = Version(
-          version.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-      else {
-        return .failure(.invalidToolsVersion(version))
-      }
-      return .success(parsedVersion)
     }
+
+    guard
+      let parsedVersion = Version(
+        version.trimmingCharacters(in: .whitespacesAndNewlines)
+      )
+    else {
+      throw Error(.invalidToolsVersion(version))
+    }
+    return parsedVersion
   }
 }

@@ -16,9 +16,9 @@ struct SimulatorsBootCommand: ErrorHandledCommand {
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     try await RichError<SwiftBundlerError>.catch {
       log.info("Booting '\(idOrName)'")
-      try await SimulatorManager.bootSimulator(id: idOrName).unwrap()
+      try await SimulatorManager.bootSimulator(id: idOrName)
       log.info("Opening 'Simulator.app'")
-      try await SimulatorManager.openSimulatorApp().unwrap()
+      try await SimulatorManager.openSimulatorApp()
     }
   }
 }
