@@ -34,12 +34,11 @@ struct SchemaGenerator {
     let namespace = Namespace(sourceDirectory: sourceDirectory)
 
     let packageConfigStruct: TypeDecl
-    switch namespace.get("PackageConfiguration") {
-      case .success(let decl):
-        packageConfigStruct = decl
-      case .failure(let error):
-        printError("\(error)")
-        Foundation.exit(1)
+    do {
+      packageConfigStruct = try namespace.get("PackageConfiguration")
+    } catch {
+      printError("\(error)")
+      Foundation.exit(1)
     }
 
     var schema = partialSchema(
@@ -171,12 +170,12 @@ struct SchemaGenerator {
         )
       }
     } else {
-      switch namespace.get(type) {
-        case .success(let decl):
-          schema = partialSchema(for: decl, namespace: namespace)
-        case .failure(let error):
-          printError("\(error)")
-          Foundation.exit(1)
+      do {
+        let decl = try namespace.get(type)
+        schema = partialSchema(for: decl, namespace: namespace)
+      } catch {
+        printError("\(error)")
+        Foundation.exit(1)
       }
     }
 

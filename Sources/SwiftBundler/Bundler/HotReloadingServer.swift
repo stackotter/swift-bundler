@@ -17,51 +17,55 @@
     let port: UInt16
     let socket: AsyncSocket
 
-    enum Error: Throwable {
-      case failedToSendPing(Swift.Error)
+    typealias Error = RichError<ErrorMessage>
+
+    enum ErrorMessage: Throwable {
+      case failedToSendPing
       case expectedPong(Packet)
       case addrInUse
-      case failedToCreateSocket(Swift.Error)
-      case failedToAcceptConnection(Swift.Error)
-      case failedToWatchPackage(Swift.Error)
+      case failedToCreateSocket
+      case failedToAcceptConnection
+      case failedToWatchPackage
 
       var userFriendlyMessage: String {
         switch self {
-          case .failedToSendPing(let error):
-            return "Failed to send ping: \(error.localizedDescription)"
+          case .failedToSendPing:
+            return "Failed to send ping"
           case .expectedPong(let response):
             return "Expected pong, got '\(response)'"
           case .addrInUse:
             return "Failed to create socket: Address in use"
-          case .failedToCreateSocket(let error):
-            return "Failed to create socket: \(error.localizedDescription)"
-          case .failedToAcceptConnection(let error):
-            return "Failed to accept connection: \(error.localizedDescription)"
-          case .failedToWatchPackage(let error):
-            return "Failed to watch package: \(error.localizedDescription)"
+          case .failedToCreateSocket:
+            return "Failed to create socket"
+          case .failedToAcceptConnection:
+            return "Failed to accept connection"
+          case .failedToWatchPackage:
+            return "Failed to watch package for source changes"
         }
       }
     }
 
-    static func create(portHint: UInt16 = 7331) async -> Result<Self, Error> {
+    static func create(portHint: UInt16 = 7331) async throws(Error) -> Self {
       var port = portHint
 
       // Attempt to create socket and if the address is already in use, retry with
       // higher and higher ports until socket creation fails for another reason or
       // a free address is found.
       while true {
-        switch await Self.createSocket(port: port) {
-          case .success(let socket):
-            return .success(Self(port: port, socket: socket))
-          case .failure(.addrInUse):
-            port += 1
-          case .failure(let error):
-            return .failure(error)
+        do {
+          let socket = try await Self.createSocket(port: port)
+          return Self(port: port, socket: socket)
+        } catch {
+          guard case .addrInUse = error.message else {
+            throw error
+          }
+
+          port += 1
         }
       }
     }
 
-    static func createSocket(port: UInt16) async -> Result<AsyncSocket, Error> {
+    static func createSocket(port: UInt16) async throws(Error) -> AsyncSocket {
       do {
         // FlyingSocks relies on type inference tricks to hide away sockaddr_in,
         // but using them here breaks our Linux CI, so just spell it out and hope
@@ -78,11 +82,10 @@
           try await pool.run()
         }
 
-        let asyncSocket = try AsyncSocket(
+        return try AsyncSocket(
           socket: socket,
           pool: pool
         )
-        return .success(asyncSocket)
       } catch let error as SocketError {
         let addrInUse: Int32
         #if canImport(Darwin) || canImport(Glibc)
@@ -95,77 +98,69 @@
           case let .failed(_, errno, _) = error,
           errno == addrInUse
         else {
-          return .failure(.failedToCreateSocket(error))
+          throw Error(.failedToCreateSocket)
         }
 
-        return .failure(.addrInUse)
+        throw Error(.addrInUse)
       } catch {
-        return .failure(.failedToCreateSocket(error))
+        throw Error(.failedToCreateSocket)
       }
     }
 
     func start(
       product: String,
       buildContext: SwiftPackageManager.BuildContext
-    ) async -> Result<(), Error> {
-      var connection: AsyncSocket
-      switch await accept() {
-        case .success(let value):
-          connection = value
-        case .failure(let error):
-          return .failure(error)
-      }
-
+    ) async throws(Error) {
+      let connection = try await accept()
       log.debug("Received connection from runtime")
 
-      return await Self.handshake(&connection).andThen { _ in
-        log.debug("Handshake succeeded")
-        let sourcesDirectory = buildContext.genericContext.projectDirectory / "Sources"
-        return await Result {
-          try await FileSystemWatcher.watch(
-            paths: [sourcesDirectory.path],
-            with: {
-              log.info("Building 'lib\(product).dylib'")
-              let connection = connection
-              Task {
-                do {
-                  var connection = connection
-                  let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
-                    product: product,
-                    buildContext: buildContext
-                  )
-                  log.info("Successfully built dylib")
+      try await Self.handshake(connection)
+      log.debug("Handshake succeeded")
 
-                  try await Packet.reloadDylib(path: dylibFile).write(to: &connection)
-                } catch {
-                  log.error("Hot reloading failed: \(error.localizedDescription)")
-                }
+      let sourcesDirectory = buildContext.genericContext.projectDirectory / "Sources"
+
+      try await Error.catch(withMessage: .failedToWatchPackage) {
+        try await FileSystemWatcher.watch(
+          paths: [sourcesDirectory.path],
+          with: {
+            log.info("Building 'lib\(product).dylib'")
+            Task {
+              do {
+                var connection = connection
+                let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
+                  product: product,
+                  buildContext: buildContext
+                )
+                log.info("Successfully built dylib")
+
+                try await Packet.reloadDylib(path: dylibFile).write(to: &connection)
+              } catch {
+                log.error("Hot reloading failed: \(error.localizedDescription)")
               }
-            },
-            errorHandler: { error in
-              log.error("Hot reloading failed: \(error.localizedDescription)")
             }
-          )
-        }
-        .mapError(Error.failedToWatchPackage)
+          },
+          errorHandler: { error in
+            log.error("Hot reloading failed: \(error.localizedDescription)")
+          }
+        )
       }
     }
 
-    func accept() async -> Result<AsyncSocket, Error> {
-      await Result {
+    func accept() async throws(Error) -> AsyncSocket {
+      try await Error.catch(withMessage: .failedToAcceptConnection) {
         try await socket.accept()
-      }.mapError(Error.failedToAcceptConnection)
+      }
     }
 
-    static func handshake(_ connection: inout AsyncSocket) async -> Result<(), Error> {
-      await Result {
+    static func handshake(_ connection: AsyncSocket) async throws(Error) {
+      var connection = connection
+      let response = try await Error.catch(withMessage: .failedToSendPing) {
         try await Packet.ping.write(to: &connection)
         return try await Packet.read(from: &connection)
-      }.mapError(Error.failedToSendPing).andThen { response in
-        guard case Packet.pong = response else {
-          return .failure(.expectedPong(response))
-        }
-        return .success()
+      }
+
+      guard case Packet.pong = response else {
+        throw Error(.expectedPong(response))
       }
     }
   }

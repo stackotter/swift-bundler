@@ -24,26 +24,6 @@ extension FileManager {
     return false
   }
 
-  /// Swift Bundler commonly copies items and wraps up the source, destination,
-  /// and underlying error into a use-case-specific error type. This helper
-  /// reduces the amount of boilerplate required to do so.
-  func copyItem<Failure: Error>(
-    at source: URL,
-    to destination: URL,
-    onError wrapError: (
-      _ source: URL,
-      _ destination: URL,
-      _ error: Error
-    ) -> Failure = { _, _, error in error }
-  ) -> Result<Void, Failure> {
-    do {
-      try copyItem(at: source, to: destination)
-      return .success()
-    } catch {
-      return .failure(wrapError(source, destination, error))
-    }
-  }
-
   func copyItem<E: Error>(
     at source: URL,
     to destination: URL,
@@ -68,25 +48,12 @@ extension FileManager {
     }
   }
 
-  /// Creates a directory, returning a result.
-  ///
-  /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
-  func createDirectory<Failure>(
-    at directory: URL,
-    onError wrapError: (
-      _ directory: URL,
-      _ error: Error
-    ) -> Failure = { _, error in error }
-  ) -> Result<Void, Failure> {
-    Result {
-      try createDirectory(
-        at: directory,
-        withIntermediateDirectories: true,
-        attributes: nil
-      )
-    }.mapError { error in
-      wrapError(directory, error)
-    }
+  func createDirectory(at directory: URL) throws {
+    try createDirectory(
+      at: directory,
+      withIntermediateDirectories: true,
+      attributes: nil
+    )
   }
 
   func createDirectory<E: Error>(
@@ -97,11 +64,7 @@ extension FileManager {
     column: Int = #column
   ) throws(RichError<E>) {
     do {
-      try createDirectory(
-        at: directory,
-        withIntermediateDirectories: true,
-        attributes: nil
-      )
+      try createDirectory(at: directory)
     } catch {
       throw RichError(
         errorMessage(directory),
@@ -113,23 +76,11 @@ extension FileManager {
     }
   }
 
-  /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
-  func contentsOfDirectory<Failure: Error>(
-    at directory: URL,
-    onError wrapError: (
-      _ directory: URL,
-      _ error: Error
-    ) -> Failure = { _, error in error }
-  ) -> Result<[URL], Failure> {
-    do {
-      let contents = try FileManager.default.contentsOfDirectory(
-        at: directory,
-        includingPropertiesForKeys: nil
-      )
-      return .success(contents)
-    } catch {
-      return .failure(wrapError(directory, error))
-    }
+  func contentsOfDirectory(at directory: URL) throws -> [URL] {
+    return try contentsOfDirectory(
+      at: directory,
+      includingPropertiesForKeys: nil
+    )
   }
 
   func contentsOfDirectory<E: Error>(
@@ -140,11 +91,7 @@ extension FileManager {
     column: Int = #column
   ) throws(RichError<E>) -> [URL] {
     do {
-      let contents = try FileManager.default.contentsOfDirectory(
-        at: directory,
-        includingPropertiesForKeys: nil
-      )
-      return contents
+      return try contentsOfDirectory(at: directory)
     } catch {
       throw RichError(
         errorMessage(directory),
@@ -156,65 +103,46 @@ extension FileManager {
     }
   }
 
-  /// See ``FileManager/copyItem(at:to:onError:)`` above for why this exists.
-  func moveItem<Failure: Error>(
-    at source: URL,
-    to destination: URL,
-    onError wrapError: (
-      _ source: URL,
-      _ destination: URL,
-      _ error: Error
-    ) -> Failure = { _, _, error in error }
-  ) -> Result<Void, Failure> {
-    do {
-      try moveItem(at: source, to: destination)
-      return .success()
-    } catch {
-      return .failure(wrapError(source, destination, error))
-    }
+  /// Creates a symlink by specifying the destination relative to the
+  /// symlink. This is generally what we want to do when bundling since
+  /// it allows app bundles to be relocated even if they contain symlinks.
+  func createSymlink(
+    at symlink: URL,
+    withRelativeDestination relativeDestination: String
+  ) throws {
+    try createSymbolicLink(
+      atPath: symlink.path,
+      withDestinationPath: relativeDestination
+    )
   }
 
   /// Creates a symlink by specifying the destination relative to the
   /// symlink. This is generally what we want to do when bundling since
   /// it allows app bundles to be relocated even if they contain symlinks.
-  ///
-  /// See ``FileManager/copyItem(at:to:onError:)`` for information about
-  /// the `wrapError` parameter.
-  func createSymlink<Failure: Error>(
+  func createSymlink<E: Error>(
     at symlink: URL,
     withRelativeDestination relativeDestination: String,
-    onError wrapError: (
+    errorMessage: (
       _ source: URL,
-      _ relativeDestination: String,
-      _ error: Error
-    ) -> Failure = { _, _, error in error }
-  ) -> Result<Void, Failure> {
+      _ relativeDestination: String
+    ) -> E? = { _, _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) {
     do {
-      try FileManager.default.createSymbolicLink(
-        atPath: symlink.path,
-        withDestinationPath: relativeDestination
+      try createSymlink(
+        at: symlink,
+        withRelativeDestination: relativeDestination
       )
-      return .success()
     } catch {
-      return .failure(wrapError(symlink, relativeDestination, error))
-    }
-  }
-
-  /// Removes an item on disk.
-  ///
-  /// See ``FileManager/copyItem(at:to:onError:)`` for information about
-  /// the `wrapError` parameter.
-  func removeItem<Failure: Error>(
-    at item: URL,
-    onError wrapError: (
-      _ item: URL,
-      _ error: Error
-    ) -> Failure = { _, error in error }
-  ) -> Result<Void, Failure> {
-    Result {
-      try FileManager.default.removeItem(at: item)
-    }.mapError { error in
-      wrapError(item, error)
+      throw RichError(
+        errorMessage(symlink, relativeDestination),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
     }
   }
 
@@ -226,7 +154,7 @@ extension FileManager {
     column: Int = #column
   ) throws(RichError<E>) {
     do {
-      try FileManager.default.removeItem(at: item)
+      try removeItem(at: item)
     } catch {
       throw RichError(
         errorMessage(item),

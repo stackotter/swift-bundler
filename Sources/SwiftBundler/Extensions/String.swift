@@ -13,26 +13,7 @@ extension String {
     return self
   }
 
-  /// Reads the contents of a file, returning a result.
-  static func read(from file: URL) -> Result<String, any Error> {
-    Result {
-      try String(contentsOf: file)
-    }
-  }
-
-  /// Reads the contents of a file, returning a result.
-  static func read(from file: URL) throws -> String {
-    try String(contentsOf: file)
-  }
-
-  /// Writes the string to a file, returning a result.
-  func write(to file: URL) -> Result<Void, any Error> {
-    Result {
-      try write(to: file, atomically: true, encoding: .utf8)
-    }
-  }
-
-  /// Writes the string to a file, returning a result.
+  /// Writes the string to a file.
   func write(to file: URL) throws {
     try write(to: file, atomically: true, encoding: .utf8)
   }

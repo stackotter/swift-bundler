@@ -39,7 +39,7 @@ extension RPMBundler {
     func createDirectories() throws(RPMBundler.Error) {
       do {
         for directory in directories {
-          try FileManager.default.createDirectory(at: directory).unwrap()
+          try FileManager.default.createDirectory(at: directory)
         }
       } catch {
         throw Error(.failedToCreateRPMBuildDirectory(directory: root), cause: error)

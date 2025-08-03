@@ -178,7 +178,7 @@ enum ProvisioningProfileManager {
       do {
         provisioningProfiles = try FileManager.default.contentsOfDirectory(
           at: provisioningProfilesDirectory
-        ).unwrap()
+        )
       } catch {
         throw Error(
           .failedToEnumerateProfiles(directory: provisioningProfilesDirectory),
@@ -311,7 +311,7 @@ enum ProvisioningProfileManager {
       let xcodeprojFile = projectDirectory / "Dummy.xcodeproj"
 
       do {
-        try FileManager.default.createDirectory(at: sourcesDirectory).unwrap()
+        try FileManager.default.createDirectory(at: sourcesDirectory)
       } catch {
         let message = "Failed to create sources directory at '\(sourcesDirectory.path)'"
         throw Error(
@@ -341,7 +341,7 @@ enum ProvisioningProfileManager {
 
       // Create main.swift and Info.plist
       do {
-        try dummySourceCode.write(to: sourcesDirectory / "main.swift").unwrap()
+        try dummySourceCode.write(to: sourcesDirectory / "main.swift")
 
         let data = try PropertyListSerialization.data(
           fromPropertyList: infoPlist,
@@ -349,7 +349,7 @@ enum ProvisioningProfileManager {
           options: 0
         )
 
-        try data.write(to: infoPlistFile).unwrap()
+        try data.write(to: infoPlistFile)
       } catch {
         throw Error(.failedToGenerateDummyXcodeproj(message: nil), cause: error)
       }

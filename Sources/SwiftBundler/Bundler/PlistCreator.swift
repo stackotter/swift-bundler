@@ -27,7 +27,7 @@ enum PlistCreator {
     )
 
     do {
-      try contents.write(to: file).unwrap()
+      try contents.write(to: file)
     } catch {
       throw Error(.failedToWriteAppInfoPlist(file: file), cause: error)
     }
@@ -56,7 +56,7 @@ enum PlistCreator {
     )
 
     do {
-      try contents.write(to: file).unwrap()
+      try contents.write(to: file)
     } catch {
       throw Error(
         .failedToWriteResourceBundleInfoPlist(bundle: bundleName, file: file),

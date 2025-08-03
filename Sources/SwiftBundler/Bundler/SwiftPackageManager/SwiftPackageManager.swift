@@ -414,7 +414,7 @@ enum SwiftPackageManager {
 
     let jsonData = Data(output.utf8)
     do {
-      return try JSONDecoder().decode(PackageManifest.self, from: jsonData).unwrap()
+      return try JSONDecoder().decode(PackageManifest.self, from: jsonData)
     } catch {
       throw Error(.failedToParsePackageManifestOutput(json: output), cause: error)
     }
@@ -439,7 +439,7 @@ enum SwiftPackageManager {
 
     let data = Data(output.utf8)
     do {
-      return try JSONDecoder().decode(SwiftTargetInfo.self, from: data).unwrap()
+      return try JSONDecoder().decode(SwiftTargetInfo.self, from: data)
     } catch {
       throw Error(.failedToParseTargetInfo(json: output), cause: error)
     }

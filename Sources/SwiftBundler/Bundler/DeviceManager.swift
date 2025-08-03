@@ -14,7 +14,7 @@ enum DeviceManager {
         try FileManager.default.removeItem(at: dummyProject)
       }
 
-      try FileManager.default.createDirectory(at: dummyProject).unwrap()
+      try FileManager.default.createDirectory(at: dummyProject)
 
       try await SwiftPackageManager.createPackage(
         in: dummyProject,

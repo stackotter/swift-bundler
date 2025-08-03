@@ -38,7 +38,7 @@ enum TypeDecl {
           continue
         }
 
-        if case let .success(property) = PropertyDecl.parse(from: item) {
+        if let property = try? PropertyDecl.parse(from: item) {
           properties.append(property)
         }
       }

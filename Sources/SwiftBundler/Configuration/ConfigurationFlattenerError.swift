@@ -1,9 +1,11 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by ``ConfigurationFlattener``.
 extension ConfigurationFlattener {
-  enum Error: Catching, Throwable {
+  typealias Error = RichError<ErrorMessage>
+
+  /// An error message related to ``ConfigurationFlattener``.
+  enum ErrorMessage: Throwable {
     case conditionNotMetForProperties(
       OverlayCondition,
       properties: [String]
@@ -11,7 +13,6 @@ extension ConfigurationFlattener {
     case projectBuilderNotASwiftFile(String)
     case reservedProjectName(String)
     case invalidRPMRequirement(String)
-    case caught(any Swift.Error)
 
     var userFriendlyMessage: String {
       switch self {
@@ -33,8 +34,6 @@ extension ConfigurationFlattener {
           return "The project name '\(name)' is reserved"
         case .invalidRPMRequirement(let name):
           return "Invalid RPM requirement contains restricted characters: \(name)"
-        case .caught(let error):
-          return ErrorKit.userFriendlyMessage(for: error)
       }
     }
   }

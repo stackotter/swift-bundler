@@ -46,7 +46,7 @@ enum MetadataInserter {
   ) async throws(Error) -> CompiledMetadata {
     let codeFile = directory / "metadata.swift"
     let data = try Error.catch(withMessage: .failedToEncodeMetadata) {
-      try JSONEncoder().encode(metadata).unwrap()
+      try JSONEncoder().encode(metadata)
     }
 
     // We insert our JSON encoded metadata as the first entry in an array of
@@ -65,7 +65,7 @@ enum MetadataInserter {
       """
 
     try Error.catch(withMessage: .failedToWriteMetadataCodeFile) {
-      try code.write(to: codeFile).unwrap()
+      try code.write(to: codeFile)
     }
 
     if architectures.count > 1 || platform.isApplePlatform {

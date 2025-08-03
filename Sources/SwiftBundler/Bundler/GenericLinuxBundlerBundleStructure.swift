@@ -63,7 +63,7 @@ extension GenericLinuxBundler {
     func createDirectories() throws(Error) {
       do {
         for directory in directories {
-          try FileManager.default.createDirectory(at: directory).unwrap()
+          try FileManager.default.createDirectory(at: directory)
         }
       } catch {
         throw Error(.failedToCreateBundleStructure(root: root))

@@ -137,7 +137,9 @@ enum Templater {
     }
 
     // Create the output directory
-    if case let .failure(error) = FileManager.default.createDirectory(at: outputDirectory) {
+    do {
+      try FileManager.default.createDirectory(at: outputDirectory)
+    } catch {
       throw Error(.failedToCreateOutputDirectory(outputDirectory), cause: error)
     }
 
@@ -522,7 +524,7 @@ enum Templater {
     // Read the file's contents
     var contents: String
     do {
-      contents = try String.read(from: file)
+      contents = try String(contentsOf: file)
     } catch {
       let template = templateDirectory.lastPathComponent
       throw Error(
@@ -550,11 +552,10 @@ enum Templater {
 
     // Write to the output file
     let outputFile = outputDirectory.appendingPathComponent(relativePath)
-    _ = FileManager.default.createDirectory(at: outputFile.deletingLastPathComponent())
+    try? FileManager.default.createDirectory(at: outputFile.deletingLastPathComponent())
 
     do {
-      // TODO: Get rid of this once we get rid of the result-based overload
-      let _: Void = try contents.write(to: outputFile)
+      try contents.write(to: outputFile)
     } catch {
       throw Error(.failedToWriteToOutputFile(file: file), cause: error)
     }

@@ -310,7 +310,7 @@ enum DarwinBundler: Bundler {
     let pkgInfoData = Data(bytes: pkgInfoBytes, count: pkgInfoBytes.count)
 
     try Error.catch(withMessage: .failedToCreatePkgInfo(file: pkgInfoFile)) {
-      try pkgInfoData.write(to: pkgInfoFile).unwrap()
+      try pkgInfoData.write(to: pkgInfoFile)
     }
   }
 

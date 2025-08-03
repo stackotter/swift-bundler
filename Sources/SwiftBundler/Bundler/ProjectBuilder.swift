@@ -334,7 +334,7 @@ enum ProjectBuilder {
         withRelativeDestination: source.path(
           relativeTo: destination.deletingLastPathComponent()
         )
-      ).unwrap()
+      )
     }
   }
 
@@ -406,7 +406,7 @@ enum ProjectBuilder {
     )
 
     try Error.catch(withMessage: .failedToWriteBuilderManifest) {
-      try manifestContents.write(to: scratchDirectory.builderManifest).unwrap()
+      try manifestContents.write(to: scratchDirectory.builderManifest)
     }
   }
 
@@ -471,7 +471,7 @@ enum ProjectBuilder {
 
     do {
       _ = try process.runAndLog()
-      let data = try JSONEncoder().encode(context).get()
+      let data = try JSONEncoder().encode(context)
       inputPipe.fileHandleForWriting.write(data)
       inputPipe.fileHandleForWriting.write("\n")
       try? inputPipe.fileHandleForWriting.close()

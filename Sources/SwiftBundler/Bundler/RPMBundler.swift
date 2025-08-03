@@ -94,7 +94,7 @@ enum RPMBundler: Bundler {
     )
 
     do {
-      try specContents.write(to: rpmBuildDirectory.appSpec).unwrap()
+      try specContents.write(to: rpmBuildDirectory.appSpec)
     } catch {
       throw Error(.failedToWriteSpecFile(rpmBuildDirectory.appSpec), cause: error)
     }

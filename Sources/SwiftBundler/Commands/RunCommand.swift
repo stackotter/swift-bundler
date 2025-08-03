@@ -150,7 +150,7 @@ struct RunCommand: ErrorHandledCommand {
 
         // Start server and file system watcher (integrated into server)
         let server = try await RichError<SwiftBundlerError>.catch {
-          try await HotReloadingServer.create().unwrap()
+          try await HotReloadingServer.create()
         }
 
         Task {
@@ -158,7 +158,7 @@ struct RunCommand: ErrorHandledCommand {
             try await server.start(
               product: appConfiguration.product,
               buildContext: buildContext
-            ).unwrap()
+            )
           } catch {
             log.error(
               "Failed to start hot reloading server: \(ErrorKit.userFriendlyMessage(for: error))"
