@@ -195,7 +195,7 @@ enum StringCatalogCompiler {
       // Read the string catalog file.
       let stringsCatalog: StringsCatalogFile
       do {
-        let data = try Data.read(from: file).unwrap()
+        let data = try Data(contentsOf: file)
         stringsCatalog = try JSONDecoder().decode(StringsCatalogFile.self, from: data)
       } catch {
         throw Error(.failedToParseJSON(file), cause: error)
@@ -257,13 +257,13 @@ enum StringCatalogCompiler {
 
     // Write the strings and strings dict files.
     do {
-      try stringsFileData.write(to: stringsFileURL).unwrap()
+      try stringsFileData.write(to: stringsFileURL)
     } catch {
       throw Error(.failedToWriteStringsFile(stringsFileURL), cause: error)
     }
 
     do {
-      try stringsDictFileData.write(to: stringsDictFileURL).unwrap()
+      try stringsDictFileData.write(to: stringsDictFileURL)
     } catch {
       throw Error(.failedToWriteStringsDictFile(stringsDictFileURL), cause: error)
     }

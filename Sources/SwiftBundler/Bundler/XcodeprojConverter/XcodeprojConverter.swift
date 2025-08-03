@@ -13,11 +13,11 @@ enum XcodeprojConverter {
   static func convertWorkspace(
     _ xcodeWorkspaceFile: URL,
     outputDirectory: URL
-  ) async -> Result<Void, XcodeprojConverterError> {
+  ) async throws(Error) {
     #if SUPPORT_XCODEPROJ
       // Ensure that output directory doesn't already exist
       guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
-        return .failure(.directoryAlreadyExists(outputDirectory))
+        throw Error(.directoryAlreadyExists(outputDirectory))
       }
 
       // Load xcworkspace
@@ -25,7 +25,7 @@ enum XcodeprojConverter {
       do {
         workspace = try XCWorkspace(pathString: xcodeWorkspaceFile.path)
       } catch {
-        return .failure(.failedToLoadXcodeWorkspace(xcodeWorkspaceFile, error))
+        throw Error(.failedToLoadXcodeWorkspace(xcodeWorkspaceFile), cause: error)
       }
 
       // Enumerate projects
@@ -40,12 +40,12 @@ enum XcodeprojConverter {
 
         log.info("Converting '\(projectName)' (\(index)/\(total))")
 
-        let result = await convertProject(
-          project,
-          outputDirectory: outputDirectory.appendingPathComponent(projectName)
-        )
-
-        if case let .failure(error) = result {
+        do {
+          try await convertProject(
+            project,
+            outputDirectory: outputDirectory.appendingPathComponent(projectName)
+          )
+        } catch {
           log.error("Failed to convert '\(projectName)': \(error.localizedDescription)")
           continue
         }
@@ -53,11 +53,9 @@ enum XcodeprojConverter {
         successCount += 1
       }
 
-      log.info("Successfully converted \(successCount)/\(total)")
-
-      return .success()
+      log.info("Successfully converted \(successCount)/\(total) projects")
     #else
-      return .failure(.hostPlatformNotSupported)
+      throw Error(.hostPlatformNotSupported)
     #endif
   }
 
@@ -65,55 +63,50 @@ enum XcodeprojConverter {
   /// - Parameters:
   ///   - xcodeProjectFile: The xcodeproj to convert.
   ///   - outputDirectory: The Swift Bundler project's directory.
-  /// - Returns: A failure if an error occurs.
   static func convertProject(
     _ xcodeProjectFile: URL,
     outputDirectory: URL
-  ) async -> Result<Void, XcodeprojConverterError> {
+  ) async throws(Error) {
     #if SUPPORT_XCODEPROJ
       // Ensure that output directory doesn't already exist
-      guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
-        return .failure(.directoryAlreadyExists(outputDirectory))
+      guard !outputDirectory.exists() else {
+        throw Error(.directoryAlreadyExists(outputDirectory))
       }
 
       let projectRootDirectory = xcodeProjectFile.deletingLastPathComponent()
       let sourcesDirectory = outputDirectory.appendingPathComponent("Sources")
 
       // Load xcodeproj
-      return await Result {
-        try XcodeProj(pathString: xcodeProjectFile.path)
+      let project: XcodeProj
+      do {
+        project = try XcodeProj(pathString: xcodeProjectFile.path)
+      } catch {
+        throw Error(.failedToLoadXcodeProj(xcodeProjectFile), cause: error)
       }
-      .mapError { error in
-        .failedToLoadXcodeProj(xcodeProjectFile, error)
+
+      // Extract and convert targets
+      let targets = try await extractTargets(from: project, rootDirectory: projectRootDirectory)
+
+      for target in targets {
+        try copyTarget(target, to: sourcesDirectory)
       }
-      .andThen { project in
-        // Extract and convert targets
-        await extractTargets(from: project, rootDirectory: projectRootDirectory)
-      }
-      .andThen { targets in
-        // Copy targets and then create configuration files
-        copyTargets(
-          targets,
-          to: sourcesDirectory
-        ).andThen { _ in
-          // Create Package.swift
-          createPackageManifestFile(
-            at: outputDirectory.appendingPathComponent("Package.swift"),
-            packageName: xcodeProjectFile.deletingPathExtension().lastPathComponent,
-            targets: targets
-          )
-        }.andThen { _ in
-          // Create Bundler.toml
-          createPackageConfigurationFile(
-            at: outputDirectory.appendingPathComponent("Bundler.toml"),
-            targets: targets.compactMap { target in
-              target as? ExecutableTarget
-            }
-          )
+
+      // Create Package.swift
+      try createPackageManifestFile(
+        at: outputDirectory.appendingPathComponent("Package.swift"),
+        packageName: xcodeProjectFile.deletingPathExtension().lastPathComponent,
+        targets: targets
+      )
+
+      // Create Bundler.toml
+      try createPackageConfigurationFile(
+        at: outputDirectory.appendingPathComponent("Bundler.toml"),
+        targets: targets.compactMap { target in
+          target as? ExecutableTarget
         }
-      }
+      )
     #else
-      return .failure(.hostPlatformNotSupported)
+      throw Error(.hostPlatformNotSupported)
     #endif
   }
 
@@ -170,11 +163,11 @@ enum XcodeprojConverter {
     ///   - project: The Xcode project to extract the targets from.
     ///   - packageDependencies: The project's package dependencies.
     ///   - rootDirectory: The Xcode project's root directory.
-    /// - Returns: The extracted targets, or a failure if an error occurs.
+    /// - Returns: The extracted targets.
     private static func extractTargets(
       from project: XcodeProj,
       rootDirectory: URL
-    ) async -> Result<([any XcodeTarget]), XcodeprojConverterError> {
+    ) async throws(Error) -> [any XcodeTarget] {
       var targets: [any XcodeTarget] = []
       for target in project.pbxproj.nativeTargets {
         let name = target.name
@@ -193,15 +186,15 @@ enum XcodeprojConverter {
         let sources: [XcodeFile]
         do {
           sources = try target.sourceFiles().compactMap { file -> XcodeFile in
-            return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
+            return try XcodeFile.from(file, relativeTo: rootDirectory)
           }
         } catch {
-          return .failure(.failedToEnumerateSources(target: name, error))
+          throw Error(.failedToEnumerateSources(target: name), cause: error)
         }
 
         // Enumerate the target's resource files
         let resources = try? target.resourcesBuildPhase()?.files?.map { file -> XcodeFile in
-          return try XcodeFile.from(file, relativeTo: rootDirectory).unwrap()
+          return try XcodeFile.from(file, relativeTo: rootDirectory)
         }
 
         let dependencies = target.dependencies.compactMap(\.target?.name)
@@ -285,14 +278,15 @@ enum XcodeprojConverter {
             return true
           } else {
             log.warning(
-              "Removing \(target.name)'s dependency on non-existent target '\(dependency)'")
+              "Removing \(target.name)'s dependency on non-existent target '\(dependency)'"
+            )
             return false
           }
         }
         return target
       }
 
-      return .success(targets)
+      return targets
     }
 
     /// Evaluates the Xcode variables (e.g. `$PRODUCT_NAME`) in a build setting string.
@@ -314,101 +308,70 @@ enum XcodeprojConverter {
         )
       } catch {
         log.warning(
-          "Failed to evaluate variables in '\(value)', you may have to replace some variables manually in 'Bundler.toml'."
+          """
+          Failed to evaluate variables in '\(value)', you may have to replace \
+          some variables manually in 'Bundler.toml'.
+          """
         )
         return value
       }
     }
 
-    /// Copies the given xcodeproj targets into a Swift Bundler project.
-    /// - Parameters:
-    ///   - targets: The targets to copy.
-    ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-    /// - Returns: A failure if an error occurs.
-    private static func copyTargets(
-      _ targets: [XcodeTarget],
-      to sourcesDirectory: URL
-    ) -> Result<Void, XcodeprojConverterError> {
-      for target in targets {
-        let result = copyTarget(target, to: sourcesDirectory)
-
-        if case .failure = result {
-          return result
-        }
-      }
-
-      return .success()
-    }
-
     /// Copies an xcodeproj targets into a Swift Bundler project.
     /// - Parameters:
     ///   - target: The target to copy.
-    ///   - sourcesDirectory: The directory within the Swift Bundler project containing the sources for each target.
-    /// - Returns: A failure if an error occurs.
+    ///   - sourcesDirectory: The directory within the Swift Bundler project
+    ///     containing the sources for each target.
     private static func copyTarget(
       _ target: XcodeTarget,
       to sourcesDirectory: URL
-    ) -> Result<Void, XcodeprojConverterError> {
+    ) throws(Error) {
       log.info("Copying files for target '\(target.name)'")
 
       // Create directory for target and copy files across.
-      let targetDirectory = sourcesDirectory.appendingPathComponent(target.name)
-      return FileManager.default.createDirectory(at: targetDirectory)
-        .mapError { error in
-          .failedToCreateTargetDirectory(target: target.name, targetDirectory, error)
-        }
-        .andThen { _ in
-          target.files.tryForEach { file in
-            // Get source and destination
-            let source = file.location
-            let destination = targetDirectory.appendingPathComponent(
-              file.bundlerPath(target: target.name)
-            )
-            let destinationDirectory = destination.deletingLastPathComponent()
-            let destinationExists = FileManager.default.itemExists(
-              at: destinationDirectory,
-              withType: .directory
-            )
+      let targetDirectory = sourcesDirectory / target.name
+      do {
+        try FileManager.default.createDirectory(at: targetDirectory)
+      } catch {
+        throw Error(
+          .failedToCreateTargetDirectory(target: target.name, targetDirectory),
+          cause: error
+        )
+      }
 
-            // Create parent directory if required and copy item.
-            return Result.success()
-              .andThen(if: !destinationExists) {
-                FileManager.default.createDirectory(at: destinationDirectory)
-              }
-              .andThen { _ in
-                FileManager.default.copyItem(at: source, to: destination)
-              }
-              .mapError { error in
-                .failedToCopyFile(source: source, destination: destination, error)
-              }
+      for file in target.files {
+        let source = file.location
+        let destination = targetDirectory / file.bundlerPath(target: target.name)
+        let destinationDirectory = destination.deletingLastPathComponent()
+
+        // Create parent directory if required and copy item.
+        do {
+          if !destinationDirectory.exists(withType: .directory) {
+            try FileManager.default.createDirectory(at: destinationDirectory)
           }
+
+          try FileManager.default.copyItem(at: source, to: destination)
+        } catch {
+          throw Error(.failedToCopyFile(source: source, destination: destination), cause: error)
         }
+      }
     }
 
     /// Creates a `Bundler.toml` file declaring the given executable targets as apps.
     /// - Parameters:
     ///   - file: The location to create the file at.
     ///   - targets: The executable targets to add as apps.
-    /// - Returns: A failure if an error occurs.
     private static func createPackageConfigurationFile(
       at file: URL,
       targets: [ExecutableTarget]
-    ) -> Result<Void, XcodeprojConverterError> {
-      let configuration: PackageConfiguration
-      switch createPackageConfiguration(targets: targets) {
-        case .success(let value):
-          configuration = value
-        case .failure(let error):
-          return .failure(error)
-      }
+    ) throws(Error) {
+      let configuration = try createPackageConfiguration(targets: targets)
 
       do {
-        try TOMLEncoder().encode(configuration).write(to: file, atomically: false, encoding: .utf8)
+        try TOMLEncoder().encode(configuration).write(to: file)
       } catch {
-        return .failure(.failedToCreateConfigurationFile(file, error))
+        throw Error(.failedToCreateConfigurationFile(file), cause: error)
       }
-
-      return .success()
     }
 
     /// Creates a package configuration declaring the given executable targets as apps.
@@ -416,11 +379,11 @@ enum XcodeprojConverter {
     /// - Returns: The configuration.
     private static func createPackageConfiguration(
       targets: [ExecutableTarget]
-    ) -> Result<PackageConfiguration, XcodeprojConverterError> {
+    ) throws(Error) -> PackageConfiguration {
       var apps: [String: AppConfiguration] = [:]
       for target in targets {
-        let result = Result { () throws(AppConfiguration.Error) in
-          try AppConfiguration.create(
+        do {
+          apps[target.name] = try AppConfiguration.create(
             appName: target.name,
             version: target.version ?? "0.1.0",
             identifier: target.identifier ?? "com.example.\(target.name)",
@@ -428,17 +391,12 @@ enum XcodeprojConverter {
             infoPlistFile: target.infoPlist,
             iconFile: nil
           )
-        }
-
-        switch result {
-          case .success(let app):
-            apps[target.name] = app
-          case .failure(let error):
-            return .failure(.failedToCreateAppConfiguration(target: target.name, error))
+        } catch {
+          throw Error(.failedToCreateAppConfiguration(target: target.name), cause: error)
         }
       }
 
-      return .success(PackageConfiguration(apps: apps))
+      return PackageConfiguration(apps: apps)
     }
 
     /// Creates a `Package.swift` file declaring the given targets.
@@ -446,20 +404,20 @@ enum XcodeprojConverter {
     ///   - file: The location to create the file at.
     ///   - packageName: The name to give the package.
     ///   - targets: The targets to declare.
-    /// - Returns: A failure if an error occurs.
     private static func createPackageManifestFile(
       at file: URL,
       packageName: String,
       targets: [any XcodeTarget]
-    ) -> Result<Void, XcodeprojConverterError> {
-      createPackageManifestContents(
+    ) throws(Error) {
+      let contents = createPackageManifestContents(
         packageName: packageName,
         targets: targets
-      ).andThen { contents in
-        contents.write(to: file)
-          .mapError { error in
-            .failedToCreatePackageManifest(file, error)
-          }
+      )
+
+      do {
+        try contents.write(to: file)
+      } catch {
+        throw Error(.failedToCreatePackageManifest(file), cause: error)
       }
     }
 
@@ -467,11 +425,10 @@ enum XcodeprojConverter {
     /// - Parameters:
     ///   - packageName: The package's name.
     ///   - targets: The targets to declare.
-    /// - Returns: The generated contents.
     private static func createPackageManifestContents(
       packageName: String,
       targets: [any XcodeTarget]
-    ) -> Result<String, XcodeprojConverterError> {
+    ) -> String {
       let platformStrings = minimalPlatformStrings(for: targets)
 
       var names: Set<String> = []
@@ -568,7 +525,7 @@ enum XcodeprojConverter {
         )
         """
 
-      return .success(source)
+      return source
     }
 
     private static func minimalPlatformStrings(for targets: [any XcodeTarget]) -> [String] {

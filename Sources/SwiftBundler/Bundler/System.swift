@@ -18,7 +18,7 @@ enum System {
     }
 
     do {
-      try FileManager.default.createDirectory(at: directory).unwrap()
+      try FileManager.default.createDirectory(at: directory)
     } catch {
       throw Error(.failedToCreateApplicationSupportDirectory, cause: error)
     }

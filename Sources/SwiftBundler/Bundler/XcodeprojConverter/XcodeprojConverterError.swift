@@ -5,60 +5,63 @@ import ErrorKit
   @preconcurrency import XcodeProj
 #endif
 
-/// An error returned by ``XcodeprojConverter``.
-enum XcodeprojConverterError: Throwable {
-  case hostPlatformNotSupported
-  case failedToLoadXcodeProj(URL, Error)
-  case failedToEnumerateSources(target: String, Error)
-  case failedToCreateTargetDirectory(target: String, URL, Error)
-  case failedToCopyFile(source: URL, destination: URL, Error)
-  case failedToCreatePackageManifest(URL, Error)
-  case failedToCreateConfigurationFile(URL, Error)
-  case directoryAlreadyExists(URL)
-  case failedToLoadXcodeWorkspace(URL, Error)
-  case failedToCreateAppConfiguration(target: String, AppConfiguration.Error)
+extension XcodeprojConverter {
+  typealias Error = RichError<ErrorMessage>
 
-  #if SUPPORT_XCODEPROJ
-    case unsupportedFilePathType(PBXSourceTree)
-    case invalidBuildFile(PBXBuildFile)
-    case failedToGetRelativePath(PBXFileElement, Error?)
-  #endif
+  /// An error related to ``XcodeprojConverter``.
+  enum ErrorMessage: Throwable {
+    case hostPlatformNotSupported
+    case failedToLoadXcodeProj(URL)
+    case failedToEnumerateSources(target: String)
+    case failedToCreateTargetDirectory(target: String, URL)
+    case failedToCopyFile(source: URL, destination: URL)
+    case failedToCreatePackageManifest(URL)
+    case failedToCreateConfigurationFile(URL)
+    case directoryAlreadyExists(URL)
+    case failedToLoadXcodeWorkspace(URL)
+    case failedToCreateAppConfiguration(target: String)
 
-  var userFriendlyMessage: String {
-    switch self {
-      case .hostPlatformNotSupported:
-        return """
-          xcodeproj conversion isn't supported on \
-          \(HostPlatform.hostPlatform.platform.name)
-          """
-      case .failedToLoadXcodeProj(let file, let error):
-        return "Failed to load xcodeproj from '\(file.relativePath)': \(error.localizedDescription)"
-      case .failedToEnumerateSources(let target, _):
-        return "Failed to enumerate sources for target '\(target)'"
-      case .failedToCreateTargetDirectory(let target, _, let error):
-        return "Failed to create directory for target '\(target)': \(error.localizedDescription)"
-      case .failedToCopyFile(_, _, let error):
-        return "Failed to copy file: \(error)"
-      case .failedToCreatePackageManifest(_, let error):
-        return "Failed to create package manifest: \(error.localizedDescription)"
-      case .failedToCreateConfigurationFile(_, let error):
-        return "Failed to create configuration file: \(error.localizedDescription)"
-      case .directoryAlreadyExists(let directory):
-        return "Directory already exists at '\(directory.relativePath)'"
-      case .failedToLoadXcodeWorkspace(let file, let error):
-        return
-          "Failed to load xcworkspace from '\(file.relativePath)': \(error.localizedDescription)"
-      case .failedToCreateAppConfiguration(let target, let error):
-        return "Failed to create app configuration for '\(target)': \(error.localizedDescription)"
+    #if SUPPORT_XCODEPROJ
+      case unsupportedFilePathType(PBXSourceTree)
+      case invalidBuildFile(PBXBuildFile)
+      case failedToGetRelativePath(PBXFileElement)
+    #endif
 
-      #if SUPPORT_XCODEPROJ
-        case .unsupportedFilePathType(let pathType):
-          return "Unsupported file path type '\(pathType.description)'"
-        case .invalidBuildFile(let file):
-          return "Encountered invalid build file with uuid '\(file.uuid)'"
-        case .failedToGetRelativePath(let file, _):
-          return "Failed to get relative path of '\(file.name ?? "unknown file")'"
-      #endif
+    var userFriendlyMessage: String {
+      switch self {
+        case .hostPlatformNotSupported:
+          return """
+            xcodeproj conversion isn't supported on \
+            \(HostPlatform.hostPlatform.platform.name)
+            """
+        case .failedToLoadXcodeProj(let file):
+          return "Failed to load xcodeproj from '\(file.relativePath)'"
+        case .failedToEnumerateSources(let target):
+          return "Failed to enumerate sources for target '\(target)'"
+        case .failedToCreateTargetDirectory(let target, _):
+          return "Failed to create directory for target '\(target)'"
+        case .failedToCopyFile:
+          return "Failed to copy file"
+        case .failedToCreatePackageManifest(_):
+          return "Failed to create package manifest"
+        case .failedToCreateConfigurationFile(_):
+          return "Failed to create configuration file"
+        case .directoryAlreadyExists(let directory):
+          return "Directory already exists at '\(directory.relativePath)'"
+        case .failedToLoadXcodeWorkspace(let file):
+          return "Failed to load xcworkspace from '\(file.relativePath)'"
+        case .failedToCreateAppConfiguration(let target):
+          return "Failed to create app configuration for '\(target)'"
+
+        #if SUPPORT_XCODEPROJ
+          case .unsupportedFilePathType(let pathType):
+            return "Unsupported file path type '\(pathType.description)'"
+          case .invalidBuildFile(let file):
+            return "Encountered invalid build file with uuid '\(file.uuid)'"
+          case .failedToGetRelativePath(let file):
+            return "Failed to get relative path of '\(file.name ?? "unknown file")'"
+        #endif
+      }
     }
   }
 }

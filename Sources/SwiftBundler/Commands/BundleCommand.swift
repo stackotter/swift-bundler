@@ -893,7 +893,7 @@ struct BundleCommand: ErrorHandledCommand {
       let flatConfiguration = try ConfigurationFlattener.flatten(
         configuration,
         with: context
-      ).unwrap()
+      )
 
       let (appName, appConfiguration) = try flatConfiguration.getAppConfiguration(
         appName

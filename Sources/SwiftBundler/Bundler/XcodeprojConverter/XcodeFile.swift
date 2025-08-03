@@ -44,30 +44,33 @@
       /// - Parameters:
       ///   - file: The file to create a nicer representation of.
       ///   - rootDirectory: The root directory of the Xcode project the file is part of.
-      /// - Returns: The nicer representation, or a failure if the file is invalid.
+      /// - Returns: The nicer representation.
       static func from(
         _ file: PBXFileElement,
         relativeTo rootDirectory: URL
-      ) -> Result<XcodeFile, XcodeprojConverterError> {
+      ) throws(Error) -> XcodeFile {
         let relativePath: String
         do {
           guard let fullPath = try file.fullPath(sourceRoot: "/") else {
-            return .failure(.failedToGetRelativePath(file, nil))
+            throw Error(.failedToGetRelativePath(file))
           }
           relativePath = String(fullPath.dropFirst())
         } catch {
-          return .failure(.failedToGetRelativePath(file, error))
+          if let error = error as? Error, case .failedToGetRelativePath = error.message {
+            throw error
+          } else {
+            throw Error(.failedToGetRelativePath(file), cause: error)
+          }
         }
 
         let navigatorPath = file.name ?? file.path ?? ""
 
-        let simpleCase: () -> Result<XcodeFile, XcodeprojConverterError> = {
-          return .success(
-            XcodeFile(
-              relativePath: relativePath,
-              base: rootDirectory,
-              navigatorPath: navigatorPath
-            ))
+        let simpleCase: () -> XcodeFile = {
+          XcodeFile(
+            relativePath: relativePath,
+            base: rootDirectory,
+            navigatorPath: navigatorPath
+          )
         }
 
         guard let sourceTree = file.sourceTree else {
@@ -77,12 +80,11 @@
         switch sourceTree {
           case .absolute:
             let absolute = URL(fileURLWithPath: relativePath)
-            return .success(
-              XcodeFile(
-                relativePath: absolute.lastPathComponent,
-                base: absolute.deletingLastPathComponent(),
-                navigatorPath: navigatorPath
-              ))
+            return XcodeFile(
+              relativePath: absolute.lastPathComponent,
+              base: absolute.deletingLastPathComponent(),
+              navigatorPath: navigatorPath
+            )
           case .sourceRoot:
             return simpleCase()
           case .group:
@@ -90,15 +92,14 @@
               return simpleCase()
             }
 
-            return XcodeFile.from(parent, relativeTo: rootDirectory).map { parentGroup in
-              return XcodeFile(
-                relativePath: relativePath,
-                base: rootDirectory,
-                navigatorPath: combinePaths([parentGroup.navigatorPath, navigatorPath])
-              )
-            }
+            let parentGroup = try XcodeFile.from(parent, relativeTo: rootDirectory)
+            return XcodeFile(
+              relativePath: relativePath,
+              base: rootDirectory,
+              navigatorPath: combinePaths([parentGroup.navigatorPath, navigatorPath])
+            )
           default:
-            return .failure(.unsupportedFilePathType(sourceTree))
+            throw Error(.unsupportedFilePathType(sourceTree))
         }
       }
 
@@ -123,16 +124,16 @@
       /// - Parameters:
       ///   - file: The file to create a nicer representation of.
       ///   - rootDirectory: The root directory of the Xcode project the file is part of.
-      /// - Returns: The nicer representation, or a failure if the file is invalid.
+      /// - Returns: The nicer representation.
       static func from(
         _ file: PBXBuildFile,
         relativeTo rootDirectory: URL
-      ) -> Result<XcodeFile, XcodeprojConverterError> {
+      ) throws(Error) -> XcodeFile {
         guard let file = file.file else {
-          return .failure(.invalidBuildFile(file))
+          throw Error(.invalidBuildFile(file))
         }
 
-        return XcodeFile.from(file, relativeTo: rootDirectory)
+        return try XcodeFile.from(file, relativeTo: rootDirectory)
       }
     }
   }

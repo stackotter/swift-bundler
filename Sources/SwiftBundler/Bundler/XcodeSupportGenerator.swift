@@ -27,7 +27,7 @@ enum XcodeSupportGenerator {
       packageDirectory / ".swiftpm/xcode/xcshareddata/xcschemes"
 
     do {
-      try FileManager.default.createDirectory(at: schemesDirectory).unwrap()
+      try FileManager.default.createDirectory(at: schemesDirectory)
     } catch {
       throw Error(.failedToCreateSchemesDirectory(schemesDirectory), cause: error)
     }
@@ -86,7 +86,7 @@ enum XcodeSupportGenerator {
     // Get the output app bundle location
     let outputAppBundle = outputDirectory.appendingPathComponent("\(product).app")
     do {
-      try FileManager.default.createDirectory(at: outputAppBundle).unwrap()
+      try FileManager.default.createDirectory(at: outputAppBundle)
     } catch {
       throw Error(.failedToCreateOutputBundle, cause: error)
     }

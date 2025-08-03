@@ -128,7 +128,7 @@ enum AppImageBundler: Bundler {
       try FileManager.default.createSymlink(
         at: source,
         withRelativeDestination: relativeDestination
-      ).unwrap()
+      )
     } catch {
       throw Error(
         .failedToCreateSymlink(source: source, relativeDestination: relativeDestination),

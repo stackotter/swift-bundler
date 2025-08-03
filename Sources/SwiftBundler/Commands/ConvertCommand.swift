@@ -54,18 +54,21 @@ struct ConvertCommand: ErrorHandledCommand {
             try await XcodeprojConverter.convertProject(
               xcodeFile,
               outputDirectory: outputDirectory
-            ).unwrap()
+            )
           }
         case "xcworkspace":
           try await RichError<SwiftBundlerError>.catch {
             try await XcodeprojConverter.convertWorkspace(
               xcodeFile,
               outputDirectory: outputDirectory
-            ).unwrap()
+            )
           }
         default:
           log.error(
-            "Unknown file extension '\(xcodeFile.pathExtension)'. Expected 'xcodeproj' or 'xcworkspace'"
+            """
+            Unknown file extension '\(xcodeFile.pathExtension)'. Expected \
+            'xcodeproj' or 'xcworkspace'
+            """
           )
           Foundation.exit(1)
       }

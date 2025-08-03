@@ -215,7 +215,7 @@ enum MachOEditor {
   static func parseMachOFile(_ file: URL) throws(Error) -> MachOFile {
     let data: Data
     do {
-      data = try Data.read(from: file).unwrap()
+      data = try Data(contentsOf: file)
     } catch {
       throw Error(.failedToReadFile(file), cause: error)
     }

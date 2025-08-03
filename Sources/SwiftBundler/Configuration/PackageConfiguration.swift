@@ -96,7 +96,7 @@ struct PackageConfiguration: Codable {
 
     let contents: String
     do {
-      contents = try String.read(from: configurationFile).unwrap()
+      contents = try String(contentsOf: configurationFile)
     } catch {
       throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
     }
@@ -168,7 +168,7 @@ struct PackageConfiguration: Codable {
 
     let contents: String
     do {
-      contents = try String.read(from: configurationFile).unwrap()
+      contents = try String(contentsOf: configurationFile)
     } catch {
       throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
     }
@@ -177,7 +177,7 @@ struct PackageConfiguration: Codable {
     if mode == .writeChanges(backup: true) {
       let backupFile = configurationFile.appendingPathExtension("orig")
       try Error.catch(withMessage: .failedToCreateConfigurationBackup) {
-        try contents.write(to: configurationFile).unwrap()
+        try contents.write(to: configurationFile)
       }
 
       log.info(
@@ -190,7 +190,7 @@ struct PackageConfiguration: Codable {
 
     // Decode the old configuration
     let oldConfiguration = try Error.catch(withMessage: .failedToDeserializeV2Configuration) {
-      try TOMLDecoder().decode(PackageConfigurationV2.self, from: contents).unwrap()
+      try TOMLDecoder().decode(PackageConfigurationV2.self, from: contents)
     }
 
     // Migrate the configuration
@@ -257,7 +257,7 @@ struct PackageConfiguration: Codable {
     }
 
     do {
-      try newContents.write(to: file).unwrap()
+      try newContents.write(to: file)
     } catch {
       throw Error(.failedToWriteToConfigurationFile(file), cause: error)
     }

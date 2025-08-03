@@ -51,7 +51,7 @@ struct DarwinAppBundleStructure {
 
     for directory in directories where !directory.exists() {
       do {
-        try FileManager.default.createDirectory(at: directory).unwrap()
+        try FileManager.default.createDirectory(at: directory)
       } catch {
         throw DarwinBundler.Error(.failedToCreateAppBundleDirectoryStructure)
       }

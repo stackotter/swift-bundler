@@ -208,7 +208,7 @@ extension ProjectConfiguration.Source: Codable {
         Result<_, ProjectConfiguration.Error>.success(Self.local(String(path)))
       }
     }
-    self = try parser.parse(value).unwrap()
+    self = try parser.parse(value).get()
   }
 
   func encode(to encoder: any Encoder) throws {

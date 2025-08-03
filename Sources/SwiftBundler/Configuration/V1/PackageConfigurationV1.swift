@@ -31,7 +31,7 @@ struct PackageConfigurationV1: Codable {
     // Load the file's contents
     let data: Data
     do {
-      data = try Data.read(from: file).unwrap()
+      data = try Data(contentsOf: file)
     } catch {
       throw PackageConfiguration.Error(
         .failedToReadContentsOfOldConfigurationFile(file),
@@ -48,7 +48,7 @@ struct PackageConfigurationV1: Codable {
       configuration = try JSONDecoder().decode(
         PackageConfigurationV1.self,
         from: data
-      ).unwrap()
+      )
 
       json = try JSONSerialization.jsonObject(with: data)
     } catch {

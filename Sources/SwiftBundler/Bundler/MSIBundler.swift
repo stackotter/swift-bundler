@@ -42,7 +42,7 @@ enum MSIBundler: Bundler {
     )
 
     try Error.catch(withMessage: .failedToWriteWXSFile) {
-      try contents.write(to: wxsFile).unwrap()
+      try contents.write(to: wxsFile)
     }
 
     log.info("Running WiX MSI builder")
@@ -219,7 +219,7 @@ enum MSIBundler: Bundler {
     let excludedPaths = excludedItems.map(\.path)
 
     let items: [URL] = try Error.catch(withMessage: .failedToEnumerateBundle) {
-      try FileManager.default.contentsOfDirectory(at: directory).unwrap()
+      try FileManager.default.contentsOfDirectory(at: directory)
     }.filter { item in
       // For some reason URL comparison seems to be a little broken on Windows.
       // URLs with identical paths get evaluated as distinct URLs, so we have to

@@ -34,7 +34,7 @@ extension ProjectBuilder {
     func createRequiredDirectories() throws(Error) {
       for directory in requiredDirectories where !directory.exists(withType: .directory) {
         try Error.catch {
-          try FileManager.default.createDirectory(at: directory).unwrap()
+          try FileManager.default.createDirectory(at: directory)
         }
       }
     }

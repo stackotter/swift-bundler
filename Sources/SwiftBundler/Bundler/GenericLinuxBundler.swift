@@ -356,7 +356,7 @@ enum GenericLinuxBundler: Bundler {
   ) throws(Error) {
     let contents: [URL]
     do {
-      contents = try FileManager.default.contentsOfDirectory(at: sourceDirectory).unwrap()
+      contents = try FileManager.default.contentsOfDirectory(at: sourceDirectory)
     } catch {
       throw Error(.failedToEnumerateResourceBundles(directory: sourceDirectory), cause: error)
     }
@@ -448,7 +448,7 @@ enum GenericLinuxBundler: Bundler {
     let contents = encodeIniSection(title: "Desktop Entry", properties: properties)
     let data = Data(contents.utf8)
     do {
-      try data.write(to: desktopFile).unwrap()
+      try data.write(to: desktopFile)
     } catch {
       throw Error(.failedToCreateDesktopFile(desktopFile), cause: error)
     }
@@ -474,7 +474,7 @@ enum GenericLinuxBundler: Bundler {
     let contents = encodeIniSection(title: "D-BUS Service", properties: properties)
     let data = Data(contents.utf8)
     do {
-      try data.write(to: dbusServiceFile).unwrap()
+      try data.write(to: dbusServiceFile)
     } catch {
       throw Error(.failedToCreateDBusServiceFile(dbusServiceFile), cause: error)
     }

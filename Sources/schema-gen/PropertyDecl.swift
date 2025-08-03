@@ -1,13 +1,13 @@
 import Foundation
 import SwiftSyntax
 
-enum PropertyDeclError: LocalizedError {
-  case notVariable
-  case notIdentifierBinding
-}
-
 /// A declaration of a property belonging to a specific type.
 struct PropertyDecl {
+  enum ErrorMessage: LocalizedError {
+    case notVariable
+    case notIdentifierBinding
+  }
+
   /// The content of the documentation comment if any.
   var documentation: String?
   /// Modifiers such as `static`, `private`, etc.
@@ -49,10 +49,9 @@ struct PropertyDecl {
   /// Converts a `MemberBlockItemSyntax` (the most useless thing in existence) into a
   /// ``PropertyDecl`` (much better).
   /// - Parameter decl: A declaration to convert.
-  /// - Returns: A success if the declaration was a property, and a failure otherwise.
-  static func parse(from decl: MemberBlockItemSyntax) -> Result<PropertyDecl, PropertyDeclError> {
+  static func parse(from decl: MemberBlockItemSyntax) throws(ErrorMessage) -> PropertyDecl {
     guard let variable = decl.decl.as(VariableDeclSyntax.self) else {
-      return .failure(.notVariable)
+      throw .notVariable
     }
 
     let doc = parseDocumentation(from: variable)
@@ -64,21 +63,19 @@ struct PropertyDecl {
     }
 
     guard let binding = parseBindings(variable.bindings) else {
-      return .failure(.notIdentifierBinding)
+      throw .notIdentifierBinding
     }
 
     let initialValue = binding.patternBinding
       .children(viewMode: .all).last?
       .children(viewMode: .all).last
 
-    return .success(
-      PropertyDecl(
-        documentation: doc,
-        modifiers: modifiers,
-        identifier: binding.identifier,
-        type: binding.type,
-        initialValue: initialValue
-      )
+    return PropertyDecl(
+      documentation: doc,
+      modifiers: modifiers,
+      identifier: binding.identifier,
+      type: binding.type,
+      initialValue: initialValue
     )
   }
 

@@ -16,76 +16,6 @@ where Element: ArgumentParser.ExpressibleByArgument {
 }
 
 extension Array {
-  /// A `Result`-based version of ``Array/map(_:)``. Guaranteed to
-  /// short-circuit as soon as a failure occurs. Elements are processed in the
-  /// order that they appear.
-  func tryMap<Failure: Error, NewElement>(
-    _ transform: (Element) -> Result<NewElement, Failure>
-  ) -> Result<[NewElement], Failure> {
-    var result: [NewElement] = []
-    for element in self {
-      switch transform(element) {
-        case .success(let newElement):
-          result.append(newElement)
-        case .failure(let error):
-          return .failure(error)
-      }
-    }
-    return .success(result)
-  }
-
-  /// A `Result`-based version of ``Array/map(_:)``. Guaranteed to
-  /// short-circuit as soon as a failure occurs. Elements are processed in the
-  /// order that they appear.
-  func tryMap<Failure: Error, NewElement>(
-    _ transform: (Element) async -> Result<NewElement, Failure>
-  ) async -> Result<[NewElement], Failure> {
-    var result: [NewElement] = []
-    for element in self {
-      switch await transform(element) {
-        case .success(let newElement):
-          result.append(newElement)
-        case .failure(let error):
-          return .failure(error)
-      }
-    }
-    return .success(result)
-  }
-
-  /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
-  /// short-circuit as soon as a failure occurs. Elements are processed in the
-  /// order that they appear.
-  func tryForEach<Failure: Error>(
-    _ body: (Element) -> Result<Void, Failure>
-  ) -> Result<Void, Failure> {
-    for element in self {
-      switch body(element) {
-        case .success:
-          continue
-        case .failure(let error):
-          return .failure(error)
-      }
-    }
-    return .success()
-  }
-
-  /// A `Result`-based version of ``Array/forEach(_:)``. Guaranteed to
-  /// short-circuit as soon as a failure occurs. Elements are processed in the
-  /// order that they appear.
-  func tryForEach<Failure: Error>(
-    _ body: (Element) async -> Result<Void, Failure>
-  ) async -> Result<Void, Failure> {
-    for element in self {
-      switch await body(element) {
-        case .success:
-          continue
-        case .failure(let error):
-          return .failure(error)
-      }
-    }
-    return .success()
-  }
-
   /// A typed-throws version of `compactMap`.
   func compactMap<NewElement, E: Error>(
     _ transform: (Element) throws(E) -> NewElement?
@@ -99,7 +29,7 @@ extension Array {
     return result
   }
 
-  /// A typed-throws version of `compactMap`.
+  /// A typed-throws version of `map`.
   func map<NewElement, E: Error>(
     _ transform: (Element) throws(E) -> NewElement
   ) throws(E) -> [NewElement] {
@@ -118,7 +48,7 @@ struct Verb {
   static let be = Verb(singular: "is", plural: "are")
 }
 
-extension [String] {
+extension Array<String> {
   func joinedGrammatically(
     singular: String,
     plural: String,

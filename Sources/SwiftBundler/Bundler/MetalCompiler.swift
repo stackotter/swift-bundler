@@ -22,7 +22,7 @@ enum MetalCompiler {
     }
 
     var shaderSources: [URL] = []
-    for case let file as URL in enumerator where file.pathExtension == "metal" {
+    for case let file as URL in Array(enumerator) where file.pathExtension == "metal" {
       shaderSources.append(file)
     }
 

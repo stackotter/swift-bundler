@@ -26,114 +26,98 @@ enum ConfigurationFlattener {
   static func flatten(
     _ configuration: PackageConfiguration,
     with context: Context
-  ) -> Result<PackageConfiguration.Flat, Error> {
-    Array(configuration.apps)
-      .tryMap { (name, appConfiguration) in
-        flatten(
-          appConfiguration,
-          with:
-            context
-            .appendingCodingKey(PackageConfiguration.CodingKeys.apps)
-            .appendingCodingKey(name)
-        ).map { app in
-          (name, app)
-        }
-      }
-      .andThen { flattenedApps in
-        Array(configuration.projects ?? [:]).tryMap { (name, projectConfiguration) in
-          flatten(
-            projectConfiguration,
-            named: name,
-            with:
-              context
-              .appendingCodingKey(PackageConfiguration.CodingKeys.projects)
-              .appendingCodingKey(name)
-          ).map { project in
-            (name, project)
-          }
-        }
-        .map { flattenedProjects in
-          (flattenedApps, flattenedProjects)
-        }
-      }
-      .map { (flattenedApps, flattenedProjects) in
-        PackageConfiguration.Flat(
-          formatVersion: configuration.formatVersion,
-          apps: Dictionary(flattenedApps) { first, _ in first },
-          projects: Dictionary(flattenedProjects) { first, _ in first }
-        )
-      }
+  ) throws(Error) -> PackageConfiguration.Flat {
+    let flattenedApps = try configuration.apps.mapValues { (name, app) throws(Error) in
+      try flatten(
+        app,
+        with:
+          context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.apps)
+          .appendingCodingKey(name)
+      )
+    }
+
+    let flattenedProjects = try configuration.projects?.mapValues { (name, project) throws(Error) in
+      try flatten(
+        project,
+        named: name,
+        with:
+          context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.projects)
+          .appendingCodingKey(name)
+      )
+    } ?? [:]
+
+    return PackageConfiguration.Flat(
+      formatVersion: configuration.formatVersion,
+      apps: flattenedApps,
+      projects: flattenedProjects
+    )
   }
 
   static func mergeOverlays<Overlay: ConfigurationOverlay>(
     _ overlays: [Overlay],
     into base: Overlay.Base,
     with context: Context
-  ) -> Result<Overlay.Base, Error> {
-    overlays.tryMap { overlay in
-      // Ensure the conditions are met for all present properties
-      Array(Overlay.exclusiveProperties)
-        .tryForEach { (exclusiveCondition, properties) in
-          guard exclusiveCondition != overlay.condition else {
-            return .success()
-          }
-
-          let illegalProperties = properties.propertiesPresent(in: overlay)
-          guard illegalProperties.isEmpty else {
-            return .failure(
-              .conditionNotMetForProperties(
-                exclusiveCondition,
-                properties: illegalProperties
-              )
-            )
-          }
-
-          return .success()
+  ) throws(Error) -> Overlay.Base {
+    // Ensure the conditions are met for all present properties
+    for overlay in overlays {
+      for (exclusiveCondition, properties) in Overlay.exclusiveProperties {
+        guard exclusiveCondition != overlay.condition else {
+          continue
         }
-        .replacingSuccessValue(with: overlay)
-    }.map { overlays in
-      // Merge overlays into base
-      overlays.filter { (overlay: Overlay) in
-        condition(overlay.condition, matches: context)
-      }.reduce(into: base) { partialResult, overlay in
-        overlay.merge(into: &partialResult)
+
+        let illegalProperties = properties.propertiesPresent(in: overlay)
+        guard illegalProperties.isEmpty else {
+          let message = ErrorMessage.conditionNotMetForProperties(
+            exclusiveCondition,
+            properties: illegalProperties
+          )
+          throw Error(message)
+        }
       }
+    }
+
+    // Merge overlays into base
+    return overlays.filter { (overlay: Overlay) in
+      condition(overlay.condition, matches: context)
+    }.reduce(into: base) { partialResult, overlay in
+      overlay.merge(into: &partialResult)
     }
   }
 
   static func flatten(
     _ configuration: AppConfiguration,
     with context: Context
-  ) -> Result<AppConfiguration.Flat, Error> {
-    mergeOverlays(
+  ) throws(Error) -> AppConfiguration.Flat {
+    let configuration = try mergeOverlays(
       configuration.overlays ?? [],
       into: configuration,
       with: context
-    ).andThen { configuration in
-      let invalidRequirement = configuration.rpmRequirements.first { requirement in
-        !RPMBundler.isValidRequirement(requirement)
-      }
-      if let invalidRequirement {
-        return .failure(.invalidRPMRequirement(invalidRequirement))
-      }
+    )
 
-      let flat = AppConfiguration.Flat(
-        identifier: configuration.identifier,
-        product: configuration.product,
-        version: configuration.version,
-        appDescription: configuration.appDescription,
-        license: configuration.license,
-        category: configuration.category,
-        icon: configuration.icon,
-        urlSchemes: configuration.urlSchemes ?? [],
-        plist: configuration.plist ?? [:],
-        metadata: configuration.metadata ?? [:],
-        dependencies: configuration.dependencies ?? [],
-        dbusActivatable: configuration.dbusActivatable,
-        rpmRequirements: configuration.rpmRequirements
-      )
-      return .success(flat)
+    let invalidRequirement = configuration.rpmRequirements.first { requirement in
+      !RPMBundler.isValidRequirement(requirement)
     }
+    if let invalidRequirement {
+      throw Error(.invalidRPMRequirement(invalidRequirement))
+    }
+
+    return AppConfiguration.Flat(
+      identifier: configuration.identifier,
+      product: configuration.product,
+      version: configuration.version,
+      appDescription: configuration.appDescription,
+      license: configuration.license,
+      category: configuration.category,
+      icon: configuration.icon,
+      urlSchemes: configuration.urlSchemes ?? [],
+      plist: configuration.plist ?? [:],
+      metadata: configuration.metadata ?? [:],
+      dependencies: configuration.dependencies ?? [],
+      dbusActivatable: configuration.dbusActivatable,
+      rpmRequirements: configuration.rpmRequirements
+    )
   }
 
   static func condition(
@@ -152,66 +136,47 @@ enum ConfigurationFlattener {
     _ configuration: ProjectConfiguration,
     named name: String,
     with context: Context
-  ) -> Result<ProjectConfiguration.Flat, Error> {
+  ) throws(Error) -> ProjectConfiguration.Flat {
     guard name != ProjectConfiguration.rootProjectName else {
-      return .failure(
-        Error.reservedProjectName(name)
-      )
+      throw Error(.reservedProjectName(name))
     }
 
     guard configuration.builder.name.hasSuffix(".swift") else {
-      return .failure(
-        Error.projectBuilderNotASwiftFile(
-          configuration.builder.name
-        )
-      )
+      throw Error(.projectBuilderNotASwiftFile(configuration.builder.name))
     }
 
-    return mergeOverlays(
+    let mergedConfiguration = try mergeOverlays(
       configuration.overlays ?? [],
       into: configuration,
       with: context
-    ).andThen { mergedConfiguration in
-      let source: ProjectConfiguration.Source.Flat
-      do {
-        source = try mergedConfiguration.source.flatten(
-          withRevision: mergedConfiguration.revision,
-          revisionField: context.codingPath.appendingKey(
-            ProjectConfiguration.CodingKeys.revision
-          )
+    )
+
+    let source = try Error.catch {
+      try mergedConfiguration.source.flatten(
+        withRevision: mergedConfiguration.revision,
+        revisionField: context.codingPath.appendingKey(
+          ProjectConfiguration.CodingKeys.revision
         )
-      } catch {
-        return .failure(.caught(error))
-      }
-
-      let builder: ProjectConfiguration.Builder.Flat
-      do {
-        let path = context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
-        builder = try mergedConfiguration.builder.flatten(at: path)
-      } catch {
-        return .failure(.caught(error))
-      }
-
-      let products: [String: ProjectConfiguration.Product.Flat]
-      switch mergedConfiguration.products.tryMapValues({ name, product in
-        mergeOverlays(
-          product.overlays,
-          into: product.flatten(),
-          with: context.appendingCodingKey(name)
-        )
-      }) {
-        case .failure(let error):
-          return .failure(.caught(error))
-        case .success(let value):
-          products = value
-      }
-
-      let flatConfiguration = ProjectConfiguration.Flat(
-        source: source,
-        builder: builder,
-        products: products
       )
-      return .success(flatConfiguration)
     }
+
+    let builder = try Error.catch {
+      let path = context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
+      return try mergedConfiguration.builder.flatten(at: path)
+    }
+
+    let products = try mergedConfiguration.products.mapValues { name, product throws(Error) in
+      try mergeOverlays(
+        product.overlays,
+        into: product.flatten(),
+        with: context.appendingCodingKey(name)
+      )
+    }
+
+    return ProjectConfiguration.Flat(
+      source: source,
+      builder: builder,
+      products: products
+    )
   }
 }

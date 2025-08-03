@@ -21,7 +21,7 @@ enum SimulatorManager {
     }
 
     let simulatorList = try Error.catch(withMessage: .failedToDecodeJSON) {
-      try JSONDecoder().decode(SimulatorList.self, from: data).unwrap()
+      try JSONDecoder().decode(SimulatorList.self, from: data)
     }
 
     return simulatorList.devices
