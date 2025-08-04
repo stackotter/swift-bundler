@@ -4,8 +4,6 @@ import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
-  typealias Error = RichError<TemplaterError>
-
   /// The repository of default templates.
   static let defaultTemplateRepository = "https://github.com/stackotter/swift-bundler-templates"
 
@@ -232,7 +230,7 @@ enum Templater {
     named name: String,
     in templateRepository: URL?
   ) async throws(Error) -> Template {
-    let templates = try await RichError<TemplaterError>.catch {
+    let templates = try await Error.catch {
       let templateRepository = if let templateRepository {
         templateRepository
       } else {
@@ -260,7 +258,7 @@ enum Templater {
     }
 
     if version < manifest.minimumSwiftVersion {
-      let message = TemplaterError.templateDoesNotSupportInstalledSwiftVersion(
+      let message = ErrorMessage.templateDoesNotSupportInstalledSwiftVersion(
         template: name,
         version: version,
         minimumSupportedVersion: manifest.minimumSwiftVersion
@@ -474,7 +472,7 @@ enum Templater {
     else {
       throw Error(
         .failedToUpdateIndentationStyle(directory: directory),
-        cause: TemplaterError.failedToEnumerateOutputFiles
+        cause: ErrorMessage.failedToEnumerateOutputFiles
       )
     }
 

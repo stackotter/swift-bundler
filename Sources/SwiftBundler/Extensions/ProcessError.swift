@@ -5,7 +5,7 @@ import ErrorKit
 extension Process {
   typealias Error = RichError<ErrorMessage>
 
-  indirect enum ErrorMessage: Throwable {
+  enum ErrorMessage: Throwable {
     case invalidUTF8Output(output: Data)
     case nonZeroExitStatus(Int)
     case nonZeroExitStatusWithOutput(Data, Int)

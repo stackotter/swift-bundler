@@ -63,7 +63,7 @@ extension Process {
   /// - Parameters:
   ///   - excludeStdError: If `true`, only stdout is returned.
   ///   - handleLine: A handler to run every time that a line is received.
-  /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
+  /// - Returns: The process's stdout and stderr.
   func getOutputData( excludeStdError: Bool = false) async throws(Error) -> Data {
     let pipe = Pipe()
     setOutputPipe(pipe, excludeStdError: excludeStdError)
@@ -121,7 +121,7 @@ extension Process {
 
   /// Gets the process's stdout and stderr as a string.
   /// - Parameter excludeStdError: If `true`, only stdout is returned.
-  /// - Returns: The process's stdout and stderr. If an error occurs, a failure is returned.
+  /// - Returns: The process's stdout and stderr.
   func getOutput(excludeStdError: Bool = false) async throws(Error) -> String {
     let data = try await getOutputData(excludeStdError: excludeStdError)
     guard let output = String(data: data, encoding: .utf8) else {
@@ -132,7 +132,7 @@ extension Process {
   }
 
   /// Runs the process and waits for it to complete.
-  /// - Returns: Returns a failure if the process has a non-zero exit status of fails to run.
+  /// - Throws: An error if the process has a non-zero exit status of fails to run.
   func runAndWait() async throws(Error) {
     do {
       try await withCheckedThrowingContinuation {
@@ -289,7 +289,7 @@ extension Process {
       var environment = ProcessInfo.processInfo.environment
       for (key, value) in additionalEnvironmentVariables {
         guard isValidEnvironmentVariableKey(key) else {
-          return .failure(.invalidEnvironmentVariableKey(key))
+          throw Error(.invalidEnvironmentVariableKey(key))
         }
         environment[key] = value
       }
@@ -301,13 +301,14 @@ extension Process {
 
       // Locate the tool or interpret it as a relative/absolute path.
       let executablePath: String
-      switch await locate(appImage) {
-        case .success(let path):
-          executablePath = path
-        case .failure(.invalidToolName):
+      do {
+        executablePath = try await locate(appImage)
+      } catch {
+        if case .invalidToolName = error.message {
           executablePath = appImage
-        case .failure(let error):
-          return .failure(error)
+        } else {
+          throw error
+        }
       }
 
       let cArguments =
@@ -327,11 +328,9 @@ extension Process {
         var status: Int32 = 0
         waitpid(childPID, &status, 0)
         if status != 0 {
-          return .failure(
-            .nonZeroExitStatus(Int(status))
-          )
+          throw Error(.nonZeroExitStatus(Int(status)))
         } else {
-          return .success()
+          return
         }
       }
     #else
@@ -342,7 +341,7 @@ extension Process {
       )
 
       do {
-        return try await process.runAndWait()
+        try await process.runAndWait()
       } catch {
         throw Error(.failedToRunProcess, cause: error)
       }
