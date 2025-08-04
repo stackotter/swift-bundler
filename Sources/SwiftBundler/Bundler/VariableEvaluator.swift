@@ -1,6 +1,10 @@
 import Foundation
 import Parsing
 
+// Due to https://github.com/swiftlang/swift/issues/83510, we need to 'decouple'
+// the typed throws of some called methods from their enclosing methods. These
+// are what the methods ending with `Workaround` are for.
+
 /// A utility for evaluating strings containing variables of the form `...$(VARIABLE)...`.
 enum VariableEvaluator {
   /// The contextual information required to evaluate variables.
@@ -34,6 +38,14 @@ enum VariableEvaluator {
     in string: String,
     with context: Context
   ) async throws(Error) -> String {
+    try await evaluateVariables(in: string, with: .`default`(context))
+  }
+
+  /// See top of file for explanation.
+  private static func evaluateVariablesWorkaround(
+    in string: String,
+    with context: Context
+  ) async throws -> String {
     try await evaluateVariables(in: string, with: .`default`(context))
   }
 
@@ -196,17 +208,23 @@ enum VariableEvaluator {
     in value: Tree,
     with context: Context
   ) async throws(Error) -> Tree {
-    if let stringValue = value.stringValue {
-      let string = try await evaluateVariables(in: stringValue, with: context)
-      return Tree.string(string)
-    } else if let arrayValue = value.arrayValue {
-      let array = try await evaluateVariables(in: arrayValue, with: context)
-      return Tree.array(array)
-    } else if let dictionaryValue = value.dictionaryValue {
-      let dictionary = try await evaluateVariables(in: dictionaryValue, with: context)
-      return Tree.dictionary(dictionary)
-    } else {
-      return value
+    do {
+      if let stringValue = value.stringValue {
+        let string = try await evaluateVariablesWorkaround(in: stringValue, with: context)
+        return Tree.string(string)
+      } else if let arrayValue = value.arrayValue {
+        let array = try await evaluateVariablesWorkaround(in: arrayValue, with: context)
+        return Tree.array(array)
+      } else if let dictionaryValue = value.dictionaryValue {
+        let dictionary = try await evaluateVariablesWorkaround(in: dictionaryValue, with: context)
+        return Tree.dictionary(dictionary)
+      } else {
+        return value
+      }
+    } catch let error as Error {
+      throw error
+    } catch {
+      throw Error(cause: error)
     }
   }
 
@@ -220,6 +238,20 @@ enum VariableEvaluator {
     in array: [Tree],
     with context: Context
   ) async throws(Error) -> [Tree] {
+    do {
+      return try await evaluateVariablesWorkaround(in: array, with: context)
+    } catch let error as Error {
+      throw error
+    } catch {
+      throw Error(cause: error)
+    }
+  }
+
+  /// See top of file for explanation.
+  private static func evaluateVariablesWorkaround<Tree: VariableEvaluatable>(
+    in array: [Tree],
+    with context: Context
+  ) async throws -> [Tree] {
     var evaluatedArray: [Tree] = []
     for value in array {
       let evaluatedValue = try await evaluateVariables(in: value, with: context)
@@ -238,6 +270,20 @@ enum VariableEvaluator {
     in dictionary: [String: Tree],
     with context: Context
   ) async throws(Error) -> [String: Tree] {
+    do {
+      return try await evaluateVariablesWorkaround(in: dictionary, with: context)
+    } catch let error as Error {
+      throw error
+    } catch {
+      throw Error(cause: error)
+    }
+  }
+
+  /// See top of file for explanation.
+  private static func evaluateVariablesWorkaround<Tree: VariableEvaluatable>(
+    in dictionary: [String: Tree],
+    with context: Context
+  ) async throws -> [String: Tree] {
     var evaluatedDictionary: [String: Tree] = [:]
     for (key, value) in dictionary {
       let evaluatedValue = try await evaluateVariables(in: value, with: context)
@@ -260,11 +306,17 @@ enum VariableEvaluator {
     with context: Context
   ) async throws(Error) -> AppConfiguration.Overlay {
     var overlay = overlay
-    if let plist = overlay.plist {
-      overlay.plist = try await evaluateVariables(in: plist, with: context)
-    }
-    if let metadata = overlay.metadata {
-      overlay.metadata = try await evaluateVariables(in: metadata, with: context)
+    do {
+      if let plist = overlay.plist {
+        overlay.plist = try await evaluateVariablesWorkaround(in: plist, with: context)
+      }
+      if let metadata = overlay.metadata {
+        overlay.metadata = try await evaluateVariablesWorkaround(in: metadata, with: context)
+      }
+    } catch let error as Error {
+      throw error
+    } catch {
+      throw Error(cause: error)
     }
     return overlay
   }
@@ -294,17 +346,23 @@ enum VariableEvaluator {
     )
 
     var configuration = configuration
-    if let plist = configuration.plist {
-      configuration.plist = try await evaluateVariables(in: plist, with: context)
-    }
-    if let metadata = configuration.metadata {
-      configuration.metadata = try await evaluateVariables(in: metadata, with: context)
-    }
-    if let overlays = configuration.overlays {
-      configuration.overlays = try await overlays.typedAsyncMap {
-        (overlay) throws(Error) -> AppConfiguration.Overlay in
-        try await evaluateVariables(in: overlay, with: context)
+    do {
+      if let plist = configuration.plist {
+        configuration.plist = try await evaluateVariablesWorkaround(in: plist, with: context)
       }
+      if let metadata = configuration.metadata {
+        configuration.metadata = try await evaluateVariablesWorkaround(in: metadata, with: context)
+      }
+      if let overlays = configuration.overlays {
+        configuration.overlays = try await overlays.typedAsyncMap {
+          (overlay) throws(Error) -> AppConfiguration.Overlay in
+          try await evaluateVariables(in: overlay, with: context)
+        }
+      }
+    } catch let error as Error {
+      throw error
+    } catch {
+      throw Error(cause: error)
     }
     return configuration
   }
