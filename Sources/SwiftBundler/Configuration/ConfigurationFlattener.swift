@@ -37,10 +37,12 @@ enum ConfigurationFlattener {
       )
     }
 
-    let flattenedProjects = try configuration.projects?.mapValues { (name, project) throws(Error) in
-      try flatten(
+    let flattenedProjects = try configuration.projects?.mapValues { (name, project) throws(Error) -> ProjectConfiguration.Flat in
+      guard name != ProjectConfiguration.rootProjectName else {
+        throw Error(.reservedProjectName(name))
+      }
+      return try flatten(
         project,
-        named: name,
         with:
           context
           .appendingCodingKey(PackageConfiguration.CodingKeys.projects)
@@ -90,35 +92,7 @@ enum ConfigurationFlattener {
     _ configuration: AppConfiguration,
     with context: Context
   ) throws(Error) -> AppConfiguration.Flat {
-    let configuration = try mergeOverlays(
-      configuration.overlays ?? [],
-      into: configuration,
-      with: context
-    )
-
-    let invalidRequirement = configuration.rpmRequirements.first { requirement in
-      !RPMBundler.isValidRequirement(requirement)
-    }
-    if let invalidRequirement {
-      throw Error(.invalidRPMRequirement(invalidRequirement))
-    }
-
-    return AppConfiguration.Flat(
-      identifier: configuration.identifier,
-      product: configuration.product,
-      version: configuration.version,
-      appDescription: configuration.appDescription,
-      license: configuration.license,
-      category: configuration.category,
-      icon: configuration.icon,
-      urlSchemes: configuration.urlSchemes ?? [],
-      plist: configuration.plist ?? [:],
-      metadata: configuration.metadata ?? [:],
-      dependencies: configuration.dependencies ?? [],
-      dbusActivatable: configuration.dbusActivatable,
-      rpmRequirements: configuration.rpmRequirements,
-      catalystInterfaceIdiom: configuration.catalystInterfaceIdiom
-    )
+    try configuration.flatten(with: context)
   }
 
   static func condition(
@@ -135,49 +109,75 @@ enum ConfigurationFlattener {
 
   static func flatten(
     _ configuration: ProjectConfiguration,
-    named name: String,
     with context: Context
   ) throws(Error) -> ProjectConfiguration.Flat {
-    guard name != ProjectConfiguration.rootProjectName else {
-      throw Error(.reservedProjectName(name))
+    try configuration.flatten(with: context)
+  }
+}
+
+protocol Flattenable {
+  associatedtype Flat
+
+  func flatten(with context: ConfigurationFlattener.Context)
+    throws(ConfigurationFlattener.Error) -> Flat
+}
+
+protocol TriviallyFlattenable: Flattenable {}
+
+extension TriviallyFlattenable where Flat == Self {
+  func flatten(with context: ConfigurationFlattener.Context)
+    throws(ConfigurationFlattener.Error) -> Flat
+  {
+    self
+  }
+}
+
+extension String: TriviallyFlattenable {}
+extension Bool: TriviallyFlattenable {}
+extension Int: TriviallyFlattenable {}
+extension UInt: TriviallyFlattenable {}
+extension Int8: TriviallyFlattenable {}
+extension UInt8: TriviallyFlattenable {}
+extension Int16: TriviallyFlattenable {}
+extension UInt16: TriviallyFlattenable {}
+extension Int32: TriviallyFlattenable {}
+extension UInt32: TriviallyFlattenable {}
+extension Int64: TriviallyFlattenable {}
+extension UInt64: TriviallyFlattenable {}
+extension Float: TriviallyFlattenable {}
+extension Double: TriviallyFlattenable {}
+extension MetadataValue: TriviallyFlattenable {}
+extension PlistValue: TriviallyFlattenable {}
+
+extension Optional: Flattenable where Wrapped: Flattenable {
+  func flatten(with context: ConfigurationFlattener.Context)
+    throws(ConfigurationFlattener.Error) -> Wrapped.Flat?
+  {
+    switch self {
+      case .none:
+        return nil
+      case .some(let value):
+        return try value.flatten(with: context)
     }
+  }
+}
 
-    guard configuration.builder.name.hasSuffix(".swift") else {
-      throw Error(.projectBuilderNotASwiftFile(configuration.builder.name))
+extension Dictionary: Flattenable where Value: Flattenable {
+  func flatten(with context: ConfigurationFlattener.Context)
+    throws(ConfigurationFlattener.Error) -> [Key: Value.Flat]
+  {
+    try mapValues { (key, value) throws(ConfigurationFlattener.Error) in
+      try value.flatten(with: context)
     }
+  }
+}
 
-    let mergedConfiguration = try mergeOverlays(
-      configuration.overlays ?? [],
-      into: configuration,
-      with: context
-    )
-
-    let source = try Error.catch {
-      try mergedConfiguration.source.flatten(
-        withRevision: mergedConfiguration.revision,
-        revisionField: context.codingPath.appendingKey(
-          ProjectConfiguration.CodingKeys.revision
-        )
-      )
+extension Array: Flattenable where Element: Flattenable {
+  func flatten(with context: ConfigurationFlattener.Context)
+    throws(ConfigurationFlattener.Error) -> [Element.Flat]
+  {
+    try map { element throws(ConfigurationFlattener.Error) in
+      try element.flatten(with: context)
     }
-
-    let builder = try Error.catch {
-      let path = context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.builder)
-      return try mergedConfiguration.builder.flatten(at: path)
-    }
-
-    let products = try mergedConfiguration.products.mapValues { name, product throws(Error) in
-      try mergeOverlays(
-        product.overlays,
-        into: product.flatten(),
-        with: context.appendingCodingKey(name)
-      )
-    }
-
-    return ProjectConfiguration.Flat(
-      source: source,
-      builder: builder,
-      products: products
-    )
   }
 }
