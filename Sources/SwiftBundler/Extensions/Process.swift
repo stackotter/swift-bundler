@@ -6,26 +6,30 @@ import Foundation
   public typealias Process = PSProcess
 #endif
 
-/// A pipe used to suppress process output. By using this for output suppression,
-/// we can tell when it's safe for us to drain the pipe on the caller's behalf and
-/// when it's not.
-///
-/// Pipe is an abstract obj-c class (a class cluster) so we have to manually
-/// implement Pipe's abstract requirements by calling the respective requirements
-/// on a concrete Pipe. When you initialize a Pipe, its actual type is
-/// NSConcretePipe. If NSConcretePipe was public then we could just subclass that
-/// directly, but it's not.
-private class SuppressionPipe: Pipe, @unchecked Sendable {
-  let pipe = Pipe()
+#if canImport(Darwin)
+  /// A pipe used to suppress process output. By using this for output suppression,
+  /// we can tell when it's safe for us to drain the pipe on the caller's behalf and
+  /// when it's not.
+  ///
+  /// Pipe is an abstract obj-c class (a class cluster) so we have to manually
+  /// implement Pipe's abstract requirements by calling the respective requirements
+  /// on a concrete Pipe. When you initialize a Pipe, its actual type is
+  /// NSConcretePipe. If NSConcretePipe was public then we could just subclass that
+  /// directly, but it's not.
+  private class SuppressionPipe: Pipe, @unchecked Sendable {
+    let pipe = Pipe()
 
-  override var fileHandleForReading: FileHandle {
-    pipe.fileHandleForReading
-  }
+    override var fileHandleForReading: FileHandle {
+      pipe.fileHandleForReading
+    }
 
-  override var fileHandleForWriting: FileHandle {
-    pipe.fileHandleForWriting
+    override var fileHandleForWriting: FileHandle {
+      pipe.fileHandleForWriting
+    }
   }
-}
+#else
+  private class SuppressionPipe: Pipe, @unchecked Sendable {}
+#endif
 
 extension Process {
   /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
@@ -369,7 +373,11 @@ extension Process {
         var status: Int32 = 0
         waitpid(childPID, &status, 0)
         if status != 0 {
-          throw Error(.nonZeroExitStatus(Int(status)))
+          let commandString = CommandLine(
+            command: executablePath,
+            arguments: arguments
+          ).description
+          throw Error(.nonZeroExitStatus(commandString, Int(status)))
         } else {
           return
         }
@@ -381,11 +389,7 @@ extension Process {
         runSilentlyWhenNotVerbose: false
       )
 
-      do {
-        try await process.runAndWait()
-      } catch {
-        throw Error(.failedToRunProcess, cause: error)
-      }
+      try await process.runAndWait()
     #endif
   }
 

@@ -31,7 +31,7 @@ import Foundation
     try FileManager.default.removeItem(at: directory)
   }
 
-  var creationArguments = ["--verbose", "create", "HelloWorld", "-d", directory.path]
+  var creationArguments = ["create", "HelloWorld", "-d", directory.path]
 
   #if os(macOS)
     // Without this, the build will fail due to a missing minimum deployment version.
@@ -42,10 +42,10 @@ import Foundation
   await SwiftBundler.main(creationArguments)
 
   // Ensure fresh project builds
-  await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
+  await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 
   // Ensure idempotence
-  await SwiftBundler.main(["--verbose", "bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
+  await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 }
 
 @Test func testHexParsing() throws {
@@ -60,7 +60,7 @@ import Foundation
   @Test func testDarwinDynamicDependencyCopying() async throws {
     let app = "DarwinDynamicDependencies"
     let fixture = Bundle.module.bundleURL.appendingPathComponent("Fixtures/\(app)")
-    await SwiftBundler.main(["--verbose", "bundle", "-d", fixture.path])
+    await SwiftBundler.main(["bundle", "-d", fixture.path])
     let outputPath = fixture / ".build/bundler/\(app).app"
 
     let sparkle = outputPath / "Contents/Frameworks/Sparkle.framework"
