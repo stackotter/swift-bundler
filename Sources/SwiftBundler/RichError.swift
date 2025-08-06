@@ -166,8 +166,46 @@ protocol RichErrorProtocol: Throwable {
   var location: Location { get }
 }
 
+func chainDescription(for error: Error) -> String {
+  if var error = error as? RichErrorProtocol {
+    while error.erasedMessage == nil {
+      guard let cause = error.cause as? RichErrorProtocol else {
+        return ErrorKit.userFriendlyMessage(for: error)
+      }
+      error = cause
+    }
+
+    var output = ErrorKit.userFriendlyMessage(for: error)
+
+    var cause = error.cause
+    while let currentCause = cause {
+      if !(currentCause is RichErrorProtocol)
+        || (currentCause as? RichErrorProtocol)?.erasedMessage != nil
+      {
+        let message = ErrorKit.userFriendlyMessage(for: currentCause)
+        output += """
+
+
+          Caused by:
+            \(message.split(separator: "\n").joined(separator: "\n  "))
+          """
+      }
+
+      if let currentCause = currentCause as? RichErrorProtocol {
+        cause = currentCause.cause
+      } else {
+        break
+      }
+    }
+
+    return output
+  } else {
+    return ErrorKit.userFriendlyMessage(for: error)
+  }
+}
+
 // Adapted from https://github.com/FlineDev/ErrorKit to understand RichError
-func chainDescription(for error: Error, verbose: Bool, indent: String = "") -> String {
+func verboseChainDescription(for error: Error, indent: String = "") -> String {
   let enclosingType = type(of: error)
   let mirror = Mirror(reflecting: error)
 
@@ -219,13 +257,8 @@ func chainDescription(for error: Error, verbose: Bool, indent: String = "") -> S
         return "\(typeName)"
       } else {
         let caseName = mirror.children.first?.label ?? String(describing: error)
-        if verbose {
-          let value = enumAssociatedValueDescription(value: mirror.children.first?.value ?? ())
-          return "\(enclosingType).\(caseName)\(value)"
-        } else {
-          // Only show the enum case's name, without its associated value.
-          return "\(enclosingType).\(caseName)"
-        }
+        let value = enumAssociatedValueDescription(value: mirror.children.first?.value ?? ())
+        return "\(enclosingType).\(caseName)\(value)"
       }
     } else {
       return "\(typeName)"
@@ -240,12 +273,12 @@ func chainDescription(for error: Error, verbose: Bool, indent: String = "") -> S
         return """
           \(typeDescription) @ \(error.location)
           \(indent)└─ userFriendlyMessage: "\(ErrorKit.userFriendlyMessage(for: message))"
-          \(indent)└─ \(chainDescription(for: cause, verbose: verbose, indent: nextIndent))
+          \(indent)└─ \(verboseChainDescription(for: cause, indent: nextIndent))
           """
       } else {
         return """
           \(typeDescription) @ \(error.location)
-          \(indent)└─ \(chainDescription(for: cause, verbose: verbose, indent: nextIndent))
+          \(indent)└─ \(verboseChainDescription(for: cause, indent: nextIndent))
           """
       }
     } else {
@@ -260,7 +293,7 @@ func chainDescription(for error: Error, verbose: Bool, indent: String = "") -> S
   {
     return """
       \(typeDescription(error, type: type(of: error)))
-      \(indent)└─ \(chainDescription(for: caughtError, verbose: verbose, indent: nextIndent))
+      \(indent)└─ \(verboseChainDescription(for: caughtError, indent: nextIndent))
       """
   } else {
     // This is a leaf node

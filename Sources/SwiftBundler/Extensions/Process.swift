@@ -35,8 +35,8 @@ extension Process {
     }
   }
 
-  /// A string created by concatenating all of the program's arguments together. Suitable for error messages,
-  /// but not necessarily 100% correct.
+  /// A string created by concatenating all of the program's arguments together.
+  /// Suitable for error messages, but not necessarily 100% correct.
   private var argumentsString: String {
     // TODO: This is pretty janky (i.e. what if an arg contains spaces)
     return arguments?.joined(separator: " ") ?? ""
