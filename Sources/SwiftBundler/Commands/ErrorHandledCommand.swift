@@ -21,7 +21,8 @@ extension ErrorHandledCommand {
 
 extension ErrorHandledCommand {
   func validate() {
-    // A bit of a hack to set the verbosity level whenever the verbose option is set on the root command
+    // A bit of a hack to set the verbosity level whenever the verbose option is
+    // set on the root command
     if verbose {
       log.logLevel = .debug
     }
