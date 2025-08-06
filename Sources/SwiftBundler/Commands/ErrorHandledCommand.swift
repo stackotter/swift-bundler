@@ -22,8 +22,7 @@ extension ErrorHandledCommand {
     do {
       try await wrappedRun()
     } catch {
-      print("\(chainDescription(for: error, verbose: log.logLevel < .info, indent: ""))")
-      log.error("\(ErrorKit.userFriendlyMessage(for: error))")
+      log.error("\(chainDescription(for: error))")
       Foundation.exit(1)
     }
   }
@@ -32,8 +31,7 @@ extension ErrorHandledCommand {
     do {
       try wrappedValidate()
     } catch {
-      print("\(chainDescription(for: error, verbose: log.logLevel < .info, indent: ""))")
-      log.error("\(ErrorKit.userFriendlyMessage(for: error))")
+      log.error("\(chainDescription(for: error))")
       Foundation.exit(1)
     }
   }

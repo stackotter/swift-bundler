@@ -19,7 +19,7 @@ struct Handler: LogHandler {
     level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String,
     file: String, function: String, line: UInt
   ) {
-    let output = "\(level.coloring(level.rawValue + ":")) \(message)"
+    let output = "\(level.coloring(level.rawValue)): \(message)"
 
     switch level {
       case .critical, .error:
