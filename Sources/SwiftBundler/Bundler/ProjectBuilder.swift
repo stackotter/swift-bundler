@@ -232,7 +232,10 @@ enum ProjectBuilder {
     }
 
     // Produce built product description
-    let productConfiguration = ProjectConfiguration.Product.Flat(type: .executable)
+    let productConfiguration = ProjectConfiguration.Product.Flat(
+      type: .executable,
+      outputDirectory: nil
+    )
     let artifactPath = productConfiguration.artifactPath(
       whenNamed: product,
       platform: context.platform
