@@ -7,8 +7,8 @@ extension Process {
   /// An error message related to Swift Bundler's `Process` extensions.
   enum ErrorMessage: Throwable {
     case invalidUTF8Output(output: Data)
-    case nonZeroExitStatus(Int)
-    case nonZeroExitStatusWithOutput(Data, Int)
+    case nonZeroExitStatus(_ command: String, _ status: Int)
+    case nonZeroExitStatusWithOutput(_ output: Data, _ command: String, _ status: Int)
     case failedToRunProcess
     case invalidEnvironmentVariableKey(String)
     case invalidToolName(String)
@@ -18,12 +18,13 @@ extension Process {
       switch self {
         case .invalidUTF8Output:
           return "Command output was not valid utf-8 data"
-        case .nonZeroExitStatus(let status):
-          return "The process returned a non-zero exit status (\(status))"
-        case .nonZeroExitStatusWithOutput(let data, let status):
+        case .nonZeroExitStatus(let command, let status):
+          return "Process didn't exit successfully: `\(command)` (exit status: \(status))"
+        case .nonZeroExitStatusWithOutput(let data, let command, let status):
           return
             """
-            The process returned a non-zero exit status (\(status))
+            Process didn't exit successfully: `\(command)` (exit status: \(status))
+            --- stdout & stderr
             \(String(data: data, encoding: .utf8) ?? "invalid utf8")
             """
         case .failedToRunProcess:

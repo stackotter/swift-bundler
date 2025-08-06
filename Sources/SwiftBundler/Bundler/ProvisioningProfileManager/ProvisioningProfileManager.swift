@@ -186,14 +186,11 @@ enum ProvisioningProfileManager {
         ).getOutput(excludeStdError: false)
       } catch {
         guard
-          case .nonZeroExitStatusWithOutput(let data, _) = error.message,
+          case .nonZeroExitStatusWithOutput(let data, _, _) = error.message,
           let output = String(data: data, encoding: .utf8)
         else {
           throw Error(.failedToRunXcodebuildAutoProvisioning(message: nil), cause: error)
         }
-
-        // Print the process' output to help users debug
-        log.error("\(output)")
 
         let message: String?
         if output.contains("Failed Registering Bundle Identifier") {

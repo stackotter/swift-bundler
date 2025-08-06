@@ -55,13 +55,8 @@ enum SwiftPackageManager {
     )
     process.setOutputPipe(Pipe())
 
-    do {
+    try await Error.catch {
       try await process.runAndWait()
-    } catch {
-      throw Error(
-        .failedToRunSwiftInit(command: "swift \(arguments.joined(separator: " "))"),
-        cause: error
-      )
     }
   }
 
@@ -92,13 +87,8 @@ enum SwiftPackageManager {
       ])
     }
 
-    do {
+    try await Error.catch {
       try await process.runAndWait()
-    } catch {
-      throw Error(
-        .failedToRunSwiftBuild(command: "swift \(arguments.joined(separator: " "))"),
-        cause: error
-      )
     }
   }
 
@@ -383,7 +373,7 @@ enum SwiftPackageManager {
       return URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
     } catch {
       throw Error(
-        .failedToGetProductsDirectory(command: process.commandStringForLogging),
+        .failedToGetProductsDirectory,
         cause: error
       )
     }
@@ -401,14 +391,8 @@ enum SwiftPackageManager {
       directory: packageDirectory
     )
 
-    let output: String
-    do {
-      output = try await process.getOutput(excludeStdError: true)
-    } catch {
-      throw Error(
-        .failedToRunSwiftPackageDescribe(command: process.commandStringForLogging),
-        cause: error
-      )
+    let output = try await Error.catch {
+      try await process.getOutput(excludeStdError: true)
     }
 
     let jsonData = Data(output.utf8)
@@ -426,14 +410,8 @@ enum SwiftPackageManager {
       arguments: ["-print-target-info"]
     )
 
-    let output: String
-    do {
-      output = try await process.getOutput()
-    } catch {
-      throw Error(
-        .failedToGetTargetInfo(command: process.commandStringForLogging),
-        cause: error
-      )
+    let output = try await Error.catch {
+      try await process.getOutput()
     }
 
     let data = Data(output.utf8)
