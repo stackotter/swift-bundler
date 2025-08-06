@@ -1,10 +1,10 @@
 import Foundation
 import ErrorKit
 
-/// An error returned by custom methods added to `Process`.
 extension Process {
   typealias Error = RichError<ErrorMessage>
 
+  /// An error message related to Swift Bundler's `Process` extensions.
   enum ErrorMessage: Throwable {
     case invalidUTF8Output(output: Data)
     case nonZeroExitStatus(Int)

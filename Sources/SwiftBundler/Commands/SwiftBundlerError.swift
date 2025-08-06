@@ -13,7 +13,7 @@ enum SwiftBundlerError: Throwable {
   case invalidXcodeprojDetected
   case failedToResolveTargetDevice(reason: String)
   case failedToResolveCodesigningConfiguration(reason: String)
-  case failedToCopyOutBundle(any Error)
+  case failedToCopyOutBundle
   case missingConfigurationFile(URL)
 
   var userFriendlyMessage: String {
@@ -67,8 +67,8 @@ enum SwiftBundlerError: Throwable {
         return "Failed to resolve target device: \(reason)"
       case .failedToResolveCodesigningConfiguration(let reason):
         return "Failed to resolve codesigning configuration: \(reason)"
-      case .failedToCopyOutBundle(let reason):
-        return "Failed to copy out bundle: \(reason.localizedDescription)"
+      case .failedToCopyOutBundle:
+        return "Failed to copy out bundle"
       case .missingConfigurationFile(let file):
         return """
           Could not find \(file.lastPathComponent) at standard location. Are you \

@@ -24,7 +24,7 @@ struct PackageConfigurationV1: Codable {
 
   /// Loads the configuration from a `Bundle.json` file.
   /// - Parameter file: The file to load the configuration from.
-  /// - Returns: The configuration. If an error occurs, a failure is returned.
+  /// - Returns: The configuration.
   static func load(
     from file: URL
   ) throws(PackageConfiguration.Error) -> PackageConfigurationV1 {

@@ -4,7 +4,7 @@ import ErrorKit
 extension ArchiveTool {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error related to ``ArchiveTool``.
+  /// An error message related to ``ArchiveTool``.
   enum ErrorMessage: Throwable {
     case failedToCreateTarGz(directory: URL, outputFile: URL)
 

@@ -4,7 +4,7 @@ import ErrorKit
 extension DynamicLibraryBundler {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error returned by ``DynamicLibraryBundler``.
+  /// An error message related to ``DynamicLibraryBundler``.
   enum ErrorMessage: Throwable {
     case failedToEnumerateDynamicLibraries(directory: URL)
     case failedToUpdateLibraryInstallName(binary: URL, original: String, new: String)

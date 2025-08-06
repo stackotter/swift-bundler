@@ -11,7 +11,6 @@ enum PlistCreator {
   ///   - platform: The platform the app is for.
   ///   - platformVersion: The minimum platform version that the app should
   ///     run on.
-  /// - Returns: If an error occurs, a failure is returned.
   static func createAppInfoPlist(
     at file: URL,
     appName: String,
@@ -42,7 +41,6 @@ enum PlistCreator {
   ///   - platform: The platform the bundle is for.
   ///   - platformVersion: The minimum platform version that the app should
   ///     run on.
-  /// - Returns: If an error occurs, a failure is returned.
   static func createResourceBundleInfoPlist(
     at file: URL,
     bundleName: String,
@@ -72,8 +70,7 @@ enum PlistCreator {
   ///   - platform: The platform the app is for.
   ///   - platformVersion: The minimum platform version that the app should
   ///     run on.
-  /// - Returns: The generated contents for the `Info.plist` file. If an error
-  ///   occurs, a failure is returned.
+  /// - Returns: The generated contents for the `Info.plist` file.
   static func createAppInfoPlistContents(
     appName: String,
     configuration: AppConfiguration.Flat,
@@ -141,7 +138,7 @@ enum PlistCreator {
   ///   - bundleName: The bundle's name.
   ///   - platform: The platform the bundle is for.
   ///   - platformVersion: The minimum platform version that the app should run on.
-  /// - Returns: The generated contents for the `Info.plist` file. If an error occurs, a failure is returned.
+  /// - Returns: The generated contents for the `Info.plist` file.
   static func createResourceBundleInfoPlistContents(
     bundleName: String,
     platform: Platform,
@@ -183,7 +180,6 @@ enum PlistCreator {
   /// Serializes a plist dictionary into an `xml` format.
   /// - Parameter entries: The dictionary of entries to serialize.
   /// - Returns: The plist dictionary serialized as a string containing xml.
-  ///   If an error occurs, a failure is returned.
   static func serialize(_ entries: [String: Any]) throws(Error) -> Data {
     try Error.catch(withMessage: .serializationFailed) {
       try PropertyListSerialization.data(

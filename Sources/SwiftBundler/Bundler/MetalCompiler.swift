@@ -8,7 +8,6 @@ enum MetalCompiler {
   ///   - platform: The platform to compile for.
   ///   - platformVersion: The platform version to target during compilation.
   ///   - keepSources: If `false`, the sources will get deleted after compilation.
-  /// - Returns: If an error occurs, a failure is returned.
   static func compileMetalShaders(
     in directory: URL,
     for platform: Platform,
@@ -55,8 +54,7 @@ enum MetalCompiler {
   ///   - destination: The directory to output `default.metallib` to.
   ///   - platform: The platform to compile for.
   ///   - platformVersion: The platform version to target during compilation.
-  /// - Returns: Returns the location of the resulting `metallib`. If an error
-  ///   occurs, a failure is returned.
+  /// - Returns: Returns the location of the resulting `metallib`.
   static func compileMetalShaders(
     _ sources: [URL],
     to destination: URL,
@@ -105,7 +103,6 @@ enum MetalCompiler {
   ///   - outputFile: The resulting `air` file.
   ///   - platform: The platform to build for.
   ///   - platformVersion: The platform version to target during compilation.
-  /// - Returns: If an error occurs, a failure is returned.
   static func compileShader(
     _ shader: URL,
     to outputFile: URL,
@@ -143,12 +140,12 @@ enum MetalCompiler {
     }
   }
 
-  /// Creates a metal archive (a `metal-ar` file) from a list of `air` files (which can be created by ``compileShader(_:outputDirectory:)``).
+  /// Creates a metal archive (a `metal-ar` file) from a list of `air` files
+  /// (which can be created by ``compileShader(_:outputDirectory:)``).
   /// - Parameters:
   ///   - archive: The resulting `metal-ar` file.
   ///   - airFiles: The air files to create an archive from.
   ///   - platform: The platform to archive for.
-  /// - Returns: If an error occurs, a failure is returned.
   static func createArchive(
     at archive: URL,
     from airFiles: [URL],
@@ -174,7 +171,6 @@ enum MetalCompiler {
   ///   - library: The output file location.
   ///   - archive: The archive to convert.
   ///   - platform: The platform to create the library for.
-  // - Returns: If an error occurs, a failure is returned.
   static func createLibrary(
     at library: URL,
     from archive: URL,

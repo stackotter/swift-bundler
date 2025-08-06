@@ -287,7 +287,6 @@ enum DarwinBundler: Bundler {
   /// - Parameters:
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
-  /// - Returns: If an error occurs, a failure is returned.
   private static func copyExecutable(
     at source: URL,
     to destination: URL

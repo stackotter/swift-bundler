@@ -49,35 +49,25 @@ enum AppImageBundler: Bundler {
 
     // Copy the app's desktop file to the root of the output directory for
     // convenience.
-    let desktopFileDestination = desktopFileLocation(for: context)
-    do {
-      try FileManager.default.copyItem(at: structure.desktopFile, to: desktopFileDestination)
-    } catch {
-      let message = ErrorMessage.failedToCopyDesktopFile(
-        source: structure.desktopFile,
-        destination: desktopFileDestination
-      )
-      throw Error(message, cause: error)
-    }
+    try FileManager.default.copyItem(
+      at: structure.desktopFile,
+      to: desktopFileLocation(for: context),
+      errorMessage: ErrorMessage.failedToCopyDesktopFile
+    )
 
     // This isn't strictly necessary but it's probably a nice courtesy to
     // anyone poking around in the outputs of this bundler if we let them
     // know that the directory in question is meant to be an `AppDir`.
     let appDir = context.outputDirectory / "\(context.appName).AppDir"
-    do {
-      try FileManager.default.moveItem(at: structure.root, to: appDir)
-    } catch {
-      throw Error(
-        .failedToRenameGenericBundle(source: structure.root, destination: appDir),
-        cause: error
-      )
-    }
+    try FileManager.default.moveItem(
+      at: structure.root,
+      to: appDir,
+      errorMessage: ErrorMessage.failedToRenameGenericBundle
+    )
 
     log.info("Converting '\(context.appName).AppDir' to '\(bundleName)'")
-    do {
+    try await Error.catch(withMessage: .failedToBundleAppDir) {
       try await AppImageTool.bundle(appDir: appDir, to: outputStructure.bundle)
-    } catch {
-      throw Error(.failedToBundleAppDir, cause: error)
     }
 
     return outputStructure
@@ -92,48 +82,33 @@ enum AppImageBundler: Bundler {
     // Create `.DirIcon` and `[AppName].png` if an icon is present. Both are
     // just symlinks to the real icon file at `iconRelativePath`.
     let icon = structure.icon1024x1024
-    guard FileManager.default.fileExists(atPath: icon.path) else {
-      return
+    if icon.exists() {
+      let relativeIconPath = icon.path(relativeTo: structure.root)
+      try FileManager.default.createSymlink(
+        at: structure.root / icon.lastPathComponent,
+        withRelativeDestination: relativeIconPath,
+        errorMessage: ErrorMessage.failedToCreateSymlink
+      )
+
+      try FileManager.default.createSymlink(
+        at: structure.root / ".DirIcon",
+        withRelativeDestination: icon.lastPathComponent,
+        errorMessage: ErrorMessage.failedToCreateSymlink
+      )
     }
 
-    let relativeIconPath = icon.path(relativeTo: structure.root)
-    try createSymlink(
-      at: structure.root / icon.lastPathComponent,
-      withRelativeDestination: relativeIconPath
-    )
-
-    try createSymlink(
-      at: structure.root / ".DirIcon",
-      withRelativeDestination: icon.lastPathComponent
-    )
-
     // Create `AppRun` symlink pointing to the main executable.
-    try createSymlink(
+    try FileManager.default.createSymlink(
       at: structure.root / "AppRun",
-      withRelativeDestination: structure.mainExecutable.path(relativeTo: structure.root)
+      withRelativeDestination: structure.mainExecutable.path(relativeTo: structure.root),
+      errorMessage: ErrorMessage.failedToCreateSymlink
     )
 
     // Create symlink in root pointing to desktop file.
-    try createSymlink(
+    try FileManager.default.createSymlink(
       at: structure.root / structure.desktopFile.lastPathComponent,
-      withRelativeDestination: structure.desktopFile.path(relativeTo: structure.root)
+      withRelativeDestination: structure.desktopFile.path(relativeTo: structure.root),
+      errorMessage: ErrorMessage.failedToCreateSymlink
     )
-  }
-
-  private static func createSymlink(
-    at source: URL,
-    withRelativeDestination relativeDestination: String
-  ) throws(Error) {
-    do {
-      try FileManager.default.createSymlink(
-        at: source,
-        withRelativeDestination: relativeDestination
-      )
-    } catch {
-      throw Error(
-        .failedToCreateSymlink(source: source, relativeDestination: relativeDestination),
-        cause: error
-      )
-    }
   }
 }

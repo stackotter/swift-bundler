@@ -8,7 +8,7 @@ import ErrorKit
 extension XcodeprojConverter {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error related to ``XcodeprojConverter``.
+  /// An error message related to ``XcodeprojConverter``.
   enum ErrorMessage: Throwable {
     case hostPlatformNotSupported
     case failedToLoadXcodeProj(URL)

@@ -5,7 +5,7 @@ import ErrorKit
 extension Templater {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error related to ``Templater``.
+  /// An error message related to ``Templater``.
   enum ErrorMessage: Throwable {
     case packageDirectoryAlreadyExists(URL)
     case failedToCloneTemplateRepository

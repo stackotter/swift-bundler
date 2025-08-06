@@ -37,12 +37,11 @@ extension RPMBundler {
 
     /// Creates all directories described by this directory structure.
     func createDirectories() throws(RPMBundler.Error) {
-      do {
-        for directory in directories {
-          try FileManager.default.createDirectory(at: directory)
-        }
-      } catch {
-        throw Error(.failedToCreateRPMBuildDirectory(directory: root), cause: error)
+      for directory in directories {
+        try FileManager.default.createDirectory(
+          at: directory,
+          errorMessage: ErrorMessage.failedToCreateRPMBuildDirectory
+        )
       }
     }
   }

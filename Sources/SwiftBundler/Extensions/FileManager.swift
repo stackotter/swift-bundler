@@ -48,6 +48,30 @@ extension FileManager {
     }
   }
 
+  func moveItem<E: Error>(
+    at source: URL,
+    to destination: URL,
+    errorMessage: (
+      _ source: URL,
+      _ destination: URL
+    ) -> E? = { _, _ in nil },
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) throws(RichError<E>) {
+    do {
+      try moveItem(at: source, to: destination)
+    } catch {
+      throw RichError(
+        errorMessage(source, destination),
+        cause: error,
+        file: file,
+        line: line,
+        column: column
+      )
+    }
+  }
+
   func createDirectory(at directory: URL) throws {
     try createDirectory(
       at: directory,

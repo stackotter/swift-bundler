@@ -4,6 +4,7 @@ import ErrorKit
 extension ProjectBuilder {
   typealias Error = RichError<ErrorMessage>
 
+  /// An error message related to ``ProjectBuilder``.
   enum ErrorMessage: Throwable {
     case failedToCloneRepo(URL)
     case failedToWriteBuilderManifest

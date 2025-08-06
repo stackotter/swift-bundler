@@ -121,7 +121,7 @@ enum Templater {
 
     // Check that the template exists
     let templateDirectory = templatesDirectory.appendingPathComponent(template)
-    guard FileManager.default.itemExists(at: templateDirectory, withType: .directory) else {
+    guard templateDirectory.exists(withType: .directory) else {
       throw Error(.noSuchTemplate(template))
     }
 
@@ -143,9 +143,10 @@ enum Templater {
 
     // Apply the base template first if it exists
     let baseTemplate = templatesDirectory.appendingPathComponent("Base")
-    if FileManager.default.itemExists(at: baseTemplate, withType: .directory) {
-      // Set the indentation style to tab for now to avoid updating the tab style twice
-      // because the final `applyTemplate` call will update all files in the output directory
+    if baseTemplate.exists(withType: .directory) {
+      // Set the indentation style to tab for now to avoid updating the tab
+      // style twice because the final `applyTemplate` call will update all
+      // files in the output directory
       do {
         try applyTemplate(
           baseTemplate,
@@ -162,7 +163,7 @@ enum Templater {
 
     if addVSCodeOverlay {
       let vsCodeOverlay = templatesDirectory.appendingPathComponent("VSCode")
-      guard FileManager.default.itemExists(at: vsCodeOverlay, withType: .directory) else {
+      guard vsCodeOverlay.exists(withType: .directory) else {
         throw Error(.missingVSCodeOverlay)
       }
 
@@ -239,8 +240,13 @@ enum Templater {
       return try Templater.enumerateTemplates(in: templateRepository)
     }
 
-    guard let template = templates.first(where: { $0.name == name }) else {
+    let matchingTemplates = templates.filter { $0.name == name }
+    guard let template = matchingTemplates.first else {
       throw RichError(.noSuchTemplate(name))
+    }
+
+    if matchingTemplates.count > 1 {
+      log.warning("Multiple templates have name '\(name)'. Using first.")
     }
 
     return template
@@ -281,7 +287,7 @@ enum Templater {
     }
 
     // Download the templates if they don't exist
-    if !FileManager.default.itemExists(at: templatesDirectory, withType: .directory) {
+    if !templatesDirectory.exists(withType: .directory) {
       try await downloadDefaultTemplates(into: templatesDirectory)
     }
 
@@ -293,7 +299,7 @@ enum Templater {
   static func updateTemplates() async throws(Error) {
     let templatesDirectory = try await getDefaultTemplatesDirectory(downloadIfNecessary: false)
 
-    guard FileManager.default.itemExists(at: templatesDirectory, withType: .directory) else {
+    guard templatesDirectory.exists(withType: .directory) else {
       try await downloadDefaultTemplates(into: templatesDirectory)
       return
     }
@@ -327,7 +333,7 @@ enum Templater {
 
   /// Gets the list of available templates from a templates directory.
   /// - Parameter templatesDirectory: The directory to search for templates in.
-  /// - Returns: The available templates, or an error if template enumeration fails.
+  /// - Returns: The available templates.
   static func enumerateTemplates(in templatesDirectory: URL) throws(Error) -> [Template] {
     do {
       let contents = try FileManager.default.contentsOfDirectory(
@@ -339,7 +345,7 @@ enum Templater {
 
       // Enumerate templates
       for directory in contents {
-        guard FileManager.default.itemExists(at: directory, withType: .directory) else {
+        guard directory.exists(withType: .directory) else {
           continue
         }
 
@@ -427,7 +433,7 @@ enum Templater {
       enumerator
       .compactMap { $0 as? URL }
       .filter { !excluded.contains($0.lastPathComponent) }
-      .filter { FileManager.default.itemExists(at: $0, withType: .file) }
+      .filter { $0.exists(withType: .file) }
 
     // Process and copy each file
     for file in files {
@@ -454,7 +460,6 @@ enum Templater {
   /// - Parameters:
   ///   - directory: The directory to update the indentation style in.
   ///   - indentationStyle: The new indentation style.
-  /// - Returns: If an error occurs, a failure is returned.
   static func updateIndentationStyle(
     in directory: URL,
     from originalStyle: IndentationStyle,
@@ -478,7 +483,7 @@ enum Templater {
 
     do {
       for case let file as URL in enumerator {
-        if FileManager.default.itemExists(at: file, withType: .file) {
+        if file.exists(withType: .file) {
           var contents = try String(contentsOf: file)
           contents = contents.replacingOccurrences(of: originalStyle.string, with: newStyle.string)
           try contents.write(to: file, atomically: false, encoding: .utf8)

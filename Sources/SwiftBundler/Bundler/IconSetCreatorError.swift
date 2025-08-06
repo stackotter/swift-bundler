@@ -4,7 +4,7 @@ import ErrorKit
 extension IconSetCreator {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error returned by ``IconSetCreator``.
+  /// An error message related to ``IconSetCreator``.
   enum ErrorMessage: Throwable {
     case notPNG(URL)
     case failedToScaleIcon(newDimension: Int)
