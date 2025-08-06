@@ -13,6 +13,11 @@ struct SimulatorsListCommand: ErrorHandledCommand {
     help: "A search term to filter simulators with.")
   var filter: String?
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let simulators = try await RichError<SwiftBundlerError>.catch {
       try await SimulatorManager.listAvailableSimulators(searchTerm: filter)

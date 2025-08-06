@@ -25,6 +25,11 @@ struct ConvertCommand: ErrorHandledCommand {
     help: "Disables the experimental feature warning")
   var dontWarn = false
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     // - [x] Convert executable targets
     // - [x] Convert library dependency targets

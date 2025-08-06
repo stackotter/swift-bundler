@@ -37,6 +37,11 @@ struct RunCommand: ErrorHandledCommand {
   @Flag(name: .long, help: "Enables hot reloading.")
   var hot = false
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   /// Command line arguments that get passed through to the app.
   @Argument(
     parsing: .postTerminator,
