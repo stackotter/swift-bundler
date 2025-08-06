@@ -386,7 +386,6 @@ enum GenericLinuxBundler: Bundler {
   /// - Parameters:
   ///   - source: The location of the built executable.
   ///   - destination: The target location of the built executable (the file not the directory).
-  /// - Returns: If an error occus, a failure is returned.
   private static func copyExecutable(
     at source: URL, to destination: URL
   ) throws(Error) {
@@ -407,7 +406,6 @@ enum GenericLinuxBundler: Bundler {
   ///   - appConfiguration: The app's configuration.
   ///   - installedExecutableLocation: The location the the executable will end
   ///     up at on disk once installed.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func createDesktopFile(
     at desktopFile: URL,
     appName: String,
@@ -460,7 +458,6 @@ enum GenericLinuxBundler: Bundler {
   ///   - appIdentifier: The app's identifier.
   ///   - installedExecutableLocation: The location the the executable will end
   ///     up at on disk once installed.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func createDBusServiceFile(
     at dbusServiceFile: URL,
     appIdentifier: String,

@@ -4,7 +4,7 @@ import ErrorKit
 extension MetadataInserter {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error related to ``MetadataInserter``.
+  /// An error message related to ``MetadataInserter``.
   enum ErrorMessage: Throwable {
     case failedToEncodeMetadata
     case failedToWriteMetadataCodeFile

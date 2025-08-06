@@ -3,20 +3,24 @@ import Overture
 
 /// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {
-  /// Copies the dynamic libraries within a build's products directory to an output directory.
+  /// Copies the dynamic libraries within a build's products directory to an
+  /// output directory.
   ///
-  /// The app's executable's rpath is updated to reflect the new relative location of each dynamic library.
+  /// The app's executable's rpath is updated to reflect the new relative
+  /// location of each dynamic library.
   /// - Parameters:
   ///   - appExecutable: The app executable to update the rpaths of.
   ///   - libraryDirectory: The directory to copy plain dynamic libraries to.
   ///   - frameworkDirectory: The directory to copy frameworks to.
-  ///   - productsDirectory: The build's products directory (used to locate dynamic libraries that
-  ///     aren't installed system wide).
-  ///   - isXcodeBuild: If `true` the `PackageFrameworks` subdirectory will be searched for frameworks containing dynamic libraries instead.
-  ///   - universal: Whether the build is a universal build or not. Only true if the build is a SwiftPM build and universal.
-  ///   - makeStandAlone: If `true`, all non-system dynamic libraries depended on by the executable will
-  ///     be moved into the app bundle, and relevant rpaths will be updated accordingly.
-  /// - Returns: If an error occurs, a failure is returned.
+  ///   - productsDirectory: The build's products directory (used to locate
+  ///     dynamic libraries that aren't installed system wide).
+  ///   - isXcodeBuild: If `true` the `PackageFrameworks` subdirectory will be
+  ///     searched for frameworks containing dynamic libraries instead.
+  ///   - universal: Whether the build is a universal build or not. Only true if
+  ///     the build is a SwiftPM build and universal.
+  ///   - makeStandAlone: If `true`, all non-system dynamic libraries depended
+  ///     on by the executable will be moved into the app bundle, and relevant
+  ///     rpaths will be updated accordingly.
   static func copyDynamicDependencies(
     dependedOnBy appExecutable: URL,
     toLibraryDirectory libraryDirectory: URL,
@@ -118,7 +122,6 @@ enum DynamicLibraryBundler {
   ///   - newLibraryLocation: The library's new location.
   ///   - librarySearchDirectory: The original place that the executable would've
   ///     searched for libraries.
-  /// - Returns: If an error occurs, a failure is returned.
   static func updateLibraryInstallName(
     of library: String,
     in executable: URL,
@@ -145,7 +148,6 @@ enum DynamicLibraryBundler {
   ///   - binary: The binary to update the install name in.
   ///   - originalInstallName: The library's original install name.
   ///   - newInstallName: The library's new install name.
-  /// - Returns: If an error occurs, a failure is returned.
   static func updateLibraryInstallName(
     in binary: URL,
     original originalInstallName: String,

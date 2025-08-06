@@ -50,14 +50,8 @@ enum CodeSigner {
       bundleIdentifier: bundleIdentifier
     )
 
-    do {
-      try entitlementsContent.write(
-        to: outputFile,
-        atomically: false,
-        encoding: .utf8
-      )
-    } catch {
-      throw Error(.failedToWriteEntitlements, cause: error)
+    try Error.catch(withMessage: .failedToWriteEntitlements) {
+      try entitlementsContent.write(to: outputFile)
     }
   }
 
@@ -83,15 +77,12 @@ enum CodeSigner {
     log.info("Codesigning app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
-    if FileManager.default.itemExists(at: librariesDirectory, withType: .directory) {
-      let contents: [URL]
-      do {
-        contents = try FileManager.default.contentsOfDirectory(
+    if librariesDirectory.exists(withType: .directory) {
+      let contents = try Error.catch(withMessage: .failedToEnumerateDynamicLibraries) {
+        try FileManager.default.contentsOfDirectory(
           at: librariesDirectory,
           includingPropertiesForKeys: nil
         )
-      } catch {
-        throw Error(.failedToEnumerateDynamicLibraries, cause: error)
       }
 
       for file in contents where file.pathExtension == "dylib" {
@@ -155,13 +146,11 @@ enum CodeSigner {
         file.path,
       ]
 
-    do {
+    try await Error.catch(withMessage: .failedToRunCodesignTool) {
       try await Process.create(
         codesignToolPath,
         arguments: arguments
       ).runAndWait()
-    } catch {
-      throw Error(.failedToRunCodesignTool, cause: error)
     }
   }
 
@@ -169,13 +158,11 @@ enum CodeSigner {
   /// - Parameter file: The file to sign.
   /// - Returns: A failure if the `codesign` command fails.
   static func signAdHoc(file: URL) async throws(Error) {
-    do {
+    try await Error.catch(withMessage: .failedToRunCodesignTool) {
       try await Process.create(
         codesignToolPath,
         arguments: ["--force", "-s", "-", file.path]
       ).runAndWait()
-    } catch {
-      throw Error(.failedToRunCodesignTool, cause: error)
     }
   }
 

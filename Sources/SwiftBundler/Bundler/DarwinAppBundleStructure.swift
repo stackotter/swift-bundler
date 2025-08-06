@@ -49,7 +49,7 @@ struct DarwinAppBundleStructure {
       frameworksDirectory, executableDirectory,
     ]
 
-    for directory in directories where !directory.exists() {
+    for directory in directories where !directory.exists(withType: .directory) {
       do {
         try FileManager.default.createDirectory(at: directory)
       } catch {

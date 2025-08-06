@@ -39,7 +39,10 @@ enum MetadataValue: Codable, VariableEvaluatable {
     }
   }
 
-  enum Error: Throwable {
+  typealias Error = RichError<ErrorMessage>
+
+  /// An error message related to ``MetadataValue``.
+  enum ErrorMessage: Throwable {
     case unhandledType
 
     var userFriendlyMessage: String {
@@ -67,7 +70,7 @@ enum MetadataValue: Codable, VariableEvaluatable {
     } else if let value = try? container.decode([String: MetadataValue].self) {
       self = .dictionary(value)
     } else {
-      throw Error.unhandledType
+      throw Error(.unhandledType)
     }
   }
 

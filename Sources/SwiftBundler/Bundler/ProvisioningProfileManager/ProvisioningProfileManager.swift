@@ -11,58 +11,6 @@ import ErrorKit
 /// A provisioning profile manager. Can locate existing provisioning profiles,
 /// and generate new ones if required.
 enum ProvisioningProfileManager {
-  typealias Error = RichError<ErrorMessage>
-
-  enum ErrorMessage: Throwable {
-    case hostPlatformNotSupported
-    case failedToLocateLibraryDirectory
-    case failedToEnumerateProfiles(directory: URL)
-    case failedToExtractProvisioningProfilePlist(URL)
-    case failedToDeserializeProvisioningProfile(URL)
-    case failedToParseBundleIdentifier(String)
-    case failedToGenerateDummyXcodeproj(message: String?)
-    case failedToRunXcodebuildAutoProvisioning(message: String?)
-    case failedToParseXcodebuildOutput(_ message: String)
-    case failedToLocateGeneratedProvisioningProfile(_ predictedLocation: URL)
-
-    var userFriendlyMessage: String {
-      switch self {
-        case .hostPlatformNotSupported:
-          return """
-            Provisioning profiles aren't supported on \
-            \(HostPlatform.hostPlatform.platform.name)
-            """
-        case .failedToLocateLibraryDirectory:
-          return "Failed to locate user Developer directory"
-        case .failedToEnumerateProfiles(let directory):
-          return "Failed to enumerate provisioning profiles in '\(directory.path)'"
-        case .failedToExtractProvisioningProfilePlist(let file):
-          return "Failed to extract plist data from '\(file.path)'"
-        case .failedToDeserializeProvisioningProfile(let file):
-          return "Failed to deserialize plist data from '\(file.path)'"
-        case .failedToParseBundleIdentifier(let identifier):
-          return "Failed to parse bundle identifier '\(identifier)'"
-        case .failedToGenerateDummyXcodeproj(let message):
-          return """
-            Failed to generate dummy xcodeproj for automatic provisioning: \
-            \(message ?? "Unknown reason")
-            """
-        case .failedToRunXcodebuildAutoProvisioning(let message):
-          return """
-            Failed to generate provisioning profile: \
-            \(message ?? "Unknown reason")
-            """
-        case .failedToParseXcodebuildOutput(let message):
-          return "Failed to parse xcodebuild output: \(message)"
-        case .failedToLocateGeneratedProvisioningProfile(let predictedLocation):
-          return """
-            Failed to locate generated provisioning profile. Expected it be \
-            located at '\(predictedLocation.path)'
-            """
-      }
-    }
-  }
-
   /// The path to the `openssl` tool.
   static let opensslToolPath = "/usr/bin/openssl"
 
@@ -174,17 +122,10 @@ enum ProvisioningProfileManager {
     {
       let provisioningProfilesDirectory = try locateProvisioningProfilesDirectory()
 
-      let provisioningProfiles: [URL]
-      do {
-        provisioningProfiles = try FileManager.default.contentsOfDirectory(
-          at: provisioningProfilesDirectory
-        )
-      } catch {
-        throw Error(
-          .failedToEnumerateProfiles(directory: provisioningProfilesDirectory),
-          cause: error
-        )
-      }
+      let provisioningProfiles = try FileManager.default.contentsOfDirectory(
+        at: provisioningProfilesDirectory,
+        errorMessage: ErrorMessage.failedToEnumerateProfiles
+      )
 
       return try await provisioningProfiles.filter { file in
         file.pathExtension == "mobileprovision"

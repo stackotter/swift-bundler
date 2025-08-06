@@ -31,7 +31,7 @@ enum ResourceBundler {
       ).runAndWait()
     }
 
-    if keepSource {
+    if !keepSource {
       try FileManager.default.removeItem(
         at: assetCatalog,
         errorMessage: ErrorMessage.failedToDeleteAssetCatalog
@@ -39,8 +39,9 @@ enum ResourceBundler {
     }
   }
 
-  /// Copies the resource bundles present in a source directory into a destination directory. If the bundles
-  /// were built by SwiftPM, they will get fixed up to be consistent with bundles built by Xcode.
+  /// Copies the resource bundles present in a source directory into a
+  /// destination directory. If the bundles were built by SwiftPM, they will get
+  /// fixed up to be consistent with bundles built by Xcode.
   /// - Parameters:
   ///   - sourceDirectory: The directory containing generated bundles.
   ///   - destinationDirectory: The directory to copy the bundles to, fixing them if required.
@@ -49,7 +50,6 @@ enum ResourceBundler {
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - packageName: The name of the package this app is in.
   ///   - mainProductName: The name of the app's product.
-  /// - Returns: If an error occurs, a failure is returned.
   static func copyResources(
     from sourceDirectory: URL,
     to destinationDirectory: URL,
@@ -92,7 +92,6 @@ enum ResourceBundler {
   /// - Parameters:
   ///   - bundle: The bundle to copy.
   ///   - destination: The directory to copy the bundle to.
-  /// - Returns: If an error occurs, a failure is returned.
   static func copyResourceBundle(
     _ bundle: URL,
     to destination: URL
@@ -118,7 +117,6 @@ enum ResourceBundler {
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - isMainBundle: If `true`, the contents of the bundle are fixed and copied
   ///     straight into the app's resources directory.
-  /// - Returns: If an error occurs, a failure is returned.
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
@@ -150,10 +148,7 @@ enum ResourceBundler {
     }
 
     let assetCatalog = destinationBundleResources.appendingPathComponent("Assets.xcassets")
-    let assetCatalogExists = FileManager.default.itemExists(
-      at: assetCatalog,
-      withType: .directory
-    )
+    let assetCatalogExists = assetCatalog.exists(withType: .directory)
 
     if !isMainBundle {
       // All resource bundles other than the main one get put in separate
@@ -215,13 +210,15 @@ enum ResourceBundler {
   ///
   /// The structure created is as follows:
   ///
+  /// ```txt
   /// - `Contents`
   ///   - `Resources`
+  /// ```
   ///
   /// - Parameter bundle: The bundle to create.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func createResourceBundleDirectoryStructure(
-    at bundle: URL, for platform: Platform
+    at bundle: URL,
+    for platform: Platform
   ) throws(Error) {
     let directory: URL
     switch platform {
@@ -284,13 +281,9 @@ enum ResourceBundler {
   }
 
   /// Copies the resources from a source directory to a destination directory.
-  ///
-  /// If any of the resources are metal shader sources, they get compiled into a `default.metallib`.
-  /// After compilation, the sources are deleted.
   /// - Parameters:
   ///   - source: The source directory.
   ///   - destination: The destination directory.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func copyResources(
     from source: URL,
     to destination: URL

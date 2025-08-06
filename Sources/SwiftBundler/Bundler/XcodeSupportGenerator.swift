@@ -6,7 +6,6 @@ enum XcodeSupportGenerator {
   /// - Parameters:
   ///   - configuration: The package's configuration.
   ///   - packageDirectory: The package's root directory.
-  /// - Returns: If an error occurs, a failure is returned.
   static func generateXcodeSupport(
     for configuration: PackageConfiguration,
     in packageDirectory: URL
@@ -19,7 +18,7 @@ enum XcodeSupportGenerator {
 
   /// Gets the location to create Xcode schemes for a given package.
   /// - Parameter packageDirectory: The root directory of the package.
-  /// - Returns: The package's schemes directory. If an error occurs, a failure is returned.
+  /// - Returns: The package's schemes directory.
   private static func getSchemesDirectory(
     in packageDirectory: URL
   ) throws(Error) -> URL {
@@ -40,7 +39,6 @@ enum XcodeSupportGenerator {
   ///   - app: The name of the app.
   ///   - configuration: The app's configuration.
   ///   - schemesDirectory: The directory to output the schemes to.
-  /// - Returns: If an error occurs, a failure is returned.
   private static func generateAppScheme(
     for app: String,
     with configuration: AppConfiguration,
@@ -48,11 +46,7 @@ enum XcodeSupportGenerator {
   ) throws(Error) {
     let contents = try generateAppSchemeContents(for: app, with: configuration)
     do {
-      try contents.write(
-        to: schemesDirectory.appendingPathComponent("\(app).xcscheme"),
-        atomically: false,
-        encoding: .utf8
-      )
+      try contents.write(to: schemesDirectory / "\(app).xcscheme")
     } catch {
       throw Error(.failedToWriteToAppScheme(app: app), cause: error)
     }
@@ -62,7 +56,7 @@ enum XcodeSupportGenerator {
   /// - Parameters:
   ///   - app: The name of the app.
   ///   - configuration: The app's configuration.
-  /// - Returns: The contents of the scheme. If an error occurs, a failure is returned.
+  /// - Returns: The contents of the scheme.
   private static func generateAppSchemeContents(
     for app: String,
     with configuration: AppConfiguration

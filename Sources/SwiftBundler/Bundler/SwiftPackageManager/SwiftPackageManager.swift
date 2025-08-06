@@ -34,8 +34,7 @@ enum SwiftPackageManager {
     name: String
   ) async throws(Error) {
     // Create the package directory if it doesn't exist
-    let directoryExists = directory.exists(withType: .directory)
-    if !directoryExists {
+    if !directory.exists(withType: .directory) {
       try FileManager.default.createDirectory(
         at: directory,
         errorMessage: ErrorMessage.failedToCreatePackageDirectory

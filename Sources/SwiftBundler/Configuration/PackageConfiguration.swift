@@ -32,8 +32,8 @@ struct PackageConfiguration: Codable {
     /// Gets the configuration for the specified app. If no app is specified
     /// and there is only one app, that app is returned.
     /// - Parameter name: The name of the app to get.
-    /// - Returns: The app's name and configuration. If no app is specified, and
-    ///   there is more than one app, a failure is returned.
+    /// - Returns: The app's name and configuration.
+    /// - Throws: If no app is specified, and there is more than one app.
     func getAppConfiguration(
       _ name: String?
     ) throws(Error) -> (name: String, app: AppConfiguration.Flat) {
@@ -114,7 +114,7 @@ struct PackageConfiguration: Codable {
         throw Error(.configurationIsAlreadyUpToDate)
       }
     } catch {
-      guard (error as? Error)?.message != .configurationIsAlreadyUpToDate else {
+      if case .configurationIsAlreadyUpToDate = (error as? Error)?.message {
         // TODO: See if full typed throws fixes this
         // swiftlint:disable:next force_cast
         throw error as! Error

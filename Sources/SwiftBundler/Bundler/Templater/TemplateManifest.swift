@@ -24,11 +24,12 @@ struct TemplateManifest: Codable {
   /// - Parameters:
   ///   - file: The manifest file to load.
   ///   - template: The name of the template that the manifest is for.
-  /// - Returns: The loaded manifest, or a failure if the file could not be read or decoded.
+  /// - Returns: The loaded manifest, or a failure if the file could not be
+  ///   read or decoded.
   static func load(from file: URL, template: String) throws(Templater.Error) -> TemplateManifest {
     let contents: String
     do {
-      contents = try String.init(contentsOf: file)
+      contents = try String(contentsOf: file)
     } catch {
       throw Templater.Error(
         .failedToReadTemplateManifest(template: template, manifest: file),
@@ -39,10 +40,7 @@ struct TemplateManifest: Codable {
     let manifest: TemplateManifest
     do {
       var decoder = TOMLDecoder()
-
-      // Set the Version decoding method to tolerant
       decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
-
       manifest = try decoder.decode(TemplateManifest.self, from: contents)
     } catch {
       throw Templater.Error(

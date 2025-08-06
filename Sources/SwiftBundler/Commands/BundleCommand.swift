@@ -669,7 +669,7 @@ struct BundleCommand: ErrorHandledCommand {
       bundlerContext.builtDependencies = dependencies
 
       if !skipBuild {
-        if !FileManager.default.itemExists(at: productsDirectory, withType: .directory) {
+        if !productsDirectory.exists(withType: .directory) {
           try RichError<SwiftBundlerError>.catch {
             try FileManager.default.createDirectory(
               at: productsDirectory,
@@ -781,7 +781,7 @@ struct BundleCommand: ErrorHandledCommand {
             to: bundle
           )
         } catch {
-          throw RichError(SwiftBundlerError.failedToCopyOutBundle(error))
+          throw RichError(SwiftBundlerError.failedToCopyOutBundle, cause: error)
         }
       } else {
         bundle = bundlerOutputStructure.bundle
@@ -805,7 +805,7 @@ struct BundleCommand: ErrorHandledCommand {
     outputDirectory: URL,
     skip excludedItems: [String]
   ) throws(RichError<SwiftBundlerError>) {
-    if FileManager.default.itemExists(at: outputDirectory, withType: .directory) {
+    if outputDirectory.exists(withType: .directory) {
       do {
         let contents = try FileManager.default.contentsOfDirectory(
           at: outputDirectory,
@@ -863,13 +863,13 @@ struct BundleCommand: ErrorHandledCommand {
   /// Gets the configuration for the specified app.
   ///
   /// If no app is specified, the first app is used (unless there are multiple
-  /// apps, in which case a failure is returned).
+  /// apps, in which case an error is thrown).
   /// - Parameters:
   ///   - appName: The app's name.
   ///   - packageDirectory: The package's root directory.
   ///   - context: The context used to evaluate configuration overlays.
   ///   - customFile: A custom configuration file not at the standard location.
-  /// - Returns: The app's configuration if successful.
+  /// - Returns: The app's configuration.
   static func getConfiguration(
     _ appName: String?,
     packageDirectory: URL,
