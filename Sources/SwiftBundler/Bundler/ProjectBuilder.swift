@@ -479,7 +479,7 @@ enum ProjectBuilder {
 
       let exitStatus = Int(process.terminationStatus)
       guard exitStatus == 0 else {
-        throw Process.ErrorMessage.nonZeroExitStatus(exitStatus)
+        throw Process.ErrorMessage.nonZeroExitStatus(process.commandString, exitStatus)
       }
     } catch {
       throw Error(.builderFailed, cause: error)

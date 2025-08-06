@@ -6,6 +6,27 @@ import Foundation
   public typealias Process = PSProcess
 #endif
 
+/// A pipe used to suppress process output. By using this for output suppression,
+/// we can tell when it's safe for us to drain the pipe on the caller's behalf and
+/// when it's not.
+///
+/// Pipe is an abstract obj-c class (a class cluster) so we have to manually
+/// implement Pipe's abstract requirements by calling the respective requirements
+/// on a concrete Pipe. When you initialize a Pipe, its actual type is
+/// NSConcretePipe. If NSConcretePipe was public then we could just subclass that
+/// directly, but it's not.
+private class SuppressionPipe: Pipe, @unchecked Sendable {
+  let pipe = Pipe()
+
+  override var fileHandleForReading: FileHandle {
+    pipe.fileHandleForReading
+  }
+
+  override var fileHandleForWriting: FileHandle {
+    pipe.fileHandleForWriting
+  }
+}
+
 extension Process {
   /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
   ///
@@ -23,7 +44,9 @@ extension Process {
     for signal in Signal.allCases {
       trap(signal) {
         for process in Process.processes {
-          process.terminate()
+          if process.isRunning {
+            process.terminate()
+          }
         }
         #if os(Linux)
           for pid in Process.appImagePIDs {
@@ -35,18 +58,14 @@ extension Process {
     }
   }
 
-  /// A string created by concatenating all of the program's arguments together.
-  /// Suitable for error messages, but not necessarily 100% correct.
-  private var argumentsString: String {
-    // TODO: This is pretty janky (i.e. what if an arg contains spaces)
-    return arguments?.joined(separator: " ") ?? ""
-  }
-
   /// A string representation of the command, suitable only for logging (not running).
   /// Doesn't guarantee that the produced representation is faithful, but does strive
   /// to improve in that respect over time.
-  var commandStringForLogging: String {
-    "\(executableURL?.path ?? "<unknown>") \(argumentsString)"
+  var commandString: String {
+    CommandLine(
+      command: executableURL?.path ?? "<unknown>",
+      arguments: arguments ?? []
+    ).description
   }
 
   /// Sets the pipe for the process's stdout and stderr.
@@ -59,15 +78,10 @@ extension Process {
     }
   }
 
-  /// Gets the process's stdout and stderr as `Data`.
-  /// - Parameters:
-  ///   - excludeStdError: If `true`, only stdout is returned.
-  ///   - handleLine: A handler to run every time that a line is received.
-  /// - Returns: The process's stdout and stderr.
-  func getOutputData( excludeStdError: Bool = false) async throws(Error) -> Data {
-    let pipe = Pipe()
-    setOutputPipe(pipe, excludeStdError: excludeStdError)
-
+  private static func getOutputData(
+    from pipe: Pipe,
+    whilePerforming action: () async throws(Error) -> Void
+  ) async throws(Error) -> Data {
     // Thanks Martin! https://forums.swift.org/t/the-problem-with-a-frozen-process-in-swift-process-class/39579/6
 
     let dataStream = AsyncStream.makeStream(of: Data.self)
@@ -105,18 +119,31 @@ extension Process {
 
     let output: Data
     do {
-      try await runAndWait()
+      try await action()
       output = await finalize()
     } catch {
       switch error.message {
-        case .nonZeroExitStatus(let status):
-          throw Error(.nonZeroExitStatusWithOutput(await finalize(), status))
+        case .nonZeroExitStatus(let command, let status):
+          throw Error(.nonZeroExitStatusWithOutput(await finalize(), command, status))
         default:
           throw error
       }
     }
 
     return output
+  }
+
+  /// Gets the process's stdout and stderr as `Data`.
+  /// - Parameters:
+  ///   - excludeStdError: If `true`, only stdout is returned.
+  /// - Returns: The process's stdout and stderr.
+  func getOutputData(excludeStdError: Bool = false) async throws(Error) -> Data {
+    let pipe = Pipe()
+    setOutputPipe(pipe, excludeStdError: excludeStdError)
+
+    return try await Self.getOutputData(from: pipe) { () async throws(Error) in
+      try await runAndWait()
+    }
   }
 
   /// Gets the process's stdout and stderr as a string.
@@ -134,32 +161,44 @@ extension Process {
   /// Runs the process and waits for it to complete.
   /// - Throws: An error if the process has a non-zero exit status of fails to run.
   func runAndWait() async throws(Error) {
-    do {
-      try await withCheckedThrowingContinuation {
-        (continuation: CheckedContinuation<Void, Swift.Error>) in
-        terminationHandler = { _ in
-          continuation.resume()
-        }
+    func body() async throws(Error) {
+      do {
+        try await withCheckedThrowingContinuation {
+          (continuation: CheckedContinuation<Void, Swift.Error>) in
+          terminationHandler = { _ in
+            continuation.resume()
+          }
 
-        do {
-          try runAndLog()
-        } catch {
-          continuation.resume(throwing: error)
+          do {
+            try runAndLog()
+          } catch {
+            continuation.resume(throwing: error)
+          }
         }
+      } catch {
+        throw Error(.failedToRunProcess, cause: error)
       }
-    } catch {
-      throw Error(.failedToRunProcess, cause: error)
+
+      let exitStatus = Int(terminationStatus)
+      guard exitStatus == 0 else {
+        throw Error(.nonZeroExitStatus(commandString, exitStatus))
+      }
     }
 
-    let exitStatus = Int(terminationStatus)
-    guard exitStatus == 0 else {
-      throw Error(.nonZeroExitStatus(exitStatus))
+    if let pipe = standardOutput as? SuppressionPipe {
+      _ = try await Self.getOutputData(from: pipe, whilePerforming: body)
+    } else {
+      try await body()
     }
   }
 
   func runAndLog() throws {
     log.debug(
-      "Running command: '\(executableURL?.path ?? "")' with arguments: \(arguments ?? []), working directory: \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)"
+      """
+      Running command: '\(executableURL?.path ?? "")' with arguments: \
+      \(arguments ?? []), working directory: \
+      \(currentDirectoryURL?.path ?? FileManager.default.currentDirectoryPath)
+      """
     )
 
     try run()
@@ -196,11 +235,13 @@ extension Process {
   ) -> Process {
     let process = Process()
 
-    if let pipe = pipe {
+    if let pipe {
       process.setOutputPipe(pipe)
     } else if log.logLevel == .info && runSilentlyWhenNotVerbose {
-      // Silence standard output by default when not verbose.
-      process.setOutputPipe(Pipe())
+      // Silence standard error and output by default when not verbose.
+      let pipe = SuppressionPipe()
+      process.standardOutput = pipe
+      process.standardError = pipe
     }
 
     process.currentDirectoryURL = directory?.standardizedFileURL.absoluteURL

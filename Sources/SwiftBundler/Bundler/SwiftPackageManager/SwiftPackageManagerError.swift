@@ -6,16 +6,13 @@ extension SwiftPackageManager {
 
   /// An error message related to ``SwiftPackageManager``.
   enum ErrorMessage: Throwable {
-    case failedToRunSwiftBuild(command: String)
     case failedToCreatePackageDirectory(URL)
-    case failedToRunSwiftInit(command: String)
     case failedToGetSwiftVersion
     case invalidSwiftVersionOutput(String)
-    case failedToGetProductsDirectory(command: String)
+    case failedToGetProductsDirectory
     case failedToGetLatestSDKPath(Platform)
     case failedToGetTargetInfo(command: String)
     case failedToParseTargetInfo(json: String)
-    case failedToRunSwiftPackageDescribe(command: String)
     case failedToParsePackageManifestOutput(json: String)
     case failedToParsePackageManifestToolsVersion
     case failedToReadBuildPlan(path: URL)
@@ -28,26 +25,20 @@ extension SwiftPackageManager {
 
     var userFriendlyMessage: String {
       switch self {
-        case .failedToRunSwiftBuild(let command):
-          return "Failed to run '\(command)'"
         case .failedToCreatePackageDirectory(let directory):
           return "Failed to create package directory at '\(directory.relativePath)'"
-        case .failedToRunSwiftInit(let command):
-          return "Failed to run '\(command)'"
         case .failedToGetSwiftVersion:
           return "Failed to get Swift version"
         case .invalidSwiftVersionOutput(let output):
           return "The output of 'swift --version' could not be parsed: '\(output)'"
-        case .failedToGetProductsDirectory(let command):
-          return "Failed to get products directory via '\(command)'"
+        case .failedToGetProductsDirectory:
+          return "Failed to get products directory"
         case .failedToGetLatestSDKPath(let platform):
           return "Failed to get latest \(platform.rawValue) SDK path"
         case .failedToGetTargetInfo(let command):
           return "Failed to get target info via '\(command)'"
         case .failedToParseTargetInfo:
           return "Failed to parse Swift target info"
-        case .failedToRunSwiftPackageDescribe(let command):
-          return "Failed to run '\(command)'"
         case .failedToParsePackageManifestOutput:
           return "Failed to parse package manifest output"
         case .failedToParsePackageManifestToolsVersion:

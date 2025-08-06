@@ -59,7 +59,7 @@ enum SimulatorManager {
     } catch {
       // If the device is already booted, count it as a success
       guard
-        case let .nonZeroExitStatusWithOutput(data, _) = error.message,
+        case let .nonZeroExitStatusWithOutput(data, _, _) = error.message,
         let output = String(data: data, encoding: .utf8),
         output.hasSuffix("Unable to boot device in current state: Booted\n")
       else {
