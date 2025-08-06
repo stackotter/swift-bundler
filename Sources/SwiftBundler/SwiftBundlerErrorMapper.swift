@@ -16,10 +16,10 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
         }
       case let error as UnexpectedKeysError:
         if error.keys.count == 1, let path = error.keys.values.first {
-          return "Encountered unexpected key \(CodingPath(path))"
+          return "Encountered unexpected key '\(CodingPath(path))'"
         } else {
           let paths = error.keys.values.map(CodingPath.init)
-          let pathsString = paths.map(\.description).joinedGrammatically()
+          let pathsString = paths.map { "'\($0.description)'" }.joinedGrammatically()
           return """
             Encountered unexpected \(paths.count == 1 ? "key" : "keys") \
             \(pathsString)

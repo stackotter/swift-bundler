@@ -2,6 +2,7 @@ import Foundation
 import TOMLKit
 
 /// The configuration for a package.
+@Configuration(overlayable: false)
 struct PackageConfiguration: Codable {
   /// The current configuration format version.
   static let currentFormatVersion = 2
@@ -17,38 +18,6 @@ struct PackageConfiguration: Codable {
   /// library configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
   var projects: [String: ProjectConfiguration]?
-
-  enum CodingKeys: String, CodingKey {
-    case formatVersion = "format_version"
-    case apps
-    case projects
-  }
-
-  struct Flat {
-    var formatVersion: Int
-    var apps: [String: AppConfiguration.Flat]
-    var projects: [String: ProjectConfiguration.Flat]
-
-    /// Gets the configuration for the specified app. If no app is specified
-    /// and there is only one app, that app is returned.
-    /// - Parameter name: The name of the app to get.
-    /// - Returns: The app's name and configuration.
-    /// - Throws: If no app is specified, and there is more than one app.
-    func getAppConfiguration(
-      _ name: String?
-    ) throws(Error) -> (name: String, app: AppConfiguration.Flat) {
-      if let name = name {
-        guard let selected = apps[name] else {
-          throw Error(.noSuchApp(name))
-        }
-        return (name: name, app: selected)
-      } else if let first = apps.first, apps.count == 1 {
-        return (name: first.key, app: first.value)
-      } else {
-        throw Error(.multipleAppsAndNoneSpecified)
-      }
-    }
-  }
 
   /// Creates a new package configuration.
   /// - Parameter apps: The package's apps.
@@ -267,26 +236,26 @@ struct PackageConfiguration: Codable {
   static func standardConfigurationFileLocation(for directory: URL) -> URL {
     directory.appendingPathComponent(configurationFileName)
   }
+}
 
-  // MARK: Instance methods
-
-  /// Gets the configuration for the specified app. If no app is specified and
-  /// there is only one app, that app is returned.
+extension PackageConfiguration.Flat {
+  /// Gets the configuration for the specified app. If no app is specified
+  /// and there is only one app, that app is returned.
   /// - Parameter name: The name of the app to get.
   /// - Returns: The app's name and configuration.
   /// - Throws: If no app is specified, and there is more than one app.
   func getAppConfiguration(
     _ name: String?
-  ) throws(Error) -> (name: String, app: AppConfiguration) {
+  ) throws(PackageConfiguration.Error) -> (name: String, app: AppConfiguration.Flat) {
     if let name = name {
       guard let selected = apps[name] else {
-        throw Error(.noSuchApp(name))
+        throw PackageConfiguration.Error(.noSuchApp(name))
       }
       return (name: name, app: selected)
     } else if let first = apps.first, apps.count == 1 {
       return (name: first.key, app: first.value)
     } else {
-      throw Error(.multipleAppsAndNoneSpecified)
+      throw PackageConfiguration.Error(.multipleAppsAndNoneSpecified)
     }
   }
 }

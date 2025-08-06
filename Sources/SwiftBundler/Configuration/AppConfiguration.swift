@@ -2,89 +2,77 @@ import Foundation
 import Parsing
 
 /// The configuration for an app.
+@Configuration(overlayable: true)
 struct AppConfiguration: Codable {
   /// The app's identifier (e.g. `com.example.ExampleApp`).
   var identifier: String
+
   /// The name of the executable product.
   var product: String
+
   /// The app's current version.
   var version: String
+
   /// A short summary describing the purpose of the app.
+  @ConfigurationKey("description")
   var appDescription: String?
+
   /// The license type of the app.
   var license: String?
+
   // swiftlint:disable:next line_length
   /// The app's category. See [Apple's documentation](https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype) for more details.
   var category: String?
+
   /// The path to the app's icon.
   var icon: String?
+
   /// URL schemes supported by the app. Generally causes these URL schemes to get registered
   /// on app installation so that they get directed to the app system-wide.
   var urlSchemes: [String]?
+
   /// A dictionary containing extra entries to add to the app's `Info.plist` file.
   ///
   /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var plist: [String: PlistValue]?
+
   /// A dictionary containing extra entries to add to the app's metadata (embedded in the
   /// main executable).
   ///
   /// String values can contain variable substitutions (see ``VariableEvaluator`` for details).
   var metadata: [String: MetadataValue]?
+
   /// Dependency identifiers of dependencies built by Swift Bundler before this
   /// build is invoked. Allows for integration with non-SwiftPM build tools, and
   /// applications pulling other applications (e.g. helper applications) into
   /// their build process.
   var dependencies: [Dependency]?
-  /// Conditionally applied configuration overlays.
-  var overlays: [Overlay]?
 
   /// Only available in overlays with `platform(linux)` or stronger. Sets whether
   /// Swift Bundler generates a D-Bus service file for the application or not.
+  @Available(.platform("linux"))
   var dbusActivatable = false
 
   /// Only available in overlays with `bundler(linuxRPM)` or stronger. Sets the list of
   /// package dependencies
+  @ConfigurationKey("requirements")
+  @Available(.bundler("linuxRPM"))
+  @Validate({ (requirements: [String]) throws(ConfigurationFlattener.Error) in
+    for requirement in requirements {
+      guard RPMBundler.isValidRequirement(requirement) else {
+        throw ConfigurationFlattener.Error(cause: Error(.invalidRPMRequirement(requirement)))
+      }
+    }
+  })
   var rpmRequirements: [String] = []
 
   /// Only available in overlays with `platform(macCatalyst)` or stronger. Sets
   /// the interface idiom used by Mac Catalyst.
+  @ConfigurationKey("interface_idiom")
+  @Available(.platform("macCatalyst"))
   var catalystInterfaceIdiom: MacCatalystInterfaceIdiom = .ipad
 
-  private enum CodingKeys: String, CodingKey {
-    case identifier
-    case product
-    case version
-    case appDescription = "description"
-    case license
-    case category
-    case icon
-    case urlSchemes = "url_schemes"
-    case plist
-    case metadata
-    case overlays
-    case dependencies
-  }
-
-  /// A flattened version of ``AppConfiguration`` (generally with all applicable
-  /// overlays applied).
-  struct Flat {
-    var identifier: String
-    var product: String
-    var version: String
-    var appDescription: String?
-    var license: String?
-    var category: String?
-    var icon: String?
-    var urlSchemes: [String]
-    var plist: [String: PlistValue]
-    var metadata: [String: MetadataValue]
-    var dependencies: [Dependency]
-    var dbusActivatable: Bool
-    var rpmRequirements: [String]
-    var catalystInterfaceIdiom: MacCatalystInterfaceIdiom
-  }
-
-  struct Dependency: Codable, Hashable {
+  struct Dependency: Codable, Hashable, TriviallyFlattenable {
     var project: String
     var product: String
 
@@ -131,73 +119,9 @@ struct AppConfiguration: Codable {
   }
 
   /// The interface idiom to be used by Catalyst apps.
-  enum MacCatalystInterfaceIdiom: String, Codable {
+  enum MacCatalystInterfaceIdiom: String, Codable, TriviallyFlattenable {
     case ipad
     case mac
-  }
-
-  struct Overlay: Codable, ConfigurationOverlay {
-    typealias Base = AppConfiguration
-
-    static let exclusiveProperties: [OverlayCondition: PropertySet<Self>] = [
-      .platform("linux"): PropertySet()
-        .add(.dbusActivatable, \.dbusActivatable),
-      .bundler("linuxRPM"): PropertySet()
-        .add(.rpmRequirements, \.rpmRequirements),
-      .platform("macCatalyst"): PropertySet()
-        .add(.catalystInterfaceIdiom, \.catalystInterfaceIdiom)
-    ]
-
-    var condition: OverlayCondition
-    var identifier: String?
-    var product: String?
-    var version: String?
-    var appDescription: String?
-    var license: String?
-    var category: String?
-    var icon: String?
-    var urlSchemes: [String]?
-    var plist: [String: PlistValue]?
-    var metadata: [String: MetadataValue]?
-    var dependencies: [Dependency]?
-    var dbusActivatable: Bool?
-    var rpmRequirements: [String]?
-    var catalystInterfaceIdiom: MacCatalystInterfaceIdiom?
-
-    enum CodingKeys: String, CodingKey {
-      case condition
-      case identifier
-      case product
-      case version
-      case appDescription = "description"
-      case license
-      case category
-      case icon
-      case urlSchemes = "url_schemes"
-      case plist
-      case metadata
-      case dependencies
-      case dbusActivatable = "dbus_activatable"
-      case rpmRequirements = "requirements"
-      case catalystInterfaceIdiom = "interface_idiom"
-    }
-
-    func merge(into base: inout Base) {
-      Self.merge(&base.identifier, identifier)
-      Self.merge(&base.product, product)
-      Self.merge(&base.version, version)
-      Self.merge(&base.appDescription, appDescription)
-      Self.merge(&base.license, license)
-      Self.merge(&base.category, category)
-      Self.merge(&base.icon, icon)
-      Self.merge(&base.urlSchemes, urlSchemes)
-      Self.merge(&base.plist, plist)
-      Self.merge(&base.metadata, metadata)
-      Self.merge(&base.dependencies, dependencies)
-      Self.merge(&base.dbusActivatable, dbusActivatable)
-      Self.merge(&base.rpmRequirements, rpmRequirements)
-      Self.merge(&base.catalystInterfaceIdiom, catalystInterfaceIdiom)
-    }
   }
 
   /// Creates a new app configuration. Uses an `Info.plist` file to supplement

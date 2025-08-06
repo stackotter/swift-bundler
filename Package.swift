@@ -1,5 +1,6 @@
 // swift-tools-version:6.0
 
+import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
@@ -22,7 +23,7 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
-    .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
+    .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.1"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
@@ -34,6 +35,10 @@ let package = Package(
     .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
     .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5"),
     .package(url: "https://github.com/stackotter/ErrorKit", from: "1.2.2"),
+    .package(
+      url: "https://github.com/stackotter/swift-macro-toolkit",
+      .upToNextMinor(from: "0.7.1")
+    ),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
@@ -45,13 +50,14 @@ let package = Package(
     .target(
       name: "SwiftBundler",
       dependencies: [
-        "TOMLKit",
-        "Rainbow",
-        "Version",
-        "Yams",
         "SwiftBundlerBuilders",
-        "XMLCoder",
+        "SwiftBundlerMacrosPlugin",
         "ErrorKit",
+        "Rainbow",
+        "TOMLKit",
+        "Version",
+        "XMLCoder",
+        "Yams",
         .product(name: "Crypto", package: "swift-crypto"),
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),
@@ -110,6 +116,16 @@ let package = Package(
         .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS])),
         .swiftLanguageMode(.v5),
         .enableUpcomingFeature("FullTypedThrows"),
+      ]
+    ),
+
+    .macro(
+      name: "SwiftBundlerMacrosPlugin",
+      dependencies: [
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "MacroToolkit", package: "swift-macro-toolkit"),
       ]
     ),
 
