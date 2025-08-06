@@ -15,6 +15,11 @@ struct MigrateCommand: ErrorHandledCommand {
     transform: URL.init(fileURLWithPath:))
   var packageDirectory: URL?
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     _ = try await RichError<SwiftBundlerError>.catch {
       try await PackageConfiguration.load(

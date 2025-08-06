@@ -30,24 +30,12 @@ public struct SwiftBundler: AsyncParsableCommand {
   /// on the Swift Bundler runtime or builder API.
   public static let gitURL = URL(string: "https://github.com/stackotter/swift-bundler")!
 
-  @Flag(
-    name: .shortAndLong,
-    help: "Print verbose error messages.")
-  public var verbose = false
-
   public func validate() throws {
-    // A bit of a hack to set the verbosity level whenever the verbose option is set on the root command
-    if verbose {
-      log.logLevel = .debug
-    }
-
     // Work around to allow SwiftBundler to be called twice in a single process.
     // Ideally this static cache variable wouldn't be needed, but I can't solve
     // that right now.
     BundleCommand.bundlerConfiguration = nil
   }
 
-  public init() {
-    self._verbose = Flag(wrappedValue: false)
-  }
+  public init() {}
 }

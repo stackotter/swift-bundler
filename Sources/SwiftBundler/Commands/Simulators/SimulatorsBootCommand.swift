@@ -13,6 +13,11 @@ struct SimulatorsBootCommand: ErrorHandledCommand {
     help: "The id or name of the simulator to start.")
   var idOrName: String
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     try await RichError<SwiftBundlerError>.catch {
       log.info("Booting '\(idOrName)'")

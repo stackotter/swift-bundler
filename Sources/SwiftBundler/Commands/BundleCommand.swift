@@ -37,6 +37,11 @@ struct BundleCommand: ErrorHandledCommand {
   #endif
   var builtWithXcode = false
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   var hotReloadingEnabled = false
 
   // TODO: fix this weird pattern with a better config loading system

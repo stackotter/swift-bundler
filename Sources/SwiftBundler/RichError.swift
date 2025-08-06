@@ -1,5 +1,6 @@
 import ErrorKit
 import Foundation
+import Rainbow
 
 /// A simple error consisting of a single string description.
 struct StringError: Throwable {
@@ -166,16 +167,113 @@ protocol RichErrorProtocol: Throwable {
   var location: Location { get }
 }
 
-func chainDescription(for error: Error) -> String {
+func location(of error: Error) -> Location? {
+  (error as? RichErrorProtocol)?.location
+}
+
+/// Produces a nicer debug description of a value. At the moment the main
+/// things that it does are printing URLs and errors nicer.
+private func niceDebugDescription(of value: Any) -> String {
+  let typeName = "\(type(of: value))"
+  let isTuple = typeName.hasPrefix("(") && typeName != "().self"
+  if isTuple {
+    let mirror = Mirror(reflecting: value)
+    let values = mirror.children.map(\.value)
+    let descriptions = values.map(niceDebugDescription(of:))
+    let labels: [String] = mirror.children.map(\.label).compactMap { label in
+      if label?.hasPrefix(".") != false {
+        return nil
+      } else {
+        return label
+      }
+    }
+    if labels.count == descriptions.count {
+      return "(\(zip(labels, descriptions).map { "\($0): \($1)" }.joined(separator: ", ")))"
+    } else {
+      return "(\(descriptions.joined(separator: ", ")))"
+    }
+  } else if let url = value as? URL {
+    return String(reflecting: url.path(relativeTo: URL.currentDirectory))
+  } else if let error = value as? any Error {
+    return String(reflecting: ErrorKit.userFriendlyMessage(for: error))
+  } else {
+    return String(reflecting: value)
+  }
+}
+
+/// Produces a description for an enum's associated value (a single value or
+/// tuple). Ensures the value gets surrounded with brackets.
+private func enumAssociatedValueDescription(value: Any) -> String {
+  let description = niceDebugDescription(of: value)
+  // Surround with parentheses
+  if !description.hasPrefix("(") {
+    return "(\(description))"
+  } else {
+    return description
+  }
+}
+
+/// Custom error debug printing logic. The main thing it does is print URLs a
+/// bit more nicely.
+private func errorDebugDescription(_ error: (any Error)?, type: any Error.Type) -> String {
+  // TODO: Handle structs.
+  let typeName = String(reflecting: type)
+
+  if let error {
+    let mirror = Mirror(reflecting: error)
+    if mirror.displayStyle == .enum {
+      let caseName = mirror.children.first?.label ?? String(describing: error)
+      let value = (mirror.children.first?.value).map { value in
+        enumAssociatedValueDescription(value: value)
+      } ?? ""
+      return "\(typeName).\(caseName)\(value)"
+    } else {
+      // TODO: Give structs and classes a similar treatment eventually
+      return String(reflecting: error)
+    }
+  } else {
+    return "\(typeName)"
+  }
+}
+
+private func inlineErrorDescription(for error: any Error, verbose: Bool) -> String {
+  let errorDescription: String
+  if verbose {
+    if let message = (error as? RichErrorProtocol)?.erasedMessage {
+      errorDescription = errorDebugDescription(message, type: type(of: message))
+    } else {
+      errorDescription = errorDebugDescription(error, type: type(of: error))
+    }
+  } else {
+    errorDescription = ""
+  }
+
+  let locationDescription: String
+  if verbose, let location = location(of: error) {
+    locationDescription = " at \(location)"
+  } else {
+    locationDescription = ""
+  }
+
+  var description = ErrorKit.userFriendlyMessage(for: error)
+  if verbose {
+    description += " (\(errorDescription)\(locationDescription))"
+  }
+  return description
+}
+
+/// Produces a description of an error, using RichError chaining to include
+/// underlying causes where possible. Output may be multiline.
+func chainDescription(for error: any Error, verbose: Bool) -> String {
   if var error = error as? RichErrorProtocol {
     while error.erasedMessage == nil {
       guard let cause = error.cause as? RichErrorProtocol else {
-        return ErrorKit.userFriendlyMessage(for: error)
+        return inlineErrorDescription(for: error, verbose: verbose)
       }
       error = cause
     }
 
-    var output = ErrorKit.userFriendlyMessage(for: error)
+    var output = inlineErrorDescription(for: error, verbose: verbose)
 
     var cause = error.cause
     while let currentCause = cause {
@@ -183,10 +281,24 @@ func chainDescription(for error: Error) -> String {
         || (currentCause as? RichErrorProtocol)?.erasedMessage != nil
       {
         let message = ErrorKit.userFriendlyMessage(for: currentCause)
+        let locationString: String
+        if verbose, let location = location(of: currentCause) {
+          locationString = " error at \(location)"
+        } else {
+          locationString = ""
+        }
+
+        let errorDescription: String
+        if verbose, let message = (currentCause as? RichErrorProtocol)?.erasedMessage {
+          errorDescription = " " + errorDebugDescription(message, type: type(of: message))
+        } else {
+          errorDescription = ""
+        }
+
         output += """
 
 
-          Caused by:
+          Caused by\(locationString):\(errorDescription)
             \(message.split(separator: "\n").joined(separator: "\n  "))
           """
       }
@@ -200,106 +312,6 @@ func chainDescription(for error: Error) -> String {
 
     return output
   } else {
-    return ErrorKit.userFriendlyMessage(for: error)
-  }
-}
-
-// Adapted from https://github.com/FlineDev/ErrorKit to understand RichError
-func verboseChainDescription(for error: Error, indent: String = "") -> String {
-  let enclosingType = type(of: error)
-  let mirror = Mirror(reflecting: error)
-
-  func niceDescription(of value: Any) -> String {
-    let typeName = "\(type(of: value))"
-    let isTuple = typeName.hasPrefix("(") && typeName != "().self"
-    if isTuple {
-      let mirror = Mirror(reflecting: value)
-      let values = mirror.children.map(\.value)
-      let descriptions = values.map(niceDescription(of:))
-      let labels: [String] = mirror.children.map(\.label).compactMap { label in
-        if label?.hasPrefix(".") != false {
-          return nil
-        } else {
-          return label
-        }
-      }
-      if labels.count == descriptions.count {
-        return "(\(zip(labels, descriptions).map { "\($0): \($1)" }.joined(separator: ", ")))"
-      } else {
-        return "(\(descriptions.joined(separator: ", ")))"
-      }
-    } else if let url = value as? URL {
-      return "\"\(url.path(relativeTo: URL.currentDirectory))\""
-    } else if let error = value as? any Error {
-      return "\"\(ErrorKit.userFriendlyMessage(for: error))\""
-    } else {
-      return String(reflecting: value)
-    }
-  }
-
-  func enumAssociatedValueDescription(value: Any) -> String {
-    let description = niceDescription(of: value)
-    // Surround with parentheses
-    if !description.hasPrefix("(") {
-      return "(\(description))"
-    } else {
-      return description
-    }
-  }
-
-  // Helper function to format the type name with optional metadata
-  func typeDescription(_ error: (any Error)?, type: any Error.Type) -> String {
-    let typeName = String(describing: type)
-
-    if let error {
-      let mirror = Mirror(reflecting: error)
-      if mirror.displayStyle != .enum {
-        return "\(typeName)"
-      } else {
-        let caseName = mirror.children.first?.label ?? String(describing: error)
-        let value = enumAssociatedValueDescription(value: mirror.children.first?.value ?? ())
-        return "\(enclosingType).\(caseName)\(value)"
-      }
-    } else {
-      return "\(typeName)"
-    }
-  }
-
-  let nextIndent = indent + "   "
-  if let error = error as? RichErrorProtocol {
-    let typeDescription = typeDescription(error.erasedMessage, type: error.messageType)
-    if let cause = error.cause {
-      if let message = error.erasedMessage {
-        return """
-          \(typeDescription) @ \(error.location)
-          \(indent)└─ userFriendlyMessage: "\(ErrorKit.userFriendlyMessage(for: message))"
-          \(indent)└─ \(verboseChainDescription(for: cause, indent: nextIndent))
-          """
-      } else {
-        return """
-          \(typeDescription) @ \(error.location)
-          \(indent)└─ \(verboseChainDescription(for: cause, indent: nextIndent))
-          """
-      }
-    } else {
-      return """
-        \(typeDescription) @ \(error.location)
-        \(indent)└─ userFriendlyMessage: "\(error.userFriendlyMessage)"
-        """
-    }
-  } else if
-    error is Catching,
-    let caughtError = mirror.children.first(where: { $0.label == "caught" })?.value as? Error
-  {
-    return """
-      \(typeDescription(error, type: type(of: error)))
-      \(indent)└─ \(verboseChainDescription(for: caughtError, indent: nextIndent))
-      """
-  } else {
-    // This is a leaf node
-    return """
-      \(typeDescription(error, type: type(of: error)))
-      \(indent)└─ userFriendlyMessage: \"\(ErrorKit.userFriendlyMessage(for: error))\"
-      """
+    return inlineErrorDescription(for: error, verbose: verbose)
   }
 }

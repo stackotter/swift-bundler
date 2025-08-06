@@ -6,6 +6,8 @@ import ErrorKit
 protocol ErrorHandledCommand: AsyncParsableCommand {
   associatedtype ErrorMessage: Throwable
 
+  var verbose: Bool { get }
+
   /// Implement this instead of `validate()` to get custom Swift Bundler error handling.
   func wrappedValidate() throws(RichError<ErrorMessage>)
 
@@ -18,20 +20,25 @@ extension ErrorHandledCommand {
 }
 
 extension ErrorHandledCommand {
-  func run() async {
+  func validate() {
+    // A bit of a hack to set the verbosity level whenever the verbose option is set on the root command
+    if verbose {
+      log.logLevel = .debug
+    }
+
     do {
-      try await wrappedRun()
+      try wrappedValidate()
     } catch {
-      log.error("\(chainDescription(for: error))")
+      log.error("\(chainDescription(for: error, verbose: verbose))")
       Foundation.exit(1)
     }
   }
 
-  func validate() {
+  func run() async {
     do {
-      try wrappedValidate()
+      try await wrappedRun()
     } catch {
-      log.error("\(chainDescription(for: error))")
+      log.error("\(chainDescription(for: error, verbose: verbose))")
       Foundation.exit(1)
     }
   }

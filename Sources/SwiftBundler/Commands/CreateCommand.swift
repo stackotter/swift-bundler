@@ -85,6 +85,11 @@ struct CreateCommand: ErrorHandledCommand {
     help: "Add vscode configuration files necessary to enable ergonomic debugging.")
   var addVSCodeOverlay = false
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedValidate() throws(RichError<SwiftBundlerError>) {
     guard Self.isValidAppName(appName) else {
       let message = """

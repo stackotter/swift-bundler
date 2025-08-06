@@ -8,6 +8,11 @@ struct TemplatesUpdateCommand: ErrorHandledCommand {
     abstract: "Update the default templates to the latest version."
   )
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let elapsed = try await RichError<SwiftBundlerError>.catch {
       try await Stopwatch.time {

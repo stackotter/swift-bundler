@@ -21,6 +21,11 @@ struct TemplatesInfoCommand: ErrorHandledCommand {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
+  @Flag(
+    name: .shortAndLong,
+    help: "Print verbose error messages.")
+  public var verbose = false
+
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let template = try await RichError<SwiftBundlerError>.catch {
       try await Templater.template(named: self.template, in: templateRepository)
