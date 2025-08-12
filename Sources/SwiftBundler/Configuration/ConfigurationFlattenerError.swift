@@ -10,9 +10,10 @@ extension ConfigurationFlattener {
       OverlayCondition,
       properties: [String]
     )
-    case projectBuilderNotASwiftFile(String)
     case reservedProjectName(String)
-    case invalidRPMRequirement(String)
+    case localSourceMustNotSpecifyRevision(_ path: String)
+    case defaultSourceMissingAPIRequirement
+    case gitSourceMissingAPIRequirement(_ url: URL, field: CodingPath)
 
     var userFriendlyMessage: String {
       switch self {
@@ -26,14 +27,17 @@ extension ConfigurationFlattener {
             \(propertyList) only available in overlays meeting the condition \
             '\(condition)'
             """
-        case .projectBuilderNotASwiftFile(let builder):
-          return """
-            Library builders must be swift files, and '\(builder)' isn't one
-            """
         case .reservedProjectName(let name):
           return "The project name '\(name)' is reserved"
-        case .invalidRPMRequirement(let name):
-          return "Invalid RPM requirement contains restricted characters: \(name)"
+        case .localSourceMustNotSpecifyRevision(let path):
+          return "'api' field is redundant when local builder API is used ('local(\(path))')"
+        case .defaultSourceMissingAPIRequirement:
+          return "Default Builder API missing API requirement (provide the 'api' field)"
+        case .gitSourceMissingAPIRequirement(_, let field):
+          return """
+            Builder API sourced from git missing API requirement (provide the \
+            '\(field)' field)
+            """
       }
     }
   }
