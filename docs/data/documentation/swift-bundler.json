@@ -146,6 +146,7 @@
       "anchor" : "Articles",
       "generated" : true,
       "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
       ],
@@ -221,6 +222,20 @@
   "title" : "Installation",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/installation"
+},
+"doc://swift-bundler/documentation/swift-bundler/mac-catalyst": {
+  "abstract" : [
+    {
+      "text" : "Targeting Mac Catalyst.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Mac Catalyst",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/mac-catalyst"
 },
 "doc://swift-bundler/documentation/swift-bundler/metal-shaders": {
   "abstract" : [

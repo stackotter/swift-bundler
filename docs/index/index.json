@@ -53,6 +53,11 @@
             "type" : "groupMarker"
           },
           {
+            "path" : "\/documentation\/swift-bundler\/mac-catalyst",
+            "title" : "Mac Catalyst",
+            "type" : "article"
+          },
+          {
             "path" : "\/documentation\/swift-bundler\/stand-alone-apps",
             "title" : "Stand alone apps",
             "type" : "article"

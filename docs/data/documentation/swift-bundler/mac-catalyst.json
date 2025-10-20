@@ -1,0 +1,303 @@
+{
+  "abstract" : [
+    {
+      "text" : "Targeting Mac Catalyst.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Mac Catalyst"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Swift Bundler supports targeting Mac Catalyst. There are few configuration options you should know about before getting started.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Building-for-Mac-Catalyst",
+          "level" : 2,
+          "text" : "Building for Mac Catalyst",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To build for Mac Catalyst, add ",
+              "type" : "text"
+            },
+            {
+              "code" : "--platform macCatalyst",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " to your command line arguments.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This uses xcodebuild behind the scenes when building your app’s main executable in order to work around cross-compilation issues with SwiftPM.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "content" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Force Swift Bundler to use SwiftPM by adding the ",
+                  "type" : "text"
+                },
+                {
+                  "code" : "--no-xcodebuild",
+                  "type" : "codeVoice"
+                },
+                {
+                  "text" : " command line argument. This will lead incorrect behaviour of compile-time conditionals (i.e. they will get evaluated for the host platform) but can be useful for simple apps.",
+                  "type" : "text"
+                }
+              ],
+              "type" : "paragraph"
+            }
+          ],
+          "name" : "Note",
+          "style" : "note",
+          "type" : "aside"
+        },
+        {
+          "anchor" : "Mac-Catalyst-configuration",
+          "level" : 2,
+          "text" : "Mac Catalyst configuration",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Swift Bundler allows you to configure the interface idiom used by your Mac Catalyst app. Xcode calls this option ",
+              "type" : "text"
+            },
+            {
+              "code" : "Mac Catalyst Interface",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ".",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The supported interface idioms are ",
+              "type" : "text"
+            },
+            {
+              "code" : "ipad",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " and ",
+              "type" : "text"
+            },
+            {
+              "code" : "mac",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ". Xcode calls these options ",
+              "type" : "text"
+            },
+            {
+              "code" : "Scaled to Match iPad",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " and ",
+              "type" : "text"
+            },
+            {
+              "code" : "Optimize for Mac",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " respectively. Swift Bundler defaults to ",
+              "type" : "text"
+            },
+            {
+              "code" : "ipad",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ", as does Xcode.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To specify the Mac Catalyst interface idiom for your app,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Create a Mac Catalyst specific configuration overlay, and",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            },
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Set ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "interface_idiom",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " to ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "\"mac\"",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : " or ",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : "\"ipad\"",
+                      "type" : "codeVoice"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "orderedList"
+        },
+        {
+          "code" : [
+            "[[apps.YourApp.overlays]]",
+            "condition = \"platform(macCatalyst)\"",
+            "interface_idiom = \"mac\" # default: \"ipad\""
+          ],
+          "syntax" : "toml",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The overlay is required because the ",
+              "type" : "text"
+            },
+            {
+              "code" : "interface_idiom",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " configuration field is only available when targeting Mac Catalyst.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/mac-catalyst"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}
