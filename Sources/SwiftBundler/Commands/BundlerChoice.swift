@@ -27,15 +27,13 @@ enum BundlerChoice: String, CaseIterable {
 
   /// Whether the choice is supported on the host platform.
   var isSupportedOnHostPlatform: Bool {
-    supportedHostPlatforms.contains(Platform.host)
+    supportedHostPlatforms.contains(HostPlatform.hostPlatform)
   }
 
   /// The default choice for the host platform.
   static var defaultForHostPlatform: Self {
-    // TODO: Give Platform.host its own type so that we don't have to pretend
-    //   that iOS is a valid host platform (for now...)
-    switch Platform.host {
-      case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+    switch HostPlatform.hostPlatform {
+      case .macOS:
         return .darwinApp
       case .linux:
         return .linuxGeneric
@@ -57,7 +55,7 @@ enum BundlerChoice: String, CaseIterable {
     switch self {
       case .darwinApp:
         return [
-          .macOS,
+          .macOS, .macCatalyst,
           .iOS, .iOSSimulator,
           .tvOS, .tvOSSimulator,
           .visionOS, .visionOSSimulator,
@@ -70,9 +68,14 @@ enum BundlerChoice: String, CaseIterable {
   }
 
   /// Host platforms that the choice is valid for.
-  var supportedHostPlatforms: [Platform] {
-    // Nice and simple one-to-one for now. With SwiftPM cross-compilation advancing
-    // I'm sure I'll eventually get cross-bundling working.
-    supportedTargetPlatforms
+  var supportedHostPlatforms: [HostPlatform] {
+    switch self {
+      case .darwinApp:
+        return [.macOS]
+      case .linuxGeneric, .linuxAppImage, .linuxRPM:
+        return [.linux]
+      case .windowsGeneric, .windowsMSI:
+        return [.windows]
+    }
   }
 }

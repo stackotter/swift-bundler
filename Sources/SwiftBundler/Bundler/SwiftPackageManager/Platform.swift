@@ -3,6 +3,7 @@ import Foundation
 /// A platform to build for.
 enum Platform: String, CaseIterable {
   case macOS
+  case macCatalyst
   case iOS
   case iOSSimulator
   case visionOS
@@ -28,6 +29,8 @@ enum Platform: String, CaseIterable {
         return .windows
       case .macOS:
         return .apple(.macOS)
+      case .macCatalyst:
+        return .apple(.macCatalyst)
       case .iOS:
         return .apple(.iOS)
       case .iOSSimulator:
@@ -48,6 +51,8 @@ enum Platform: String, CaseIterable {
     switch self {
       case .macOS:
         return "macOS"
+      case .macCatalyst:
+        return "Mac Catalyst"
       case .iOS:
         return "iOS"
       case .iOSSimulator:
@@ -73,10 +78,24 @@ enum Platform: String, CaseIterable {
   }
 
   // TODO: Move this to `ApplePlatform` and refactor usages accordingly
+  /// The suffix used for the Xcode product directory produced when building for
+  /// this platform.
+  var xcodeProductDirectorySuffix: String? {
+    switch self {
+      case .macCatalyst:
+        "maccatalyst"
+      case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
+        sdkName
+      case .macOS, .linux, .windows:
+        nil
+    }
+  }
+
+  // TODO: Move this to `ApplePlatform` and refactor usages accordingly
   /// The platform's sdk name (e.g. for `iOS` it's `iphoneos`).
   var sdkName: String {
     switch self {
-      case .macOS:
+      case .macOS, .macCatalyst:
         return "macosx"
       case .iOS:
         return "iphoneos"
@@ -97,14 +116,20 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// Whether the platform uses the host architecture or not. Simulators
+  /// and Mac Catalyst use the host architecture.
+  var usesHostArchitecture: Bool {
+    switch partitioned {
+      case .apple(let applePlatform):
+        applePlatform.usesHostArchitecture
+      case .linux, .windows:
+        true
+    }
+  }
+
   /// Whether the platform is a simulator or not.
   var isSimulator: Bool {
-    switch self {
-      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        return true
-      case .macOS, .iOS, .visionOS, .tvOS, .linux, .windows:
-        return false
-    }
+    asApplePlatform?.isSimulator == true
   }
 
   /// Gets the platform as an ``ApplePlatform`` if it is in fact an Apple
@@ -112,6 +137,7 @@ enum Platform: String, CaseIterable {
   var asApplePlatform: ApplePlatform? {
     switch self {
       case .macOS: return .macOS
+      case .macCatalyst: return .macCatalyst
       case .iOS: return .iOS
       case .iOSSimulator: return .iOSSimulator
       case .visionOS: return .visionOS
@@ -131,7 +157,7 @@ enum Platform: String, CaseIterable {
   /// are both ``OS/iOS``).
   var os: OS {
     switch self {
-      case .macOS: return .macOS
+      case .macOS, .macCatalyst: return .macOS
       case .iOS, .iOSSimulator: return .iOS
       case .visionOS, .visionOSSimulator: return .visionOS
       case .tvOS, .tvOSSimulator: return .tvOS
@@ -145,7 +171,7 @@ enum Platform: String, CaseIterable {
     switch self {
       case .windows:
         return "exe"
-      case .macOS, .linux, .iOS, .iOSSimulator,
+      case .macOS, .macCatalyst, .linux, .iOS, .iOSSimulator,
         .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
         return nil
     }
@@ -155,6 +181,7 @@ enum Platform: String, CaseIterable {
   init(_ applePlatform: ApplePlatform) {
     switch applePlatform {
       case .macOS: self = .macOS
+      case .macCatalyst: self = .macCatalyst
       case .iOS: self = .iOS
       case .iOSSimulator: self = .iOSSimulator
       case .visionOS: self = .visionOS
@@ -183,16 +210,13 @@ enum Platform: String, CaseIterable {
         return .apple(architecture, .tvOS(platformVersion), .simulator)
       case .macOS:
         return .apple(architecture, .macOS(platformVersion))
+      case .macCatalyst:
+        return .apple(architecture, .iOS(platformVersion), .macabi)
       case .linux:
         return .linux(architecture)
       case .windows:
         return .windows(architecture)
     }
-  }
-
-  /// The platform that Swift Bundler is currently being run on.
-  static var host: Platform {
-    HostPlatform.hostPlatform.platform
   }
 }
 

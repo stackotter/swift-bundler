@@ -21,7 +21,7 @@ struct DevicesListCommand: ErrorHandledCommand {
         }
         .compactMap { device -> ConnectedDevice? in
           switch device {
-            case .host:
+            case .host, .macCatalyst:
               return nil
             case .connected(let device):
               return device

@@ -53,9 +53,14 @@ struct LLVMTargetTriple: CustomStringConvertible {
   }
 
   enum ABI: String {
+    /// The ABI used to target Apple platform simulators.
     case simulator
+    /// The ABI usually used by Swift on Linux.
     case gnu
+    /// The ABI used by Swift on Windows.
     case msvc
+    /// The ABI used by Mac Catalyst.
+    case macabi
   }
 
   /// Creates the target triple for the specified Apple platform.
@@ -69,22 +74,6 @@ struct LLVMTargetTriple: CustomStringConvertible {
       vendor: .apple,
       system: system,
       abi: abi
-    )
-  }
-
-  static func apple(
-    _ architecture: BuildArchitecture,
-    _ platform: ApplePlatform,
-    _ platformVersion: String?
-  ) -> Self {
-    Self(
-      architecture: architecture,
-      vendor: .apple,
-      system: System(
-        name: platform.os.tripleName,
-        version: platformVersion
-      ),
-      abi: platform.isSimulator ? .simulator : nil
     )
   }
 

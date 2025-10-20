@@ -135,7 +135,7 @@ enum ResourceBundler {
       destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
 
       switch platform {
-        case .macOS:
+        case .macOS, .macCatalyst:
           destinationBundleResources = destinationBundle.appendingPathComponent(
             "Contents/Resources"
           )
@@ -222,7 +222,7 @@ enum ResourceBundler {
   ) throws(Error) {
     let directory: URL
     switch platform {
-      case .macOS:
+      case .macOS, .macCatalyst:
         let bundleContents = bundle.appendingPathComponent("Contents")
         let bundleResources = bundleContents.appendingPathComponent("Resources")
         directory = bundleResources
@@ -254,7 +254,7 @@ enum ResourceBundler {
 
     let infoPlist: URL
     switch platform {
-      case .macOS:
+      case .macOS, .macCatalyst:
         infoPlist =
           bundle
           .appendingPathComponent("Contents")
