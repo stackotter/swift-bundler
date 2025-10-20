@@ -116,7 +116,8 @@ enum ConfigurationFlattener {
       metadata: configuration.metadata ?? [:],
       dependencies: configuration.dependencies ?? [],
       dbusActivatable: configuration.dbusActivatable,
-      rpmRequirements: configuration.rpmRequirements
+      rpmRequirements: configuration.rpmRequirements,
+      catalystInterfaceIdiom: configuration.catalystInterfaceIdiom
     )
   }
 

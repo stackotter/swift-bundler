@@ -143,10 +143,9 @@ enum MetadataInserter {
     var platformArguments: [String] = []
 
     if let platform = platform.asApplePlatform {
-      let target = LLVMTargetTriple.apple(
-        architecture,
-        platform,
-        platform.os.minimumSwiftSupportedVersion
+      let target = platform.platform.targetTriple(
+        withArchitecture: architecture,
+        andPlatformVersion: platform.minimumSwiftSupportedVersion
       )
       platformArguments += ["-target", target.description]
 

@@ -3,6 +3,7 @@ import Foundation
 /// An Apple platform to build for.
 enum ApplePlatform: String, CaseIterable {
   case macOS
+  case macCatalyst
   case iOS
   case iOSSimulator
   case visionOS
@@ -12,6 +13,7 @@ enum ApplePlatform: String, CaseIterable {
 
   enum Partitioned {
     case macOS
+    case macCatalyst
     case other(NonMacApplePlatform)
   }
 
@@ -21,6 +23,8 @@ enum ApplePlatform: String, CaseIterable {
     switch self {
       case .macOS:
         return .macOS
+      case .macCatalyst:
+        return .macCatalyst
       case .iOS:
         return .other(.physical(.iOS))
       case .iOSSimulator:
@@ -36,10 +40,16 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
+  /// Whether the platform uses the host architecture or not. Simulators
+  /// and Mac Catalyst use the host architecture.
+  var usesHostArchitecture: Bool {
+    isSimulator || self == .macCatalyst
+  }
+
   /// Whether the platform is a simulator or not.
   var isSimulator: Bool {
     switch self {
-      case .macOS, .iOS, .visionOS, .tvOS:
+      case .macOS, .macCatalyst, .iOS, .visionOS, .tvOS:
         return false
       case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         return true
@@ -50,7 +60,7 @@ enum ApplePlatform: String, CaseIterable {
   /// are both ``AppleOS/iOS``).
   var os: AppleOS {
     switch self {
-      case .macOS: return .macOS
+      case .macOS, .macCatalyst: return .macOS
       case .iOS, .iOSSimulator: return .iOS
       case .visionOS, .visionOSSimulator: return .visionOS
       case .tvOS, .tvOSSimulator: return .tvOS
@@ -62,6 +72,8 @@ enum ApplePlatform: String, CaseIterable {
     switch self {
       case .macOS:
         return .macOS
+      case .macCatalyst:
+        return .macCatalyst
       case .iOS:
         return .iOS
       case .iOSSimulator:
@@ -83,15 +95,43 @@ enum ApplePlatform: String, CaseIterable {
     switch self {
       case .iOS, .tvOS, .visionOS:
         return true
-      case .macOS, .iOSSimulator, .tvOSSimulator, .visionOSSimulator:
+      case .macOS, .macCatalyst, .iOSSimulator, .tvOSSimulator, .visionOSSimulator:
         return false
+    }
+  }
+
+  /// The name for the corresponding platform in a SwiftPM manifest's JSON representation.
+  /// Some platforms map to the same manifest name as each other (e.g. iOS and iOS Simulator).
+  var manifestPlatformName: String {
+    switch self {
+      case .macOS: "macos"
+      case .macCatalyst: "maccatalyst"
+      case .iOS, .iOSSimulator: "ios"
+      case .visionOS, .visionOSSimulator: "visionos"
+      case .tvOS, .tvOSSimulator: "tvos"
+    }
+  }
+
+  /// The minimum version of this platform that Swift supports.
+  var minimumSwiftSupportedVersion: String {
+    switch self {
+      case .macOS:
+        return "10.9"
+      case .macCatalyst:
+        return "13.1"
+      case .iOS, .iOSSimulator:
+        return "7.0"
+      case .visionOS, .visionOSSimulator:
+        return "0.0"
+      case .tvOS, .tvOSSimulator:
+        return "9.0"
     }
   }
 
   /// The name of this platform when used in Xcode build destinations.
   var xcodeDestinationName: String {
     switch self {
-      case .macOS:
+      case .macOS, .macCatalyst:
         return "macOS"
       case .iOS:
         return "iOS"
@@ -108,9 +148,20 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
-  static func parseXcodeDestinationName(_ destinationName: String) -> Self? {
+  var xcodeDestinationVariant: String? {
+    switch self {
+      case .macCatalyst:
+        return "Mac Catalyst"
+      case .macOS, .iOS, .iOSSimulator, .tvOS, .tvOSSimulator,
+        .visionOS, .visionOSSimulator:
+        return nil
+    }
+  }
+
+  static func parseXcodeDestinationName(_ destinationName: String, _ variant: String?) -> Self? {
     Self.allCases.first { destination in
       destination.xcodeDestinationName == destinationName
+        && destination.xcodeDestinationVariant == variant
     }
   }
 }

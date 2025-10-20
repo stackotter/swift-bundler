@@ -283,10 +283,8 @@ extension ProjectConfiguration.Product.Flat {
     let baseName: String
     switch type {
       case .dynamicLibrary, .staticLibrary:
-        switch platform {
-          case .linux, .macOS, .iOS, .iOSSimulator,
-            .tvOS, .tvOSSimulator,
-            .visionOS, .visionOSSimulator:
+        switch platform.partitioned {
+          case .linux, .apple:
             baseName = "lib\(name)"
           case .windows:
             baseName = name
@@ -308,26 +306,22 @@ extension ProjectConfiguration.Product.Flat {
     let fileExtension: String
     switch type {
       case .dynamicLibrary:
-        switch platform {
+        switch platform.partitioned {
           case .linux:
             fileExtension = ".so"
           case .windows:
             fileExtension = ".dll"
-          case .macOS, .iOS, .iOSSimulator,
-            .tvOS, .tvOSSimulator,
-            .visionOS, .visionOSSimulator:
+          case .apple:
             fileExtension = ".dylib"
         }
       case .staticLibrary:
         // TODO: Support static libraries on Windows
         fileExtension = ".a"
       case .executable:
-        switch platform {
+        switch platform.partitioned {
           case .windows:
             fileExtension = ".exe"
-          case .linux, .macOS, .iOS, .iOSSimulator,
-            .tvOS, .tvOSSimulator,
-            .visionOS, .visionOSSimulator:
+          case .linux, .apple:
             fileExtension = ""
         }
     }
@@ -338,15 +332,14 @@ extension ProjectConfiguration.Product.Flat {
 
   func auxiliaryArtifactPaths(whenNamed name: String, platform: Platform) -> [String] {
     let fileExtensions: [String]
-    switch platform {
+    switch platform.partitioned {
       case .windows:
         if type == .dynamicLibrary {
           fileExtensions = ["lib", "pdb"]
         } else {
           return []
         }
-      case .linux, .macOS, .iOS, .iOSSimulator,
-        .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+      case .linux, .apple:
         return []
     }
 

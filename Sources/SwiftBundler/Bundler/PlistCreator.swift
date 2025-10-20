@@ -92,9 +92,18 @@ enum PlistCreator {
     ]
 
     switch platform {
-      case .macOS:
+      case .macOS, .macCatalyst:
         entries["LSMinimumSystemVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
+
+        if platform == .macCatalyst {
+          switch configuration.catalystInterfaceIdiom {
+            case .ipad:
+              entries["UIDeviceFamily"] = [2]
+            case .mac:
+              entries["UIDeviceFamily"] = [6]
+          }
+        }
       case .iOS, .iOSSimulator:
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
@@ -156,7 +165,7 @@ enum PlistCreator {
     //   `createAppInfoPlistContents` which contains all these key-value pairs and just
     //   a few extra ones.
     switch platform {
-      case .macOS:
+      case .macOS, .macCatalyst:
         entries["LSMinimumSystemVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["MacOSX"]
       case .iOS, .iOSSimulator:

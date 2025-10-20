@@ -165,7 +165,8 @@ enum DeviceManager {
       throw failure("Missing platform")
     }
 
-    guard let parsedPlatform = ApplePlatform.parseXcodeDestinationName(platform) else {
+    let variant = dictionary["variant"]
+    guard let parsedPlatform = ApplePlatform.parseXcodeDestinationName(platform, variant) else {
       // Skip devices for platforms that we don't handle, such as DriverKit
       return nil
     }

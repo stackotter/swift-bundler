@@ -421,7 +421,7 @@ enum ProjectBuilder {
         scratchDirectory: scratchDirectory.builder / ".build",
         configuration: .debug,
         architectures: [.current],
-        platform: .host,
+        platform: HostPlatform.hostPlatform.platform,
         additionalArguments: []
       ),
       isGUIExecutable: false

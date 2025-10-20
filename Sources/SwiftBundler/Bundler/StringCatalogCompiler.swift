@@ -4,6 +4,8 @@ import Foundation
 enum StringCatalogCompiler {
   /// A state for a string unit to be in.
   enum StringUnitState: String, Decodable {
+    case stale = "stale"
+    case new = "new"
     case translated = "translated"
     case needsReview = "needs_review"
   }
@@ -198,6 +200,7 @@ enum StringCatalogCompiler {
         let data = try Data(contentsOf: file)
         stringsCatalog = try JSONDecoder().decode(StringsCatalogFile.self, from: data)
       } catch {
+        print(error)
         throw Error(.failedToParseJSON(file), cause: error)
       }
 

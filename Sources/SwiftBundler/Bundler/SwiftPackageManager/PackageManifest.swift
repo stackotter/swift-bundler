@@ -50,9 +50,17 @@ struct PackageManifest: Decodable {
   var platforms: [VersionedPlatform]?
   var products: [Product]
 
-  func platformVersion(for os: AppleOS) -> String? {
-    platforms?.first { platform in
-      return os.manifestName == platform.name
-    }?.version
+  func platformVersion(for platform: ApplePlatform) -> String? {
+    if let platformVersion = platforms?.first(where: { manifestPlatform in
+      platform.manifestPlatformName == manifestPlatform.name
+    })?.version {
+      if platform == .macCatalyst && platformVersion == "13.0" {
+        "13.1"
+      } else {
+        platformVersion
+      }
+    } else {
+      nil
+    }
   }
 }

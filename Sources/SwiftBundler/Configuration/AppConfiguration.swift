@@ -46,6 +46,10 @@ struct AppConfiguration: Codable {
   /// package dependencies
   var rpmRequirements: [String] = []
 
+  /// Only available in overlays with `platform(macCatalyst)` or stronger. Sets
+  /// the interface idiom used by Mac Catalyst.
+  var catalystInterfaceIdiom: MacCatalystInterfaceIdiom = .ipad
+
   private enum CodingKeys: String, CodingKey {
     case identifier
     case product
@@ -77,6 +81,7 @@ struct AppConfiguration: Codable {
     var dependencies: [Dependency]
     var dbusActivatable: Bool
     var rpmRequirements: [String]
+    var catalystInterfaceIdiom: MacCatalystInterfaceIdiom
   }
 
   struct Dependency: Codable, Hashable {
@@ -125,6 +130,12 @@ struct AppConfiguration: Codable {
     }
   }
 
+  /// The interface idiom to be used by Catalyst apps.
+  enum MacCatalystInterfaceIdiom: String, Codable {
+    case ipad
+    case mac
+  }
+
   struct Overlay: Codable, ConfigurationOverlay {
     typealias Base = AppConfiguration
 
@@ -132,7 +143,9 @@ struct AppConfiguration: Codable {
       .platform("linux"): PropertySet()
         .add(.dbusActivatable, \.dbusActivatable),
       .bundler("linuxRPM"): PropertySet()
-        .add(.rpmRequirements, \.rpmRequirements)
+        .add(.rpmRequirements, \.rpmRequirements),
+      .platform("macCatalyst"): PropertySet()
+        .add(.catalystInterfaceIdiom, \.catalystInterfaceIdiom)
     ]
 
     var condition: OverlayCondition
@@ -149,6 +162,7 @@ struct AppConfiguration: Codable {
     var dependencies: [Dependency]?
     var dbusActivatable: Bool?
     var rpmRequirements: [String]?
+    var catalystInterfaceIdiom: MacCatalystInterfaceIdiom?
 
     enum CodingKeys: String, CodingKey {
       case condition
@@ -165,6 +179,7 @@ struct AppConfiguration: Codable {
       case dependencies
       case dbusActivatable = "dbus_activatable"
       case rpmRequirements = "requirements"
+      case catalystInterfaceIdiom = "interface_idiom"
     }
 
     func merge(into base: inout Base) {
@@ -181,6 +196,7 @@ struct AppConfiguration: Codable {
       Self.merge(&base.dependencies, dependencies)
       Self.merge(&base.dbusActivatable, dbusActivatable)
       Self.merge(&base.rpmRequirements, rpmRequirements)
+      Self.merge(&base.catalystInterfaceIdiom, catalystInterfaceIdiom)
     }
   }
 

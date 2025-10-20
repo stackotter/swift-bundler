@@ -195,7 +195,7 @@ enum SwiftPackageManager {
     buildContext: BuildContext
   ) async throws(Error) -> [String] {
     let platform = buildContext.genericContext.platform
-    let platformArguments: [String]
+    var platformArguments: [String]
     switch platform {
       case .windows:
         let debugArguments: [String]
@@ -220,7 +220,7 @@ enum SwiftPackageManager {
         }
 
         platformArguments = debugArguments + guiArguments
-      case .iOS, .visionOS, .tvOS,
+      case .macCatalyst, .iOS, .visionOS, .tvOS,
         .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
         // Handle all non-Mac Apple platforms
         let sdkPath = try await getLatestSDKPath(for: platform)
@@ -231,7 +231,7 @@ enum SwiftPackageManager {
         let hostArchitecture = BuildArchitecture.current
 
         let targetTriple = platform.targetTriple(
-          withArchitecture: platform.isSimulator ? hostArchitecture : .arm64,
+          withArchitecture: platform.usesHostArchitecture ? hostArchitecture : .arm64,
           andPlatformVersion: platformVersion
         )
 
@@ -244,6 +244,17 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
+
+        if platform == .macCatalyst {
+          platformArguments += [
+            "-I", "\(sdkPath)/../../usr/lib",
+            "-Fsystem", "\(sdkPath)/System/iOSSupport/System/Library/Frameworks",
+            "-F", "\(sdkPath)/../../Library/Frameworks",
+          ].flatMap { ["-Xswiftc", $0] }
+          + [
+            "-isystem", "\(sdkPath)/System/iOSSupport/usr/include"
+          ].flatMap { ["-Xcc", $0] }
+        }
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]

@@ -49,6 +49,16 @@ enum Runner {
               environmentVariables: environmentVariables
             )
         }
+      case .macCatalyst:
+        guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
+          throw Error(.missingExecutable(device, bundlerOutput))
+        }
+
+        try await runMacOSAppOnHost(
+          bundlerOutput: bundlerOutput,
+          arguments: arguments,
+          environmentVariables: environmentVariables
+        )
       case .connected(let connectedDevice):
         try await runApp(
           on: connectedDevice,

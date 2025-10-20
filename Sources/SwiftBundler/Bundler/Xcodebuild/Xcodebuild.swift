@@ -85,22 +85,26 @@ enum Xcodebuild {
       xcbeautifyProcess = nil
     }
 
-    let archString = buildContext.genericContext.architectures
+    let context = buildContext.genericContext
+    let platform = context.platform
+    let archString = context.architectures
       .map(\.rawValue)
       .joined(separator: "_")
 
-    let destinationArguments: [String]
-    if buildContext.genericContext.platform == .macOS {
-      destinationArguments = [
-        "-destination",
-        "platform=macOS,arch=\(archString)",
-      ]
+    var destinationString: String
+    if [.macOS, .macCatalyst].contains(platform) {
+      if context.architectures.count == 1 {
+        destinationString = "platform=macOS,arch=\(archString)"
+      } else {
+        destinationString = "generic/platform=macOS"
+      }
     } else {
-      destinationArguments = [
-        "-destination",
-        "generic/platform=\(applePlatform.xcodeDestinationName)",
-      ]
+      destinationString = "generic/platform=\(applePlatform.xcodeDestinationName)"
     }
+    if let variant = platform.asApplePlatform?.xcodeDestinationVariant {
+      destinationString += ",variant=\(variant)"
+    }
+    let destinationArguments = ["-destination", destinationString]
 
     let metadataArguments: [String]
     if let compiledMetadata = buildContext.compiledMetadata {
@@ -111,22 +115,23 @@ enum Xcodebuild {
       metadataArguments = []
     }
 
+    let suffix = context.platform.xcodeProductDirectorySuffix ?? context.platform.rawValue
     process = Process.create(
       "xcodebuild",
       arguments: [
         "-scheme", product,
-        "-configuration", buildContext.genericContext.configuration.rawValue.capitalized,
+        "-configuration", context.configuration.rawValue.capitalized,
         "-usePackageSupportBuiltinSCM",
         "-skipMacroValidation",
         "-derivedDataPath",
-        buildContext.genericContext.projectDirectory.appendingPathComponent(
-          ".build/\(archString)-apple-\(buildContext.genericContext.platform.sdkName)"
+        context.projectDirectory.appendingPathComponent(
+          ".build/\(archString)-apple-\(suffix)"
         ).path,
       ]
       + destinationArguments
-      + buildContext.genericContext.additionalArguments
+      + context.additionalArguments
       + metadataArguments,
-      directory: buildContext.genericContext.projectDirectory,
+      directory: context.projectDirectory,
       runSilentlyWhenNotVerbose: false
     )
 
@@ -173,7 +178,7 @@ enum Xcodebuild {
     // properly support cross-compiling to other Apple platforms from
     // macOS (and the workaround Swift Bundler uses to do so breaks down
     // when the package uses macros or has conditional dependencies in
-    // its Package.swift).
+    // its Package.swift). This includes Mac Catalyst as well.
     let platformBreaksWithoutXcodebuild =
       resolvedPlatform.isApplePlatform
       && resolvedPlatform != .macOS

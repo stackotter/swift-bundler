@@ -130,7 +130,7 @@ struct RunCommand: ErrorHandledCommand {
 
     let platformVersion =
       device.platform.asApplePlatform.map { platform in
-        manifest.platformVersion(for: platform.os)
+        manifest.platformVersion(for: platform)
       } ?? nil
     let architectures = bundleCommand.getArchitectures(
       platform: device.platform

@@ -130,7 +130,7 @@ struct BundleCommand: ErrorHandledCommand {
 
     // macOS-only arguments
     #if os(macOS)
-      if platform.isApplePlatform && platform != .macOS {
+      if platform.isApplePlatform && ![.macOS, .macCatalyst].contains(platform) {
         if arguments.universal {
           log.error(
             """
@@ -150,7 +150,7 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       if platform != .macOS && arguments.standAlone {
-        log.error("'--experimental-stand-alone' only works on macOS")
+        log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
         return false
       }
 
@@ -378,6 +378,8 @@ struct BundleCommand: ErrorHandledCommand {
       switch platform {
         case .none, hostPlatform.platform:
           return Device.host(hostPlatform)
+        case .macCatalyst:
+          return Device.macCatalyst
         case .some(let platform) where platform.isSimulator:
           let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
             try await SimulatorManager.listAvailableSimulators()
@@ -437,7 +439,7 @@ struct BundleCommand: ErrorHandledCommand {
   func getArchitectures(platform: Platform) -> [BuildArchitecture] {
     let architectures: [BuildArchitecture]
     switch platform {
-      case .macOS:
+      case .macOS, .macCatalyst:
         if arguments.universal {
           architectures = [.arm64, .x86_64]
         } else {
@@ -560,7 +562,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       let platformVersion =
         resolvedPlatform.asApplePlatform.map { platform in
-          manifest.platformVersion(for: platform.os)
+          manifest.platformVersion(for: platform)
         } ?? nil
 
       let metadataDirectory = outputDirectory / "metadata"
@@ -573,7 +575,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
       let compiledMetadata = try await RichError<SwiftBundlerError>.catch {
-        try await MetadataInserter.compileMetadata(
+        return try await MetadataInserter.compileMetadata(
           in: metadataDirectory,
           for: MetadataInserter.metadata(for: appConfiguration),
           architectures: architectures,
@@ -614,12 +616,20 @@ struct BundleCommand: ErrorHandledCommand {
         // xcodebuild adds a platform suffix to the products directory for
         // certain platforms. E.g. it's 'Release-xrsimulator' for visionOS.
         let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
-        let platformSuffix = resolvedPlatform == .macOS ? "" : "-\(resolvedPlatform.sdkName)"
+        let swiftpmSuffix: String
+        let xcodeSuffix: String
+        if let suffix = resolvedPlatform.xcodeProductDirectorySuffix {
+          xcodeSuffix = "-\(suffix)"
+          swiftpmSuffix = suffix
+        } else {
+          xcodeSuffix = ""
+          swiftpmSuffix = resolvedPlatform.rawValue
+        }
         productsDirectory =
           arguments.productsDirectory
           ?? (packageDirectory
-            / ".build/\(archString)-apple-\(resolvedPlatform.sdkName)"
-            / "Build/Products/\(productsDirectoryBase)\(platformSuffix)")
+            / ".build/\(archString)-apple-\(swiftpmSuffix)"
+            / "Build/Products/\(productsDirectoryBase)\(xcodeSuffix)")
       }
 
       var originalExecutableArtifact = productsDirectory / appConfiguration.product
