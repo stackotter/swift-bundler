@@ -15,7 +15,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
-    .package(url: "https://github.com/pointfreeco/swift-parsing", .upToNextMinor(from: "0.13.0")),
+    .package(url: "https://github.com/pointfreeco/swift-parsing", .upToNextMinor(from: "0.14.0")),
     .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "4.0.0"),
     .package(url: "https://github.com/mxcl/Version", from: "2.0.0"),
