@@ -40,7 +40,6 @@ jobs:
             --transform-for-static-hosting \
             --output-path gh-pages/docs
 
-          CURRENT_COMMIT_HASH=`git rev-parse --short HEAD`
           cd gh-pages
 
           # Inject our site at the index
@@ -62,6 +61,8 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           set -eux
+
+          CURRENT_COMMIT_HASH=`git rev-parse --short HEAD`
           cd gh-pages
 
           # Commit changes back to gh-pages branch if there any
