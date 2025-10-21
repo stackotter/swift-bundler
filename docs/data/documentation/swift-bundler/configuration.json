@@ -83,19 +83,36 @@
             "# `HelloWorld` here is the app's name. Use double quotes if your app's name",
             "# contains special characters such as spaces.",
             "[apps.HelloWorld]",
-            "# The SwiftPM package executable product to bundle",
-            "product = \"HelloWorld\"",
-            "# The app's version, displayed on macOS's automatic 'About HelloWorld' screen.",
-            "version = \"0.1.0\"",
             "# The app's identifier, used by bundlers which require reverse domain name",
             "# identifiers.",
             "identifier = \"com.example.HelloWorld\"",
+            "# The SwiftPM package executable product to bundle",
+            "product = \"HelloWorld\"",
+            "# The app's version. Displayed on macOS's automatic 'About HelloWorld' screen.",
+            "version = \"0.1.0\"",
+            "# The app's description. Displayed by some package managers.",
+            "description = \"A basic app.\"",
+            "# The license used by the app. Using SPDX identifiers is recommended.",
+            "license = \"MIT\"",
             "# Only used by the Darwin bundler at the moment. Corresponds to Apple's category",
             "# identifiers. See https:\/\/developer.apple.com\/documentation\/bundleresources\/information-property-list\/lsapplicationcategorytype",
             "category = \"public.app-category.education\" # Optional",
             "# The app's icon. Must be a 1024x1024px PNG file, or a `.icns` file. `.icns`",
             "# files only work on Apple platforms.",
             "icon = \"icon.png\" # Optional",
+            "# Custom URL schemes supported by the app (for deep linking). Swift Bundler",
+            "# sets up the required metadata to get such URL schemes redirected to your",
+            "# app. It's up to your app to handle the different ways that platforms deliver",
+            "# custom URL events, or to use a cross platform framework such as SwiftCrossUI",
+            "# that can handle those differences on your behalf.",
+            "url_schemes = [\"hello\"]",
+            "# Build dependencies (outside of those handled by SwiftPM). Dependencies without",
+            "# dots are interpreted as executable products to include from the root SwiftPM",
+            "# package as helper executables (placed next to the main executable). Dependencies",
+            "# with a dot are interpreted as either library or executable products to include",
+            "# from a subproject. This allows pulling cmake dependencies into Swift Bundler",
+            "# projects. This is often used to pull in libsentry.",
+            "dependencies = [\"Updater\", \"cmakeproj.hello\"]",
             "",
             "# Extra entries for your app's Info.plist file. Currently has no effect on",
             "# Linux.",
@@ -104,13 +121,85 @@
             "# example. Patterns of the form `$(...)` get replaced with their corresponding",
             "# values. See 'Variable substitutions' below.",
             "CFBundleShortVersionString = \"$(VERSION)_$(COMMIT_HASH)\"",
-            "# You can also define many other kinds of complex fields that you want. Below",
-            "# is how you would specify a list of URL schemes (http, ftp, and so on)",
-            "# supported by a macOS app.",
-            "CFBundleURLTypes = [ { type = \"dict\", value = { CFBundleTypeRole = 'Viewer', CFBundleURLName = 'HelloWorld', CFBundleURLSchemes = [ 'helloworld' ] } } ]"
+            "",
+            "# Define platform-specific or bundler-specific configuration properties using",
+            "# conditional overlays.",
+            "[[apps.HelloWorld.overlays]]",
+            "condition = \"platform(linux)\"",
+            "# Generate a D-Bus service file for the app. This allows the app to handle URL",
+            "# schemes.",
+            "dbus_activatable = true",
+            "# You can also use overlays to provide platform-specific overrides for general",
+            "# configuration properties.",
+            "url_schemes = [\"hello\", \"hello-linux\"]",
+            "",
+            "[[apps.HelloWorld.overlays]]",
+            "condition = \"bundler(linuxRPM)\"",
+            "# Specify external packages required by the app. This property is currently",
+            "# only available when using the linuxRPM bundler.",
+            "requirements = [\"gtk3\"]",
+            "",
+            "[[apps.HelloWorld.overlays]]",
+            "condition = \"platform(macCatalyst)\"",
+            "# Specify the interface idiom used by the app when run under Mac Catalyst.",
+            "# Respected by UIKit. Value must be `ipad` (Scaled to Match iPad) or `mac`",
+            "# (Optimize for Mac).",
+            "interface_idiom = \"mac\"",
+            "",
+            "# Subprojects are dependencies or constituent parts of a project that fall",
+            "# outside of the reign of SwiftPM. They can use custom builders and can build",
+            "# from either local or git sources.",
+            "[projects.cmakeproj]",
+            "# The subprojects source directory. Can be `local(...)` (a path) or",
+            "# `git(...)` (a git url). When using a `git` source, you must specify a",
+            "# revision via the separate `revision` config property.",
+            "source = \"local(.\/cmakeproj)\"",
+            "",
+            "# All projects must define their own builders.",
+            "[projects.cmakeproj.builder]",
+            "# The name of the builder. This field is oddly named, but for now it's just the",
+            "# path to the builder's source file. Remote builder sources will eventually be",
+            "# supported (so that projects can vend builders for others to use).",
+            "name = \"CMakeBuilder.swift\"",
+            "# The type of builder. Currently `wholeProject` is the only option. That is,",
+            "# when invoked the builder must just build all required products.",
+            "type = \"wholeProject\"",
+            "# The revision of the Swift Bundler builder API to use when building the builder.",
+            "api = \"revision(2cbe252923017306998297ee8bea817079a0eda4)\"",
+            "",
+            "# Projects can define as many products as they want. Library products are built",
+            "# and inserted into SwiftPM's build directory so that they can be found when",
+            "# the app's product gets built. All you need to do is include the header in your",
+            "# product and Swift Bundler makes sure that the linking just works. Executable",
+            "# products get included as helper executables next to the main executable",
+            "# (regardless of bundler). Overlays can be used to override `type` and",
+            "# `output_directory` depending on platform (see the overlay example for the",
+            "# HelloWorld app above).",
+            "[projects.cmakeproj.products.hello]",
+            "# The type of product. One of `dynamicLibrary`, `staticLibrary` or `executable`.",
+            "type = \"dynamicLibrary\"",
+            "# The directory within the build directory to look for the built product. Swift",
+            "# Bundler passes a build directory to the builder which the builder is expected",
+            "# to build into, but sometimes the products may exist within some sort of nested",
+            "# directory structure. Defaults to `.`",
+            "output_directory = \".\""
           ],
           "syntax" : "toml",
           "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Bundler.toml",
+                  "type" : "text"
+                }
+              ],
+              "type" : "emphasis"
+            }
+          ],
+          "type" : "paragraph"
         },
         {
           "content" : [
@@ -151,6 +240,63 @@
           "name" : "Note",
           "style" : "note",
           "type" : "aside"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "For the sake of completeness, here’s the source code for the ",
+              "type" : "text"
+            },
+            {
+              "code" : "CMakeBuilder.swift",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "referred to by the example configuration.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "import SwiftBundlerBuilders",
+            "",
+            "@main",
+            "struct CMakeBuilder: Builder {",
+            "    static func build(_ context: some BuilderContext) async throws -> BuilderResult {",
+            "        try await context.run(",
+            "            \"cmake\",",
+            "            [\"-B\", context.buildDirectory.path]",
+            "        )",
+            "        try await context.run(",
+            "            \"cmake\",",
+            "            [\"--build\", context.buildDirectory.path, \"--target\", \"hello\"]",
+            "        )",
+            "        return BuilderResult()",
+            "    }",
+            "}"
+          ],
+          "syntax" : "swift",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "CMakeBuilder.swift",
+                  "type" : "text"
+                }
+              ],
+              "type" : "emphasis"
+            }
+          ],
+          "type" : "paragraph"
         },
         {
           "anchor" : "Schema",
