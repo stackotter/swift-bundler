@@ -62,6 +62,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           set -eux
+          cd gh-pages
 
           # Commit changes back to gh-pages branch if there any
           git add docs
