@@ -108,6 +108,7 @@ enum PlistCreator {
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["iPhoneOS"]
         entries["UILaunchScreen"] = [String: Any]()
+        entries["UIDeviceFamily"] = [1, 2]
       case .tvOS, .tvOSSimulator:
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["AppleTVOS"]
