@@ -214,7 +214,8 @@ enum SwiftPackageManager {
         if buildContext.isGUIExecutable {
           let frontendArguments = ["-entry-point-function-name", "wWinMain"]
           let swiftcArguments = frontendArguments.flatMap { ["-Xfrontend", $0] }
-          guiArguments = swiftcArguments.flatMap { ["-Xswiftc", $0] }
+          guiArguments = swiftcArguments.flatMap { ["-Xswiftc", $0] } +
+            ["-Xlinker", "/SUBSYSTEM:WINDOWS"]
         } else {
           guiArguments = []
         }
