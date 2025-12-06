@@ -148,7 +148,6 @@ enum ResourceBundler {
     }
 
     let assetCatalog = destinationBundleResources.appendingPathComponent("Assets.xcassets")
-    let assetCatalogExists = assetCatalog.exists(withType: .directory)
 
     if !isMainBundle {
       // All resource bundles other than the main one get put in separate
@@ -164,7 +163,7 @@ enum ResourceBundler {
 
     try copyResources(from: bundle, to: destinationBundleResources)
 
-    if assetCatalogExists {
+    if assetCatalog.exists(withType: .directory) {
       // Compile asset catalog if present
       try await compileAssetCatalog(
         assetCatalog,
