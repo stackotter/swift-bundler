@@ -230,17 +230,14 @@ enum DarwinBundler: Bundler {
           entitlements: codeSigningContext.entitlements
         )
       } else {
-        if context.platform != .macOS {
-          // Codesign using an adhoc signature if the target platform requires
-          // codesigning
-          try await CodeSigner.signAppBundle(
-            bundle: appBundle,
-            identityId: "-",
-            bundleIdentifier: context.appConfiguration.identifier,
-            platform: additionalContext.platform,
-            entitlements: nil
-          )
-        }
+        // Codesign using an adhoc signature
+        try await CodeSigner.signAppBundle(
+          bundle: appBundle,
+          identityId: "-",
+          bundleIdentifier: context.appConfiguration.identifier,
+          platform: additionalContext.platform,
+          entitlements: nil
+        )
       }
     }
   }
