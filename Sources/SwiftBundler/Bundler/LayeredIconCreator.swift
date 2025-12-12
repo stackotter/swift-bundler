@@ -45,7 +45,6 @@ enum LayeredIconCreator {
         "--enable-on-demand-resources", "NO",
         "--app-icon", "AppIcon",
         "--platform", platform.sdkName,
-        "--enable-icon-stack-fallback-generation",
         "--include-all-app-icons",
         "--minimum-deployment-target", version,
         "--output-partial-info-plist", "/dev/null",
@@ -54,18 +53,26 @@ enum LayeredIconCreator {
           temporaryIcon.path
         ]
     )
-    try await Error.catch(withMessage: .failedToConvertToICNS) {
+    do {
       try await process.runAndWait()
+    } catch {
+      // Remove the work directory before throwing.
+      try? FileManager.default.removeItem(at: workPath)
+      throw Error(.failedToConvertToICNS)
     }
 
     let generatedIcns = workPath.appendingPathComponent("AppIcon.icns")
 
     guard generatedIcns.exists(withType: .file) else {
+      try? FileManager.default.removeItem(at: workPath)
       throw Error(.failedToConvertToICNS)
     }
 
-    try Error.catch(withMessage: .failedToCopyFile(generatedIcns, outputFile)) {
+    do {
       try FileManager.default.moveItem(at: generatedIcns, to: outputFile)
+    } catch {
+      try? FileManager.default.removeItem(at: workPath)
+      throw Error(.failedToCopyFile(generatedIcns, outputFile))
     }
 
     try FileManager.default.removeItem(
