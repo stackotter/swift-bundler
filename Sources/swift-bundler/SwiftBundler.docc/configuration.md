@@ -31,8 +31,11 @@ license = "MIT"
 # Only used by the Darwin bundler at the moment. Corresponds to Apple's category
 # identifiers. See https://developer.apple.com/documentation/bundleresources/information-property-list/lsapplicationcategorytype
 category = "public.app-category.education" # Optional
-# The app's icon. Must be a 1024x1024px PNG file, or a `.icns` file. `.icns`
-# files only work on Apple platforms.
+# The app's icon.
+# Must be one of the following formats:
+# - 1024x1024px PNG file
+# - ICNS file (Apple platforms only)
+# - Icon file (Apple platforms only)
 icon = "icon.png" # Optional
 # Custom URL schemes supported by the app (for deep linking). Swift Bundler
 # sets up the required metadata to get such URL schemes redirected to your
@@ -160,11 +163,17 @@ make sure to let me know anyway so that I can update it for everyone!
 To add an icon to your app, provide a value for the `icon` field of your app's
 configuration.
 
-Icons can either be `.icns` files or 1024x1024px `.png` files. `.icns` is not
-compatible with Linux. If you want cross-platform support or you want to use
-the same icon for all screen resolutions, provide the icon as a `.png` file.
-Otherwise use a `.icns` file. The easiest method for creating an `icns` file is
-to create an `iconset` using Xcode and then run the following command.
+Icons can be provided in one of the following formats:
+- 1024x1024px PNG file
+- ICNS file (Apple platforms only)
+- Icon file (Apple platforms only)
+
+If you want cross-platform support or you want to use the same icon for all screen
+resolutions, provide the icon as a `.png` file. You may also use a `.icns` file or
+`.icon` file, but these formats only work on Apple platforms.
+
+To create an `icns` file, the easiest method is to create an `iconset` using Xcode
+and then run the following command.
 
 ```sh
 /usr/bin/iconutil -c icns /path/to/AppIcon.iconset
