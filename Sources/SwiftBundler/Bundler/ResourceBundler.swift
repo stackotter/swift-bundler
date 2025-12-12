@@ -161,7 +161,7 @@ enum ResourceBundler {
     let assetCatalogExists = assetCatalog.exists(withType: .directory)
     let iconPath: URL?
     let layeredIconEnabled: Bool
-    if let path = context.appConfiguration.icon {
+    if let path = context.appConfiguration.icon, isMainBundle {
       iconPath = context.packageDirectory / path
       layeredIconEnabled = iconPath?.pathExtension.lowercased() == "icon"
     } else {
