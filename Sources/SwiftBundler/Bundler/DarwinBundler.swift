@@ -156,17 +156,26 @@ enum DarwinBundler: Bundler {
         at: icon,
         to: bundleStructure.appIconFile,
         for: context.platform,
-        with: additionalContext.platformVersion
+        withPlatformVersion: additionalContext.platformVersion
       )
     }
 
     do {
+      let appIconURL: URL?
+      if let iconFile = context.appConfiguration.icon {
+        appIconURL = context.packageDirectory / iconFile
+      } else {
+        appIconURL = nil
+      }
       try await ResourceBundler.copyResources(
         from: context.productsDirectory,
         to: bundleStructure.resourcesDirectory,
         fixBundles: !additionalContext.isXcodeBuild && !additionalContext.universal,
-        context: context,
-        platformVersion: additionalContext.platformVersion
+        platform: context.platform,
+        platformVersion: additionalContext.platformVersion,
+        packageName: context.packageName,
+        productName: context.appConfiguration.product,
+        iconURL: appIconURL
       )
     } catch {
       throw Error(.failedToCopyResourceBundles, cause: error)
@@ -343,14 +352,14 @@ enum DarwinBundler: Bundler {
   ///     1024x1024 `png` with an alpha channel.
   ///   - outputIconFile: The `icns` file to output to.
   ///   - platform: The platform the icon is being created for.
-  ///   - version: The platform version the icon is being created for.
+  ///   - platformVersion: The platform version the icon is being created for.
   /// - Throws: If the png exists and there is an error while converting it to
   ///   `icns`, or if the file is neither an `icns` or a `png`.
   private static func compileAppIcon(
     at inputIconFile: URL,
     to outputIconFile: URL,
     for platform: Platform,
-    with version: String
+    withPlatformVersion platformVersion: String
   ) async throws(Error) {
     // Copy `AppIcon.icns` if present
     if inputIconFile.pathExtension == "icns" {
@@ -371,8 +380,8 @@ enum DarwinBundler: Bundler {
         try await LayeredIconCreator.createIcns(
           from: inputIconFile,
           outputFile: outputIconFile,
-          for: platform,
-          with: version
+          forPlatform: platform,
+          withPlatformVersion: platformVersion
         )
       }
     } else if inputIconFile.pathExtension == "png" {
