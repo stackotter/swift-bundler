@@ -32,10 +32,10 @@ license = "MIT"
 # identifiers. See https://developer.apple.com/documentation/bundleresources/information-property-list/lsapplicationcategorytype
 category = "public.app-category.education" # Optional
 # The app's icon.
-# Must be one of the following formats:
-# - 1024x1024px PNG file
-# - ICNS file (Apple platforms only)
-# - Icon file (Apple platforms only)
+# Can be any of the following formats:
+# - 1024x1024px PNG file (`.png`)
+# - ICNS file (`.icns`) (Apple platforms only)
+# - Icon Composer file (`.icon`) (Apple platforms only)
 icon = "icon.png" # Optional
 # Custom URL schemes supported by the app (for deep linking). Swift Bundler
 # sets up the required metadata to get such URL schemes redirected to your
@@ -163,17 +163,25 @@ make sure to let me know anyway so that I can update it for everyone!
 To add an icon to your app, provide a value for the `icon` field of your app's
 configuration.
 
-Icons can be provided in one of the following formats:
-- 1024x1024px PNG file
-- ICNS file (Apple platforms only)
-- Icon file (Apple platforms only)
+Icons can be provided in any of the following formats:
+- 1024x1024px PNG file (`.png`)
+- ICNS file (`.icns`) (Apple platforms only)
+- Icon Composer file (`.icon`) (Apple platforms only)
 
-If you want cross-platform support or you want to use the same icon for all screen
-resolutions, provide the icon as a `.png` file. You may also use a `.icns` file or
-`.icon` file, but these formats only work on Apple platforms.
+Overlays can be used to specify an ICNS or Icon Composer icons on Apple platforms
+only:
 
-To create an `icns` file, the easiest method is to create an `iconset` using Xcode
-and then run the following command.
+```toml
+[apps.Example]
+icon = "AppIcon.png"
+
+[[apps.Example.overlays]]
+condition = "platform(macOS)"
+icon = "AppIcon.icon"
+```
+
+The easiest method to create an `icns` file is to create an `iconset` using Xcode
+and then convert it using the following command:
 
 ```sh
 /usr/bin/iconutil -c icns /path/to/AppIcon.iconset
