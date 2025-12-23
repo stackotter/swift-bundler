@@ -1,0 +1,6 @@
+format_version = 2
+
+[apps.ManifestParsingBug]
+identifier = 'com.example.ManifestParsingBug'
+product = 'ManifestParsingBug'
+version = '0.1.0'

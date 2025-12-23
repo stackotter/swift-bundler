@@ -407,7 +407,16 @@ enum SwiftPackageManager {
       try await process.getOutput(excludeStdError: true)
     }
 
-    let jsonData = Data(output.utf8)
+    // Drop lines before the start of the JSON. SwiftPM sometimes prints
+    // warnings to stdout before printing the JSON. Handles \r\n line endings
+    // correctly.
+    let lines = output.split(separator: "\n")
+    let jsonLines = lines.drop { line in
+      !line.hasPrefix("{")
+    }
+    let json = jsonLines.joined(separator: "\n")
+
+    let jsonData = Data(json.utf8)
     do {
       return try JSONDecoder().decode(PackageManifest.self, from: jsonData)
     } catch {

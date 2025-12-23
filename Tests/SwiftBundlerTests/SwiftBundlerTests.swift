@@ -48,6 +48,12 @@ import Foundation
   await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
 }
 
+@Test(.bug("https://github.com/stackotter/swift-bundler/issues/120"))
+func testManifestParsingBug120() async throws {
+    let fixture = Bundle.module.bundleURL / "Fixtures/ManifestParsingBug_Issue120"
+    await SwiftBundler.main(["bundle", "-d", fixture.path])
+}
+
 @Test func testHexParsing() throws {
   #expect(Array(fromHex: "AB5D87") == [0xab, 0x5d, 0x87])
   #expect(Array(fromHex: "ab5d87") == [0xab, 0x5d, 0x87])
