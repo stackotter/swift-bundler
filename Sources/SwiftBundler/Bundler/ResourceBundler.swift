@@ -2,7 +2,7 @@ import Foundation
 
 /// A utility for handling resource bundles.
 enum ResourceBundler {
-  /// Compiles an `xcassets` directory into an `Assets.car` file.
+  /// Compiles multiple `xcassets` directories into an `Assets.car` file.
   /// - Parameters:
   ///   - assetCatalogs: The catalogs to compile.
   ///   - destinationDirectory: The directory to output `Assets.car` to.
@@ -17,6 +17,11 @@ enum ResourceBundler {
   ) async throws(Error) {
     // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
+    let targetDeviceArguments =
+      platform
+      .asApplePlatform?
+      .actoolTargetDeviceNames
+      .flatMap { ["--target-device", $0] } ?? []
     try await Error.catch(withMessage: .failedToCompileXCAssets) {
       try await Process.create(
         "/usr/bin/xcrun",
@@ -29,8 +34,7 @@ enum ResourceBundler {
           "--enable-icon-stack-fallback-generation=disabled",
           "--include-all-app-icons",
           "--minimum-deployment-target", platformVersion,
-          "--output-partial-info-plist", "/dev/null",
-        ] + (platform.asApplePlatform?.targetDeviceNames.flatMap { ["--target-device", $0] } ?? [])
+        ] + targetDeviceArguments
           + assetCatalogs.map { $0.path }
       ).runAndWait()
     }
@@ -46,20 +50,24 @@ enum ResourceBundler {
   ///   - platform: The platform that the app should run on.
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - packageName: The name of the package this app is in.
-  ///   - mainProductName: The name of the app's product.
+  ///   - productName: The name of the app's product.
+  ///   - iconURL: An optional icon URL to include in the main bundle's Assets.car.
   static func copyResources(
     from sourceDirectory: URL,
     to destinationDirectory: URL,
     fixBundles: Bool,
-    context: BundlerContext,
+    platform: Platform,
     platformVersion: String,
+    packageName: String,
+    productName: String,
+    iconURL: URL?,
   ) async throws(Error) {
     let contents = try FileManager.default.contentsOfDirectory(
       at: sourceDirectory,
       errorMessage: ErrorMessage.failedToEnumerateBundles
     )
 
-    let mainBundleName = "\(context.packageName)_\(context.appConfiguration.product)"
+    let mainBundleName = "\(packageName)_\(productName)"
     for file in contents where file.pathExtension == "bundle" {
       guard file.exists(withType: .directory) else {
         continue
@@ -75,9 +83,10 @@ enum ResourceBundler {
         try await fixAndCopyResourceBundle(
           file,
           to: destinationDirectory,
-          context: context,
+          platform: platform,
           platformVersion: platformVersion,
           isMainBundle: bundleName == mainBundleName,
+          iconURL: iconURL
         )
       }
     }
@@ -112,12 +121,15 @@ enum ResourceBundler {
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - isMainBundle: If `true`, the contents of the bundle are fixed and copied
   ///     straight into the app's resources directory.
+  ///   - iconURL: If present and the the icon type is a Icon Composer file, then
+  ///     the Icon Composer file will be bundled into the Assets.car
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
-    context: BundlerContext,
+    platform: Platform,
     platformVersion: String,
-    isMainBundle: Bool
+    isMainBundle: Bool,
+    iconURL: URL?
   ) async throws(Error) {
     log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
 
@@ -129,7 +141,7 @@ enum ResourceBundler {
     } else {
       destinationBundle = destination.appendingPathComponent(bundle.lastPathComponent)
 
-      switch context.platform {
+      switch platform {
         case .macOS, .macCatalyst:
           destinationBundleResources = destinationBundle.appendingPathComponent(
             "Contents/Resources"
@@ -148,10 +160,10 @@ enum ResourceBundler {
       // All resource bundles other than the main one get put in separate
       // resource bundles (whereas the main resources just get put in the root
       // of the resources directory).
-      try createResourceBundleDirectoryStructure(at: destinationBundle, for: context.platform)
+      try createResourceBundleDirectoryStructure(at: destinationBundle, for: platform)
       try createResourceBundleInfoPlist(
         in: destinationBundle,
-        platform: context.platform,
+        platform: platform,
         platformVersion: platformVersion
       )
     }
@@ -159,23 +171,20 @@ enum ResourceBundler {
     try copyResources(from: bundle, to: destinationBundleResources)
 
     let assetCatalogExists = assetCatalog.exists(withType: .directory)
-    let iconPath: URL?
-    let layeredIconEnabled: Bool
-    if let path = context.appConfiguration.icon, isMainBundle {
-      iconPath = context.packageDirectory / path
-      layeredIconEnabled = iconPath?.pathExtension.lowercased() == "icon"
+    let layeredIcon: [URL]
+    if let iconURL, iconURL.pathExtension.lowercased() == "icon" {
+      layeredIcon = [iconURL]
     } else {
-      iconPath = nil
-      layeredIconEnabled = false
+      layeredIcon = []
     }
 
-    if assetCatalogExists || layeredIconEnabled {
+    if assetCatalogExists || !layeredIcon.isEmpty {
       // Compile asset catalog if present
       try await compileAssetCatalog(
         (assetCatalogExists ? [assetCatalog] : [])
-          + (layeredIconEnabled ? [iconPath!] : []),
+          + layeredIcon,
         to: destinationBundleResources,
-        for: context.platform,
+        for: platform,
         platformVersion: platformVersion
       )
 
@@ -192,7 +201,7 @@ enum ResourceBundler {
     try await Error.catch(withMessage: .failedToCompileMetalShaders) {
       try await MetalCompiler.compileMetalShaders(
         in: destinationBundleResources,
-        for: context.platform,
+        for: platform,
         platformVersion: platformVersion,
         keepSources: false
       )

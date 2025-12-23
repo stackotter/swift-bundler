@@ -1,6 +1,6 @@
 import Foundation
 
-/// A utility for creating icon sets from a `.icon` file.
+/// A utility for creating an ICNS from `.icon` files.
 enum LayeredIconCreator {
   /// Creates an `AppIcon.icns` in the given directory from the given `.icon` file.
   /// - Parameters:
@@ -12,21 +12,16 @@ enum LayeredIconCreator {
   static func createIcns(
     from icon: URL,
     outputFile: URL,
-    for platform: Platform,
-    with version: String
+    forPlatform platform: Platform,
+    withPlatformVersion version: String
   ) async throws(Error) {
     guard icon.pathExtension.lowercased() == "icon" else {
-      throw Error(.notIconFile(icon))
+      throw Error(.notAnIconFile(icon))
     }
 
     let temporaryDirectory = FileManager.default.temporaryDirectory
     let workPath = temporaryDirectory.appendingPathComponent("BundlerWork-\(UUID().uuidString)")
 
-    if workPath.exists(withType: .directory) {
-      try Error.catch(withMessage: .failedToRemoveIconDirectory(workPath)) {
-        try FileManager.default.removeItem(at: workPath)
-      }
-    }
     try FileManager.default.createDirectory(
       at: workPath,
       errorMessage: ErrorMessage.failedToCreateIconDirectory
@@ -37,6 +32,11 @@ enum LayeredIconCreator {
       try FileManager.default.copyItem(at: icon, to: temporaryIcon)
     }
 
+    let targetDeviceArguments =
+      platform
+      .asApplePlatform?
+      .actoolTargetDeviceNames
+      .flatMap { ["--target-device", $0] } ?? []
     let process = Process.create(
       "/usr/bin/xcrun",
       arguments: [
@@ -47,18 +47,14 @@ enum LayeredIconCreator {
         "--platform", platform.sdkName,
         "--include-all-app-icons",
         "--minimum-deployment-target", version,
-        "--output-partial-info-plist", "/dev/null",
-      ] + (platform.asApplePlatform?.targetDeviceNames.flatMap { ["--target-device", $0] } ?? [])
-        + [
-          temporaryIcon.path
-        ]
+      ] + targetDeviceArguments + [temporaryIcon.path]
     )
     do {
       try await process.runAndWait()
     } catch {
       // Remove the work directory before throwing.
       try? FileManager.default.removeItem(at: workPath)
-      throw Error(.failedToConvertToICNS)
+      throw Error(.failedToConvertToICNS, cause: error)
     }
 
     let generatedIcns = workPath.appendingPathComponent("AppIcon.icns")
@@ -72,7 +68,7 @@ enum LayeredIconCreator {
       try FileManager.default.moveItem(at: generatedIcns, to: outputFile)
     } catch {
       try? FileManager.default.removeItem(at: workPath)
-      throw Error(.failedToCopyFile(generatedIcns, outputFile))
+      throw Error(.failedToCopyFile(generatedIcns, outputFile), cause: error)
     }
 
     try FileManager.default.removeItem(

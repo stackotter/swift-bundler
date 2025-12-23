@@ -6,7 +6,7 @@ extension LayeredIconCreator {
 
   /// An error message related to ``LayeredIconCreator``.
   enum ErrorMessage: Throwable {
-    case notIconFile(URL)
+    case notAnIconFile(URL)
     case failedToCreateIconDirectory(URL)
     case failedToCopyFile(URL, URL)
     case failedToConvertToICNS
@@ -14,8 +14,8 @@ extension LayeredIconCreator {
 
     var userFriendlyMessage: String {
       switch self {
-        case .notIconFile(let file):
-          return "Expected an icon file with .icon extension, but '\(file)' is not an icon file"
+        case .notAnIconFile(let file):
+          return "Expected icon file to have a '.icon' file extension, but got '\(file)'"
         case .failedToCreateIconDirectory(let directory):
           return """
             Failed to create a temporary icon directory at '\(directory.relativePath)'

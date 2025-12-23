@@ -149,7 +149,7 @@ enum ApplePlatform: String, CaseIterable {
   }
 
   /// The device names when passed to `--target-device` in actool.
-  var targetDeviceNames: [String] {
+  var actoolTargetDeviceNames: [String] {
     switch self {
       case .macOS:
         return ["mac"]
