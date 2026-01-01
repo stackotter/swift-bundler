@@ -3,6 +3,8 @@ import Foundation
 /// A utility for creating an ICNS from `.icon` files.
 enum LayeredIconCreator {
   /// Creates an `AppIcon.icns` in the given directory from the given `.icon` file.
+  /// 
+  /// iOS is NOT supported.
   /// - Parameters:
   ///   - icon: The input icon. Must be a `.icon` file. An error is returned
   ///     if the icon's path extension is not `icon` (case insensitive).
@@ -47,6 +49,7 @@ enum LayeredIconCreator {
         "--platform", platform.sdkName,
         "--include-all-app-icons",
         "--minimum-deployment-target", version,
+        "--output-partial-info-plist", "/dev/null"
       ] + targetDeviceArguments + [temporaryIcon.path]
     )
     do {
