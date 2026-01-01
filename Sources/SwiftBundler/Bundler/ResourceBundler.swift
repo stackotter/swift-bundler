@@ -34,6 +34,7 @@ enum ResourceBundler {
           "--enable-icon-stack-fallback-generation=disabled",
           "--include-all-app-icons",
           "--minimum-deployment-target", platformVersion,
+          "--output-partial-info-plist", "/dev/null"
         ] + targetDeviceArguments
           + assetCatalogs.map { $0.path }
       ).runAndWait()
