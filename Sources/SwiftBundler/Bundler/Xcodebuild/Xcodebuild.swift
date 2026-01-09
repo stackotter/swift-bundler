@@ -91,6 +91,9 @@ enum Xcodebuild {
       .map(\.rawValue)
       .joined(separator: "_")
 
+    // Needs to be modified if simulatorSpecifier is specified
+    var additionalArguments = context.additionalArguments
+
     var destinationString: String
     if [.macOS, .macCatalyst].contains(platform) {
       if context.architectures.count == 1 {
@@ -98,9 +101,31 @@ enum Xcodebuild {
       } else {
         destinationString = "generic/platform=macOS"
       }
+    } else if platform.isSimulator {
+      // BundleCommand/doBundling forwards the simulator specifier if specified
+      if let index = additionalArguments.firstIndex(of: "simulatorSpecifier"),
+        additionalArguments.count > index + 1
+      {
+        let specifier = additionalArguments[index + 1]
+        // The simulator specifier is not an argument that should be
+        // forwarded to xcodebuild, so it needs to be removed
+        additionalArguments.removeSubrange(index...index + 1)
+
+        // --simulator supports UUID and name, which need to be handled
+        // separately for xcodebuild
+        if UUID(uuidString: specifier) != nil {
+          destinationString = "platform=\(applePlatform.xcodeDestinationName),id=\(specifier)"
+        } else {
+          destinationString = "platform=\(applePlatform.xcodeDestinationName),name=\(specifier)"
+        }
+      } else {
+        // Fallback
+        destinationString = "generic/platform=\(applePlatform.xcodeDestinationName)"
+      }
     } else {
       destinationString = "generic/platform=\(applePlatform.xcodeDestinationName)"
     }
+
     if let variant = platform.asApplePlatform?.xcodeDestinationVariant {
       destinationString += ",variant=\(variant)"
     }
@@ -128,9 +153,9 @@ enum Xcodebuild {
           ".build/\(archString)-apple-\(suffix)"
         ).path,
       ]
-      + destinationArguments
-      + context.additionalArguments
-      + metadataArguments,
+        + destinationArguments
+        + additionalArguments
+        + metadataArguments,
       directory: context.projectDirectory,
       runSilentlyWhenNotVerbose: false
     )
@@ -157,7 +182,7 @@ enum Xcodebuild {
       try await process.runAndWait()
     } catch {
       throw Error(
-        .failedToRunXcodebuild( command: "Failed to run xcodebuild."),
+        .failedToRunXcodebuild(command: "Failed to run xcodebuild."),
         cause: error
       )
     }
