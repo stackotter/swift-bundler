@@ -58,9 +58,9 @@ enum MetadataInserter {
 
       @_cdecl("_getSwiftBundlerMetadata")
       func getSwiftBundlerMetadata() -> UnsafeRawPointer? {
-          return withUnsafePointer(to: metadata) { pointer in
-              UnsafeRawPointer(pointer)
-          }
+          let pointer = UnsafeMutablePointer<[[UInt8]]>.allocate(capacity: 1)
+          pointer.initialize(to: metadata)
+          return UnsafeRawPointer(pointer)
       }
       """
 
