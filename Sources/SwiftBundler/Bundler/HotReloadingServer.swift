@@ -109,7 +109,8 @@
 
     func start(
       product: String,
-      buildContext: SwiftPackageManager.BuildContext
+      buildContext: GenericBuildContext,
+      appConfiguration: AppConfiguration.Flat
     ) async throws(Error) {
       let connection = try await accept()
       log.debug("Received connection from runtime")
@@ -117,7 +118,11 @@
       try await Self.handshake(connection)
       log.debug("Handshake succeeded")
 
-      let sourcesDirectory = buildContext.genericContext.projectDirectory / "Sources"
+      let sourcesDirectory = buildContext.projectDirectory / "Sources"
+      let outputDirectory = BundleCommand.outputDirectory(
+        for: buildContext.scratchDirectory
+      )
+      let metadataDirectory = outputDirectory / "metadata"
 
       try await Error.catch(withMessage: .failedToWatchPackage) {
         try await FileSystemWatcher.watch(
@@ -127,9 +132,26 @@
             Task {
               do {
                 var connection = connection
+
+                let compiledMetadata = try await RichError<SwiftBundlerError>.catch {
+                  return try await MetadataInserter.compileMetadata(
+                    in: metadataDirectory,
+                    for: MetadataInserter.metadata(for: appConfiguration),
+                    architectures: buildContext.architectures,
+                    platform: buildContext.platform
+                  )
+                }
+
+                let context = SwiftPackageManager.BuildContext(
+                  genericContext: buildContext,
+                  hotReloadingEnabled: true,
+                  isGUIExecutable: true,
+                  compiledMetadata: compiledMetadata
+                )
+
                 let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
                   product: product,
-                  buildContext: buildContext
+                  buildContext: context
                 )
                 log.info("Successfully built dylib")
 
