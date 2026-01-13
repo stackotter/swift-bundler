@@ -16,7 +16,7 @@ public enum HotReloadingClientError: LocalizedError {
   }
 }
 
-public struct HotReloadingClient {
+public struct HotReloadingClient: Sendable {
   var server: AsyncSocket
 
   /// Connects to the server specified by the `SWIFT_BUNDLER_SERVER` environment variable.
