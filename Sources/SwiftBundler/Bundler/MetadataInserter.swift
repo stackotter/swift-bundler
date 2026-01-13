@@ -54,13 +54,18 @@ enum MetadataInserter {
     // (for embedding arbitrary resource files in executables).
     let array = Array(data)
     let code = """
-      let metadata: [[UInt8]] = [[\(array.map(\.description).joined(separator: ", "))]]
+      private(set) var metadata: [[UInt8]] = [[\(array.map(\.description).joined(separator: ", "))]]
 
       @_cdecl("_getSwiftBundlerMetadata")
       func getSwiftBundlerMetadata() -> UnsafeRawPointer? {
-          let pointer = UnsafeMutablePointer<[[UInt8]]>.allocate(capacity: 1)
-          pointer.initialize(to: metadata)
-          return UnsafeRawPointer(pointer)
+          return withUnsafeMutablePointer(to: &metadata) { pointer in
+              UnsafeRawPointer(pointer)
+          }
+      }
+
+      @_silgen_name("sbun_getMetadata")
+      func getSwiftBundlerMetadataNew() -> [[UInt8]] {
+          return metadata
       }
       """
 
