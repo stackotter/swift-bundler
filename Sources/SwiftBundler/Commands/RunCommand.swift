@@ -139,18 +139,14 @@ struct RunCommand: ErrorHandledCommand {
     let additionalEnvironmentVariables: [String: String]
     #if SUPPORT_HOT_RELOADING
       if hot {
-        let buildContext = SwiftPackageManager.BuildContext(
-          genericContext: GenericBuildContext(
-            projectDirectory: packageDirectory,
-            scratchDirectory: scratchDirectory,
-            configuration: arguments.buildConfiguration,
-            architectures: architectures,
-            platform: device.platform,
-            platformVersion: platformVersion,
-            additionalArguments: arguments.additionalSwiftPMArguments
-          ),
-          hotReloadingEnabled: true,
-          isGUIExecutable: true
+        let buildContext = GenericBuildContext(
+          projectDirectory: packageDirectory,
+          scratchDirectory: scratchDirectory,
+          configuration: arguments.buildConfiguration,
+          architectures: architectures,
+          platform: device.platform,
+          platformVersion: platformVersion,
+          additionalArguments: arguments.additionalSwiftPMArguments
         )
 
         // Start server and file system watcher (integrated into server)
@@ -162,7 +158,8 @@ struct RunCommand: ErrorHandledCommand {
           do {
             try await server.start(
               product: appConfiguration.product,
-              buildContext: buildContext
+              buildContext: buildContext,
+              appConfiguration: appConfiguration
             )
           } catch {
             log.error(
