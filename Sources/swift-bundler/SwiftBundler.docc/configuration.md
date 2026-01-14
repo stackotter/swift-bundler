@@ -148,10 +148,10 @@ struct CMakeBuilder: Builder {
 ## Schema
 
 Some editors allow JSON schemas to be used when editing TOML files. If you're
-using such an editor, Swift Bundler has a [Bundler.schema.json](https://github.com/stackotter/swift-bundler/blob/main/Bundler.schema.json)
+using such an editor, Swift Bundler has a [Bundler.schema.json](https://github.com/moreSwift/swift-bundler/blob/main/Bundler.schema.json)
 schema file describing the `Bundler.toml` format.
 
-If the schema is ever outdated, you can use [generate_schema.sh](https://github.com/stackotter/swift-bundler/blob/main/generate_schema.sh)
+If the schema is ever outdated, you can use [generate_schema.sh](https://github.com/moreSwift/swift-bundler/blob/main/generate_schema.sh)
 to generate the schema from the Swift Bundler source code as a quick fix, but
 make sure to let me know anyway so that I can update it for everyone!
 
