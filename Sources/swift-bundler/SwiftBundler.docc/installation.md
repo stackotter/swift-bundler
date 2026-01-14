@@ -26,7 +26,7 @@ build Swift Bundler using the Swift Package Manager, and then copy the
 resulting executable to a directory in your path.
 
 ```sh
-git clone https://github.com/stackotter/swift-bundler
+git clone https://github.com/moreSwift/swift-bundler
 cd swift-bundler
 
 swift build -c release
@@ -45,7 +45,7 @@ to recent releases.
 
 ```sh
 # Replace X.X.X with desired version
-curl -O https://github.com/stackotter/swift-bundler/releases/download/vX.X.X/swift-bundler
+curl -O https://github.com/moreSwift/swift-bundler/releases/download/vX.X.X/swift-bundler
 chmod +x ./swift-bundler
 sudo mv ./swift-bundler /usr/local/bin/
 

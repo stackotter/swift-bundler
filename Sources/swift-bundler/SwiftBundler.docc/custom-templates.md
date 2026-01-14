@@ -4,7 +4,7 @@ Custom templates are a great way to tailor Swift Bundler to your workflow.
 
 ## Overview
 
-Making custom templates isn't too complicated, and after reading this page you should be able to easily create templates for all your needs. If you create a template that you think many users would find useful, feel free to open a PR at [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) to add it to the default set of templates.
+Making custom templates isn't too complicated, and after reading this page you should be able to easily create templates for all your needs. If you create a template that you think many users would find useful, feel free to open a PR at [the swift-bundler-templates repository](https://github.com/moreSwift/swift-bundler-templates) to add it to the default set of templates.
 
 ## Creating a custom template
 
@@ -24,7 +24,7 @@ Any files within the template directory (excluding `Template.toml`) are copied t
 
 You can also create a `Base` directory within the template repository. Whenever creating a new package, the `Base` directory is applied first and should contain the common files between all templates, such as the `.gitignore` file. A template can override files in the `Base` template by containing files of the same name.
 
-See [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) for some example templates.
+See [the swift-bundler-templates repository](https://github.com/moreSwift/swift-bundler-templates) for some example templates.
 
 ## Using a custom template
 

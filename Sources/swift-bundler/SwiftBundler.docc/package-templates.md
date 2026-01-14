@@ -14,7 +14,7 @@ Swift Bundler comes with a few useful templates by default. Use the following co
 swift bundler templates list
 ```
 
-The default templates are located at `~/Library/Application Support/dev.stackotter.swift-bundler/templates` and are downloaded from [the swift-bundler-templates repository](https://github.com/stackotter/swift-bundler-templates) when the first command requiring templates is run.
+The default templates are located at `~/Library/Application Support/dev.stackotter.swift-bundler/templates` and are downloaded from [the swift-bundler-templates repository](https://github.com/moreSwift/swift-bundler-templates) when the first command requiring templates is run.
 
 Use the following command to get more information about each template:
 
