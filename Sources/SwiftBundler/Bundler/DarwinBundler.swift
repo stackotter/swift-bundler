@@ -152,10 +152,21 @@ enum DarwinBundler: Bundler {
   ) async throws(Error) {
     if let path = context.appConfiguration.icon {
       let icon = context.packageDirectory / path
-      try await Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
+      try await Self.compileAppIcon(
+        at: icon,
+        to: bundleStructure.appIconFile,
+        for: context.platform,
+        withPlatformVersion: additionalContext.platformVersion
+      )
     }
 
     do {
+      let appIconURL: URL?
+      if let iconFile = context.appConfiguration.icon {
+        appIconURL = context.packageDirectory / iconFile
+      } else {
+        appIconURL = nil
+      }
       try await ResourceBundler.copyResources(
         from: context.productsDirectory,
         to: bundleStructure.resourcesDirectory,
@@ -163,7 +174,8 @@ enum DarwinBundler: Bundler {
         platform: context.platform,
         platformVersion: additionalContext.platformVersion,
         packageName: context.packageName,
-        productName: context.appConfiguration.product
+        productName: context.appConfiguration.product,
+        iconURL: appIconURL
       )
     } catch {
       throw Error(.failedToCopyResourceBundles, cause: error)
@@ -268,7 +280,8 @@ enum DarwinBundler: Bundler {
     }
 
     do {
-      return try await ProvisioningProfileManager
+      return
+        try await ProvisioningProfileManager
         .locateOrGenerateSuitableProvisioningProfile(
           bundleIdentifier: context.appConfiguration.identifier,
           deviceId: device.id,
@@ -338,11 +351,15 @@ enum DarwinBundler: Bundler {
   ///   - inputIconFile: The app's icon. Should be either an `icns` file or a
   ///     1024x1024 `png` with an alpha channel.
   ///   - outputIconFile: The `icns` file to output to.
+  ///   - platform: The platform the icon is being created for.
+  ///   - platformVersion: The platform version the icon is being created for.
   /// - Throws: If the png exists and there is an error while converting it to
   ///   `icns`, or if the file is neither an `icns` or a `png`.
   private static func compileAppIcon(
     at inputIconFile: URL,
-    to outputIconFile: URL
+    to outputIconFile: URL,
+    for platform: Platform,
+    withPlatformVersion platformVersion: String
   ) async throws(Error) {
     // Copy `AppIcon.icns` if present
     if inputIconFile.pathExtension == "icns" {
@@ -353,6 +370,18 @@ enum DarwinBundler: Bundler {
         throw Error(
           .failedToCopyICNS(source: inputIconFile, destination: outputIconFile),
           cause: error
+        )
+      }
+    } else if inputIconFile.pathExtension == "icon" {
+      log.info(
+        "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'")
+
+      try await Error.catch(withMessage: .failedToCreateIcon) {
+        try await LayeredIconCreator.createIcns(
+          from: inputIconFile,
+          outputFile: outputIconFile,
+          forPlatform: platform,
+          withPlatformVersion: platformVersion
         )
       }
     } else if inputIconFile.pathExtension == "png" {
