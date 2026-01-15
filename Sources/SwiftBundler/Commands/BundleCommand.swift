@@ -557,7 +557,10 @@ struct BundleCommand: ErrorHandledCommand {
       // Load package manifest
       log.info("Loading package manifest")
       let manifest = try await RichError<SwiftBundlerError>.catch {
-        try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+        try await SwiftPackageManager.loadPackageManifest(
+          from: packageDirectory,
+          toolchain: arguments.toolchain
+        )
       }
 
       let platformVersion =
@@ -595,6 +598,7 @@ struct BundleCommand: ErrorHandledCommand {
             ? arguments.additionalXcodeBuildArguments
             : arguments.additionalSwiftPMArguments
         ),
+        toolchain: arguments.toolchain,
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true,
         compiledMetadata: compiledMetadata
@@ -677,6 +681,7 @@ struct BundleCommand: ErrorHandledCommand {
           appConfiguration.dependencies,
           packageConfiguration: configuration,
           context: dependencyContext,
+          swiftToolchain: arguments.toolchain,
           appName: appName,
           dryRun: skipBuild
         )
