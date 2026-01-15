@@ -141,9 +141,9 @@ enum ResourceBundler {
           )
         case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
           destinationBundleResources = destinationBundle
-        case .linux, .windows:
+        case .linux, .windows, .android:
           // TODO: Implement on Linux and Windows if neccessary
-          fatalError("TODO: Implement resource bundle fixing for linux and Windows")
+          fatalError("TODO: Implement resource bundle fixing for Linux, Windows, and Android")
       }
     }
 
@@ -227,9 +227,9 @@ enum ResourceBundler {
         directory = bundleResources
       case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
         directory = bundle
-      case .linux, .windows:
+      case .linux, .windows, .android:
         // TODO: Implement for linux
-        fatalError("TODO: Implement resource bundle fixing on Linux and Windows")
+        fatalError("TODO: Implement resource bundle fixing on Linux, Windows, and Android")
     }
 
     try FileManager.default.createDirectory(
@@ -262,9 +262,9 @@ enum ResourceBundler {
         infoPlist =
           bundle
           .appendingPathComponent("Info.plist")
-      case .linux, .windows:
+      case .linux, .windows, .android:
         // TODO: Implement for Linux and Windows
-        fatalError("Implement for Linux and Windows")
+        fatalError("Implement for Linux, Windows, and Android")
     }
 
     do {
