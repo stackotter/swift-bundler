@@ -319,7 +319,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/Bundler.schema.json",
+              "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/Bundler.schema.json",
               "isActive" : true,
               "type" : "reference"
             },
@@ -349,7 +349,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/generate_schema.sh",
+              "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/generate_schema.sh",
               "isActive" : true,
               "type" : "reference"
             },
@@ -1412,8 +1412,8 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler"
 },
-"https://github.com/stackotter/swift-bundler/blob/main/Bundler.schema.json": {
-  "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/Bundler.schema.json",
+"https://github.com/moreSwift/swift-bundler/blob/main/Bundler.schema.json": {
+  "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/Bundler.schema.json",
   "title" : "Bundler.schema.json",
   "titleInlineContent" : [
     {
@@ -1422,10 +1422,10 @@
     }
   ],
   "type" : "link",
-  "url" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/Bundler.schema.json"
+  "url" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/Bundler.schema.json"
 },
-"https://github.com/stackotter/swift-bundler/blob/main/generate_schema.sh": {
-  "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/generate_schema.sh",
+"https://github.com/moreSwift/swift-bundler/blob/main/generate_schema.sh": {
+  "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/generate_schema.sh",
   "title" : "generate_schema.sh",
   "titleInlineContent" : [
     {
@@ -1434,7 +1434,7 @@
     }
   ],
   "type" : "link",
-  "url" : "https:\/\/github.com\/stackotter\/swift-bundler\/blob\/main\/generate_schema.sh"
+  "url" : "https:\/\/github.com\/moreSwift\/swift-bundler\/blob\/main\/generate_schema.sh"
 }
 }
 }

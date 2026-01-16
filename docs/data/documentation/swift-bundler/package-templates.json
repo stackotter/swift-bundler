@@ -82,7 +82,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",
+              "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates",
               "isActive" : true,
               "type" : "reference"
             },
@@ -225,8 +225,8 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler"
 },
-"https://github.com/stackotter/swift-bundler-templates": {
-  "identifier" : "https:\/\/github.com\/stackotter\/swift-bundler-templates",
+"https://github.com/moreSwift/swift-bundler-templates": {
+  "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates",
   "title" : "the swift-bundler-templates repository",
   "titleInlineContent" : [
     {
@@ -235,7 +235,7 @@
     }
   ],
   "type" : "link",
-  "url" : "https:\/\/github.com\/stackotter\/swift-bundler-templates"
+  "url" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates"
 }
 }
 }

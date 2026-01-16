@@ -54,7 +54,7 @@
               "type" : "text"
             },
             {
-              "identifier" : "https:\/\/github.com\/stackotter\/swift-cross-ui",
+              "identifier" : "https:\/\/github.com\/moreSwift\/swift-cross-ui",
               "isActive" : true,
               "type" : "reference"
             },
@@ -307,8 +307,8 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler"
 },
-"https://github.com/stackotter/swift-cross-ui": {
-  "identifier" : "https:\/\/github.com\/stackotter\/swift-cross-ui",
+"https://github.com/moreSwift/swift-cross-ui": {
+  "identifier" : "https:\/\/github.com\/moreSwift\/swift-cross-ui",
   "title" : "SwiftCrossUI",
   "titleInlineContent" : [
     {
@@ -317,7 +317,7 @@
     }
   ],
   "type" : "link",
-  "url" : "https:\/\/github.com\/stackotter\/swift-cross-ui"
+  "url" : "https:\/\/github.com\/moreSwift\/swift-cross-ui"
 }
 }
 }
