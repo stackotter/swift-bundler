@@ -15,6 +15,7 @@ enum SwiftBundlerError: Throwable {
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
+  case xcodeCannotBuildAsDylib
 
   var userFriendlyMessage: String {
     switch self {
@@ -73,6 +74,12 @@ enum SwiftBundlerError: Throwable {
         return """
           Could not find \(file.lastPathComponent) at standard location. Are you \
           sure that you're in the root of a Swift Bundler project?
+          """
+      case .xcodeCannotBuildAsDylib:
+        return """
+          The xcodebuild backend can't be used to build executable products as \
+          dynamic libraries, but the currently selected bundler requires a \
+          dynamic library.
           """
     }
   }
