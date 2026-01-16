@@ -23,7 +23,7 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
-    .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.1"),
+    .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
