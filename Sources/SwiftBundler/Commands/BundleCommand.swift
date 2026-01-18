@@ -130,32 +130,13 @@ struct BundleCommand: ErrorHandledCommand {
       }
     }
 
+    if platform != .macOS && arguments.standAlone {
+      log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
+      return false
+    }
+
     // macOS-only arguments
     #if os(macOS)
-      if platform.isApplePlatform && ![.macOS, .macCatalyst].contains(platform) {
-        if arguments.universal {
-          log.error(
-            """
-            '--universal' is not compatible with '--platform \
-            \(platform.rawValue)'
-            """
-          )
-          return false
-        }
-
-        if !arguments.architectures.isEmpty {
-          log.error(
-            "'--arch' is not compatible with '--platform \(platform.rawValue)'"
-          )
-          return false
-        }
-      }
-
-      if platform != .macOS && arguments.standAlone {
-        log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
-        return false
-      }
-
       switch platform {
         case .iOS, .visionOS, .tvOS:
           break
@@ -438,22 +419,42 @@ struct BundleCommand: ErrorHandledCommand {
     }
   }
 
-  func getArchitectures(platform: Platform) -> [BuildArchitecture] {
-    let architectures: [BuildArchitecture]
-    switch platform {
-      case .macOS, .macCatalyst:
-        if arguments.universal {
-          architectures = [.arm64, .x86_64]
-        } else {
-          architectures =
-            !arguments.architectures.isEmpty
-            ? arguments.architectures
-            : [BuildArchitecture.current]
-        }
-      case .iOS, .visionOS, .tvOS, .android:
-        architectures = [.arm64]
-      case .linux, .windows, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        architectures = [BuildArchitecture.current]
+  /// Gets the architectures to use for the current build. Validates the '--arch'
+  /// arguments passed in by the user.
+  func getArchitectures(platform: Platform)
+    throws(RichError<SwiftBundlerError>) -> [BuildArchitecture]
+  {
+    guard !arguments.universal || platform.supportsMultiArchitectureBuilds else {
+      let message = SwiftBundlerError.platformDoesNotSupportMultiArchitectureBuilds(
+        platform,
+        universalFlag: true
+      )
+      throw RichError(message)
+    }
+
+    let supportedArchitectures = platform.supportedCompilationArchitectures
+    let architectures = arguments.universal ? supportedArchitectures : arguments.architectures
+    guard !architectures.isEmpty else {
+      return [platform.defaultCompilationArchitecture(.host)]
+    }
+
+    var unsupportedArchitectures: [BuildArchitecture] = []
+    for architecture in architectures {
+      if !supportedArchitectures.contains(architecture) {
+        unsupportedArchitectures.append(architecture)
+      }
+    }
+
+    guard unsupportedArchitectures.isEmpty else {
+      throw RichError(.unsupportedTargetArchitectures(unsupportedArchitectures, platform))
+    }
+
+    guard architectures.count == 1 || platform.supportsMultiArchitectureBuilds else {
+      let message = SwiftBundlerError.platformDoesNotSupportMultiArchitectureBuilds(
+        platform,
+        universalFlag: false
+      )
+      throw RichError(message)
     }
 
     return architectures
@@ -504,6 +505,20 @@ struct BundleCommand: ErrorHandledCommand {
       platform: resolvedPlatform
     )
 
+    guard
+      Self.validateArguments(
+        arguments,
+        platform: resolvedPlatform,
+        skipBuild: skipBuild,
+        builtWithXcode: builtWithXcode
+      )
+    else {
+      Foundation.exit(1)
+    }
+
+    // Get relevant configuration
+    let architectures = try getArchitectures(platform: resolvedPlatform)
+
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       // Load configuration
@@ -520,20 +535,6 @@ struct BundleCommand: ErrorHandledCommand {
         ),
         customFile: arguments.configurationFileOverride
       )
-
-      guard
-        Self.validateArguments(
-          arguments,
-          platform: resolvedPlatform,
-          skipBuild: skipBuild,
-          builtWithXcode: builtWithXcode
-        )
-      else {
-        Foundation.exit(1)
-      }
-
-      // Get relevant configuration
-      let architectures = getArchitectures(platform: resolvedPlatform)
 
       // Whether or not we are building with xcodebuild instead of swiftpm.
       let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(

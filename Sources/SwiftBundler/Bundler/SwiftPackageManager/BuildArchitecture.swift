@@ -5,11 +5,12 @@ import Foundation
 enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
   case x86_64  // swiftlint:disable:this identifier_name
   case arm64
+  case armv7
 
   #if arch(x86_64)
-    static let current: BuildArchitecture = .x86_64
+    static let host: BuildArchitecture = .x86_64
   #elseif arch(arm64)
-    static let current: BuildArchitecture = .arm64
+    static let host: BuildArchitecture = .arm64
   #endif
 
   var defaultValueDescription: String {

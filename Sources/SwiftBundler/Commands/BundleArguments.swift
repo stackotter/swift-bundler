@@ -82,7 +82,7 @@ struct BundleArguments: ParsableArguments {
     parsing: .singleValue,
     help: {
       let possibleValues = BuildArchitecture.possibleValuesDescription
-      let defaultValue = BuildArchitecture.current.rawValue
+      let defaultValue = BuildArchitecture.host.rawValue
       return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
     }(),
     transform: { string in
