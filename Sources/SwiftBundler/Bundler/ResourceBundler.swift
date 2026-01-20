@@ -34,7 +34,7 @@ enum ResourceBundler {
           "--enable-icon-stack-fallback-generation=disabled",
           "--include-all-app-icons",
           "--minimum-deployment-target", platformVersion,
-          "--output-partial-info-plist", "/dev/null"
+          "--output-partial-info-plist", "/dev/null",
         ] + targetDeviceArguments
           + assetCatalogs.map { $0.path }
       ).runAndWait()
@@ -63,12 +63,24 @@ enum ResourceBundler {
     productName: String,
     iconURL: URL?,
   ) async throws(Error) {
+    let mainBundleName = "\(packageName)_\(productName)"
+
+    // When using Layered icons, create the main bundle if it doesn't exist
+    if iconURL?.pathExtension.lowercased() == "icon" {
+      let mainBundleURL = sourceDirectory.appendingPathComponent("\(mainBundleName).bundle")
+      if !mainBundleURL.exists(withType: .directory) {
+        try FileManager.default.createDirectory(
+          at: mainBundleURL,
+          errorMessage: ErrorMessage.failedToCreateBundleDirectory
+        )
+      }
+    }
+
     let contents = try FileManager.default.contentsOfDirectory(
       at: sourceDirectory,
       errorMessage: ErrorMessage.failedToEnumerateBundles
     )
 
-    let mainBundleName = "\(packageName)_\(productName)"
     for file in contents where file.pathExtension == "bundle" {
       guard file.exists(withType: .directory) else {
         continue
@@ -173,8 +185,11 @@ enum ResourceBundler {
 
     let assetCatalogExists = assetCatalog.exists(withType: .directory)
     let layeredIcon: [URL]
-    if let iconURL, iconURL.pathExtension.lowercased() == "icon" {
-      layeredIcon = [iconURL]
+    if let iconURL, iconURL.pathExtension.lowercased() == "icon", isMainBundle {
+      let tempIconURL = destinationBundleResources.appendingPathComponent("AppIcon.icon")
+      try FileManager.default.copyItem(
+        at: iconURL, to: tempIconURL, errorMessage: ErrorMessage.failedToCopyResource)
+      layeredIcon = [tempIconURL]
     } else {
       layeredIcon = []
     }
@@ -193,6 +208,12 @@ enum ResourceBundler {
         // Remove the source asset catalog
         try FileManager.default.removeItem(
           at: assetCatalog,
+          errorMessage: ErrorMessage.failedToDeleteAssetCatalog
+        )
+      }
+      for icon in layeredIcon {
+        try FileManager.default.removeItem(
+          at: icon,
           errorMessage: ErrorMessage.failedToDeleteAssetCatalog
         )
       }
