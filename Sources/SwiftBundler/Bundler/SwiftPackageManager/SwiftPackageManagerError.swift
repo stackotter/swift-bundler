@@ -22,6 +22,8 @@ extension SwiftPackageManager {
     case missingDarwinPlatformVersion(Platform)
     case failedToGetToolsVersion
     case invalidToolsVersion(String)
+    case cannotCompileExecutableAsDylibForPlatform(Platform)
+    case cannotBuildForMultipleAndroidArchitecturesAtOnce
 
     var userFriendlyMessage: String {
       switch self {
@@ -63,6 +65,10 @@ extension SwiftPackageManager {
           return "Failed to get Swift package manifest tools version"
         case .invalidToolsVersion(let version):
           return "Invalid Swift tools version '\(version)' (expected a semantic version)"
+        case .cannotCompileExecutableAsDylibForPlatform(let platform):
+          return "Cannot compile executable as dylib for platform '\(platform)'"
+        case .cannotBuildForMultipleAndroidArchitecturesAtOnce:
+          return "Cannot build for multiple Android architectures at once"
       }
     }
   }
