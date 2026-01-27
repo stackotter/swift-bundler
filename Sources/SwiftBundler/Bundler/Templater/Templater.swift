@@ -5,7 +5,7 @@ import Version
 /// A utility for creating packages from package templates.
 enum Templater {
   /// The repository of default templates.
-  static let defaultTemplateRepository = "https://github.com/stackotter/swift-bundler-templates"
+  static let defaultTemplateRepository = "https://github.com/moreSwift/swift-bundler-templates"
 
   /// Creates a package using an optionally specified template from the default
   /// template repository.

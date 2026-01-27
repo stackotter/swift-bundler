@@ -16,7 +16,7 @@ public enum HotReloadingClientError: LocalizedError {
   }
 }
 
-public struct HotReloadingClient {
+public struct HotReloadingClient: Sendable {
   var server: AsyncSocket
 
   /// Connects to the server specified by the `SWIFT_BUNDLER_SERVER` environment variable.
@@ -36,7 +36,7 @@ public struct HotReloadingClient {
   }
 
   #if canImport(Darwin)
-    public mutating func handlePackets(handleDylib: (Dylib) -> Void) async throws {
+    public mutating func handlePackets(handleDylib: (sending Dylib) -> Void) async throws {
       while true {
         let packet = try await Packet.read(from: &server)
 

@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="https://swiftpackageindex.com/stackotter/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fstackotter%2Fswift-bundler%2Fbadge%3Ftype%3Dswift-versions"></a>
-  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-macos.yml" alt="Build macOS"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-macos.yml/badge.svg"></a>
-  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-linux.yml" alt="Build Linux"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-linux.yml/badge.svg"></a>
-  <a href="https://github.com/stackotter/swift-bundler/actions/workflows/swift-windows.yml" alt="Build Linux"><img src="https://github.com/stackotter/swift-bundler/actions/workflows/swift-windows.yml/badge.svg"></a>
+  <a href="https://swiftpackageindex.com/moreSwift/swift-bundler"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FmoreSwift%2Fswift-bundler%2Fbadge%3Ftype%3Dswift-versions"></a>
+  <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-macos.yml" alt="Build macOS"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-macos.yml/badge.svg"></a>
+  <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-linux.yml" alt="Build Linux"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-linux.yml/badge.svg"></a>
+  <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-windows.yml" alt="Build Linux"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-windows.yml/badge.svg"></a>
   <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a> 
 </p>
 
@@ -72,7 +72,7 @@ To learn more about Swift Bundler refer to the [documentation](https://swiftbund
 
 ## Contributing 🛠
 
-Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/stackotter/swift-bundler/issues) for contribution ideas.
+Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/moreSwift/swift-bundler/issues) for contribution ideas.
 
 ## Bug response policy 🐞
 
@@ -87,3 +87,4 @@ If you have made an app with Swift Bundler, I'd love to hear about it! Just open
 - [Delta Client](https://github.com/stackotter/delta-client): A 'Minecraft: Java Edition' compatible Minecraft client written from scratch in Swift (macOS only)
 - [ModularMTL](https://github.com/JezewskiG/ModularMTL): A modular multiplication visualisation made with Swift Bundler, SwiftUI and Metal (macOS only)
 - [Friend](https://github.com/JoshuaBrest/Friend): A technical demo that showcases how system-based assistants can be integrated with LLMs to provide greater flexibility and functionality (macOS only)
+- [AutoDock](https://github.com/ghall89/AutoDock): A utility for automatically hiding and showing the macOS Dock based on connected display size. (macOS only)
