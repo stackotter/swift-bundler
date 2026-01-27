@@ -133,7 +133,7 @@ enum DarwinBundler: Bundler {
     bundleStructure: DarwinAppBundleStructure,
     context: BundlerContext,
     additionalContext: Context,
-    partialInfoPlist: LayeredIconCompiler.PartialInfoPlist?
+    partialInfoPlist: [String: Any]?
   ) throws(Error) {
     try Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile)
 
@@ -152,8 +152,8 @@ enum DarwinBundler: Bundler {
     bundleStructure: DarwinAppBundleStructure,
     context: BundlerContext,
     additionalContext: Context
-  ) async throws(Error) -> LayeredIconCompiler.PartialInfoPlist? {
-    var partialInfoPlist: LayeredIconCompiler.PartialInfoPlist? = nil
+  ) async throws(Error) -> [String: Any]? {
+    var partialInfoPlist: [String: Any]? = nil
     if let path = context.appConfiguration.icon {
       let icon = context.packageDirectory / path
       partialInfoPlist = try await Self.compileAppIcon(
@@ -336,7 +336,7 @@ enum DarwinBundler: Bundler {
     appConfiguration: AppConfiguration.Flat,
     platform: ApplePlatform,
     platformVersion: String,
-    partialInfoPlist: LayeredIconCompiler.PartialInfoPlist?
+    partialInfoPlist: [String: Any]?
   ) throws(Error) {
     log.info("Creating 'Info.plist'")
     try Error.catch(withMessage: .failedToCreateInfoPlist) {
@@ -368,8 +368,11 @@ enum DarwinBundler: Bundler {
     to outputIconFile: URL,
     for platform: Platform,
     withPlatformVersion platformVersion: String
-  ) async throws(Error) -> LayeredIconCompiler.PartialInfoPlist? {
+  ) async throws(Error) -> [String: Any]? {
     // Copy `AppIcon.icns` if present
+
+    var partialInfoPlist: [String: Any]? = nil
+
     if inputIconFile.pathExtension == "icns" {
       log.info("Copying '\(inputIconFile.lastPathComponent)'")
       do {
@@ -384,7 +387,7 @@ enum DarwinBundler: Bundler {
       log.info(
         "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'")
 
-      let partialInfoPlist = try await Error.catch(withMessage: .failedToCreateIcon) {
+      partialInfoPlist = try await Error.catch(withMessage: .failedToCreateIcon) {
         return try await LayeredIconCompiler.createIcon(
           from: inputIconFile,
           outputFile: outputIconFile,
@@ -392,7 +395,7 @@ enum DarwinBundler: Bundler {
           withPlatformVersion: platformVersion
         )
       }
-      return partialInfoPlist
+
     } else if inputIconFile.pathExtension == "png" {
       log.info(
         "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'"
@@ -408,7 +411,7 @@ enum DarwinBundler: Bundler {
       throw Error(.invalidAppIconFile(inputIconFile))
     }
 
-    return nil
+    return partialInfoPlist
   }
 
   private static func embedProvisioningProfile(

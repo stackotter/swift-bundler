@@ -17,7 +17,7 @@ enum PlistCreator {
     configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String,
-    partialInfoPlist: LayeredIconCompiler.PartialInfoPlist? = nil
+    partialInfoPlist: [String: Any]? = nil
   ) throws(Error) {
     let contents = try createAppInfoPlistContents(
       appName: appName,
@@ -78,7 +78,7 @@ enum PlistCreator {
     configuration: AppConfiguration.Flat,
     platform: Platform,
     platformVersion: String,
-    partialInfoPlist: LayeredIconCompiler.PartialInfoPlist? = nil
+    partialInfoPlist: [String: Any]? = nil
   ) throws(Error) -> Data {
     var entries: [String: Any?] = [
       "CFBundleDevelopmentRegion": "en",
@@ -141,12 +141,7 @@ enum PlistCreator {
 
     if let partialInfoPlist {
       for (key, value) in partialInfoPlist {
-        entries[key] = [
-          "CFBundlePrimaryIcon": [
-            "CFBundleIconName": value.primaryIcon.name,
-            "CFBundleIconFiles": value.primaryIcon.iconFiles,
-          ]
-        ]
+        entries[key] = value
       }
     }
 

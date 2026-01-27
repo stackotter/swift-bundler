@@ -2,25 +2,6 @@ import Foundation
 
 /// A utility for creating an ICNS from `.icon` files.
 enum LayeredIconCompiler {
-  struct BundleIcon: Codable {
-    enum CodingKeys: String, CodingKey {
-      case name = "CFBundleIconName"
-      case iconFiles = "CFBundleIconFiles"
-    }
-
-    let name: String
-    let iconFiles: [String]
-  }
-
-  struct BundleIcons: Codable {
-    enum CodingKeys: String, CodingKey {
-      case primaryIcon = "CFBundlePrimaryIcon"
-    }
-
-    let primaryIcon: BundleIcon
-  }
-
-  typealias PartialInfoPlist = [String: BundleIcons]
   /// Creates an `AppIcon.icns` in the given directory from the given `.icon` file.
   ///
   /// iOS is NOT supported.
@@ -36,7 +17,7 @@ enum LayeredIconCompiler {
     outputFile: URL,
     forPlatform platform: Platform,
     withPlatformVersion version: String
-  ) async throws(Error) -> PartialInfoPlist {
+  ) async throws(Error) -> [String: Any] {
     guard icon.pathExtension.lowercased() == "icon" else {
       throw Error(.notAnIconFile(icon))
     }
@@ -94,15 +75,22 @@ enum LayeredIconCompiler {
       throw Error(.failedToCompileIcon, cause: error)
     }
 
-    let plist: PartialInfoPlist
+    var plist: [String: Any]? = nil
     do {
-      plist = try PropertyListDecoder().decode(
-        PartialInfoPlist.self,
-        from: plistData
-      )
+      plist =
+        try PropertyListSerialization.propertyList(
+          from: plistData,
+          options: [],
+          format: nil
+        ) as? [String: Any]
     } catch {
       try? FileManager.default.removeItem(at: workPath)
       throw Error(.failedToDecodePartialInfoPlist(partialInfoPlistPath), cause: error)
+    }
+
+    guard let plist else {
+      try? FileManager.default.removeItem(at: workPath)
+      throw Error(.failedToDecodePartialInfoPlist(partialInfoPlistPath))
     }
 
     if platform == .macOS || platform == .macCatalyst {
@@ -125,31 +113,31 @@ enum LayeredIconCompiler {
         errorMessage: ErrorMessage.failedToRemoveIconDirectory
       )
       return plist
-    }
+    } else {
+      let fileEnumerator = FileManager.default.enumerator(
+        at: workPath, includingPropertiesForKeys: nil)
+      let pngFiles =
+        fileEnumerator?.allObjects.compactMap { $0 as? URL }
+        .filter { $0.pathExtension.lowercased() == "png" } ?? []
 
-    let fileEnumerator = FileManager.default.enumerator(
-      at: workPath, includingPropertiesForKeys: nil)
-    let pngFiles =
-      fileEnumerator?.allObjects.compactMap { $0 as? URL }
-      .filter { $0.pathExtension.lowercased() == "png" } ?? []
-
-    // Move all PNG files to the output directory
-    for pngFile in pngFiles {
-      let destination =
-        outputFile
-        .deletingLastPathComponent()
-        .appendingPathComponent(pngFile.lastPathComponent)
-      do {
-        try FileManager.default.moveItem(at: pngFile, to: destination)
-      } catch {
-        try? FileManager.default.removeItem(at: workPath)
-        throw Error(.failedToCopyFile(pngFile, destination), cause: error)
+      // Move all PNG files to the output directory
+      for pngFile in pngFiles {
+        let destination =
+          outputFile
+          .deletingLastPathComponent()
+          .appendingPathComponent(pngFile.lastPathComponent)
+        do {
+          try FileManager.default.moveItem(at: pngFile, to: destination)
+        } catch {
+          try? FileManager.default.removeItem(at: workPath)
+          throw Error(.failedToCopyFile(pngFile, destination), cause: error)
+        }
       }
+      try FileManager.default.removeItem(
+        at: workPath,
+        errorMessage: ErrorMessage.failedToRemoveIconDirectory
+      )
     }
-    try FileManager.default.removeItem(
-      at: workPath,
-      errorMessage: ErrorMessage.failedToRemoveIconDirectory
-    )
 
     return plist
   }
