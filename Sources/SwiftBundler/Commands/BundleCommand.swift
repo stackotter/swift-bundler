@@ -583,6 +583,20 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
 
+      // Forwards the simulatorSpecifier if set, so it can be used in the
+      // xcodebuild command generation
+      var additionalArguments =
+        isUsingXcodebuild
+        ? arguments.additionalXcodeBuildArguments
+        : arguments.additionalSwiftPMArguments
+
+      if isUsingXcodebuild,
+        let specifier = arguments.simulatorSpecifier
+      {
+        additionalArguments.append("simulatorSpecifier")
+        additionalArguments.append(specifier)
+      }
+
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
           projectDirectory: packageDirectory,
@@ -591,9 +605,7 @@ struct BundleCommand: ErrorHandledCommand {
           architectures: architectures,
           platform: resolvedPlatform,
           platformVersion: platformVersion,
-          additionalArguments: isUsingXcodebuild
-            ? arguments.additionalXcodeBuildArguments
-            : arguments.additionalSwiftPMArguments
+          additionalArguments: additionalArguments
         ),
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true,
