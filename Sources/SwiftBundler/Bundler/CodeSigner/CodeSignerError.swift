@@ -17,7 +17,6 @@ extension CodeSigner {
     case failedToParseSigningCertificate(pem: String)
     case signingCertificateMissingTeamIdentifier(CodeSigner.Identity)
     case identityShortNameNotMatched(String)
-    case failedToLocateCertificate(CodeSigner.Identity)
     case invalidId(String)
     case certificateExpired(CodeSigner.Identity, notValidAfter: Date)
 
@@ -50,11 +49,6 @@ extension CodeSigner {
           return """
             Identity short name '\(shortName)' didn't match any known identities. \
             Run 'swift bundler list-identities' to list available identities.
-            """
-        case .failedToLocateCertificate(let identity):
-          return """
-            Failed to locate signing certificate for identity \
-            '\(identity.name)' (id: \(identity.id))
             """
         case .invalidId(let id):
           return "Invalid code signing id '\(id)', expected hexadecimal string."

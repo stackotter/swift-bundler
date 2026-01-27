@@ -255,7 +255,7 @@ enum CodeSigner {
       output = try await Process.create(
         securityToolPath,
         arguments: [
-          "find-certificate", "-c", identity.id, "-p", "-a",
+          "find-certificate", "-c", identity.name, "-p", "-a",
         ]
       ).getOutput()
     } catch {
@@ -283,7 +283,7 @@ enum CodeSigner {
     }
 
     guard let certificatePEM = certificates.first else {
-      throw Error(.failedToLocateCertificate(identity))
+      throw Error(.failedToLocateSigningCertificate(identity))
     }
 
     if certificates.count > 1 {
