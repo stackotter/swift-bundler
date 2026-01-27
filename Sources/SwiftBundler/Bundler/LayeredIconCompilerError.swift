@@ -1,15 +1,17 @@
 import ErrorKit
 import Foundation
 
-extension LayeredIconCreator {
+extension LayeredIconCompiler {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error message related to ``LayeredIconCreator``.
+  /// An error message related to ``LayeredIconCompiler``.
   enum ErrorMessage: Throwable {
     case notAnIconFile(URL)
     case failedToCreateIconDirectory(URL)
     case failedToCopyFile(URL, URL)
-    case failedToConvertToICNS
+    case failedToCompileIcon
+    case failedToDecodePartialInfoPlist(URL)
+    case failedToCompileICNS
     case failedToRemoveIconDirectory(URL)
 
     var userFriendlyMessage: String {
@@ -24,8 +26,14 @@ extension LayeredIconCreator {
           return """
             Failed to copy file from '\(from.relativePath)' to '\(to.relativePath)'
             """
-        case .failedToConvertToICNS:
-          return "Failed to convert the icon set directory to an 'icns' file"
+        case .failedToCompileIcon:
+          return "Failed to create icon files"
+        case .failedToDecodePartialInfoPlist(let plistPath):
+          return """
+            Failed to decode the partial Info.plist at '\(plistPath.relativePath)'
+            """
+        case .failedToCompileICNS:
+          return "Failed to convert the icon to ICNS format"
         case .failedToRemoveIconDirectory(let directory):
           return """
             Failed to remove the temporary icon directory at '\(directory.relativePath)'
